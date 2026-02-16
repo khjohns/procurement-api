@@ -4,6 +4,7 @@
 *.key
 *.pem
 credentials.*
+!credentials.py
 secrets.*
 
 # Python
