@@ -14,6 +14,8 @@ from typing import Any
 
 import certifi
 
+from artifik_mcp.decorator import mcp_tool
+
 BASE_URL = "https://api.artifik.no"
 TOKEN_MARGIN_SECONDS = 60
 
@@ -38,18 +40,22 @@ class TokenInfo:
 class ArtifikClient:
     """Client for the Artifik External API.
 
-    Reads credentials from environment variables:
+    Credentials can be injected directly or read from environment variables:
         VENDOR_API_ID  — OAuth2 client_id
         VENDOR_API_KEY — OAuth2 client_secret
     """
 
     base_url: str = BASE_URL
+    client_id: str | None = field(default=None, repr=False)
+    client_secret: str | None = field(default=None, repr=False)
     _token: TokenInfo | None = field(default=None, repr=False)
     _ssl_ctx: ssl.SSLContext = field(default_factory=lambda: ssl.create_default_context(cafile=certifi.where()), repr=False)
 
     # -- Auth --------------------------------------------------------
 
     def _get_credentials(self) -> tuple[str, str]:
+        if self.client_id and self.client_secret:
+            return self.client_id, self.client_secret
         return os.environ["VENDOR_API_ID"], os.environ["VENDOR_API_KEY"]
 
     def authenticate(self) -> TokenInfo:
@@ -142,20 +148,25 @@ class ArtifikClient:
 
     # -- Procurements ------------------------------------------------
 
+    @mcp_tool(description="List all procurements. Optionally filter by organization ID.")
     def list_procurements(self, *, organization_id: str | None = None) -> list[dict]:
         return self._get("/external/procurements", {"organizationId": organization_id})
 
+    @mcp_tool(description="Get activity log for a procurement — submissions, openings, qualifications, awards.")
     def get_procurement_activities(self, procurement_id: int) -> list[dict]:
         return self._get(f"/external/{procurement_id}/activities")
 
+    @mcp_tool(description="Get structured document responses (qualification criteria, award criteria, contract terms).")
     def get_smart_doc_responses(self, procurement_id: int) -> Any:
         return self._get(f"/external/{procurement_id}/smartDocResponses")
 
+    @mcp_tool(description="Download all procurement documents as a ZIP archive. Returns raw bytes.")
     def download_archive_zip(self, procurement_id: int) -> bytes:
         return self._get(f"/external/{procurement_id}/archiveZip")
 
     # -- Contracts ---------------------------------------------------
 
+    @mcp_tool(description="List contracts. Optionally filter by organization, date, or include custom fields.")
     def list_contracts(
         self,
         *,
@@ -169,11 +180,13 @@ class ArtifikClient:
             "limitDate": limit_date,
         })
 
+    @mcp_tool(description="Get details for a specific contract.")
     def get_contract(self, contract_id: int) -> dict:
         return self._get(f"/external/contracts/{contract_id}")
 
     # -- Organizations -----------------------------------------------
 
+    @mcp_tool(description="List organizations. Optionally include sub-organizations.")
     def list_organizations(self, *, include_sub_orgs: bool = False, parent_id: str | None = None) -> list[dict]:
         return self._get("/external/organizations", {
             "includeSubOrgs": "1" if include_sub_orgs else None,
@@ -182,6 +195,7 @@ class ArtifikClient:
 
     # -- Activities --------------------------------------------------
 
+    @mcp_tool(description="Get organization-level activity log. Optionally filter by organization or date.")
     def get_organization_activities(
         self,
         *,
@@ -195,9 +209,11 @@ class ArtifikClient:
 
     # -- Webhooks ----------------------------------------------------
 
+    @mcp_tool(description="List registered webhooks.")
     def list_webhooks(self, *, organization_id: str | None = None) -> list[dict]:
         return self._get("/external/webhooks", {"organizationId": organization_id})
 
+    @mcp_tool(description="Register a webhook for specified actions.")
     def register_webhook(
         self,
         callback_url: str,
@@ -211,11 +227,13 @@ class ArtifikClient:
             params={"organizationId": organization_id},
         )
 
+    @mcp_tool(description="Delete a registered webhook.")
     def delete_webhook(self, webhook_id: int) -> Any:
         return self._delete(f"/external/webhooks/{webhook_id}")
 
     # -- Tasks -------------------------------------------------------
 
+    @mcp_tool(description="Get tasks. Filter by organization, user, status, or type.")
     def get_tasks(
         self,
         *,

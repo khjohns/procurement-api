@@ -22,8 +22,12 @@ def get_mcp_tools(obj: Any) -> list[tuple[str, Callable, dict]]:
     Returns list of (name, bound_method, meta) tuples.
     """
     tools = []
+    cls = type(obj)
     for name in dir(obj):
         if name.startswith("_"):
+            continue
+        # Skip properties to avoid triggering side effects (e.g. token refresh)
+        if isinstance(getattr(cls, name, None), property):
             continue
         method = getattr(obj, name)
         if not callable(method):
