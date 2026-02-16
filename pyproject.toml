@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "flask>=3.0",
     "certifi",
+    "mcp>=1.12",
 ]
 
 [project.optional-dependencies]
