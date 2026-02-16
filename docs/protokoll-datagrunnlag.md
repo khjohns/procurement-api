@@ -74,30 +74,43 @@ som et samlet dokument. Tilgjengelige felter:
   `reserved_procurement_code`, `euUnion_funds`
 
 Activities gir kunngjøringsmetadata:
-- `DOFFIN_NOTICE_STATUS_PUBLISHED` — Doffin-referanse (ngoj-nummer) og TED-status
-- `PUBLISH_CHANGE_PROCUREMENT` — endringer med diff (`__old`/`__new`-verdier)
+- `DOFFIN_NOTICE_STATUS_PUBLISHED` — Doffin-referanse (ngoj) og TED-referanse
+  (`publicationId`), `legalBasis`, `noticeType`, `procedureId`
+- `PUBLISH_CHANGE_PROCUREMENT` — endringslogg med diff (`__old`/`__new`-verdier)
+
+Eksempel kunngjøringsreferanser (ID 1858):
+- Doffin ngoj: `2025-119613`
+- TED publicationId: `820034-2025`
+- legalBasis: `32014L0024` (EU-direktivet)
 
 **Ikke tilgjengelig:** Selve kunngjøringsteksten i TED/Doffin-format.
 
-## Kvalifikasjonskrav og tildelingskriterier
+## Kvalifikasjonskrav, tildelingskriterier og avvisningsgrunner
 
-Tilgjengelig via `smartDocResponses` som strukturerte dokumenter (docJSON):
-- **Kvalifikasjonskrav:** Evalueringsmodell, dokumentasjonskrav, avvisningsregler
+Disse skal normalt fremgå av kunngjøringen, men er **ikke egne felter** i
+procurement-objektet. Det finnes kun:
+- `exclusion_grounds_visibility: "all"` — innstilling, ikke selve grunnene
+- `suppliersLimitReason` — utvelgelseskriterier (begrenset konkurranse)
+- `useAwardCriteriaRequests` — flagg, ikke kriteriene selv
+
+For 2 av 150 anskaffelser finnes de i `smartDocResponses` (docJSON):
+- **Kvalifikasjonskrav:** Evalueringsmodell, dokumentasjonskrav
 - **Tildelingskriterier:** Vurderingsgrunnlag, poengmodell, dokumentasjonskrav
-- **Utvelgelseskriterier:** `suppliersLimitReason` (HTML) på procurement-objektet
 
-**Begrensning:** smartDocResponses er kun tilgjengelig på et fåtall anskaffelser
-(2 av 150 per feb 2026). For øvrige er disse dataene ikke eksponert via API.
+For øvrige 148 anskaffelser er disse dataene **ikke tilgjengelig via API**.
 
 ## Viktigste gap å ta opp med Artifik
 
-1. **Avvisningsbegrunnelse** — `REJECT_PARTICIPATION` har tom `description`.
+1. **Kvalifikasjonskrav, tildelingskriterier og avvisningsgrunner** — ikke egne
+   felter på procurement-objektet. Kun tilgjengelig via smartDocResponses for
+   2 av 150 anskaffelser. Nødvendig for protokoll og kunngjøringsdata.
+2. **Avvisningsbegrunnelse** — `REJECT_PARTICIPATION` har tom `description`.
    Protokollen krever begrunnelse (§ 25-5 bokstav j).
-2. **Tildelingsbegrunnelse** — `AWARDING_PARTICIPANTS` gir kun `tendersIds`.
+3. **Tildelingsbegrunnelse** — `AWARDING_PARTICIPANTS` gir kun `tendersIds`.
    Protokollen krever begrunnelse for valget (§ 25-5 bokstav m).
-3. **Q&A-innhold** — `PUBLISH_Q8A` gir kun tidspunkt. Innholdet i spørsmål
+4. **Q&A-innhold** — `PUBLISH_Q8A` gir kun tidspunkt. Innholdet i spørsmål
    og svar er ikke tilgjengelig via API.
-4. **ESPD-data** — Egenerklæringsskjemaet fylles ut i KGV-verktøyet og
+5. **ESPD-data** — Egenerklæringsskjemaet fylles ut i KGV-verktøyet og
    eksponeres ikke via API.
 
 ## Eksempel: tidslinje for «Rammeavtale for manuelt slokkeutstyr» (ID 1665)
