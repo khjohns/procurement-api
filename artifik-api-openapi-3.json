@@ -1,0 +1,1078 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Artifik External API",
+    "description": "OAuth2 API for third-party automation and integration",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.artifik.no"
+    }
+  ],
+  "security": [
+    {
+      "oauth2": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "oauth2": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://api.artifik.no/external/token",
+            "scopes": {}
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/external/token": {
+      "post": {
+        "summary": "Get OAuth2 access token",
+        "description": "Authenticate using client credentials to obtain an access token. Send client_id and client_secret in the request body with grant_type=client_credentials.",
+        "operationId": "ExternalAPIController_getSessionToken",
+        "tags": ["External API"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["grant_type", "client_id", "client_secret"],
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "example": "client_credentials"
+                  },
+                  "client_id": {
+                    "type": "string",
+                    "example": "your-client-id"
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "example": "your-client-secret"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access token issued successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "example": "Bearer"
+                    },
+                    "expires_in": {
+                      "type": "integer",
+                      "example": 3600
+                    },
+                    "scope": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/external/procurements": {
+      "get": {
+        "summary": "List procurements",
+        "description": "Get all procurements accessible to the authenticated client. Global OAuth keys require organizationId parameter.",
+        "operationId": "ExternalAPIController_getProcurements",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Filter by organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of procurements"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/{procurement_id}/archiveZip": {
+      "get": {
+        "summary": "Download procurement archive as ZIP",
+        "description": "Downloads all procurement documents as a ZIP file.",
+        "operationId": "ExternalAPIController_getZipForArchive",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "in": "path",
+            "description": "The procurement ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIP file stream"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Procurement not found"
+          }
+        }
+      }
+    },
+    "/external/{procurement_id}/activities": {
+      "get": {
+        "summary": "Get activities for a procurement",
+        "description": "Returns audit log of activities for a specific procurement.",
+        "operationId": "ExternalAPIController_getActivitiesForProcurement",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "in": "path",
+            "description": "The procurement ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of activities"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "No access to procurement"
+          }
+        }
+      }
+    },
+    "/external/activities": {
+      "get": {
+        "summary": "Get activities for an organization",
+        "description": "Returns audit log of all activities for an organization.",
+        "operationId": "ExternalAPIController_getActivitiesForOrganization",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "limitDate",
+            "in": "query",
+            "description": "Filter activities after this date",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID (required for global/user OAuth keys)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of activities"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/webhooks": {
+      "get": {
+        "summary": "List webhooks",
+        "description": "List all registered webhooks for the organization.",
+        "operationId": "ExternalAPIController_listWebhooks",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of webhooks"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Register a webhook",
+        "description": "Register a new webhook to receive notifications for specified actions. The webhook will be called when events occur.",
+        "operationId": "ExternalAPIController_registerWebhook",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID (required for global/user OAuth keys)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "callbackURL": {
+                    "type": "string",
+                    "example": "https://your-site.com/webhook.php"
+                  },
+                  "actionList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "ADD_BUYER", "ADD_FILES", "ASK_TO_QUALIFY", "AWARDING_PARTICIPANTS",
+                        "CANCEL_BID", "CANCEL_PROCUREMENT", "CREATE_CONTRACT", "CREATE_TENDER",
+                        "DELETE_FILE", "EDIT_SMART_DOCUMENT", "INVITATIONS_SENT",
+                        "INVITATIONS_TO_NEGOTIATE_SENT", "INVITE_SUBCONTRACTORS",
+                        "LOGIN_SUCCESSFUL", "LOGIN_UNSUCCESSFUL", "OPEN_BIDS",
+                        "OPEN_QUALIFICATIONS", "PUBLISH_ADDITIONAL_INFORMATION", "PUBLISH_Q8A",
+                        "PUBLISH_TO_DOFFIN", "QUALIFYING_PARTICIPANTS", "REJECT_PARTICIPATION",
+                        "REMOVE_BUYER", "REVIEW_NOTICE_TRANSLATIONS", "SUBMIT_BID",
+                        "UPDATE_FILES", "UPDATE_NOTICE_TRANSLATIONS", "UPDATE_PROCUREMENT",
+                        "UPDATE_TENDER", "UPDATE_TIMELINE", "WITHDRAW_PARTICIPATION"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhookId": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/webhooks/{id}": {
+      "delete": {
+        "summary": "Delete a webhook",
+        "description": "Delete an existing webhook. To edit a webhook, delete it and create a new one.",
+        "operationId": "ExternalAPIController_deleteWebhook",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The webhook ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Webhook not found"
+          }
+        }
+      }
+    },
+    "/external/{procurement_id}/smartDocResponses": {
+      "get": {
+        "summary": "Get Smart Document responses",
+        "description": "Get all submitted Smart Document responses for a procurement.",
+        "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurement",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "in": "path",
+            "description": "The procurement ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Smart Document responses"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "No access"
+          }
+        }
+      }
+    },
+    "/external/{procurement_id}/smartDocResponsesAsExcel": {
+      "get": {
+        "summary": "Get Smart Document responses as Excel",
+        "description": "Download Smart Document responses as an Excel file.",
+        "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurementAsExcelFile",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "in": "path",
+            "description": "The procurement ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redirects to Excel file download"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/{procurement_id}/smartDocResponsesAsPDFZip": {
+      "get": {
+        "summary": "Get Smart Document responses as PDF ZIP",
+        "description": "Download Smart Document responses as individual PDFs in a ZIP file.",
+        "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurementAsPDFsInZipFile",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "in": "path",
+            "description": "The procurement ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Redirects to ZIP file download"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/contracts": {
+      "get": {
+        "summary": "List contracts",
+        "description": "Get all contracts for the organization with optional custom fields.",
+        "operationId": "ExternalAPIController_getContracts",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCustomFields",
+            "in": "query",
+            "description": "Include custom fields in response (1, true, or false)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limitDate",
+            "in": "query",
+            "description": "ISO date, gets only contracts newer than this date",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of contracts"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/contracts/{contract_id}": {
+      "get": {
+        "summary": "Get contract by ID",
+        "description": "Get a specific contract by ID. For framework agreements, includes sub-folder contracts for supplier-specific files.",
+        "operationId": "ExternalAPIController_getContract",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "contract_id",
+            "in": "path",
+            "description": "The contract ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract details"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          }
+        }
+      }
+    },
+    "/external/organization/{organization_id}": {
+      "post": {
+        "summary": "Create organization with custom ID",
+        "description": "Create a new organization with a custom ID. Can create root organizations or sub-organizations.",
+        "operationId": "ExternalAPIController_createOrganizationWithId",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Custom organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentOrganizationId",
+            "in": "query",
+            "description": "Parent organization ID for creating sub-organizations",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created successfully"
+          },
+          "400": {
+            "description": "Organization already exists or validation error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/organizations": {
+      "get": {
+        "summary": "List all organizations",
+        "description": "List all organizations. Only available to global OAuth keys.",
+        "operationId": "ExternalAPIController_listOrganizations",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "includeSubOrgs",
+            "in": "query",
+            "description": "Include sub-organizations (use 1 for true)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "description": "Filter by parent organization ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of organizations"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Only global OAuth clients can list organizations"
+          }
+        }
+      }
+    },
+    "/external/organization": {
+      "post": {
+        "summary": "Create organization",
+        "description": "Create a new organization with auto-generated ID.",
+        "operationId": "ExternalAPIController_createOrganization",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "parentOrganizationId",
+            "in": "query",
+            "description": "Parent organization ID for creating sub-organizations",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/external/organization/{organization_id}/members": {
+      "post": {
+        "summary": "Add organization member",
+        "description": "Add a member to an organization. Creates the user if they do not exist. Can specify password for new users.",
+        "operationId": "ExternalAPIController_addOrganizationMember",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["viewer", "editor", "admin", "contributor"]
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Optional - often skipped for SSO or SMS OTP login"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Member added successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to manage members"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update organization member email",
+        "description": "Update a member's email address.",
+        "operationId": "ExternalAPIController_updateOrganizationMember",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to manage members"
+          }
+        }
+      }
+    },
+    "/external/organization/{organization_id}/members/{member_email}": {
+      "delete": {
+        "summary": "Remove organization member",
+        "description": "Remove a member from an organization.",
+        "operationId": "ExternalAPIController_removeOrganizationMember",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "member_email",
+            "in": "path",
+            "description": "Member email address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member removed successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized or cannot remove last admin"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/external/{organization_id}/members": {
+      "get": {
+        "summary": "Get organization members",
+        "description": "Get members for an organization and optionally its sub-organizations.",
+        "operationId": "ExternalAPIController_getOrganizationMembers",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeSubOrgs",
+            "in": "query",
+            "description": "Include members from sub-organizations (use 1 for true)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of members"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to view members"
+          }
+        }
+      }
+    },
+    "/external/organization/{organization_id}/contracts": {
+      "post": {
+        "summary": "Create contract",
+        "description": "Create a new contract (standalone or framework agreement) for an organization.",
+        "operationId": "ExternalAPIController_createContract",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "path",
+            "description": "Organization ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "supplierOrgName": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "string",
+                    "enum": ["range", "months", "days", "open_end"],
+                    "description": "Duration type: range (with start/end dates), months, days, or open_end"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to create contracts"
+          }
+        }
+      }
+    },
+    "/external/contracts/{contract_id}/files": {
+      "post": {
+        "summary": "Upload contract file",
+        "description": "Upload a file to a contract. File content should be base64 encoded.",
+        "operationId": "ExternalAPIController_uploadContractFile",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "contract_id",
+            "in": "path",
+            "description": "Contract ID",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "fileContent": {
+                    "type": "string",
+                    "description": "Base64 encoded file content"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          }
+        }
+      }
+    },
+    "/external/tasks": {
+      "get": {
+        "summary": "Get tasks",
+        "description": "Get tasks filtered by organization, user, status, and/or type.",
+        "operationId": "ExternalAPIController_getTasks",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Filter by organization ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "Filter by user ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status (comma-separated: pending,in_progress,completed)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by task type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create task",
+        "description": "Create a new task assigned to a user.",
+        "operationId": "ExternalAPIController_createTask",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID for tracking",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Assigned user not found"
+          }
+        }
+      }
+    },
+    "/external/tasks/stats": {
+      "get": {
+        "summary": "Get task statistics",
+        "description": "Get aggregated task statistics for an organization and its sub-organizations.",
+        "operationId": "ExternalAPIController_getTaskStats",
+        "tags": ["External API"],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "query",
+            "description": "Organization ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by task type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task statistics"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "User OAuth clients cannot access task statistics"
+          }
+        }
+      }
+    }
+  },
+  "x-webhook-info": {
+    "signatureVerification": {
+      "algorithm": "sha256(concat(messageId, sha256(oauthSecret)))",
+      "description": "All webhook messages include a signature for verification"
+    },
+    "availableActions": [
+      "ADD_BUYER", "ADD_FILES", "ASK_TO_QUALIFY", "AWARDING_PARTICIPANTS",
+      "CANCEL_BID", "CANCEL_PROCUREMENT", "CREATE_CONTRACT", "CREATE_TENDER",
+      "DELETE_FILE", "EDIT_SMART_DOCUMENT", "INVITATIONS_SENT",
+      "INVITATIONS_TO_NEGOTIATE_SENT", "INVITE_SUBCONTRACTORS",
+      "LOGIN_SUCCESSFUL", "LOGIN_UNSUCCESSFUL", "OPEN_BIDS",
+      "OPEN_QUALIFICATIONS", "PUBLISH_ADDITIONAL_INFORMATION", "PUBLISH_Q8A",
+      "PUBLISH_TO_DOFFIN", "QUALIFYING_PARTICIPANTS", "REJECT_PARTICIPATION",
+      "REMOVE_BUYER", "REVIEW_NOTICE_TRANSLATIONS", "SUBMIT_BID",
+      "UPDATE_FILES", "UPDATE_NOTICE_TRANSLATIONS", "UPDATE_PROCUREMENT",
+      "UPDATE_TENDER", "UPDATE_TIMELINE", "WITHDRAW_PARTICIPATION"
+    ]
+  }
+}

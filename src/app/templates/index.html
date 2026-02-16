@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anskaffelser</title>
+
+  {% if vite_dev %}
+    <script type="module" src="{{ vite_server }}/@vite/client"></script>
+    <script type="module" src="{{ vite_server }}/src/main.js"></script>
+  {% else %}
+    {% set entry = vite_manifest.get('src/main.js', {}) %}
+    {% if entry.css %}
+      {% for css_file in entry.css %}
+        <link rel="stylesheet" href="/static/{{ css_file }}">
+      {% endfor %}
+    {% endif %}
+    <script type="module" src="/static/{{ entry.file }}"></script>
+  {% endif %}
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>

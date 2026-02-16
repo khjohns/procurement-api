@@ -1,0 +1,14 @@
+[project]
+name = "procurement-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "certifi",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+]
