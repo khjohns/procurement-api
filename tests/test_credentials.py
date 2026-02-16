@@ -16,7 +16,7 @@ def test_get_credentials_from_env_fallback():
 def test_get_credentials_from_keychain():
     """When Keychain works, use it."""
     def mock_keychain(service, account):
-        return {"procurement-api-id": "kc-id", "procurement-api": "kc-key"}[service]
+        return {"procurement-api-id": "kc-id", "procurement-api-key": "kc-key"}[service]
 
     with patch("artifik_mcp.credentials._keychain_read", side_effect=mock_keychain):
         api_id, api_key = get_credentials()

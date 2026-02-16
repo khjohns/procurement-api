@@ -26,7 +26,7 @@ def get_credentials() -> tuple[str, str]:
     """Load API credentials. Keychain first, env vars as fallback (CI)."""
     try:
         api_id = _keychain_read("procurement-api-id", os.environ.get("USER", ""))
-        api_key = _keychain_read("procurement-api", os.environ.get("USER", ""))
+        api_key = _keychain_read("procurement-api-key", os.environ.get("USER", ""))
         return api_id, api_key
     except (KeychainError, FileNotFoundError):
         return os.environ["VENDOR_API_ID"], os.environ["VENDOR_API_KEY"]
