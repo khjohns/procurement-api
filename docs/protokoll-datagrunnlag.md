@@ -56,6 +56,39 @@ Hendelsestyper som gir tidslinjedata til protokollen:
 | `PUBLISH_ADDITIONAL_INFORMATION` | Tilleggsinformasjon (med innhold i `description`) |
 | `PUBLISH_Q8A` | Q&A publisert (kun tidspunkt, ikke innhold) |
 
+## Kunngjøringsdata
+
+Kunngjøringsinformasjonen ligger spredt over procurement-objektets felter, ikke
+som et samlet dokument. Tilgjengelige felter:
+
+- **Oppdragsgiver:** `about_procurer` (navn, adresse, org.nr, kontakt, NUTS)
+- **Beskrivelse:** `name`, `description`, `contractCategory`
+- **Klassifisering:** `cpv_codes` (hoved + tilleggs-CPV)
+- **Prosedyre:** `procedure`, `regulation`, `threshold`
+- **Rammeavtale:** `framework_agreement_*` (maks deltakere, gjenåpning, ranking)
+- **Økonomi:** `estimated_value`, `total_value`, `currency`, `budget`
+- **Varighet:** `duration`, `duration_months`/`_days`/`_start`/`_end`
+- **Tidslinjer:** `timeline` (kunngjøring, kvalifikasjon, tilbud, tildeling, signering)
+- **Frister:** `milestones` (spørsmålsfrist m.m.), `currentDeadline`
+- **Andre:** `gpaCoverage`, `eBevis`, `renewals`, `options`, `performance_places`,
+  `reserved_procurement_code`, `euUnion_funds`
+
+Activities gir kunngjøringsmetadata:
+- `DOFFIN_NOTICE_STATUS_PUBLISHED` — Doffin-referanse (ngoj-nummer) og TED-status
+- `PUBLISH_CHANGE_PROCUREMENT` — endringer med diff (`__old`/`__new`-verdier)
+
+**Ikke tilgjengelig:** Selve kunngjøringsteksten i TED/Doffin-format.
+
+## Kvalifikasjonskrav og tildelingskriterier
+
+Tilgjengelig via `smartDocResponses` som strukturerte dokumenter (docJSON):
+- **Kvalifikasjonskrav:** Evalueringsmodell, dokumentasjonskrav, avvisningsregler
+- **Tildelingskriterier:** Vurderingsgrunnlag, poengmodell, dokumentasjonskrav
+- **Utvelgelseskriterier:** `suppliersLimitReason` (HTML) på procurement-objektet
+
+**Begrensning:** smartDocResponses er kun tilgjengelig på et fåtall anskaffelser
+(2 av 150 per feb 2026). For øvrige er disse dataene ikke eksponert via API.
+
 ## Viktigste gap å ta opp med Artifik
 
 1. **Avvisningsbegrunnelse** — `REJECT_PARTICIPATION` har tom `description`.
