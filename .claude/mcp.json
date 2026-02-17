@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "artifik": {
-      "command": "/Users/kasper/Projects/Catenda/procurement-api/.venv/bin/python",
-      "args": ["-m", "artifik_mcp"],
-      "cwd": "/Users/kasper/Projects/Catenda/procurement-api/src"
-    }
-  }
-}

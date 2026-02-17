@@ -6,6 +6,7 @@
 credentials.*
 !credentials.py
 secrets.*
+.claude/mcp.json
 
 # Python
 __pycache__/

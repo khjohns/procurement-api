@@ -1,30 +1,18 @@
-# Procurement API Testing
+# Procurement API
 
 API-testing mot leverandørens konkurransegjennomføringsverktøy.
 
-## Sikkerhet
+## Arkitektur
 
-**API-nøkkelen (`VENDOR_API_KEY`) er ALDRI tilgjengelig i dette prosjektet.**
+MCP-serveren kjører på Cloud Run. Se `docs/adr-001-remote-mcp-server.md` for detaljer.
 
-- Nøkkelen ligger i macOS Keychain
-- Kode leser `os.environ["VENDOR_API_KEY"]` — verdien injiseres ved kjøring
-- Hooks blokkerer Bash-kommandoer som kan eksponere hemmeligheter
-- `.env`-filer skal ALDRI opprettes i dette prosjektet
-
-### Slik kjører du kode som trenger API-nøkkelen
-
-```bash
-# Wrapper-scriptet injiserer nøkkelen fra Keychain
-~/bin/procurement-api python script.py
-~/bin/procurement-api python -m pytest
+```
+Claude Code  ──Bearer token──▶  Cloud Run  ──OAuth2──▶  Artifik API
+                                    │
+                                GCP Secret Manager
 ```
 
-### Slik legger du til nøkkelen i Keychain (én gang)
-
-```bash
-security add-generic-password -s 'procurement-api' -a "$USER" -w
-# Limer inn nøkkelen når du blir bedt om passord
-```
+Secrets finnes kun i GCP Secret Manager — aldri lokalt.
 
 ## API — tilgjengelige data
 
@@ -55,9 +43,19 @@ Avtaleoversikt med custom fields, datofilter, rammeavtale-underkontrakter.
 - **Q&A-innhold** ikke eksponert — kun tidspunkt for publisering via activities.
 - **smartDocResponses** tomme på de fleste anskaffelser (2 av 150 per feb 2026).
 
+## Deploy
+
+```bash
+gcloud run deploy artifik-mcp \
+  --source . \
+  --region europe-north1 \
+  --set-secrets=VENDOR_API_ID=vendor-api-id:latest,VENDOR_API_KEY=vendor-api-key:latest,MCP_AUTH_TOKEN=mcp-auth-token:latest \
+  --min-instances=0 --max-instances=1 --memory=256Mi \
+  --no-allow-unauthenticated
+```
+
 ## Kommandoer
 
 ```bash
-python -m pytest           # Kjør tester (via wrapper)
 ruff check src/            # Linting
 ```
