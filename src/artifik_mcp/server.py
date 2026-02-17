@@ -7,7 +7,6 @@ import logging
 from typing import Any
 
 from app.client import ArtifikClient
-from artifik_mcp.credentials import get_credentials
 from artifik_mcp.decorator import get_mcp_tools
 
 logger = logging.getLogger(__name__)
@@ -24,8 +23,7 @@ class MCPServer:
     """MCP Server handling JSON-RPC for ArtifikClient tools."""
 
     def __init__(self):
-        api_id, api_key = get_credentials()
-        self.client = ArtifikClient(client_id=api_id, client_secret=api_key)
+        self.client = ArtifikClient()
         self.tools = self._build_tool_defs()
         self._tool_methods: dict[str, Any] = {}
         self._register_tools()
