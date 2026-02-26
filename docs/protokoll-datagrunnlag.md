@@ -35,6 +35,11 @@ avlysningsbegrunnelse (o).
 utvelgelsesbegrunnelse per leverandør (h), avvisningsbegrunnelse (j),
 tildelingsbegrunnelse (m).
 
+**Delvis fra API (ny):** Ettersending/avklaring (§ 23-5) —
+`CONVERSATION_MARKED_COMPLETED` etter tilbudsfrist gir leverandørnavn, emne og
+dato. Selve innholdet i meldingen er ikke tilgjengelig. Meldinger *før*
+tilbudsfrist er Q&A, ikke avklaringer.
+
 **Ikke i API — må føres manuelt:** Delingsbegrunnelse (c), unntak elektronisk
 kommunikasjon (f), forkastede tilbud (k), inhabilitet (l), underleverandører (n).
 
@@ -55,6 +60,8 @@ Hendelsestyper som gir tidslinjedata til protokollen:
 | `WITHDRAW_PARTICIPATION` | Leverandør som trakk seg |
 | `PUBLISH_ADDITIONAL_INFORMATION` | Tilleggsinformasjon (med innhold i `description`) |
 | `PUBLISH_Q8A` | Q&A publisert (kun tidspunkt, ikke innhold) |
+| `CONVERSATION_MARKED_COMPLETED` | Meldingsdialog med leverandør: tittel, leverandørnavn, dato. Meldinger *etter tilbudsfrist* kan indikere ettersending/avklaring (§ 23-5). Selve innholdet er ikke tilgjengelig. |
+| `CONVERSATION_REOPENED` | Gjenåpnet dialog med leverandør (tittel, leverandør, dato) |
 
 ## Kunngjøringsdata
 
@@ -108,8 +115,10 @@ For øvrige 148 anskaffelser er disse dataene **ikke tilgjengelig via API**.
    Protokollen krever begrunnelse (§ 25-5 bokstav j).
 3. **Tildelingsbegrunnelse** — `AWARDING_PARTICIPANTS` gir kun `tendersIds`.
    Protokollen krever begrunnelse for valget (§ 25-5 bokstav m).
-4. **Q&A-innhold** — `PUBLISH_Q8A` gir kun tidspunkt. Innholdet i spørsmål
-   og svar er ikke tilgjengelig via API.
+4. **Meldingsinnhold** — `CONVERSATION_MARKED_COMPLETED` gir emne,
+   leverandør og dato, men ikke selve meldingsteksten. `PUBLISH_Q8A` gir
+   kun tidspunkt. For protokollens § 23-5 kan vi identifisere *at* det var
+   dialog (meldinger etter tilbudsfrist), men ikke *hva* som ble avklart.
 5. **ESPD-data** — Egenerklæringsskjemaet fylles ut i KGV-verktøyet og
    eksponeres ikke via API.
 
