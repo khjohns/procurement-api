@@ -8,9 +8,13 @@ secrets.*
 .claude/mcp.json
 CLAUDE.md
 
+# Generated protokoller
+docs/protokoll-osl*.md
+
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
 .venv/
 venv/
 

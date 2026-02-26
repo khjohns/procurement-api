@@ -1,10 +1,14 @@
-"""Bearer token authentication for the MCP HTTP endpoint."""
+"""Bearer token authentication for the MCP HTTP endpoint.
+
+When deployed behind Cloud Run IAM, the Authorization header is consumed
+by the IAM layer.  The app-level MCP token is sent in X-MCP-Token instead.
+"""
 
 import os
 
 
 def require_bearer_token():
-    """Check Authorization header against MCP_AUTH_TOKEN env var.
+    """Check X-MCP-Token header against MCP_AUTH_TOKEN env var.
 
     Returns None if authorized, or a Flask error response tuple if not.
     """
@@ -14,11 +18,10 @@ def require_bearer_token():
     if not expected:
         return None
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Missing Bearer token"}), 401
+    token = request.headers.get("X-MCP-Token", "")
+    if not token:
+        return jsonify({"error": "Missing X-MCP-Token header"}), 401
 
-    token = auth_header[7:]
     if token != expected:
         return jsonify({"error": "Invalid token"}), 403
 
