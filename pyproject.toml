@@ -12,3 +12,6 @@ dev = [
     "ruff",
     "pytest",
 ]
+protokoll = [
+    "python-docx",
+]

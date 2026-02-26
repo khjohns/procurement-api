@@ -1,418 +1,21 @@
-"""Generate anskaffelsesprotokoll from Artifik API data.
-
-Standalone CLI — fetches secrets from GCP Secret Manager, talks directly to
-Artifik API via ArtifikClient. No MCP dependency.
-
-Usage:
-    python3 src/protokoll_generator.py              # interactive selection
-    python3 src/protokoll_generator.py --id 1795    # specific procurement
-    python3 src/protokoll_generator.py --list       # just list procurements
-"""
+"""Markdown protocol generator (Del III — EØS)."""
 
 from __future__ import annotations
 
-import html
-import itertools
-import os
 import re
-import subprocess
-import sys
-import threading
-import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any
 
-# Add src/ to path so we can import ArtifikClient
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from app.client import ArtifikClient  # noqa: E402
-
-GCP_PROJECT = "procurement-mcp"
-
-# -- Terminal formatting -----------------------------------------------------
-
-_COLOR = hasattr(sys.stderr, "isatty") and sys.stderr.isatty()
-
-
-def _style(text: str, code: str) -> str:
-    return f"\033[{code}m{text}\033[0m" if _COLOR else text
-
-
-def _bold(text: str) -> str:
-    return _style(text, "1")
-
-
-def _dim(text: str) -> str:
-    return _style(text, "2")
-
-
-def _green(text: str) -> str:
-    return _style(text, "32")
-
-
-def _yellow(text: str) -> str:
-    return _style(text, "33")
-
-
-def _red(text: str) -> str:
-    return _style(text, "31")
-
-
-def _cyan(text: str) -> str:
-    return _style(text, "36")
-
-
-class _Spinner:
-    """Minimal terminal spinner for long-running operations."""
-
-    _FRAMES = ["   ", ".  ", ".. ", "..."]
-
-    def __init__(self, message: str) -> None:
-        self._message = message
-        self._stop = threading.Event()
-        self._thread: threading.Thread | None = None
-
-    def __enter__(self) -> _Spinner:
-        self._stop.clear()
-        self._thread = threading.Thread(target=self._spin, daemon=True)
-        self._thread.start()
-        return self
-
-    def __exit__(self, *_: Any) -> None:
-        self._stop.set()
-        if self._thread:
-            self._thread.join()
-        # Clear the spinner line
-        print("\r\033[K", end="", file=sys.stderr)
-
-    def _spin(self) -> None:
-        for frame in itertools.cycle(self._FRAMES):
-            if self._stop.is_set():
-                break
-            print(
-                f"\r  {_dim(self._message)}{_dim(frame)}",
-                end="",
-                file=sys.stderr,
-                flush=True,
-            )
-            time.sleep(0.3)
-
-
-def _step(number: int, total: int, text: str) -> None:
-    label = _dim(f"[{number}/{total}]")
-    print(f"  {label} {text}", file=sys.stderr)
-
-
-def _ok(text: str) -> None:
-    print(f"  {_green('OK')} {text}", file=sys.stderr)
-
-
-def _warn(text: str) -> None:
-    print(f"  {_yellow('!')} {text}", file=sys.stderr)
-
-
-# -- Procedure mapping -------------------------------------------------------
-
-PROCEDURE_MAP = {
-    "Open": "Åpen anbudskonkurranse",
-    "Limited": "Begrenset anbudskonkurranse",
-    "Competitive negotiated": "Konkurranse med forhandling etter forutgående kunngjøring",
-    "Competitive dialogue": "Konkurransepreget dialog",
-    "Innovation partnership": "Konkurranse om innovasjonspartnerskap",
-    "Negotiated without publication": "Konkurranse med forhandling uten forutgående kunngjøring",
-    "Direct award": "Anskaffelse uten konkurranse",
-}
-
-ALL_PROCEDURES = [
-    "Åpen anbudskonkurranse",
-    "Begrenset anbudskonkurranse",
-    "Konkurranse med forhandling etter forutgående kunngjøring",
-    "Konkurransepreget dialog",
-    "Konkurranse om innovasjonspartnerskap",
-    "Konkurranse med forhandling uten forutgående kunngjøring",
-    "Anskaffelse uten konkurranse",
-]
-
-
-# -- GCP Secret Manager -----------------------------------------------------
-
-def _fetch_secret(name: str) -> str:
-    """Fetch a secret from GCP Secret Manager via gcloud CLI."""
-    result = subprocess.run(
-        [
-            "gcloud", "secrets", "versions", "access", "latest",
-            f"--secret={name}",
-            f"--project={GCP_PROJECT}",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.strip()
-        _die(
-            f"Kunne ikke hente secret {_bold(name)} fra GCP Secret Manager.\n"
-            f"  {_dim(stderr)}\n\n"
-            f"  Kjør:  {_cyan('gcloud auth login')}\n"
-            f"  Sjekk: {_cyan(f'gcloud config set project {GCP_PROJECT}')}"
-        )
-    return result.stdout.strip()
-
-
-def _get_client() -> ArtifikClient:
-    """Create ArtifikClient with credentials from GCP Secret Manager."""
-    with _Spinner("Henter API-nøkler fra GCP Secret Manager"):
-        api_id = _fetch_secret("vendor-api-id")
-        api_key = _fetch_secret("vendor-api-key")
-    _ok("API-nøkler hentet")
-    return ArtifikClient(client_id=api_id, client_secret=api_key)
-
-
-# -- Helpers -----------------------------------------------------------------
-
-def _die(msg: str) -> None:
-    print(f"\n  {_red('Feil:')} {msg}\n", file=sys.stderr)
-    sys.exit(1)
-
-
-def _fmt_datetime(iso_str: str | None) -> str:
-    """Format ISO datetime to 'DD.MM.YYYY, kl. HH:MM'."""
-    if not iso_str:
-        return ""
-    try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y, kl. %H:%M")
-    except (ValueError, TypeError):
-        return str(iso_str)
-
-
-def _fmt_date(iso_str: str | None) -> str:
-    """Format ISO datetime to 'DD.MM.YYYY'."""
-    if not iso_str:
-        return ""
-    try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y")
-    except (ValueError, TypeError):
-        return str(iso_str)
-
-
-def _fmt_currency(value: Any, currency: str = "NOK") -> str:
-    """Format a numeric value as currency."""
-    if value is None:
-        return ""
-    try:
-        num = float(value)
-        if num == int(num):
-            return f"{int(num):,} {currency}".replace(",", " ")
-        return f"{num:,.2f} {currency}".replace(",", " ")
-    except (ValueError, TypeError):
-        return str(value)
-
-
-def _get_timeline_date(procurement: dict, timeline_type: str) -> str | None:
-    """Get a date from the procurement timeline by type."""
-    timeline = procurement.get("timeline") or {}
-    for entry in timeline.values() if isinstance(timeline, dict) else timeline:
-        item = entry if isinstance(entry, dict) else {}
-        if item.get("type") == timeline_type:
-            return item.get("date")
-    return None
-
-
-def _get_activities_by_action(activities: list[dict], action: str) -> list[dict]:
-    """Filter activities by action type, sorted by date."""
-    result = [a for a in activities if a.get("action") == action]
-    result.sort(key=lambda a: a.get("date") or "")
-    return result
-
-
-def _parse_submission_deadline(procurement: dict) -> datetime | None:
-    """Parse the submission deadline from timeline."""
-    date_str = _get_timeline_date(procurement, "submission")
-    if not date_str:
-        return None
-    try:
-        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return None
-
-
-# -- Procurement listing & selection -----------------------------------------
-
-def _is_mature(procurement: dict) -> bool:
-    """Check if procurement is past submission deadline and not a template."""
-    if procurement.get("isTemplate"):
-        return False
-    if procurement.get("isCancelled"):
-        return False
-    deadline = _parse_submission_deadline(procurement)
-    if not deadline:
-        return False
-    return datetime.now(deadline.tzinfo) > deadline
-
-
-def _richness(p: dict) -> int:
-    """Score how much data a procurement object contains."""
-    return sum(1 for v in p.values() if v is not None and v != "" and v != [] and v != {})
-
-
-def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
-    """Deduplicate procurements by sequenceId, keeping the richest one."""
-    best: dict[str, dict] = {}
-    for p in procs:
-        seq = p.get("sequenceId") or str(p.get("id"))
-        existing = best.get(seq)
-        if existing is None or _richness(p) > _richness(existing):
-            best[seq] = p
-    return list(best.values())
-
-
-def _list_procurements(client: ArtifikClient) -> list[dict]:
-    """Fetch and filter mature procurements."""
-    with _Spinner("Henter anskaffelser fra Artifik"):
-        all_procs = client.list_procurements()
-    mature = [p for p in all_procs if _is_mature(p)]
-    mature = _dedup_by_sequence_id(mature)
-    mature.sort(key=lambda p: _get_timeline_date(p, "submission") or "", reverse=True)
-    _ok(f"{len(mature)} anskaffelser med passert tilbudsfrist (av {len(all_procs)} totalt)")
-    return mature
-
-
-THRESHOLD_SHORT = {
-    "over_eea_threshold_value": "Over EØS",
-    "below_eea_threshold_value": "Under EØS",
-    "national_threshold": "Nasjonal",
-    "below_national_threshold": "Under terskel",
-}
-
-PROCEDURE_SHORT = {
-    "Open": "Åpen",
-    "Limited": "Begrenset",
-    "Competitive negotiated": "Forhandl.",
-    "Competitive dialogue": "Dialog",
-    "Innovation partnership": "Innovasjon",
-    "Negotiated without publication": "Utenkunng.",
-    "Direct award": "Direkte",
-}
-
-
-def _color_threshold(raw: str, label: str) -> str:
-    """Color-code threshold: higher regulation = warmer color."""
-    if raw == "over_eea_threshold_value":
-        return _style(label, "1;35")  # bold magenta — del III
-    if raw == "below_eea_threshold_value":
-        return _cyan(label)            # cyan — del II
-    return _dim(label)                 # dim — nasjonal/under terskel
-
-
-def _color_procedure(raw: str, label: str) -> str:
-    """Color-code procedure: complex procedures stand out."""
-    if raw in ("Competitive negotiated", "Competitive dialogue", "Innovation partnership"):
-        return _yellow(label)
-    if raw in ("Negotiated without publication", "Direct award"):
-        return _style(label, "33;2")   # dim yellow — unntak
-    return label                       # åpen/begrenset = normal
-
-
-def _strip_html(text: str) -> str:
-    """Strip HTML tags and normalize whitespace from API text fields."""
-    # Replace block elements with newlines, then strip all tags
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"</(?:p|div|li|tr|h[1-6])>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", "", text)
-    text = html.unescape(text)
-    # Collapse whitespace: normalize runs of spaces/nbsp within lines
-    lines = text.splitlines()
-    lines = [re.sub(r"[ \t\xa0]+", " ", line).strip() for line in lines]
-    # Collapse multiple blank lines
-    result = []
-    for line in lines:
-        if line or (result and result[-1]):
-            result.append(line)
-    return "\n".join(result).strip()
-
-
-def _truncate(text: str, width: int) -> str:
-    return text if len(text) <= width else text[: width - 1] + "\u2026"
-
-
-_COL_NR = 3
-_COL_ID = 6
-_COL_PROC = 12
-_COL_THRESH = 14
-_COL_FRIST = 12
-
-
-def _print_procurement_list(procs: list[dict]) -> None:
-    """Print a formatted, numbered list of procurements."""
-    try:
-        term_w = os.get_terminal_size().columns
-    except OSError:
-        term_w = 100
-    fixed = 2 + _COL_NR + 2 + _COL_ID + 2 + _COL_PROC + _COL_THRESH + _COL_FRIST
-    name_w = max(20, term_w - fixed)
-
-    # Build header with padding BEFORE applying dim
-    header = (
-        f"{'#':>{_COL_NR}}  "
-        f"{'ID':>{_COL_ID}}  "
-        f"{'Prosedyre':<{_COL_PROC}}"
-        f"{'Terskel':<{_COL_THRESH}}"
-        f"{'Frist':<{_COL_FRIST}}"
-        f"Navn"
-    )
-    print(f"\n  {_dim(header)}", file=sys.stderr)
-    print(f"  {_dim('─' * min(term_w - 4, 96))}", file=sys.stderr)
-
-    for i, p in enumerate(procs, 1):
-        pid = p.get("id", "?")
-        proc_raw = p.get("procedure", "")
-        proc_label = PROCEDURE_SHORT.get(proc_raw, "?")
-        thresh_raw = p.get("threshold") or ""
-        thresh_label = THRESHOLD_SHORT.get(thresh_raw, thresh_raw or "?")
-        deadline = _fmt_date(_get_timeline_date(p, "submission"))[:10]
-        name = p.get("name") or "?"
-        seq = p.get("sequenceId") or ""
-        label = _truncate(name, name_w)
-        seq_str = f" {_dim(seq)}" if seq else ""
-
-        # Pad plain text first, then apply color so widths stay correct
-        proc_padded = f"{proc_label:<{_COL_PROC}}"
-        thresh_padded = f"{thresh_label:<{_COL_THRESH}}"
-        frist_padded = f"{deadline:<{_COL_FRIST}}"
-
-        print(
-            f"  {_bold(f'{i:>{_COL_NR}}')}"
-            f"  {_dim(f'{pid:>{_COL_ID}}')}"
-            f"  {_color_procedure(proc_raw, proc_padded)}"
-            f"{_color_threshold(thresh_raw, thresh_padded)}"
-            f"{_dim(frist_padded)}"
-            f"{label}{seq_str}",
-            file=sys.stderr,
-        )
-
-    print(file=sys.stderr)
-
-
-def _select_procurement(procs: list[dict]) -> dict:
-    """Let user pick a procurement interactively."""
-    _print_procurement_list(procs)
-    while True:
-        try:
-            choice = input(f"  Velg anskaffelse {_dim(f'(1-{len(procs)})')}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print(file=sys.stderr)
-            sys.exit(0)
-        if not choice:
-            continue
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(procs):
-                return procs[idx]
-        except ValueError:
-            pass
-        print(f"  {_yellow('?')} Skriv et tall mellom 1 og {len(procs)}", file=sys.stderr)
+from .common import (
+    ALL_PROCEDURES,
+    PROCEDURE_MAP,
+    fmt_currency,
+    fmt_date,
+    fmt_datetime,
+    get_activities_by_action,
+    get_timeline_date,
+    parse_submission_deadline,
+    strip_html,
+)
 
 
 # -- Section generators ------------------------------------------------------
@@ -437,9 +40,8 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
 
     contact = procurer.get("contact_person") or ""
 
-    name = _strip_html(procurement.get("name") or "")
-    description = _strip_html(procurement.get("description") or "")
-    # Collapse to single line for markdown table cell
+    name = strip_html(procurement.get("name") or "")
+    description = strip_html(procurement.get("description") or "")
     description = re.sub(r"\s*\n\s*", " ", description)
     desc_str = name
     if description and description.lower() != name.lower():
@@ -447,7 +49,7 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
 
     estimated_value = procurement.get("estimated_value")
     currency = procurement.get("currency") or "NOK"
-    value_str = _fmt_currency(estimated_value, currency)
+    value_str = fmt_currency(estimated_value, currency)
 
     duration_months = procurement.get("duration_months")
     duration = procurement.get("duration")
@@ -458,8 +60,8 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
     else:
         duration_str = "<!-- MANUELT -->"
 
-    submission_date = _get_timeline_date(procurement, "submission")
-    submission_str = _fmt_datetime(submission_date) if submission_date else "<!-- MANUELT -->"
+    submission_date = get_timeline_date(procurement, "submission")
+    submission_str = fmt_datetime(submission_date) if submission_date else "<!-- MANUELT -->"
 
     lines.append("| Felt | Beskrivelse |")
     lines.append("| --- | --- |")
@@ -472,7 +74,7 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
     lines.append(f"| **Frist for innlevering av tilbud:** | {submission_str} |")
     lines.append("")
 
-    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
+    submissions = get_activities_by_action(activities, "SUBMIT_BID")
     lines.append("**Tidspunkt for mottak av tilbud:**")
     lines.append("")
     lines.append("| Leverandørens navn | Tidspunkt for mottak |")
@@ -481,7 +83,7 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
         for s in submissions:
             org = s.get("organization") or {}
             org_name = org.get("name") or "Ukjent leverandør"
-            date = _fmt_datetime(s.get("date"))
+            date = fmt_datetime(s.get("date"))
             lines.append(f"| {org_name} | {date} |")
     else:
         lines.append("| *Ingen tilbud registrert* | |")
@@ -504,7 +106,7 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
         if p == selected:
             lines.append(f"- **[x] {p}**")
         else:
-            lines.append(f"- ☐ {p}")
+            lines.append(f"- \u2610 {p}")
     lines.append("")
 
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
@@ -528,19 +130,19 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
         lines.append("Ikke relevant.")
     lines.append("")
 
-    lines.append("**Dersom anskaffelsen ikke deles opp i delkontrakter, begrunnelse for ikke å dele opp kontrakten (jf. FOA § 19-4):**")
+    lines.append("**Dersom anskaffelsen ikke deles opp i delkontrakter, begrunnelse for ikke å dele opp kontrakten (jf. FOA \u00a7 19-4):**")
     lines.append("<!-- MANUELT: Fyll inn begrunnelse for hvorfor det ikke er delt opp i delkontrakter -->")
     lines.append("")
 
-    doffin_activities = _get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish_activities = _get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    doffin_activities = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    publish_activities = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
 
     announcement_date = ""
     doffin_ref = ""
     ted_ref = ""
 
     if publish_activities:
-        announcement_date = _fmt_date(publish_activities[0].get("date"))
+        announcement_date = fmt_date(publish_activities[0].get("date"))
 
     if doffin_activities:
         desc = doffin_activities[0].get("description") or {}
@@ -548,7 +150,7 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
         doffin_ref = doffin_notice.get("ngoj") or ""
         ted_ref = doffin_notice.get("publicationId") or ""
         if not announcement_date:
-            announcement_date = _fmt_date(
+            announcement_date = fmt_date(
                 doffin_notice.get("publicationDate") or doffin_activities[0].get("date")
             )
 
@@ -563,7 +165,7 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
     else:
         pub_date = procurement.get("publicationDate")
         if pub_date:
-            lines.append(f"Anskaffelsen ble kunngjort {_fmt_date(pub_date)}.")
+            lines.append(f"Anskaffelsen ble kunngjort {fmt_date(pub_date)}.")
         else:
             lines.append("<!-- MANUELT: Kunngjøringsinformasjon mangler -->")
     lines.append("")
@@ -573,15 +175,15 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
 
 def _section_formal_rejection(activities: list[dict]) -> str:
     lines = []
-    lines.append("## Avvisning på grunn av formalfeil, jf. FOA § 24-1")
+    lines.append("## Avvisning på grunn av formalfeil, jf. FOA \u00a7 24-1")
     lines.append("")
 
-    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
-        lines.append("☐ Ingen leverandører eller tilbud ble avvist")
+        lines.append("\u2610 Ingen leverandører eller tilbud ble avvist")
         lines.append("<!-- MANUELT: Bekreft at ingen ble avvist på formalfeil -->")
     else:
-        lines.append("<!-- MANUELT: Avgjør hvilke avvisninger som gjelder formalfeil (§ 24-1) vs. kvalifikasjon (§ 24-2) -->")
+        lines.append("<!-- MANUELT: Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 24-1) vs. kvalifikasjon (\u00a7 24-2) -->")
 
     lines.append("")
     lines.append("| Leverandørens navn | Begrunnelsen for avvisningen | Dato sendt |")
@@ -590,7 +192,7 @@ def _section_formal_rejection(activities: list[dict]) -> str:
         for r in rejections:
             org = r.get("organization") or {}
             org_name = org.get("name") or "Ukjent"
-            date = _fmt_date(r.get("date"))
+            date = fmt_date(r.get("date"))
             lines.append(f"| {org_name} | <!-- MANUELT: begrunnelse --> | {date} |")
     else:
         lines.append("| | | |")
@@ -601,7 +203,7 @@ def _section_formal_rejection(activities: list[dict]) -> str:
 
 def _section_preliminary_qualification(procedure: str) -> str:
     lines = []
-    lines.append("## Foreløpig kvalifikasjonsvurdering, jf. FOA § 17-1 annet ledd")
+    lines.append("## Foreløpig kvalifikasjonsvurdering, jf. FOA \u00a7 17-1 annet ledd")
     lines.append("")
 
     if procedure == "Open":
@@ -632,12 +234,12 @@ def _section_qualification() -> str:
 
 def _section_supplier_rejection(activities: list[dict]) -> str:
     lines = []
-    lines.append("## Leverandører som er avvist, jf. FOA § 24-2")
+    lines.append("## Leverandører som er avvist, jf. FOA \u00a7 24-2")
     lines.append("")
 
-    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
-        lines.append("☐ Ingen leverandører ble avvist")
+        lines.append("\u2610 Ingen leverandører ble avvist")
         lines.append("<!-- MANUELT: Bekreft. API viser ingen avvisningshendelser. -->")
     else:
         lines.append("Følgende leverandører ble avvist:")
@@ -649,7 +251,7 @@ def _section_supplier_rejection(activities: list[dict]) -> str:
         for r in rejections:
             org = r.get("organization") or {}
             org_name = org.get("name") or "Ukjent"
-            date = _fmt_date(r.get("date"))
+            date = fmt_date(r.get("date"))
             lines.append(f"| {org_name} | <!-- MANUELT: begrunnelse --> | {date} |")
     else:
         lines.append("| | | |")
@@ -666,7 +268,7 @@ def _section_supplier_selection(procedure: str, activities: list[dict]) -> str:
     if procedure == "Open":
         lines.append("Ikke relevant (åpen anbudskonkurranse — ingen utvelgelsesfase).")
     elif procedure in ("Limited", "Competitive negotiated", "Innovation partnership", "Competitive dialogue"):
-        qualifying = _get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
+        qualifying = get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
         if qualifying:
             lines.append("<!-- MANUELT: Fyll inn begrunnelse for utvelgelse per leverandør -->")
             lines.append("")
@@ -692,9 +294,9 @@ def _section_supplier_selection(procedure: str, activities: list[dict]) -> str:
 
 def _section_bid_rejection() -> str:
     lines = []
-    lines.append("## Tilbud som er avvist, jf. FOA §§ 24-8 og 24-9")
+    lines.append("## Tilbud som er avvist, jf. FOA \u00a7\u00a7 24-8 og 24-9")
     lines.append("")
-    lines.append("☐ Ingen tilbud ble avvist")
+    lines.append("\u2610 Ingen tilbud ble avvist")
     lines.append("<!-- MANUELT: Bekreft -->")
     lines.append("")
     lines.append("| Leverandørenes navn | Begrunnelsen for avvisningen | Dato sendt |")
@@ -707,11 +309,11 @@ def _section_bid_rejection() -> str:
 
 def _section_clarification(procurement: dict, activities: list[dict]) -> str:
     lines = []
-    lines.append("## Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA § 23-5")
+    lines.append("## Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA \u00a7 23-5")
     lines.append("")
 
-    submission_deadline = _parse_submission_deadline(procurement)
-    conversations = _get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
+    submission_deadline = parse_submission_deadline(procurement)
+    conversations = get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
 
     post_deadline_convs = []
     if submission_deadline and conversations:
@@ -726,7 +328,7 @@ def _section_clarification(procurement: dict, activities: list[dict]) -> str:
                     pass
 
     if not post_deadline_convs:
-        lines.append("☐ Det ble ikke foretatt avklaringer eller dialog")
+        lines.append("\u2610 Det ble ikke foretatt avklaringer eller dialog")
         if not conversations:
             lines.append("<!-- MANUELT: Bekreft. API har ingen avklaringshendelser for denne anskaffelsen. -->")
         else:
@@ -742,10 +344,10 @@ def _section_clarification(procurement: dict, activities: list[dict]) -> str:
         for c in post_deadline_convs:
             org = c.get("organization") or {}
             org_name = org.get("name") or "Ukjent"
-            date = _fmt_date(c.get("date"))
+            date = fmt_date(c.get("date"))
             desc = c.get("description") or {}
             title = desc.get("conversationTitle") or ""
-            how = f"Melding i KGV: «{title}»" if title else "Melding i KGV"
+            how = f"Melding i KGV: \u00ab{title}\u00bb" if title else "Melding i KGV"
             lines.append(f"| {org_name} | {date} | {how} |")
     else:
         lines.append("| | | |")
@@ -762,7 +364,7 @@ def _section_negotiations(procedure: str) -> str:
     if procedure in ("Competitive negotiated", "Innovation partnership"):
         lines.append("<!-- MANUELT: Fyll inn forhandlingsdetaljer -->")
         lines.append("")
-        lines.append("☐ Det ble ikke gjennomført forhandlinger")
+        lines.append("\u2610 Det ble ikke gjennomført forhandlinger")
         lines.append("")
         lines.append("| Leverandørens navn | Dato for forhandling | Mottatt revidert tilbud |")
         lines.append("| --- | --- | --- |")
@@ -782,7 +384,7 @@ def _section_dialog(procedure: str) -> str:
     if procedure == "Competitive dialogue":
         lines.append("<!-- MANUELT: Fyll inn dialogdetaljer -->")
         lines.append("")
-        lines.append("☐ Det ble ikke gjennomført dialog")
+        lines.append("\u2610 Det ble ikke gjennomført dialog")
         lines.append("")
         lines.append("| Leverandørens navn | Dato for dialog |")
         lines.append("| --- | --- |")
@@ -799,9 +401,9 @@ def _section_bids_in_evaluation(activities: list[dict]) -> str:
     lines.append("## Tilbud som er med i tildelingsvurderingen")
     lines.append("")
 
-    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    withdrawals = _get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
+    submissions = get_activities_by_action(activities, "SUBMIT_BID")
+    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    withdrawals = get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
 
     rejected_names = {
         (r.get("organization") or {}).get("name", "").lower()
@@ -843,9 +445,9 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     estimated = procurement.get("estimated_value")
     currency = procurement.get("currency") or "NOK"
     if total_value:
-        lines.append(f"**Kontraktsverdi:** {_fmt_currency(total_value, currency)}")
+        lines.append(f"**Kontraktsverdi:** {fmt_currency(total_value, currency)}")
     elif estimated:
-        lines.append(f"**Kontraktsverdi:** {_fmt_currency(estimated, currency)} (estimert verdi)")
+        lines.append(f"**Kontraktsverdi:** {fmt_currency(estimated, currency)} (estimert verdi)")
     else:
         lines.append("**Kontraktsverdi:** <!-- MANUELT -->")
     lines.append("")
@@ -863,13 +465,13 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     lines.append("| **Resultat av klage:** | <!-- MANUELT --> |")
     lines.append("")
 
-    award_date = _get_timeline_date(procurement, "award decision")
+    award_date = get_timeline_date(procurement, "award decision")
     if award_date:
-        lines.append(f"**Tildelingsbeslutning:** {_fmt_date(award_date)}")
+        lines.append(f"**Tildelingsbeslutning:** {fmt_date(award_date)}")
     else:
-        award_activities = _get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
+        award_activities = get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
         if award_activities:
-            lines.append(f"**Tildelingsbeslutning:** {_fmt_date(award_activities[0].get('date'))}")
+            lines.append(f"**Tildelingsbeslutning:** {fmt_date(award_activities[0].get('date'))}")
         else:
             lines.append("**Tildelingsbeslutning:** <!-- MANUELT -->")
     lines.append("")
@@ -914,10 +516,10 @@ def _section_other(procurement: dict) -> str:
     is_cancelled = procurement.get("isCancelled")
     if is_cancelled:
         reason = procurement.get("cancelingReason") or "<!-- MANUELT: begrunnelse mangler -->"
-        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA § 25-4:**")
+        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**")
         lines.append(reason)
     else:
-        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA § 25-4:**")
+        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**")
         lines.append("Ikke relevant (konkurransen ble ikke avlyst).")
     lines.append("")
 
@@ -937,13 +539,13 @@ def _section_data_quality(procurement: dict, activities: list[dict]) -> str:
     lines.append("## Datakvalitet — API vs. manuelt")
     lines.append("")
 
-    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    doffin = _get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish = _get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    submissions = get_activities_by_action(activities, "SUBMIT_BID")
+    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
 
-    submission_deadline = _parse_submission_deadline(procurement)
-    conversations = _get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
+    submission_deadline = parse_submission_deadline(procurement)
+    conversations = get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
     post_deadline = []
     if submission_deadline:
         for c in conversations:
@@ -1046,150 +648,3 @@ def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
     sections.append(_section_data_quality(procurement, activities))
 
     return "\n".join(sections) + "\n"
-
-
-# -- CLI ---------------------------------------------------------------------
-
-def _print_summary(procurement: dict, activities: list[dict], path: str) -> None:
-    """Print a summary of what was generated and what needs manual work."""
-    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    doffin = _get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish = _get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
-    awards = _get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
-
-    print(file=sys.stderr)
-    print(f"  {_bold('Generert:')} {path}", file=sys.stderr)
-    print(file=sys.stderr)
-
-    # Auto-filled
-    auto = []
-    if procurement.get("about_procurer"):
-        auto.append("Oppdragsgiver")
-    if procurement.get("name"):
-        auto.append("Beskrivelse")
-    if procurement.get("procedure"):
-        auto.append("Prosedyre")
-    if doffin or publish:
-        auto.append("Kunngjøring")
-    if submissions:
-        auto.append(f"{len(submissions)} tilbud mottatt")
-    if rejections:
-        auto.append(f"{len(rejections)} avvisninger")
-    if awards:
-        auto.append("Tildelingsdato")
-
-    if auto:
-        print(f"  {_green('Fylt fra API:')}  {', '.join(auto)}", file=sys.stderr)
-
-    # Manual
-    manual = [
-        "Kvalifikasjonsvurdering",
-        "Tildelingsbegrunnelse",
-        "Delkontrakt-begrunnelse",
-        "Meddelelsesbrev/karens",
-    ]
-    if rejections:
-        manual.append("Avvisningsbegrunnelser")
-    manual.extend(["Underleverandorer", "Inhabilitet"])
-
-    print(
-        f"  {_yellow('Trenger utfylling:')}  {', '.join(manual)}",
-        file=sys.stderr,
-    )
-
-    # Count manual markers
-    result_text = Path(path).read_text()
-    manual_count = result_text.count("<!-- MANUELT")
-    if manual_count:
-        print(
-            f"\n  {_dim(f'Sok etter MANUELT i filen — {manual_count} steder trenger oppmerksomhet.')}",
-            file=sys.stderr,
-        )
-    print(file=sys.stderr)
-
-
-def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Generer anskaffelsesprotokoll fra Artifik API.",
-    )
-    parser.add_argument(
-        "--id",
-        type=int,
-        help="Procurement ID (skipper interaktiv velging)",
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        dest="list_only",
-        help="Bare list anskaffelser, ikke generer protokoll",
-    )
-    parser.add_argument(
-        "-o", "--output",
-        help="Output-fil (default: docs/protokoll-{sequenceId}.md)",
-    )
-
-    args = parser.parse_args()
-
-    # Banner
-    print(file=sys.stderr)
-    print(f"  {_bold('Protokollgenerator')}", file=sys.stderr)
-    print(f"  {_dim('Anskaffelsesprotokoll fra Artifik API')}", file=sys.stderr)
-    print(file=sys.stderr)
-
-    # Step 1: Connect
-    _step(1, 3, "Kobler til Artifik API")
-    client = _get_client()
-
-    # Step 2: List
-    _step(2, 3, "Henter anskaffelser")
-    procurements = _list_procurements(client)
-
-    if not procurements:
-        _die("Ingen modne anskaffelser funnet (passert tilbudsfrist, ikke kansellert/mal).")
-
-    if args.list_only:
-        _print_procurement_list(procurements)
-        return
-
-    # Select procurement
-    if args.id:
-        matches = [p for p in procurements if p.get("id") == args.id]
-        if not matches:
-            all_procs = client.list_procurements()
-            matches = [p for p in all_procs if p.get("id") == args.id]
-            if not matches:
-                _die(f"Fant ingen anskaffelse med ID {args.id}.")
-        procurement = matches[0]
-    else:
-        procurement = _select_procurement(procurements)
-
-    pid = procurement["id"]
-    seq_id = procurement.get("sequenceId") or str(pid)
-    name = procurement.get("name") or ""
-    print(
-        f"  {_green('>')} {_bold(seq_id)} — {name}",
-        file=sys.stderr,
-    )
-    print(file=sys.stderr)
-
-    # Step 3: Generate
-    _step(3, 3, "Genererer protokoll")
-
-    with _Spinner("Henter aktivitetslogg"):
-        activities = client.get_procurement_activities(pid)
-    _ok(f"{len(activities)} hendelser")
-
-    result = generate_protokoll(procurement, activities)
-
-    output_path = args.output or f"docs/protokoll-{seq_id.lower()}.md"
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path).write_text(result)
-
-    _print_summary(procurement, activities, output_path)
-
-
-if __name__ == "__main__":
-    main()
