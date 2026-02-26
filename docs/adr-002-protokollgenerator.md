@@ -13,21 +13,6 @@ manuelt (kvalifikasjonsvurdering, tildelingsbegrunnelse, inhabilitet m.m.).
 Vi trenger et verktøy som automatiserer det som kan automatiseres, og tydelig
 markerer hva som krever manuelt arbeid.
 
-## Beslutning
-
-Bygge en standalone Python CLI (`src/protokoll_generator.py`) som henter data
-direkte fra Artifik API — uten avhengighet til MCP-serveren eller Claude Code.
-
-### Hvorfor ikke MCP?
-
-MCP-serveren (ADR-001) er designet for Claude Code. Protokollgenerering er en
-oppgave for saksbehandleren, ikke for AI-agenten. Et standalone skript:
-
-- Kan kjøres av hvem som helst med `gcloud`-tilgang
-- Har ingen avhengighet til Claude Code, MCP eller Cloud Run
-- Er enklere å vedlikeholde og feilsøke
-- Kan integreres i andre verktøy eller CI ved behov
-
 ## Arkitektur
 
 ```
@@ -46,7 +31,7 @@ python3 src/protokoll_generator.py
 ### Dataflyt
 
 1. **Secrets** hentes fra GCP Secret Manager via `gcloud` CLI
-2. **ArtifikClient** brukes direkte mot Artifik API (samme klient som MCP-serveren)
+2. **ArtifikClient** brukes direkte mot Artifik API
 3. **Anskaffelser** listes, filtreres (passert frist, ikke mal/kansellert), og dedupliseres
 4. **Bruker velger** anskaffelse interaktivt (eller via `--id`)
 5. **Activities** hentes for valgt anskaffelse
@@ -89,18 +74,3 @@ python3 src/protokoll_generator.py --id 1795 -o protokoll.md
 - Python 3.11+ med `certifi` installert
 - `gcloud` CLI med aktiv innlogging (`gcloud auth login`)
 - Tilgang til GCP-prosjektet `procurement-mcp` (Secret Manager)
-
-## Konsekvenser
-
-### Positive
-
-- **Uavhengig:** Ingen kobling til MCP, Cloud Run eller Claude Code
-- **Transparent:** Datakvalitetstabell viser eksakt hva som er fra API og hva som mangler
-- **Trygt:** Secrets hentes on-demand fra Secret Manager, lagres aldri lokalt
-- **Vedlikeholdbart:** Ren Python, ingen eksterne avhengigheter utover `certifi`
-
-### Negative
-
-- **gcloud-avhengighet:** Krever at brukeren er logget inn med gcloud
-- **Manuelt supplement:** ~40% av protokollen må fortsatt fylles inn manuelt (API-begrensninger)
-- **Ingen validering:** Skriptet sjekker ikke om manuelt-markerte felter faktisk er fylt inn
