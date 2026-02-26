@@ -143,6 +143,16 @@ ALL_PROCEDURES = [
     "Anskaffelse uten konkurranse",
 ]
 
+DEL2_PROCEDURE_MAP = {
+    "Open": "Åpen tilbudskonkurranse",
+    "Limited": "Begrenset tilbudskonkurranse",
+}
+
+ALL_DEL2_PROCEDURES = [
+    "Åpen tilbudskonkurranse",
+    "Begrenset tilbudskonkurranse",
+]
+
 
 # -- GCP Secret Manager -----------------------------------------------------
 
@@ -1573,6 +1583,472 @@ def _docx_data_quality(doc, procurement, activities):
     _docx_add_table(doc, ["Seksjon", "Kilde", "Merknad"], rows)
 
 
+# -- Del II docx sections (nasjonal, under EØS) --------------------------------
+
+def _docx_del2_general_info(doc, procurement, activities):
+    """Same as Del III but title says 'del II'."""
+    doc.add_heading("Generell informasjon", level=2)
+
+    seq_id = procurement.get("sequenceId") or ""
+    ext_id = procurement.get("externalId") or ""
+    sak_ref = seq_id
+    if ext_id:
+        sak_ref += f" (ekstern ref: {ext_id})"
+
+    procurer = procurement.get("about_procurer") or {}
+    procurer_name = procurer.get("name") or ""
+    national_id = procurer.get("national_id") or ""
+    procurer_str = procurer_name
+    if national_id:
+        procurer_str += f" (org.nr. {national_id})"
+
+    contact = procurer.get("contact_person") or ""
+
+    name = _strip_html(procurement.get("name") or "")
+    description = _strip_html(procurement.get("description") or "")
+    description = re.sub(r"\s*\n\s*", " ", description)
+    desc_str = name
+    if description and description.lower() != name.lower():
+        desc_str += f". {description}"
+
+    estimated_value = procurement.get("estimated_value")
+    currency = procurement.get("currency") or "NOK"
+    value_str = _fmt_currency(estimated_value, currency)
+
+    duration_months = procurement.get("duration_months")
+    duration = procurement.get("duration")
+    if duration_months:
+        duration_str = f"{duration_months} måneder"
+    elif duration:
+        duration_str = str(duration)
+    else:
+        duration_str = None
+
+    submission_date = _get_timeline_date(procurement, "submission")
+    submission_str = _fmt_datetime(submission_date) if submission_date else None
+
+    info_rows = [
+        ("Konkurransens saksnummer:", sak_ref),
+        ("Oppdragsgiver(e):", procurer_str),
+        ("Protokollfører/saksbehandler:", contact or None),
+        ("Beskrivelse av anskaffelsen:", desc_str),
+        ("Kontraktens anslåtte verdi på kunngjøringstidspunktet:", value_str),
+        ("Kontraktens varighet:", duration_str),
+        ("Frist for innlevering av tilbud:", submission_str),
+    ]
+    table = doc.add_table(rows=len(info_rows), cols=2)
+    table.style = "Table Grid"
+    for i, (label, val) in enumerate(info_rows):
+        cell_label = table.rows[i].cells[0]
+        cell_label.text = ""
+        run = cell_label.paragraphs[0].add_run(label)
+        run.bold = True
+        cell_val = table.rows[i].cells[1]
+        if val is None:
+            cell_val.text = ""
+            _add_manual(cell_val.paragraphs[0])
+        else:
+            cell_val.text = str(val)
+
+    doc.add_paragraph()
+
+    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
+    p = doc.add_paragraph()
+    p.add_run("Tidspunkt for mottak av tilbud:").bold = True
+
+    if submissions:
+        rows = []
+        for s in submissions:
+            org = s.get("organization") or {}
+            org_name = org.get("name") or "Ukjent leverandør"
+            date = _fmt_datetime(s.get("date"))
+            rows.append((org_name, date))
+        _docx_add_table(doc, ["Leverandørens navn", "Tidspunkt for mottak"], rows)
+    else:
+        _docx_add_table(doc, ["Leverandørens navn", "Tidspunkt for mottak"],
+                         [("Ingen tilbud registrert", "")])
+
+
+def _docx_del2_procedure(doc, procurement, activities):
+    """Del II: Only 2 procedure types, no delkontrakter."""
+    doc.add_heading("Anskaffelsesprosedyre", level=2)
+    doc.add_paragraph("Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:")
+
+    procedure = procurement.get("procedure") or ""
+    selected = DEL2_PROCEDURE_MAP.get(procedure, "")
+
+    for p_name in ALL_DEL2_PROCEDURES:
+        if p_name == selected:
+            doc.add_paragraph(f"\u2612 {p_name}").runs[0].bold = True
+        else:
+            doc.add_paragraph(f"\u2610 {p_name}")
+
+    # Kunngjøring
+    doffin_activities = _get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    publish_activities = _get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    announcement_date = ""
+    doffin_ref = ""
+    ted_ref = ""
+    if publish_activities:
+        announcement_date = _fmt_date(publish_activities[0].get("date"))
+    if doffin_activities:
+        desc = doffin_activities[0].get("description") or {}
+        doffin_notice = desc.get("doffinNotice") or {}
+        doffin_ref = doffin_notice.get("ngoj") or ""
+        ted_ref = doffin_notice.get("publicationId") or ""
+        if not announcement_date:
+            announcement_date = _fmt_date(
+                doffin_notice.get("publicationDate") or doffin_activities[0].get("date")
+            )
+
+    p = doc.add_paragraph()
+    p.add_run("Kunngjøring:").bold = True
+    if announcement_date:
+        parts = [f"Anskaffelsen ble kunngjort {announcement_date} i DOFFIN"]
+        if doffin_ref:
+            parts.append(f"referansenummer {doffin_ref}")
+        if ted_ref:
+            parts.append(f"TED-referanse {ted_ref}")
+        doc.add_paragraph(", ".join(parts) + ".")
+    else:
+        pub_date = procurement.get("publicationDate")
+        if pub_date:
+            doc.add_paragraph(f"Anskaffelsen ble kunngjort {_fmt_date(pub_date)}.")
+        else:
+            p2 = doc.add_paragraph()
+            _add_manual(p2, "[Kunngjøringsinformasjon mangler]")
+
+
+def _docx_del2_dialog(doc, procurement, activities):
+    """Del II: Dialog og/eller forhandlinger, jf. FOA § 9-3."""
+    doc.add_heading("Dialog og/eller forhandlinger, jf. FOA \u00a7 9-3", level=2)
+
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, begrunnelse for å fravike opplysningene i anskaffelsesdokumentene om planlagt dialog:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    doc.add_paragraph("\u2610 Ingen dialog eller forhandlinger gjennomført")
+    p = doc.add_paragraph()
+    _add_manual(p, "[Bekreft]")
+
+    _docx_add_table_with_manual(doc,
+        ["Leverandørens navn", "Dato", "Begrunnelse for hvorfor leverandøren er valgt ut til dialog"],
+        [(None, None, None)])
+
+    doc.add_paragraph()
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, opplysninger om tilfeller av inhabilitet eller konkurransevridning som følge av dialog med leverandørene, og eventuelle avhjelpende tiltak som er gjennomført:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+
+def _docx_del2_formal_rejection(doc, activities):
+    """Del II: Avvisning formalfeil, jf. FOA § 9-4."""
+    doc.add_heading("Avvisning på grunn av formalfeil, jf. FOA \u00a7 9-4", level=2)
+
+    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    if not rejections:
+        doc.add_paragraph("\u2610 Ingen avvist på grunn av formalfeil")
+        p = doc.add_paragraph()
+        _add_manual(p, "[Bekreft at ingen ble avvist på formalfeil]")
+    else:
+        p = doc.add_paragraph()
+        _add_manual(p, "[Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 9-4) vs. kvalifikasjon (\u00a7 9-5)]")
+
+    rows = []
+    if rejections:
+        for r in rejections:
+            org = r.get("organization") or {}
+            org_name = org.get("name") or "Ukjent"
+            date = _fmt_date(r.get("date"))
+            rows.append((org_name, None, date))
+    else:
+        rows.append(("", "", ""))
+    _docx_add_table_with_manual(doc,
+        ["Leverandørens navn", "Begrunnelsen for avvisningen", "Begrunnelse ble sendt"], rows)
+
+
+def _docx_del2_qualification(doc):
+    """Del II: Three-tier qualification (full, preliminary § 8-10, chosen supplier)."""
+    # Tier 1: Full qualification
+    doc.add_heading("Kvalifikasjonsvurdering", level=2)
+    doc.add_paragraph("Matrisen strykes hvis ikke relevant. Matrisen benyttes hvis det ikke kreves egenerklæring som et foreløpig dokumentasjonsbevis for at leverandøren oppfyller kvalifikasjonskravene.")
+    p = doc.add_paragraph()
+    _add_manual(p, "[Kvalifikasjonskrav og -vurdering. Fyll inn basert på konkurransegrunnlaget.]")
+
+    p = doc.add_paragraph()
+    p.add_run("Leverandører som er kvalifisert:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, begrunnelse for hvorfor leverandører som har restanser i henhold til skatte- og avgiftslovgivningen har fått delta i konkurransen:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    # Tier 2: Preliminary qualification via self-declaration
+    doc.add_heading("Foreløpig kvalifikasjonsvurdering", level=2)
+    doc.add_paragraph("Matrisen strykes hvis ikke relevant. Matrisen benyttes hvis det kreves egenerklæring som et foreløpig dokumentasjonsbevis for at leverandøren oppfyller kvalifikasjonskravene, jf. FOA \u00a7 8-10 (1).")
+
+    p = doc.add_paragraph()
+    p.add_run("Leverandører som er kvalifisert:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    # Tier 3: Qualification of chosen supplier(s)
+    doc.add_heading("Kvalifikasjonsvurdering av valgte leverandør(er)", level=2)
+    doc.add_paragraph("Matrisen strykes hvis ikke relevant. Matrisen benyttes hvis det kreves egenerklæring som et foreløpig dokumentasjonsbevis. Oppdragsgiver skal kreve at valgte leverandør leverer oppdaterte dokumentasjonsbevis, jf. FOA \u00a7 8-10 (2).")
+
+    p = doc.add_paragraph()
+    p.add_run("Leverandør(er) som er kvalifisert:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, begrunnelse for hvorfor leverandør som har restanser i henhold til skatte- og avgiftslovgivningen har fått delta i konkurransen:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+
+def _docx_del2_supplier_rejection(doc, activities):
+    """Del II: Leverandører avvist, jf. FOA § 9-5."""
+    doc.add_heading("Leverandører som er avvist, jf. FOA \u00a7 9-5", level=2)
+
+    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    if not rejections:
+        doc.add_paragraph("\u2610 Ingen leverandører avvist")
+        p = doc.add_paragraph()
+        _add_manual(p, "[Bekreft. API viser ingen avvisningshendelser.]")
+    else:
+        doc.add_paragraph("Følgende leverandører ble avvist:")
+
+    rows = []
+    if rejections:
+        for r in rejections:
+            org = r.get("organization") or {}
+            org_name = org.get("name") or "Ukjent"
+            date = _fmt_date(r.get("date"))
+            rows.append((org_name, None, date))
+    else:
+        rows.append(("", "", ""))
+    _docx_add_table_with_manual(doc,
+        ["Leverandørens navn", "Begrunnelsen for avvisningen", "Begrunnelse ble sendt"], rows)
+
+
+def _docx_del2_supplier_selection(doc, procedure, activities):
+    """Del II: Utvelgelse — only for begrenset tilbudskonkurranse."""
+    doc.add_heading("Utvelgelse av leverandører", level=2)
+
+    if procedure != "Limited":
+        doc.add_paragraph("Matrisen strykes hvis ikke relevant. Gjelder kun ved begrenset tilbudskonkurranse.")
+        doc.add_paragraph("Ikke relevant (åpen tilbudskonkurranse).")
+        return
+
+    doc.add_paragraph("Gjelder kun ved begrenset tilbudskonkurranse.")
+    qualifying = _get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
+    p = doc.add_paragraph()
+    _add_manual(p, "[Fyll inn begrunnelse for utvelgelse per leverandør]")
+    if qualifying:
+        rows = []
+        for q in qualifying:
+            desc = q.get("description") or {}
+            tenders_ids = desc.get("tendersIds") or []
+            for tid in tenders_ids:
+                rows.append((f"Leverandør (tender {tid})", None))
+        if rows:
+            _docx_add_table_with_manual(doc,
+                ["Leverandørens navn", "Begrunnelse for utvelgelse"], rows)
+    else:
+        _docx_add_table_with_manual(doc,
+            ["Leverandørens navn", "Begrunnelse for utvelgelse"], [(None, None)])
+
+
+def _docx_del2_bid_rejection(doc):
+    """Del II: Tilbud avvist, jf. FOA § 9-6."""
+    doc.add_heading("Tilbud som er avvist, jf. FOA \u00a7 9-6", level=2)
+    doc.add_paragraph("\u2610 Ingen tilbud avvist")
+    p = doc.add_paragraph()
+    _add_manual(p, "[Bekreft]")
+    _docx_add_table(doc,
+        ["Leverandørens navn", "Begrunnelsen for avvisningen", "Begrunnelse ble sendt"],
+        [("", "", "")])
+
+
+def _docx_del2_clarification(doc, procurement, activities):
+    """Del II: Ettersending og avklaring (basert på grunnleggende prinsipper)."""
+    doc.add_heading("Ettersending og avklaring", level=2)
+
+    submission_deadline = _parse_submission_deadline(procurement)
+    conversations = _get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
+
+    post_deadline_convs = []
+    if submission_deadline and conversations:
+        for c in conversations:
+            conv_date_str = c.get("date")
+            if conv_date_str:
+                try:
+                    conv_date = datetime.fromisoformat(conv_date_str.replace("Z", "+00:00"))
+                    if conv_date > submission_deadline:
+                        post_deadline_convs.append(c)
+                except (ValueError, TypeError):
+                    pass
+
+    if not post_deadline_convs:
+        doc.add_paragraph("\u2610 Det ble ikke foretatt avklaringer eller ettersendinger")
+        if not conversations:
+            p = doc.add_paragraph()
+            _add_manual(p, "[Bekreft. API har ingen avklaringshendelser for denne anskaffelsen.]")
+        else:
+            p = doc.add_paragraph()
+            _add_manual(p, "[Bekreft. API har meldingshendelser, men alle er før tilbudsfrist (Q&A).]")
+    else:
+        doc.add_paragraph("Følgende avklaringer/ettersendinger ble gjennomført etter tilbudsfrist:")
+
+    rows = []
+    if post_deadline_convs:
+        for c in post_deadline_convs:
+            org = c.get("organization") or {}
+            org_name = org.get("name") or "Ukjent"
+            date = _fmt_date(c.get("date"))
+            desc = c.get("description") or {}
+            title = desc.get("conversationTitle") or ""
+            how = f"Melding i KGV: \u00ab{title}\u00bb" if title else "Melding i KGV"
+            rows.append((org_name, date, how))
+    else:
+        rows.append(("", "", ""))
+    _docx_add_table(doc, ["Leverandørens navn", "Dato", "Hvordan?"], rows)
+
+
+def _docx_del2_award(doc, procurement, activities):
+    """Del II: Valgt tilbud med begrunnelse og kontraktsverdi."""
+    doc.add_heading("Det (de) valgte tilbud med begrunnelse og kontraktsverdi", level=2)
+
+    doc.add_paragraph("Begrunnelsen skal inneholde tilstrekkelig informasjon om det valgte tilbud til at leverandøren kan vurdere om oppdragsgivers valg har vært saklig og forsvarlig. Begrunnelsen skal inneholde opplysninger om navnet på valgte leverandør, valgte tilbuds verdi, relative fordeler og egenskaper i forhold til de øvrige tilbudene.")
+
+    p = doc.add_paragraph()
+    _add_manual(p, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi.]")
+
+    total_value = procurement.get("contracts_total_value_amount")
+    estimated = procurement.get("estimated_value")
+    currency = procurement.get("currency") or "NOK"
+    p = doc.add_paragraph()
+    p.add_run("Kontraktsverdi: ").bold = True
+    if total_value:
+        p.add_run(_fmt_currency(total_value, currency))
+    elif estimated:
+        p.add_run(f"{_fmt_currency(estimated, currency)} (estimert verdi)")
+    else:
+        _add_manual(p)
+
+    award_date = _get_timeline_date(procurement, "award decision")
+    p = doc.add_paragraph()
+    p.add_run("Tildelingsbeslutning: ").bold = True
+    if award_date:
+        p.add_run(_fmt_date(award_date))
+    else:
+        award_activities = _get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
+        if award_activities:
+            p.add_run(_fmt_date(award_activities[0].get("date")))
+        else:
+            _add_manual(p)
+
+
+def _docx_del2_award_notification(doc, procurement):
+    """Del II: Meddelelse om tildeling og klagefrist (not karensperiode)."""
+    doc.add_heading("Meddelelse om tildeling og klagefrist før inngåelse av kontrakt", level=2)
+
+    award_letters = procurement.get("areAwardLettersSent")
+    info_rows = [
+        ("Meddelelsesbrev sendt:", "Sendt (dato ikke tilgjengelig i API)" if award_letters else None),
+        ("Klagefrist:", None),
+        ("Eventuelle klager:", None),
+        ("Resultat av klage:", None),
+    ]
+    table = doc.add_table(rows=len(info_rows), cols=2)
+    table.style = "Table Grid"
+    for i, (label, val) in enumerate(info_rows):
+        cell_label = table.rows[i].cells[0]
+        cell_label.text = ""
+        run = cell_label.paragraphs[0].add_run(label)
+        run.bold = True
+        cell_val = table.rows[i].cells[1]
+        if val is None:
+            cell_val.text = ""
+            _add_manual(cell_val.paragraphs[0])
+        else:
+            cell_val.text = str(val)
+
+
+def _docx_del2_other(doc, procurement):
+    """Del II: Andre opplysninger — § 10-4 for avlysning."""
+    doc.add_heading("Andre opplysninger og avslutning", level=2)
+
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, hvilke deler av kontrakten valgte leverandør planlegger at underleverandører skal utføre, og underleverandørens navn, forutsatt at opplysningene er kjent:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+    p = doc.add_paragraph()
+    p.add_run("Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 10-4 (1):").bold = True
+    is_cancelled = procurement.get("isCancelled")
+    if is_cancelled:
+        reason = procurement.get("cancelingReason") or ""
+        if reason:
+            doc.add_paragraph(reason)
+        else:
+            p2 = doc.add_paragraph()
+            _add_manual(p2, "[Begrunnelse mangler]")
+    else:
+        doc.add_paragraph("Ikke relevant (konkurransen ble ikke avlyst).")
+
+    p = doc.add_paragraph()
+    p.add_run("Andre opplysninger, vesentlige forhold eller viktige beslutninger som er av betydning for konkurransen:").bold = True
+    p2 = doc.add_paragraph()
+    _add_manual(p2)
+
+
+def _docx_del2_data_quality(doc, procurement, activities):
+    """Del II: Datakvalitet — adjusted for Del II sections."""
+    doc.add_heading("Datakvalitet — API vs. manuelt", level=2)
+
+    submissions = _get_activities_by_action(activities, "SUBMIT_BID")
+    rejections = _get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    doffin = _get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    publish = _get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+
+    submission_deadline = _parse_submission_deadline(procurement)
+    conversations = _get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
+    post_deadline = []
+    if submission_deadline:
+        for c in conversations:
+            try:
+                dt = datetime.fromisoformat((c.get("date") or "").replace("Z", "+00:00"))
+                if dt > submission_deadline:
+                    post_deadline.append(c)
+            except (ValueError, TypeError):
+                pass
+
+    rows = [
+        ("Generell informasjon", "API", "Komplett"),
+        ("Tidspunkt for mottak", "API (SUBMIT_BID)", "Komplett" if submissions else "Ingen tilbud registrert"),
+        ("Prosedyretype", "API (procedure)", "Komplett"),
+        ("Kunngjøring", f"API {'(DOFFIN_NOTICE)' if doffin or publish else ''}", "Komplett" if doffin or publish else "Trenger bekreftelse"),
+        ("Dialog/forhandlinger \u00a7 9-3", "**Manuelt**", "Ikke i API"),
+        ("Avvisning formalfeil \u00a7 9-4", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
+        ("Kvalifikasjonsvurdering", "**Manuelt**", "Ikke i API"),
+        ("Avvisning leverandører \u00a7 9-5", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Begrunnelse mangler" if rejections else "Trenger bekreftelse"),
+        ("Avvisning tilbud \u00a7 9-6", "API (ingen hendelser)", "Trenger bekreftelse"),
+        ("Ettersending/avklaring", f"API ({len(post_deadline)} meldinger etter frist)" if post_deadline else "API (ingen hendelser)", "Innhold mangler" if post_deadline else "Trenger bekreftelse"),
+        ("Tilbud i vurdering", "API (SUBMIT_BID)", "Komplett" if submissions else "Ingen"),
+        ("Valgte tilbud + begrunnelse", "**Manuelt**", "API har kun tenderIds"),
+        ("Meddelelsesbrev/klagefrist", "**Manuelt**", "Kun flag, ikke datoer"),
+        ("Underleverandører", "**Manuelt**", "Ikke i API"),
+        ("Inhabilitet", "**Manuelt**", "Ikke i API"),
+    ]
+    _docx_add_table(doc, ["Seksjon", "Kilde", "Merknad"], rows)
+
+
 # -- Main generator ----------------------------------------------------------
 
 def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
@@ -1673,6 +2149,53 @@ def generate_protokoll_docx(procurement: dict, activities: list[dict]) -> "DocxD
     _docx_framework_agreement(doc, procurement)
     _docx_other(doc, procurement)
     _docx_data_quality(doc, procurement, activities)
+
+    return doc
+
+
+def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> "DocxDocument":
+    """Generate anskaffelsesprotokoll for Del II (nasjonal, under EØS) as Word document."""
+    if not _HAS_DOCX:
+        _die("python-docx er ikke installert. Kjør: pip install python-docx")
+
+    procedure = procurement.get("procedure") or ""
+    seq_id = procurement.get("sequenceId") or procurement.get("name") or "Ukjent"
+    today = datetime.now().strftime("%d.%m.%Y")
+
+    doc = DocxDocument()
+
+    doc.add_heading(f"ANSKAFFELSESPROTOKOLL for anskaffelser etter forskriften del II — {seq_id}", level=1)
+    p = doc.add_paragraph()
+    run = p.add_run(f"Generert fra API-data {today}. ")
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+    run2 = p.add_run("Felter med gul bakgrunn krever manuell utfylling.")
+    run2.font.size = Pt(9)
+    run2.font.italic = True
+    run2.font.color.rgb = RGBColor(0x99, 0x66, 0x00)
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), "FFFF00")
+    run2._element.get_or_add_rPr().append(shading)
+
+    _docx_del2_general_info(doc, procurement, activities)
+    _docx_del2_procedure(doc, procurement, activities)
+    _docx_del2_dialog(doc, procurement, activities)
+    _docx_del2_formal_rejection(doc, activities)
+    _docx_del2_qualification(doc)
+    _docx_del2_supplier_rejection(doc, activities)
+    _docx_del2_supplier_selection(doc, procedure, activities)
+    _docx_del2_bid_rejection(doc)
+    _docx_del2_clarification(doc, procurement, activities)
+    # Reuse _docx_bids_in_evaluation from Del III — same logic
+    _docx_bids_in_evaluation(doc, activities)
+    _docx_del2_award(doc, procurement, activities)
+    _docx_del2_award_notification(doc, procurement)
+    # Reuse _docx_framework_agreement from Del III — same logic
+    _docx_framework_agreement(doc, procurement)
+    _docx_del2_other(doc, procurement)
+    _docx_del2_data_quality(doc, procurement, activities)
 
     return doc
 
@@ -1824,6 +2347,13 @@ def main() -> None:
     _ok(f"{len(activities)} hendelser")
 
     fmt = args.format
+    threshold = procurement.get("threshold") or ""
+    is_del2 = threshold in ("below_eea_threshold_value", "national_threshold")
+
+    if is_del2:
+        _ok(f"Del II-protokoll (terskel: {THRESHOLD_SHORT.get(threshold, threshold)})")
+    else:
+        _ok(f"Del III-protokoll (terskel: {THRESHOLD_SHORT.get(threshold, threshold)})")
 
     if fmt == "md":
         result = generate_protokoll(procurement, activities)
@@ -1831,7 +2361,10 @@ def main() -> None:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         Path(output_path).write_text(result)
     else:
-        doc = generate_protokoll_docx(procurement, activities)
+        if is_del2:
+            doc = generate_protokoll_docx_del2(procurement, activities)
+        else:
+            doc = generate_protokoll_docx(procurement, activities)
         output_path = args.output or f"docs/protokoll-{seq_id.lower()}.docx"
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         doc.save(output_path)
