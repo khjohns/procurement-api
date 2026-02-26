@@ -1440,8 +1440,9 @@ def _docx_award(doc, procurement, activities):
     else:
         _add_manual(p)
 
+    award_letters = procurement.get("areAwardLettersSent")
     info_rows = [
-        ("Meddelelsesbrev sendt:", None),
+        ("Meddelelsesbrev sendt:", "Sendt (dato ikke tilgjengelig i API)" if award_letters else None),
         ("Karensperiodens utløp:", None),
         ("Eventuelle klager:", None),
         ("Resultat av klage:", None),
