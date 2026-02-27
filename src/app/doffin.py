@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import ssl
 import urllib.error
@@ -16,6 +17,8 @@ import certifi
 
 from artifik_mcp.decorator import mcp_tool
 from app.eforms import parse_eforms_xml
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -127,6 +130,7 @@ class DoffinClient:
         all_hits = []
         page = 1
         while page <= max_pages:
+            log.info("Søker side %d ...", page)
             result = self.search_notices(
                 search_string=search_string,
                 num_hits_per_page=100,
@@ -134,12 +138,19 @@ class DoffinClient:
             )
             hits = result.get("hits") or []
             all_hits.extend(hits)
+            log.info("  %d treff (totalt %d)", len(hits), len(all_hits))
             if len(hits) < 100:
                 break
             page += 1
 
+        total = len(all_hits)
+        log.info("Fant %d kunngjøringer.", total)
+
         notices = []
-        for hit in all_hits:
+        enriched_count = 0
+        cached_count = 0
+        error_count = 0
+        for i, hit in enumerate(all_hits, 1):
             entry = {
                 "doffin_id": hit.get("id"),
                 "title": hit.get("heading"),
@@ -153,6 +164,7 @@ class DoffinClient:
                 "lots": hit.get("lots") or [],
             }
             if enrich and entry["doffin_id"]:
+                was_cached = self._cache_read(entry["doffin_id"]) is not None
                 try:
                     eforms = self.get_notice(entry["doffin_id"])
                     entry["award_criteria"] = eforms.get("award_criteria") or []
@@ -162,8 +174,14 @@ class DoffinClient:
                     entry["env_criterion_code"] = eforms.get("env_criterion_code")
                     entry["framework_type"] = eforms.get("framework_type")
                     entry["framework_max_value"] = eforms.get("framework_max_value")
+                    enriched_count += 1
+                    if was_cached:
+                        cached_count += 1
                 except Exception:
                     entry["enrich_error"] = True
+                    error_count += 1
+                if i % 10 == 0 or i == total:
+                    log.info("  Beriket %d/%d (%d fra cache, %d feil)", i, total, cached_count, error_count)
             notices.append(entry)
 
         summary = _build_summary(notices) if notices else {}

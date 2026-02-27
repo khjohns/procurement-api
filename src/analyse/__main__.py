@@ -87,6 +87,8 @@ def _to_csv(notices: list[dict]) -> str:
 
 
 def main() -> None:
+    import logging
+
     from app.doffin import DoffinClient
 
     parser = argparse.ArgumentParser(description="Porteføljeanalyse av Doffin-kunngjøringer.")
@@ -98,18 +100,22 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    print("Henter Doffin API-nøkkel...", file=sys.stderr)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        stream=sys.stderr,
+    )
+
+    logging.info("Henter Doffin API-nøkkel...")
     api_key = _fetch_secret("doffin-api-key")
     cache_dir = str(_PROJECT_ROOT / ".cache" / "eforms")
     client = DoffinClient(api_key=api_key, cache_dir=cache_dir)
 
-    print(f"Søker etter '{args.buyer}'...", file=sys.stderr)
     result = client.analyze_buyer(
         search_string=args.buyer,
         enrich=not args.no_enrich,
         max_pages=args.max_pages,
     )
-    print(f"Fant {result['total_notices']} kunngjøringer.", file=sys.stderr)
 
     if args.format == "csv":
         output = _to_csv(result.get("notices") or [])
