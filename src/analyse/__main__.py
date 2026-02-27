@@ -24,6 +24,46 @@ GCP_PROJECT = "procurement-mcp"
 
 _MAX_CRITERIA_COLS = 4
 
+_NOTICE_TYPE_LABELS = {
+    "PLANNING": "Planlegging",
+    "NOTICE_ON_BUYER_PROFILE": "Kjøperprofil",
+    "ADVISORY_NOTICE": "Veiledende kunngjøring",
+    "PRE_ANNOUNCEMENT": "Forhåndskunngjøring",
+    "COMPETITION": "Konkurranse",
+    "ANNOUNCEMENT_OF_COMPETITION": "Kunngjøring av konkurranse",
+    "DYNAMIC_PURCHASING_SCHEME": "Dynamisk innkjøpsordning",
+    "QUALIFICATION_SCHEME": "Kvalifikasjonsordning",
+    "RESULT": "Resultat",
+    "ANNOUNCEMENT_OF_INTENT": "Intensjonskunngjøring",
+    "ANNOUNCEMENT_OF_CONCLUSION_OF_CONTRACT": "Kontraktstildeling",
+    "CHANGE_OF_CONCLUSION_OF_CONTRACT": "Endringsmelding",
+    "CANCELLED_OR_MISSING_CONCLUSION_OF_CONTRACT": "Avlyst/ingen tildeling",
+}
+
+_FRAMEWORK_TYPE_LABELS = {
+    "fa-mix": "Rammeavtale (blandet)",
+    "fa-w-rc": "Rammeavtale med gjenåpning",
+    "fa-wo-rc": "Rammeavtale uten gjenåpning",
+    "none": "Ingen rammeavtale",
+    "dps": "Dynamisk innkjøpsordning",
+}
+
+_PROCEDURE_LABELS = {
+    "open": "Åpen anbudskonkurranse",
+    "restricted": "Begrenset anbudskonkurranse",
+    "neg-w-call": "Konkurranse med forhandling",
+    "neg-wo-call": "Forhandling uten kunngjøring",
+    "comp-dial": "Konkurransepreget dialog",
+    "innovation": "Innovasjonspartnerskap",
+    "oth-single": "Direkte anskaffelse",
+}
+
+_CONTRACT_NATURE_LABELS = {
+    "services": "Tjeneste",
+    "supplies": "Varer",
+    "works": "Bygg og anlegg",
+}
+
 
 def _fetch_secret(name: str) -> str:
     result = subprocess.run(
@@ -57,16 +97,20 @@ def _to_csv(notices: list[dict]) -> str:
     writer.writeheader()
 
     for n in notices:
+        notice_type = n.get("type") or ""
+        procedure = n.get("procedure_code") or ""
+        nature = n.get("contract_nature") or ""
+        fw_type = n.get("framework_type") or ""
         row = {
             "doffin_id": n.get("doffin_id"),
             "title": n.get("title"),
             "buyer_name": n.get("buyer_name"),
             "buyer_org_id": n.get("buyer_org_id"),
-            "type": n.get("type"),
+            "type": _NOTICE_TYPE_LABELS.get(notice_type, notice_type),
             "status": n.get("status"),
             "publication_date": n.get("publication_date"),
-            "procedure_code": n.get("procedure_code"),
-            "contract_nature": n.get("contract_nature"),
+            "procedure_code": _PROCEDURE_LABELS.get(procedure, procedure),
+            "contract_nature": _CONTRACT_NATURE_LABELS.get(nature, nature),
             "estimated_value": (n.get("estimated_value") or {}).get("amount")
                 if isinstance(n.get("estimated_value"), dict)
                 else n.get("estimated_value"),
@@ -75,7 +119,7 @@ def _to_csv(notices: list[dict]) -> str:
             "selection_criteria_count": len(n.get("selection_criteria") or []),
             "env_criterion_code": n.get("env_criterion_code"),
             "received_tenders": n.get("received_tenders"),
-            "framework_type": n.get("framework_type"),
+            "framework_type": _FRAMEWORK_TYPE_LABELS.get(fw_type, fw_type),
             "framework_max_value": n.get("framework_max_value"),
         }
         for i, ac in enumerate(n.get("award_criteria") or [], 1):

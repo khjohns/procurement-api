@@ -62,6 +62,7 @@ class EFormsNotice:
     framework_max_participants: int | None = None
 
     env_criterion_code: str | None = None
+    env_justification: str | None = None
     submission_deadline: str | None = None
 
     lots: list[dict] = field(default_factory=list)
@@ -223,6 +224,15 @@ def _parse_lots(root: ET.Element, notice: EFormsNotice) -> None:
             param = sub.find(".//efac:AwardCriterionParameter", _NS)
             if param is not None:
                 ac.weight_percent = _float(param, "efbc:ParameterNumeric")
+
+            # Skip 0%-weight criteria — these are FOA § 7-9 env justification
+            # texts, not real award criteria
+            if ac.weight_percent is not None and ac.weight_percent == 0:
+                # Store the justification text separately
+                if ac.name:
+                    notice.env_justification = ac.name
+                continue
+
             notice.award_criteria.append(ac)
 
         # Selection criteria source (BT-809)
