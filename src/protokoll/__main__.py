@@ -138,7 +138,7 @@ def _get_client() -> ArtifikClient:
         api_id = _fetch_secret("vendor-api-id")
         api_key = _fetch_secret("vendor-api-key")
     _ok("Secrets hentet")
-    return ArtifikClient(api_id=api_id, api_key=api_key)
+    return ArtifikClient(client_id=api_id, client_secret=api_key)
 
 
 # -- Procurement listing & selection -----------------------------------------
