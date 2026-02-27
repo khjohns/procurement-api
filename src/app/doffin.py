@@ -41,24 +41,36 @@ class DoffinClient:
         return os.environ.get("DOFFIN_API_KEY", "")
 
     def _do_request(self, req: urllib.request.Request) -> Any:
+        import time
+
         api_key = self._get_api_key()
         if not api_key:
             raise ValueError("DOFFIN_API_KEY environment variable not set and no API key provided to client.")
-            
+
         req.add_header("Ocp-Apim-Subscription-Key", api_key)
 
-        try:
-            with urllib.request.urlopen(req, context=self._ssl_ctx) as resp:
-                body = resp.read()
-                if not body:
-                    return None
-                content_type = resp.headers.get("Content-Type", "")
-                if "json" in content_type:
-                    return json.loads(body)
-                return body
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode(errors="replace")
-            raise DoffinAPIError(e.code, e.reason, error_body) from e
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, context=self._ssl_ctx) as resp:
+                    body = resp.read()
+                    if not body:
+                        return None
+                    content_type = resp.headers.get("Content-Type", "")
+                    if "json" in content_type:
+                        return json.loads(body)
+                    return body
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode(errors="replace")
+                if e.code == 429 and attempt < 3:
+                    wait = 10 * (attempt + 1)
+                    log.info("Rate limited, venter %d sekunder ...", wait)
+                    time.sleep(wait)
+                    # Rebuild request since urlopen consumed it
+                    req = urllib.request.Request(req.full_url)
+                    req.add_header("Ocp-Apim-Subscription-Key", api_key)
+                    continue
+                raise DoffinAPIError(e.code, e.reason, error_body) from e
+        raise RuntimeError("Exhausted retries")
 
     def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         url = f"{self.base_url}{path}"
@@ -76,6 +88,8 @@ class DoffinClient:
         search_string: str | None = None,
         status: str | None = None,
         type: list[str] | None = None,
+        issue_date_from: str | None = None,
+        issue_date_to: str | None = None,
         num_hits_per_page: int = 20,
         page: int = 1,
         sort_by: str = "PUBLICATION_DATE_DESC",
@@ -85,6 +99,8 @@ class DoffinClient:
             "searchString": search_string,
             "status": status,
             "type": type,
+            "issueDateFrom": issue_date_from,
+            "issueDateTo": issue_date_to,
             "numHitsPerPage": num_hits_per_page,
             "page": page,
             "sortBy": sort_by,
@@ -124,24 +140,112 @@ class DoffinClient:
         self._cache_write(doffin_id, result)
         return result
 
-    @mcp_tool(description="Search all Doffin notices for a buyer and return structured summary. Set enrich=true to parse eForms XML for award criteria and qualification requirements.")
-    def analyze_buyer(self, search_string: str, enrich: bool = True, max_pages: int = 10) -> dict:
-        """Search notices for a buyer, optionally enriching with eForms data."""
-        all_hits = []
+    def _search_all(
+        self, search_string: str, *, max_pages: int = 10
+    ) -> list[dict]:
+        """Search with automatic date-windowing to bypass the 1000-hit API limit.
+
+        Doffin API caps at 1000 results per search. If we hit that limit,
+        we split the time range and search each window separately.
+        """
+        return self._search_window(
+            search_string, max_pages=max_pages,
+            date_from=None, date_to=None, depth=0,
+        )
+
+    def _search_window(
+        self,
+        search_string: str,
+        *,
+        max_pages: int,
+        date_from: str | None,
+        date_to: str | None,
+        depth: int = 0,
+    ) -> list[dict]:
+        """Search a single date window, splitting recursively if we hit 1000."""
+        from datetime import date as Date, timedelta
+
+        all_hits: list[dict] = []
+        seen_ids: set[str] = set()
         page = 1
         while page <= max_pages:
-            log.info("Søker side %d ...", page)
+            window_desc = f"{date_from or '...'} → {date_to or '...'}"
+            log.info("Søker side %d (%s) ...", page, window_desc)
             result = self.search_notices(
                 search_string=search_string,
+                issue_date_from=date_from,
+                issue_date_to=date_to,
                 num_hits_per_page=100,
                 page=page,
             )
             hits = result.get("hits") or []
-            all_hits.extend(hits)
-            log.info("  %d treff (totalt %d)", len(hits), len(all_hits))
+            for h in hits:
+                hid = h.get("id")
+                if hid and hid not in seen_ids:
+                    seen_ids.add(hid)
+                    all_hits.append(h)
+            log.info("  %d treff (totalt %d unike)", len(hits), len(all_hits))
             if len(hits) < 100:
                 break
             page += 1
+
+        # If we fetched exactly 1000, there are probably more — split the window
+        if len(all_hits) >= 1000 and depth < 5:
+            log.info("Treffer 1000-grensen, deler opp tidsvindu %s → %s (dybde %d)",
+                     date_from or "start", date_to or "nå", depth)
+
+            # Determine the actual date range from results
+            dates = []
+            for h in all_hits:
+                d = h.get("publicationDate") or h.get("issueDate")
+                if d:
+                    dates.append(d[:10])
+            if not dates:
+                return all_hits  # can't split without dates
+
+            earliest = min(dates)
+            latest = max(dates)
+            mid_date = Date.fromisoformat(earliest) + (
+                Date.fromisoformat(latest) - Date.fromisoformat(earliest)
+            ) // 2
+
+            # Clear and search each half
+            all_hits.clear()
+            seen_ids.clear()
+
+            first_half = self._search_window(
+                search_string, max_pages=max_pages,
+                date_from=date_from,
+                date_to=mid_date.isoformat(),
+                depth=depth + 1,
+            )
+            for h in first_half:
+                hid = h.get("id")
+                if hid and hid not in seen_ids:
+                    seen_ids.add(hid)
+                    all_hits.append(h)
+
+            next_day = (mid_date + timedelta(days=1)).isoformat()
+            second_half = self._search_window(
+                search_string, max_pages=max_pages,
+                date_from=next_day,
+                date_to=date_to,
+                depth=depth + 1,
+            )
+            for h in second_half:
+                hid = h.get("id")
+                if hid and hid not in seen_ids:
+                    seen_ids.add(hid)
+                    all_hits.append(h)
+
+            log.info("Etter splitting: %d unike treff totalt", len(all_hits))
+
+        return all_hits
+
+    @mcp_tool(description="Search all Doffin notices for a buyer and return structured summary. Set enrich=true to parse eForms XML for award criteria and qualification requirements.")
+    def analyze_buyer(self, search_string: str, enrich: bool = True, max_pages: int = 10) -> dict:
+        """Search notices for a buyer, optionally enriching with eForms data."""
+        all_hits = self._search_all(search_string, max_pages=max_pages)
 
         # Extract buyer names/orgs and filter to hits where search_string matches buyer
         search_lower = search_string.lower()
@@ -167,21 +271,26 @@ class DoffinClient:
             buyers = hit.get("buyer") or []
             buyer_names = ", ".join(b.get("name") or "" for b in buyers)
             buyer_org_ids = ", ".join(b.get("organizationId") or "" for b in buyers)
-            # Extract winners from lots
+            # Extract winners from lots (with org.nr for dedup)
             lots = hit.get("lots") or []
-            winners = []
+            winner_details: list[dict[str, str]] = []
+            seen_winner_keys: set[str] = set()
             for lot in lots:
                 for w in lot.get("winner") or []:
                     name = w.get("name") or ""
-                    if name and name not in winners:
-                        winners.append(name)
+                    org_id = w.get("organizationId") or ""
+                    key = org_id if org_id else name
+                    if name and key not in seen_winner_keys:
+                        seen_winner_keys.add(key)
+                        winner_details.append({"name": name, "org_id": org_id})
 
             entry = {
                 "doffin_id": hit.get("id"),
                 "title": hit.get("heading"),
                 "buyer_name": buyer_names,
                 "buyer_org_id": buyer_org_ids,
-                "winner": ", ".join(winners) if winners else None,
+                "winner": ", ".join(wd["name"] for wd in winner_details) if winner_details else None,
+                "winner_details": winner_details if winner_details else None,
                 "description": hit.get("description"),
                 "type": hit.get("type"),
                 "status": hit.get("status"),
@@ -203,6 +312,9 @@ class DoffinClient:
                     entry["env_justification"] = eforms.get("env_justification")
                     entry["framework_type"] = eforms.get("framework_type")
                     entry["framework_max_value"] = eforms.get("framework_max_value")
+                    entry["submission_deadline"] = eforms.get("submission_deadline")
+                    entry["duration_months"] = eforms.get("duration_months")
+                    entry["framework_max_participants"] = eforms.get("framework_max_participants")
                     enriched_count += 1
                     if was_cached:
                         cached_count += 1
