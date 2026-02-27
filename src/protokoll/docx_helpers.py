@@ -213,6 +213,38 @@ def add_checkbox(paragraph, label, checked=False, bold_if_checked=False):
     return paragraph
 
 
+def add_text_box(doc, placeholder="", min_lines=15):
+    """Add a bordered text area for free-form input.
+
+    Creates a single-cell table with light grey border that auto-expands.
+    The placeholder text is shown as a yellow manual marker.
+    """
+    table = doc.add_table(rows=1, cols=1)
+    table.style = "Table Grid"
+    cell = table.rows[0].cells[0]
+    cell.text = ""
+
+    # Set minimum height via empty lines
+    p = cell.paragraphs[0]
+    if placeholder:
+        add_manual(p, placeholder)
+    p.add_run("\n" * (min_lines - 1))
+
+    # Light grey border
+    tbl = table._tbl
+    tblPr = tbl.tblPr if tbl.tblPr is not None else OxmlElement("w:tblPr")
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right"):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "BFBFBF")
+        borders.append(el)
+    tblPr.append(borders)
+    return table
+
+
 def add_instruction(doc, text):
     """Add grey italic instruction text — not part of the protocol content."""
     p = doc.add_paragraph()

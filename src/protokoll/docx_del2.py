@@ -8,7 +8,6 @@ from datetime import datetime
 from docx import Document as DocxDocument
 
 from .common import (
-    ALL_DEL2_PROCEDURES,
     DEL2_PROCEDURE_MAP,
     build_org_lookup,
     fmt_currency,
@@ -24,6 +23,7 @@ from .docx_helpers import (
     add_checkbox,
     add_instruction,
     add_manual,
+    add_text_box,
     docx_add_table,
     docx_add_table_with_manual,
     docx_info_table,
@@ -107,14 +107,12 @@ def _general_info(doc, procurement, activities):
 
 def _procedure(doc, procurement, activities):
     doc.add_heading("Anskaffelsesprosedyre", level=3)
-    doc.add_paragraph("Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:")
 
     procedure = procurement.get("procedure") or ""
-    selected = DEL2_PROCEDURE_MAP.get(procedure, "")
-
-    for p_name in ALL_DEL2_PROCEDURES:
-        p = doc.add_paragraph()
-        add_checkbox(p, p_name, checked=(p_name == selected), bold_if_checked=True)
+    selected = DEL2_PROCEDURE_MAP.get(procedure, procedure)
+    p = doc.add_paragraph()
+    p.add_run("Prosedyre: ").bold = True
+    p.add_run(selected)
 
     # Kunngjøring
     doffin_activities = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
@@ -338,10 +336,7 @@ def _award(doc, procurement, activities):
     """Valgt tilbud med begrunnelse og kontraktsverdi."""
     doc.add_heading("Det (de) valgte tilbud med begrunnelse og kontraktsverdi", level=3)
 
-    doc.add_paragraph("Begrunnelsen skal inneholde tilstrekkelig informasjon om det valgte tilbud til at leverandøren kan vurdere om oppdragsgivers valg har vært saklig og forsvarlig. Begrunnelsen skal inneholde opplysninger om navnet på valgte leverandør, valgte tilbuds verdi, relative fordeler og egenskaper i forhold til de øvrige tilbudene.")
-
-    p = doc.add_paragraph()
-    add_manual(p, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi.]")
+    add_text_box(doc, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. Begrunnelsen skal inneholde tilstrekkelig informasjon til at øvrige leverandører kan vurdere om valget er saklig og forsvarlig.]")
 
     total_value = procurement.get("contracts_total_value_amount")
     estimated = procurement.get("estimated_value")

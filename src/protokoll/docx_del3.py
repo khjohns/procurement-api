@@ -8,7 +8,6 @@ from datetime import datetime
 from docx import Document as DocxDocument
 
 from .common import (
-    ALL_PROCEDURES,
     PROCEDURE_MAP,
     build_org_lookup,
     fmt_currency,
@@ -24,6 +23,7 @@ from .docx_helpers import (
     add_checkbox,
     add_instruction,
     add_manual,
+    add_text_box,
     docx_add_table,
     docx_add_table_with_manual,
     docx_info_table,
@@ -100,13 +100,12 @@ def _general_info(doc, procurement, activities, org_lookup):
 
 def _procedure(doc, procurement, activities):
     doc.add_heading("Anskaffelsesprosedyre", level=3)
-    doc.add_paragraph("Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:")
 
     procedure = procurement.get("procedure") or ""
-    selected = PROCEDURE_MAP.get(procedure, "")
-    for p_name in ALL_PROCEDURES:
-        p = doc.add_paragraph()
-        add_checkbox(p, p_name, checked=(p_name == selected), bold_if_checked=True)
+    selected = PROCEDURE_MAP.get(procedure, procedure)
+    p = doc.add_paragraph()
+    p.add_run("Prosedyre: ").bold = True
+    p.add_run(selected)
 
     # -- Begrunnelse for prosedyrevalg --
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
@@ -335,19 +334,16 @@ def _negotiations(doc, procedure):
 
 
 def _dialog(doc, procedure):
-    doc.add_heading("Dialog", level=3)
+    doc.add_heading("Dialog, jf. FOA \u00a7 23-6", level=3)
 
     if procedure == "Competitive dialogue":
-        p = doc.add_paragraph()
-        add_manual(p, "[Fyll inn dialogdetaljer]")
-        p2 = doc.add_paragraph()
-        add_checkbox(p2, "Det ble ikke gjennomført dialog")
-        docx_add_table_with_manual(doc,
-            ["Leverandørens navn", "Dato for dialog"],
-            [(None, None)])
-    else:
-        label = PROCEDURE_MAP.get(procedure, procedure) if procedure != "Open" else "åpen anbudskonkurranse"
-        doc.add_paragraph(f"Ikke relevant ({label}).")
+        doc.add_paragraph("Konkurransepreget dialog \u2014 dialog er en sentral del av prosedyren.")
+    p = doc.add_paragraph()
+    add_checkbox(p, "Det ble ikke gjennomf\u00f8rt dialog")
+    add_manual(p, " [Bekreft]")
+    docx_add_table_with_manual(doc,
+        ["Leverand\u00f8rens navn", "Dato for dialog"],
+        [(None, None)])
 
 
 def _bids_in_evaluation(doc, activities, org_lookup):
@@ -380,8 +376,7 @@ def _bids_in_evaluation(doc, activities, org_lookup):
 
 def _award(doc, procurement, activities):
     doc.add_heading("Det (de) valgte tilbud med begrunnelse og kontraktsverdi", level=3)
-    p = doc.add_paragraph()
-    add_manual(p, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. API gir kun tenderIds, ikke leverandørnavn eller begrunnelse.]")
+    add_text_box(doc, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. Begrunnelsen skal inneholde tilstrekkelig informasjon til at øvrige leverandører kan vurdere om valget er saklig og forsvarlig.]")
 
     total_value = procurement.get("contracts_total_value_amount")
     estimated = procurement.get("estimated_value")
