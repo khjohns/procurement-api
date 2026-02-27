@@ -200,6 +200,7 @@ class DoffinClient:
                     entry["procedure_code"] = eforms.get("procedure_code")
                     entry["contract_nature"] = eforms.get("contract_nature")
                     entry["env_criterion_code"] = eforms.get("env_criterion_code")
+                    entry["env_justification"] = eforms.get("env_justification")
                     entry["framework_type"] = eforms.get("framework_type")
                     entry["framework_max_value"] = eforms.get("framework_max_value")
                     enriched_count += 1
