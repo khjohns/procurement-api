@@ -2,29 +2,36 @@
 
 from __future__ import annotations
 
-try:
-    from docx.shared import Pt, RGBColor, Cm
-    from docx.oxml.ns import qn
-    from docx.oxml import OxmlElement
-    from lxml import etree
+from docx.oxml import OxmlElement  # pyright: ignore[reportMissingImports]
+from docx.oxml.ns import qn  # pyright: ignore[reportMissingImports]
+from docx.shared import Cm, Pt, RGBColor  # pyright: ignore[reportMissingImports]
+from lxml import etree  # pyright: ignore[reportMissingImports, reportAttributeAccessIssue]
 
-    _HAS_DOCX = True
-
-    # w14 namespace for interactive SDT checkboxes
-    _W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
-    etree.register_namespace("w14", _W14)
-except ImportError:
-    _HAS_DOCX = False
+# w14 namespace for interactive SDT checkboxes
+_W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+etree.register_namespace("w14", _W14)
 
 
 def docx_setup(doc):
-    """Configure document margins, styles, and page footer."""
+    """Configure document font, margins, styles, and page footer."""
+    _FONT = "Aptos"
+
+    # Set font on Normal style (inherited by body text, tables, etc.)
+    normal = doc.styles["Normal"]
+    normal.font.name = _FONT
+    normal.font.size = Pt(11)
+
     # Narrower margins (2.0 cm)
     for section in doc.sections:
         section.top_margin = Cm(2.0)
         section.bottom_margin = Cm(2.0)
         section.left_margin = Cm(2.0)
         section.right_margin = Cm(2.0)
+
+    # Heading styles: set font explicitly (headings override Normal font)
+    for level in ("Heading 1", "Heading 2", "Heading 3"):
+        style = doc.styles[level]
+        style.font.name = _FONT
 
     # Heading 2: add space before for section separation
     h2_style = doc.styles["Heading 2"]
