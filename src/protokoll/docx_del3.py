@@ -98,7 +98,7 @@ def _general_info(doc, procurement, activities, org_lookup):
         doc.add_paragraph("Ingen tilbud registrert.")
 
 
-def _procedure(doc, procurement, activities):
+def _procedure(doc, procurement, activities, eforms=None):
     doc.add_heading("Anskaffelsesprosedyre", level=3)
 
     procedure = procurement.get("procedure") or ""
@@ -106,6 +106,14 @@ def _procedure(doc, procurement, activities):
     p = doc.add_paragraph()
     p.add_run("Prosedyre: ").bold = True
     p.add_run(selected)
+
+    if eforms:
+        nature = eforms.get("contract_nature")
+        if nature:
+            nature_labels = {"services": "Tjeneste", "supplies": "Varer", "works": "Bygg og anlegg"}
+            p2 = doc.add_paragraph()
+            p2.add_run("Kontraktstype: ").bold = True
+            p2.add_run(nature_labels.get(nature, nature))
 
     # -- Begrunnelse for prosedyrevalg --
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
@@ -199,10 +207,17 @@ def _preliminary_qualification(doc, procedure):
         add_manual(p2)
 
 
-def _qualification(doc):
+def _qualification(doc, eforms=None):
     doc.add_heading("Kvalifikasjonsvurdering", level=3)
     p = doc.add_paragraph()
     add_manual(p, "[Kvalifikasjonskrav og -vurdering er ikke tilgjengelig via API. Fyll inn basert på konkurransegrunnlaget.]")
+
+    if eforms:
+        sel = eforms.get("selection_criteria") or []
+        if sel:
+            doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
+            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     docx_info_table(doc, [
         ("Leverandører som er kvalifisert:", None),
@@ -407,7 +422,44 @@ def _award(doc, procurement, activities):
     ])
 
 
-def _framework_agreement(doc, procurement):
+def _award_criteria(doc, eforms):
+    """Tildelingskriterier fra kunngjøringen (eForms)."""
+    doc.add_heading("Tildelingskriterier", level=3)
+
+    if not eforms:
+        add_manual(doc.add_paragraph(), "[Fyll inn tildelingskriterier fra konkurransegrunnlaget]")
+        return
+
+    criteria = eforms.get("award_criteria") or []
+    if not criteria:
+        add_manual(doc.add_paragraph(), "[Ingen tildelingskriterier funnet i kunngjøringen — fyll inn manuelt]")
+        return
+
+    rows = []
+    for c in criteria:
+        name = c.get("name") or "Ukjent"
+        ctype = c.get("type") or ""
+        weight = c.get("weight_percent")
+        weight_str = f"{weight:.0f} %" if weight is not None else None
+        rows.append((name, ctype, weight_str))
+
+    docx_add_table_with_manual(doc, ["Kriterium", "Type", "Vekt"], rows)
+
+    # Norwegian env criterion
+    env = eforms.get("env_criterion_code")
+    if env:
+        env_labels = {
+            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (\u00a7 7-9 (2)\u2013(3))",
+            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (\u00a7 7-9 (4))",
+            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (\u00a7 7-9 (5))",
+        }
+        label = env_labels.get(env, env)
+        p = doc.add_paragraph()
+        p.add_run("Miljøkrav FOA \u00a7 7-9: ").bold = True
+        p.add_run(label)
+
+
+def _framework_agreement(doc, procurement, eforms=None):
     doc.add_heading("Tildeling av rammeavtaler", level=3)
 
     is_framework = procurement.get("framework_agreement_involved")
@@ -417,22 +469,29 @@ def _framework_agreement(doc, procurement):
 
     max_participants = procurement.get("framework_agreement_maximum_participants")
     if max_participants and int(max_participants) == 1:
-        docx_info_table(doc, [
+        rows = [
             ("Rammeavtale med én leverandør:", "Ja"),
             ("Rammeavtale med flere leverandører:", "Nei"),
-        ])
+        ]
     elif max_participants and int(max_participants) > 1:
-        docx_info_table(doc, [
+        rows = [
             ("Rammeavtale med én leverandør:", "Nei"),
             ("Rammeavtale med flere leverandører:", f"Ja (maks {max_participants} deltakere)"),
             ("Fordelingsmekanisme:", None),
             ("Ved minikonkurranse; hvilke kriterier:", None),
-        ])
+        ]
     else:
-        docx_info_table(doc, [
+        rows = [
             ("Rammeavtale med én leverandør:", None),
             ("Rammeavtale med flere leverandører:", None),
-        ])
+        ]
+
+    if eforms and eforms.get("framework_max_value"):
+        currency = eforms.get("currency") or "NOK"
+        max_val = fmt_currency(eforms["framework_max_value"], currency)
+        rows.append(("Rammeavtalens maksimale verdi:", max_val))
+
+    docx_info_table(doc, rows)
 
 
 def _market_dialogue_and_conflicts(doc):
@@ -482,7 +541,7 @@ def _other(doc, procurement):
     ])
 
 
-def _data_quality(doc, procurement, activities):
+def _data_quality(doc, procurement, activities, eforms=None):
     doc.add_heading("Datakvalitet \u2014 API vs. manuelt", level=3)
     add_instruction(doc, "Intern oversikt \u2014 ikke del av den formelle protokollen. Viser hvilke seksjoner som er fylt ut automatisk fra API-data og hvilke som krever manuell utfylling.")
 
@@ -503,6 +562,10 @@ def _data_quality(doc, procurement, activities):
             except (ValueError, TypeError):
                 pass
 
+    has_eforms = eforms is not None
+    eforms_ac = len((eforms or {}).get("award_criteria") or [])
+    eforms_sc = len((eforms or {}).get("selection_criteria") or [])
+
     rows = [
         # Rammeverk
         ("Generell informasjon", "API", "Komplett"),
@@ -512,7 +575,8 @@ def _data_quality(doc, procurement, activities):
         ("Delkontrakter (begrunnelse)", "Manuelt", "Ikke i API"),
         ("Elektronisk kommunikasjon", "Manuelt", "Betinget \u2014 kun ved unntak"),
         # Kvalifisering
-        ("Kvalifikasjonsvurdering", "Manuelt", "Ikke i API"),
+        ("Tildelingskriterier", f"eForms ({eforms_ac} kriterier)" if has_eforms and eforms_ac else "Manuelt", "Komplett" if eforms_ac else "Ikke i API"),
+        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i API"),
         ("Utvelgelse", "Manuelt", "Betinget \u2014 kun begrenset/forhandlet"),
         # Avvisning
         ("Avvisning formalfeil \u00a7 24-1", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
@@ -538,7 +602,7 @@ def _data_quality(doc, procurement, activities):
 
 # -- Main generator ----------------------------------------------------------
 
-def generate_protokoll_docx(procurement: dict, activities: list[dict]) -> DocxDocument:
+def generate_protokoll_docx(procurement: dict, activities: list[dict], eforms=None) -> DocxDocument:
     """Generate a complete anskaffelsesprotokoll as a Word document (Del III)."""
     procedure = procurement.get("procedure") or ""
     seq_id = procurement.get("sequenceId") or procurement.get("name") or "Ukjent"
@@ -553,11 +617,11 @@ def generate_protokoll_docx(procurement: dict, activities: list[dict]) -> DocxDo
 
     doc.add_heading("Rammeverk", level=2)
     _general_info(doc, procurement, activities, org_lookup)
-    _procedure(doc, procurement, activities)
+    _procedure(doc, procurement, activities, eforms)
 
     doc.add_heading("Kvalifisering", level=2)
     _preliminary_qualification(doc, procedure)
-    _qualification(doc)
+    _qualification(doc, eforms)
     _supplier_selection(doc, procedure, activities)
 
     doc.add_heading("Avvisning", level=2)
@@ -571,13 +635,14 @@ def generate_protokoll_docx(procurement: dict, activities: list[dict]) -> DocxDo
     _dialog(doc, procedure)
 
     doc.add_heading("Tildeling", level=2)
+    _award_criteria(doc, eforms)
     _bids_in_evaluation(doc, activities, org_lookup)
     _award(doc, procurement, activities)
-    _framework_agreement(doc, procurement)
+    _framework_agreement(doc, procurement, eforms)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)
     _other(doc, procurement)
-    _data_quality(doc, procurement, activities)
+    _data_quality(doc, procurement, activities, eforms)
 
     return doc

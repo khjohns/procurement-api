@@ -32,6 +32,7 @@ from .docx_helpers import (
 )
 # Reuse shared sections from Del III
 from .docx_del3 import (
+    _award_criteria,
     _bids_in_evaluation,
     _framework_agreement,
 )
@@ -105,7 +106,7 @@ def _general_info(doc, procurement, activities):
                         [("Ingen tilbud registrert", "")])
 
 
-def _procedure(doc, procurement, activities):
+def _procedure(doc, procurement, activities, eforms=None):
     doc.add_heading("Anskaffelsesprosedyre", level=3)
 
     procedure = procurement.get("procedure") or ""
@@ -113,6 +114,14 @@ def _procedure(doc, procurement, activities):
     p = doc.add_paragraph()
     p.add_run("Prosedyre: ").bold = True
     p.add_run(selected)
+
+    if eforms:
+        nature = eforms.get("contract_nature")
+        if nature:
+            nature_labels = {"services": "Tjeneste", "supplies": "Varer", "works": "Bygg og anlegg"}
+            p2 = doc.add_paragraph()
+            p2.add_run("Kontraktstype: ").bold = True
+            p2.add_run(nature_labels.get(nature, nature))
 
     # Kunngjøring
     doffin_activities = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
@@ -202,9 +211,16 @@ def _formal_rejection(doc, activities, org_lookup):
         ["Leverandørens navn", "Begrunnelsen for avvisningen", "Begrunnelse ble sendt"], rows)
 
 
-def _qualification(doc):
+def _qualification(doc, eforms=None):
     """Three-tier qualification (full, preliminary § 8-10, chosen supplier)."""
     doc.add_heading("Kvalifikasjonsvurdering", level=3)
+
+    if eforms:
+        sel = eforms.get("selection_criteria") or []
+        if sel:
+            doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
+            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     # Tier 1: Full qualification
     doc.add_heading("Full kvalifikasjonsvurdering", level=4)
@@ -422,7 +438,7 @@ def _other(doc, procurement):
     ])
 
 
-def _data_quality(doc, procurement, activities):
+def _data_quality(doc, procurement, activities, eforms=None):
     doc.add_heading("Datakvalitet \u2014 API vs. manuelt", level=3)
     add_instruction(doc, "Intern oversikt \u2014 ikke del av den formelle protokollen. Viser hvilke seksjoner som er fylt ut automatisk fra API-data og hvilke som krever manuell utfylling.")
 
@@ -443,6 +459,10 @@ def _data_quality(doc, procurement, activities):
             except (ValueError, TypeError):
                 pass
 
+    has_eforms = eforms is not None
+    eforms_ac = len((eforms or {}).get("award_criteria") or [])
+    eforms_sc = len((eforms or {}).get("selection_criteria") or [])
+
     rows = [
         # Rammeverk
         ("Generell informasjon", "API", "Komplett"),
@@ -455,7 +475,8 @@ def _data_quality(doc, procurement, activities):
         ("Dialog/forhandlinger \u00a7 9-3", "Manuelt", "Ikke i API"),
         ("Ettersending/avklaring", f"API ({len(post_deadline)} meldinger etter frist)" if post_deadline else "API (ingen hendelser)", "Innhold mangler" if post_deadline else "Trenger bekreftelse"),
         # Kvalifisering
-        ("Kvalifikasjonsvurdering", "Manuelt", "Ikke i API"),
+        ("Tildelingskriterier", f"eForms ({eforms_ac} kriterier)" if has_eforms and eforms_ac else "Manuelt", "Komplett" if eforms_ac else "Ikke i API"),
+        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i API"),
         # Avvisning
         ("Avvisning formalfeil \u00a7 9-4", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
         ("Avvisning leverandører \u00a7 9-5", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Begrunnelse mangler" if rejections else "Trenger bekreftelse"),
@@ -475,7 +496,7 @@ def _data_quality(doc, procurement, activities):
 
 # -- Main generator ----------------------------------------------------------
 
-def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> DocxDocument:
+def generate_protokoll_docx_del2(procurement: dict, activities: list[dict], eforms=None) -> DocxDocument:
     """Generate anskaffelsesprotokoll for Del II (nasjonal, under EØS) as Word document."""
     procedure = procurement.get("procedure") or ""
     seq_id = procurement.get("sequenceId") or procurement.get("name") or "Ukjent"
@@ -490,14 +511,14 @@ def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> D
 
     doc.add_heading("Rammeverk", level=2)
     _general_info(doc, procurement, activities)
-    _procedure(doc, procurement, activities)
+    _procedure(doc, procurement, activities, eforms)
 
     doc.add_heading("Dialog og avklaring", level=2)
     _dialog(doc, procurement, activities)
     _clarification(doc, procurement, activities, org_lookup)
 
     doc.add_heading("Kvalifisering", level=2)
-    _qualification(doc)
+    _qualification(doc, eforms)
     _supplier_selection(doc, procedure, activities)
 
     doc.add_heading("Avvisning", level=2)
@@ -506,14 +527,15 @@ def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> D
     _bid_rejection(doc)
 
     doc.add_heading("Tildeling", level=2)
+    _award_criteria(doc, eforms)
     _bids_in_evaluation(doc, activities, org_lookup)
     _award(doc, procurement, activities)
     _award_notification(doc, procurement)
-    _framework_agreement(doc, procurement)
+    _framework_agreement(doc, procurement, eforms)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)
     _other(doc, procurement)
-    _data_quality(doc, procurement, activities)
+    _data_quality(doc, procurement, activities, eforms)
 
     return doc
