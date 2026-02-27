@@ -143,17 +143,35 @@ class DoffinClient:
                 break
             page += 1
 
-        total = len(all_hits)
-        log.info("Fant %d kunngjøringer.", total)
+        # Extract buyer names/orgs and filter to hits where search_string matches buyer
+        search_lower = search_string.lower()
+        filtered_hits = []
+        for hit in all_hits:
+            buyers = hit.get("buyer") or []
+            buyer_match = any(
+                search_lower in (b.get("name") or "").lower()
+                for b in buyers
+            )
+            if buyer_match:
+                filtered_hits.append(hit)
 
+        log.info("Fant %d kunngjøringer (%d filtrert bort — buyer matcher ikke '%s').",
+                 len(filtered_hits), len(all_hits) - len(filtered_hits), search_string)
+
+        total = len(filtered_hits)
         notices = []
         enriched_count = 0
         cached_count = 0
         error_count = 0
-        for i, hit in enumerate(all_hits, 1):
+        for i, hit in enumerate(filtered_hits, 1):
+            buyers = hit.get("buyer") or []
+            buyer_names = ", ".join(b.get("name") or "" for b in buyers)
+            buyer_org_ids = ", ".join(b.get("organizationId") or "" for b in buyers)
             entry = {
                 "doffin_id": hit.get("id"),
                 "title": hit.get("heading"),
+                "buyer_name": buyer_names,
+                "buyer_org_id": buyer_org_ids,
                 "description": hit.get("description"),
                 "type": hit.get("type"),
                 "status": hit.get("status"),

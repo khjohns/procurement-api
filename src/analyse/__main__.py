@@ -38,7 +38,8 @@ def _to_csv(notices: list[dict]) -> str:
     """Convert notices to CSV string."""
     buf = StringIO()
     headers = [
-        "doffin_id", "title", "type", "status", "publication_date",
+        "doffin_id", "title", "buyer_name", "buyer_org_id",
+        "type", "status", "publication_date",
         "procedure_code", "contract_nature", "estimated_value", "currency",
     ]
     for i in range(1, _MAX_CRITERIA_COLS + 1):
@@ -59,6 +60,8 @@ def _to_csv(notices: list[dict]) -> str:
         row = {
             "doffin_id": n.get("doffin_id"),
             "title": n.get("title"),
+            "buyer_name": n.get("buyer_name"),
+            "buyer_org_id": n.get("buyer_org_id"),
             "type": n.get("type"),
             "status": n.get("status"),
             "publication_date": n.get("publication_date"),
