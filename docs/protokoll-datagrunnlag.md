@@ -17,7 +17,7 @@ anskaffelser (feb 2026).
 | **g** | Leverandører med forespørsler | Activities: `ASK_TO_QUALIFY` | Full |
 | **h** | Utvalgte + begrunnelse | `suppliersLimitReason` + `QUALIFYING_PARTICIPANTS` | Delvis |
 | **i** | Leverandører med tilbud | Activities: `SUBMIT_BID` | Full |
-| **j** | Avviste + begrunnelse | Activities: `REJECT_PARTICIPATION` (uten begrunnelse) | Delvis |
+| **j** | Avviste + begrunnelse | Activities: `REJECT_PARTICIPATION` (uten begrunnelse, ofte uten leverandørnavn) | Delvis |
 | **k** | Forkastede tilbud + begrunnelse | — | Mangler |
 | **l** | Inhabilitet/konkurransevridning | — | Mangler |
 | **m** | Valgt leverandør + begrunnelse + verdi | `AWARDING_PARTICIPANTS` + `total_value` (begrunnelse mangler) | Delvis |
@@ -55,7 +55,7 @@ Hendelsestyper som gir tidslinjedata til protokollen:
 | `QUALIFYING_PARTICIPANTS` | Kvalifiserte leverandører |
 | `SUBMIT_BID` | Leverandør + tidspunkt for tilbudsinnlevering |
 | `OPEN_BIDS` | Tidspunkt for tilbudsåpning |
-| `REJECT_PARTICIPATION` | Avvist leverandør + tidspunkt |
+| `REJECT_PARTICIPATION` | Avvist leverandør + tidspunkt. **NB:** `organization` er ofte tom — kun `description.lotResponseId` følger med. Se «Avvisning — API-begrensninger» under. |
 | `AWARDING_PARTICIPANTS` | Tildeling (refererer `tendersIds`) |
 | `WITHDRAW_PARTICIPATION` | Leverandør som trakk seg |
 | `PUBLISH_ADDITIONAL_INFORMATION` | Tilleggsinformasjon (med innhold i `description`) |
@@ -106,20 +106,67 @@ For 2 av 150 anskaffelser finnes de i `smartDocResponses` (docJSON):
 
 For øvrige 148 anskaffelser er disse dataene **ikke tilgjengelig via API**.
 
+## Avvisning — API-begrensninger
+
+`REJECT_PARTICIPATION` har to distinkte mangler som påvirker protokollgeneratoren:
+
+### 1. Manglende leverandørnavn
+
+`organization`-feltet er ofte tomt (`{}`). Hendelsen inneholder kun
+`description.lotResponseId` (en opak numerisk ID). Verifisert på OSL0032
+(feb 2026) — 2 avvisninger, begge med `organization: {}`.
+
+**Ingen API-endpoint kan resolve `lotResponseId`:** OpenAPI-specen
+(`artifik-api-openapi-3.json`) har ingen endepunkt for lot responses, tenders
+eller bids. De 15 endepunktene dekker procurements, activities, contracts,
+organizations, webhooks og tasks — men ingen tilbuds-/deltagelsesressurser.
+
+**Nåværende workaround:** `build_org_lookup()` i `common.py` bygger
+`org_id → org_name`-mapping fra alle aktiviteter med organisasjonsdata
+(SUBMIT_BID, CREATE_TENDER m.fl.). `get_org_name()` faller tilbake til denne.
+Fungerer kun hvis leverandøren også har en annen hendelse med `organization.id`
+— for avvisninger uten tilhørende bid/tender vises «Ukjent leverandør».
+
+### 2. Ingen avvisningskategori
+
+API-et har kun én action: `REJECT_PARTICIPATION`. Det skilles ikke mellom:
+- Avvisning pga. formalfeil (FOA § 24-1 / § 9-4)
+- Avvisning pga. kvalifikasjon (FOA § 24-2 / § 9-5)
+- Avvisning av tilbud (FOA §§ 24-8/24-9 / § 9-6)
+
+Protokollgeneratoren viser derfor samme avvisningshendelser i alle relevante
+tabeller, med instruksjon om manuell klassifisering.
+
+### 3. Manglende begrunnelse
+
+`description` inneholder kun `lotResponseId`, ingen begrunnelsestekst.
+Protokollen krever begrunnelse (§ 25-5 bokstav j).
+
 ## Viktigste gap å ta opp med Artifik
 
-1. **Kvalifikasjonskrav, tildelingskriterier og avvisningsgrunner** — ikke egne
-   felter på procurement-objektet. Kun tilgjengelig via smartDocResponses for
-   2 av 150 anskaffelser. Nødvendig for protokoll og kunngjøringsdata.
-2. **Avvisningsbegrunnelse** — `REJECT_PARTICIPATION` har tom `description`.
-   Protokollen krever begrunnelse (§ 25-5 bokstav j).
-3. **Tildelingsbegrunnelse** — `AWARDING_PARTICIPANTS` gir kun `tendersIds`.
+1. **`REJECT_PARTICIPATION` mangler `organization`** — feltet er tomt.
+   `lotResponseId` kan ikke resolves via noen API-endpoint. Enkleste fix:
+   populer `organization` med `id` og `name`, slik det gjøres for
+   `SUBMIT_BID` og `CREATE_TENDER`. Alternativt: ny endpoint
+   `GET /external/{procurement_id}/lotResponses` som returnerer
+   `lotResponseId → organization`-mapping.
+2. **Avvisningsbegrunnelse** — `REJECT_PARTICIPATION` `description` har
+   kun `lotResponseId`, ingen begrunnelsestekst. Protokollen krever
+   begrunnelse (§ 25-5 bokstav j).
+3. **Avvisningskategori** — ingen indikasjon på om avvisningen gjelder
+   formalfeil, kvalifikasjon eller tilbud. Vanskeliggjør automatisk
+   plassering i riktig protokollseksjon.
+4. **Kvalifikasjonskrav, tildelingskriterier og avvisningsgrunner** — ikke
+   egne felter på procurement-objektet. Kun tilgjengelig via
+   smartDocResponses for 2 av 150 anskaffelser. Nødvendig for protokoll
+   og kunngjøringsdata.
+5. **Tildelingsbegrunnelse** — `AWARDING_PARTICIPANTS` gir kun `tendersIds`.
    Protokollen krever begrunnelse for valget (§ 25-5 bokstav m).
-4. **Meldingsinnhold** — `CONVERSATION_MARKED_COMPLETED` gir emne,
+6. **Meldingsinnhold** — `CONVERSATION_MARKED_COMPLETED` gir emne,
    leverandør og dato, men ikke selve meldingsteksten. `PUBLISH_Q8A` gir
    kun tidspunkt. For protokollens § 23-5 kan vi identifisere *at* det var
    dialog (meldinger etter tilbudsfrist), men ikke *hva* som ble avklart.
-5. **ESPD-data** — Egenerklæringsskjemaet fylles ut i KGV-verktøyet og
+7. **ESPD-data** — Egenerklæringsskjemaet fylles ut i KGV-verktøyet og
    eksponeres ikke via API.
 
 ## Eksempel: tidslinje for «Rammeavtale for manuelt slokkeutstyr» (ID 1665)
