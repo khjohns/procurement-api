@@ -24,6 +24,7 @@ _PROJECT_ROOT = _SRC_DIR.parent
 sys.path.insert(0, str(_SRC_DIR))
 
 from app.client import ArtifikClient  # noqa: E402
+from app.doffin import DoffinClient  # noqa: E402
 from protokoll.common import (  # noqa: E402
     fmt_date,
     get_activities_by_action,
@@ -141,6 +142,29 @@ def _get_client() -> ArtifikClient:
         api_key = _fetch_secret("vendor-api-key")
     _ok("Secrets hentet")
     return ArtifikClient(client_id=api_id, client_secret=api_key)
+
+
+def _get_doffin_client() -> DoffinClient | None:
+    """Create DoffinClient with API key from GCP. Returns None if key unavailable."""
+    try:
+        with _Spinner("Henter Doffin API-nøkkel"):
+            api_key = _fetch_secret("doffin-api-key")
+        cache_dir = str(_PROJECT_ROOT / ".cache" / "eforms")
+        _ok("Doffin API-nøkkel hentet")
+        return DoffinClient(api_key=api_key, cache_dir=cache_dir)
+    except SystemExit:
+        _warn("Doffin API-nøkkel ikke tilgjengelig — eForms-berikelse deaktivert")
+        return None
+
+
+def _get_doffin_id(activities: list[dict]) -> str | None:
+    """Extract Doffin notice ID (NGOJ) from activities."""
+    doffin_acts = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    if not doffin_acts:
+        return None
+    desc = doffin_acts[0].get("description") or {}
+    doffin_notice = desc.get("doffinNotice") or {}
+    return doffin_notice.get("ngoj")
 
 
 # -- Procurement listing & selection -----------------------------------------
@@ -394,11 +418,11 @@ def main() -> None:
     print(file=sys.stderr)
 
     # Step 1: Connect
-    _step(1, 3, "Kobler til Artifik API")
+    _step(1, 4, "Kobler til Artifik API")
     client = _get_client()
 
     # Step 2: List
-    _step(2, 3, "Henter anskaffelser")
+    _step(2, 4, "Henter anskaffelser")
     procurements = _list_procurements(client)
 
     if not procurements:
@@ -429,12 +453,33 @@ def main() -> None:
     )
     print(file=sys.stderr)
 
-    # Step 3: Generate
-    _step(3, 3, "Genererer protokoll")
+    # Step 3: Fetch data
+    _step(3, 4, "Henter data")
 
     with _Spinner("Henter aktivitetslogg"):
         activities = client.get_procurement_activities(pid)
     _ok(f"{len(activities)} hendelser")
+
+    # Fetch eForms (optional)
+    eforms = None
+    doffin_client = _get_doffin_client()
+    if doffin_client:
+        doffin_id = _get_doffin_id(activities)
+        if doffin_id:
+            with _Spinner(f"Henter eForms-data fra Doffin ({doffin_id})"):
+                try:
+                    eforms = doffin_client.get_notice(doffin_id)
+                except Exception as e:
+                    _warn(f"Kunne ikke hente eForms: {e}")
+            if eforms:
+                ac = eforms.get("award_criteria") or []
+                sc = eforms.get("selection_criteria") or []
+                _ok(f"eForms: {len(ac)} tildelingskriterier, {len(sc)} kvalifikasjonskrav")
+        else:
+            _warn("Ingen Doffin-referanse funnet — eForms-berikelse ikke tilgjengelig")
+
+    # Step 4: Generate
+    _step(4, 4, "Genererer protokoll")
 
     fmt = args.format
     threshold = procurement.get("threshold") or ""
@@ -455,9 +500,9 @@ def main() -> None:
             _die("python-docx er ikke installert. Kjør: pip install python-docx")
         from protokoll import generate_protokoll_docx, generate_protokoll_docx_del2
         if is_del2:
-            doc = generate_protokoll_docx_del2(procurement, activities)
+            doc = generate_protokoll_docx_del2(procurement, activities, eforms=eforms)
         else:
-            doc = generate_protokoll_docx(procurement, activities)
+            doc = generate_protokoll_docx(procurement, activities, eforms=eforms)
         output_path = args.output or str(_PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.docx")
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         doc.save(output_path)
