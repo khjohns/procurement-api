@@ -121,6 +121,93 @@ class DoffinClient:
         self._cache_write(doffin_id, result)
         return result
 
+    @mcp_tool(description="Search all Doffin notices for a buyer and return structured summary. Set enrich=true to parse eForms XML for award criteria and qualification requirements.")
+    def analyze_buyer(self, search_string: str, enrich: bool = True, max_pages: int = 10) -> dict:
+        """Search notices for a buyer, optionally enriching with eForms data."""
+        all_hits = []
+        page = 1
+        while page <= max_pages:
+            result = self.search_notices(
+                search_string=search_string,
+                num_hits_per_page=100,
+                page=page,
+            )
+            hits = result.get("hits") or []
+            all_hits.extend(hits)
+            if len(hits) < 100:
+                break
+            page += 1
+
+        notices = []
+        for hit in all_hits:
+            entry = {
+                "doffin_id": hit.get("id"),
+                "title": hit.get("heading"),
+                "description": hit.get("description"),
+                "type": hit.get("type"),
+                "status": hit.get("status"),
+                "publication_date": hit.get("publicationDate"),
+                "estimated_value": hit.get("estimatedValue"),
+                "cpv_codes": hit.get("cpvCodes") or [],
+                "received_tenders": hit.get("receivedTenders"),
+                "lots": hit.get("lots") or [],
+            }
+            if enrich and entry["doffin_id"]:
+                try:
+                    eforms = self.get_notice(entry["doffin_id"])
+                    entry["award_criteria"] = eforms.get("award_criteria") or []
+                    entry["selection_criteria"] = eforms.get("selection_criteria") or []
+                    entry["procedure_code"] = eforms.get("procedure_code")
+                    entry["contract_nature"] = eforms.get("contract_nature")
+                    entry["env_criterion_code"] = eforms.get("env_criterion_code")
+                    entry["framework_type"] = eforms.get("framework_type")
+                    entry["framework_max_value"] = eforms.get("framework_max_value")
+                except Exception:
+                    entry["enrich_error"] = True
+            notices.append(entry)
+
+        summary = _build_summary(notices) if notices else {}
+
+        return {
+            "search_string": search_string,
+            "total_notices": len(notices),
+            "enriched": enrich,
+            "notices": notices,
+            "summary": summary,
+        }
+
+
+def _build_summary(notices: list[dict]) -> dict:
+    """Build aggregated summary from enriched notices."""
+    by_procedure: dict[str, int] = {}
+    by_nature: dict[str, int] = {}
+    criteria_counts = []
+    env_codes: dict[str, int] = {}
+
+    for n in notices:
+        proc = n.get("procedure_code") or "unknown"
+        by_procedure[proc] = by_procedure.get(proc, 0) + 1
+
+        nature = n.get("contract_nature") or "unknown"
+        by_nature[nature] = by_nature.get(nature, 0) + 1
+
+        ac = n.get("award_criteria") or []
+        if ac:
+            criteria_counts.append(len(ac))
+
+        env = n.get("env_criterion_code") or "unknown"
+        env_codes[env] = env_codes.get(env, 0) + 1
+
+    return {
+        "by_procedure": by_procedure,
+        "by_contract_nature": by_nature,
+        "avg_award_criteria_count": (
+            round(sum(criteria_counts) / len(criteria_counts), 1)
+            if criteria_counts else 0
+        ),
+        "env_compliance": env_codes,
+    }
+
 
 class DoffinAPIError(Exception):
     def __init__(self, status_code: int, reason: str, body: str):
