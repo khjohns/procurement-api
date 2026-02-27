@@ -167,11 +167,21 @@ class DoffinClient:
             buyers = hit.get("buyer") or []
             buyer_names = ", ".join(b.get("name") or "" for b in buyers)
             buyer_org_ids = ", ".join(b.get("organizationId") or "" for b in buyers)
+            # Extract winners from lots
+            lots = hit.get("lots") or []
+            winners = []
+            for lot in lots:
+                for w in lot.get("winner") or []:
+                    name = w.get("name") or ""
+                    if name and name not in winners:
+                        winners.append(name)
+
             entry = {
                 "doffin_id": hit.get("id"),
                 "title": hit.get("heading"),
                 "buyer_name": buyer_names,
                 "buyer_org_id": buyer_org_ids,
+                "winner": ", ".join(winners) if winners else None,
                 "description": hit.get("description"),
                 "type": hit.get("type"),
                 "status": hit.get("status"),
@@ -179,7 +189,7 @@ class DoffinClient:
                 "estimated_value": hit.get("estimatedValue"),
                 "cpv_codes": hit.get("cpvCodes") or [],
                 "received_tenders": hit.get("receivedTenders"),
-                "lots": hit.get("lots") or [],
+                "lots": lots,
             }
             if enrich and entry["doffin_id"]:
                 was_cached = self._cache_read(entry["doffin_id"]) is not None

@@ -78,7 +78,7 @@ def _to_csv(notices: list[dict]) -> str:
     """Convert notices to CSV string."""
     buf = StringIO()
     headers = [
-        "doffin_id", "title", "buyer_name", "buyer_org_id",
+        "doffin_id", "title", "buyer_name", "buyer_org_id", "winner",
         "type", "status", "publication_date",
         "procedure_code", "contract_nature", "estimated_value", "currency",
     ]
@@ -106,6 +106,7 @@ def _to_csv(notices: list[dict]) -> str:
             "title": n.get("title"),
             "buyer_name": n.get("buyer_name"),
             "buyer_org_id": n.get("buyer_org_id"),
+            "winner": n.get("winner"),
             "type": _NOTICE_TYPE_LABELS.get(notice_type, notice_type),
             "status": n.get("status"),
             "publication_date": n.get("publication_date"),
