@@ -19,6 +19,8 @@ from .common import (
     strip_html,
 )
 from .docx_helpers import (
+    add_checkbox,
+    add_instruction,
     add_manual,
     docx_add_table,
     docx_add_table_with_manual,
@@ -102,10 +104,8 @@ def _procedure(doc, procurement, activities):
     procedure = procurement.get("procedure") or ""
     selected = PROCEDURE_MAP.get(procedure, "")
     for p_name in ALL_PROCEDURES:
-        if p_name == selected:
-            doc.add_paragraph(f"\u2612 {p_name}").runs[0].bold = True
-        else:
-            doc.add_paragraph(f"\u2610 {p_name}")
+        p = doc.add_paragraph()
+        add_checkbox(p, p_name, checked=(p_name == selected), bold_if_checked=True)
 
     # -- Begrunnelse for prosedyrevalg --
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
@@ -165,22 +165,20 @@ def _formal_rejection(doc, activities):
 
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
-        doc.add_paragraph("\u2610 Ingen leverandører eller tilbud ble avvist")
         p = doc.add_paragraph()
-        add_manual(p, "[Bekreft at ingen ble avvist på formalfeil]")
-    else:
-        p = doc.add_paragraph()
-        add_manual(p, "[Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 24-1) vs. kvalifikasjon (\u00a7 24-2)]")
+        add_checkbox(p, "Ingen leverandører eller tilbud ble avvist")
+        add_manual(p, " [Bekreft]")
+        return
+
+    p = doc.add_paragraph()
+    add_manual(p, "[Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 24-1) vs. kvalifikasjon (\u00a7 24-2)]")
 
     rows = []
-    if rejections:
-        for r in rejections:
-            org = r.get("organization") or {}
-            org_name = org.get("name") or "Ukjent"
-            date = fmt_date(r.get("date"))
-            rows.append((org_name, None, date))
-    else:
-        rows.append(("", "", ""))
+    for r in rejections:
+        org = r.get("organization") or {}
+        org_name = org.get("name") or "Ukjent"
+        date = fmt_date(r.get("date"))
+        rows.append((org_name, None, date))
     docx_add_table_with_manual(doc,
         ["Leverandørens navn", "Begrunnelsen for avvisningen", "Dato sendt"], rows)
 
@@ -213,21 +211,18 @@ def _supplier_rejection(doc, activities):
 
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
-        doc.add_paragraph("\u2610 Ingen leverandører ble avvist")
         p = doc.add_paragraph()
-        add_manual(p, "[Bekreft. API viser ingen avvisningshendelser.]")
-    else:
-        doc.add_paragraph("Følgende leverandører ble avvist:")
+        add_checkbox(p, "Ingen leverandører ble avvist")
+        add_manual(p, " [Bekreft]")
+        return
 
+    doc.add_paragraph("Følgende leverandører ble avvist:")
     rows = []
-    if rejections:
-        for r in rejections:
-            org = r.get("organization") or {}
-            org_name = org.get("name") or "Ukjent"
-            date = fmt_date(r.get("date"))
-            rows.append((org_name, None, date))
-    else:
-        rows.append(("", "", ""))
+    for r in rejections:
+        org = r.get("organization") or {}
+        org_name = org.get("name") or "Ukjent"
+        date = fmt_date(r.get("date"))
+        rows.append((org_name, None, date))
     docx_add_table_with_manual(doc,
         ["Leverandørens navn", "Begrunnelsen for avvisningen", "Dato sendt"], rows)
 
@@ -260,12 +255,9 @@ def _supplier_selection(doc, procedure, activities):
 
 def _bid_rejection(doc):
     doc.add_heading("Tilbud som er avvist, jf. FOA \u00a7\u00a7 24-8 og 24-9", level=2)
-    doc.add_paragraph("\u2610 Ingen tilbud ble avvist")
     p = doc.add_paragraph()
-    add_manual(p, "[Bekreft]")
-    docx_add_table(doc,
-        ["Leverandørenes navn", "Begrunnelsen for avvisningen", "Dato sendt"],
-        [("", "", "")])
+    add_checkbox(p, "Ingen tilbud ble avvist")
+    add_manual(p, " [Bekreft]")
 
 
 def _clarification(doc, procurement, activities):
@@ -287,28 +279,24 @@ def _clarification(doc, procurement, activities):
                     pass
 
     if not post_deadline_convs:
-        doc.add_paragraph("\u2610 Det ble ikke foretatt avklaringer eller dialog")
+        p = doc.add_paragraph()
+        add_checkbox(p, "Det ble ikke foretatt avklaringer eller dialog")
         if not conversations:
-            p = doc.add_paragraph()
-            add_manual(p, "[Bekreft. API har ingen avklaringshendelser for denne anskaffelsen.]")
+            add_manual(p, " [Bekreft \u2014 ingen avklaringshendelser i API]")
         else:
-            p = doc.add_paragraph()
-            add_manual(p, "[Bekreft. API har meldingshendelser, men alle er før tilbudsfrist (Q&A).]")
-    else:
-        doc.add_paragraph("Følgende avklaringer/ettersendinger ble gjennomført etter tilbudsfrist:")
+            add_manual(p, " [Bekreft \u2014 meldinger finnes, men alle er f\u00f8r tilbudsfrist (Q&A)]")
+        return
 
+    doc.add_paragraph("F\u00f8lgende avklaringer/ettersendinger ble gjennomf\u00f8rt etter tilbudsfrist:")
     rows = []
-    if post_deadline_convs:
-        for c in post_deadline_convs:
-            org = c.get("organization") or {}
-            org_name = org.get("name") or "Ukjent"
-            date = fmt_date(c.get("date"))
-            desc = c.get("description") or {}
-            title = desc.get("conversationTitle") or ""
-            how = f"Melding i KGV: \u00ab{title}\u00bb" if title else "Melding i KGV"
-            rows.append((org_name, date, how))
-    else:
-        rows.append(("", "", ""))
+    for c in post_deadline_convs:
+        org = c.get("organization") or {}
+        org_name = org.get("name") or "Ukjent"
+        date = fmt_date(c.get("date"))
+        desc = c.get("description") or {}
+        title = desc.get("conversationTitle") or ""
+        how = f"Melding i KGV: \u00ab{title}\u00bb" if title else "Melding i KGV"
+        rows.append((org_name, date, how))
     docx_add_table(doc, ["Leverandørens navn", "Dato", "Hvordan?"], rows)
 
 
@@ -318,7 +306,8 @@ def _negotiations(doc, procedure):
     if procedure in ("Competitive negotiated", "Innovation partnership"):
         p = doc.add_paragraph()
         add_manual(p, "[Fyll inn forhandlingsdetaljer]")
-        doc.add_paragraph("\u2610 Det ble ikke gjennomført forhandlinger")
+        p2 = doc.add_paragraph()
+        add_checkbox(p2, "Det ble ikke gjennomført forhandlinger")
         docx_add_table_with_manual(doc,
             ["Leverandørens navn", "Dato for forhandling", "Mottatt revidert tilbud"],
             [(None, None, None)])
@@ -333,7 +322,8 @@ def _dialog(doc, procedure):
     if procedure == "Competitive dialogue":
         p = doc.add_paragraph()
         add_manual(p, "[Fyll inn dialogdetaljer]")
-        doc.add_paragraph("\u2610 Det ble ikke gjennomført dialog")
+        p2 = doc.add_paragraph()
+        add_checkbox(p2, "Det ble ikke gjennomført dialog")
         docx_add_table_with_manual(doc,
             ["Leverandørens navn", "Dato for dialog"],
             [(None, None)])
@@ -454,7 +444,8 @@ def _other(doc, procurement):
 
 
 def _data_quality(doc, procurement, activities):
-    doc.add_heading("Datakvalitet — API vs. manuelt", level=2)
+    doc.add_heading("Datakvalitet \u2014 API vs. manuelt", level=2)
+    add_instruction(doc, "Intern oversikt \u2014 ikke del av den formelle protokollen. Viser hvilke seksjoner som er fylt ut automatisk fra API-data og hvilke som krever manuell utfylling.")
 
     submissions = get_activities_by_action(activities, "SUBMIT_BID")
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")

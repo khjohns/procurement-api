@@ -6,7 +6,13 @@ try:
     from docx.shared import Pt, RGBColor, Cm
     from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
+    from lxml import etree
+
     _HAS_DOCX = True
+
+    # w14 namespace for interactive SDT checkboxes
+    _W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+    etree.register_namespace("w14", _W14)
 except ImportError:
     _HAS_DOCX = False
 
@@ -24,6 +30,11 @@ def docx_setup(doc):
     h2_style = doc.styles["Heading 2"]
     h2_style.paragraph_format.space_before = Pt(18)
     h2_style.paragraph_format.space_after = Pt(6)
+
+    # Heading 3: sub-sections
+    h3_style = doc.styles["Heading 3"]
+    h3_style.paragraph_format.space_before = Pt(12)
+    h3_style.paragraph_format.space_after = Pt(4)
 
     # Page numbers in footer
     for section in doc.sections:
@@ -149,3 +160,57 @@ def docx_subtitle(doc, seq_id, today):
     shading.set(qn("w:color"), "auto")
     shading.set(qn("w:fill"), "FFFF00")
     run2._element.get_or_add_rPr().append(shading)
+
+
+def add_checkbox(paragraph, label, checked=False, bold_if_checked=False):
+    """Add an interactive SDT checkbox with label to a paragraph.
+
+    Creates a Word Content Control checkbox that can be toggled by clicking.
+    """
+    sdt = OxmlElement("w:sdt")
+
+    # SDT properties with w14:checkbox
+    sdtPr = OxmlElement("w:sdtPr")
+    cb = etree.SubElement(sdtPr, f"{{{_W14}}}checkbox")
+    checked_el = etree.SubElement(cb, f"{{{_W14}}}checked")
+    checked_el.set(f"{{{_W14}}}val", "1" if checked else "0")
+    checked_state = etree.SubElement(cb, f"{{{_W14}}}checkedState")
+    checked_state.set(f"{{{_W14}}}val", "2612")
+    checked_state.set(f"{{{_W14}}}font", "MS Gothic")
+    unchecked_state = etree.SubElement(cb, f"{{{_W14}}}uncheckedState")
+    unchecked_state.set(f"{{{_W14}}}val", "2610")
+    unchecked_state.set(f"{{{_W14}}}font", "MS Gothic")
+    sdt.append(sdtPr)
+
+    # SDT content: visible checkbox glyph
+    sdtContent = OxmlElement("w:sdtContent")
+    r = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+    rFonts = OxmlElement("w:rFonts")
+    rFonts.set(qn("w:ascii"), "MS Gothic")
+    rFonts.set(qn("w:hAnsi"), "MS Gothic")
+    rPr.append(rFonts)
+    r.append(rPr)
+    t = OxmlElement("w:t")
+    t.text = "\u2612" if checked else "\u2610"
+    r.append(t)
+    sdtContent.append(r)
+    sdt.append(sdtContent)
+
+    paragraph._element.append(sdt)
+
+    if label:
+        run = paragraph.add_run(f" {label}")
+        if bold_if_checked and checked:
+            run.bold = True
+    return paragraph
+
+
+def add_instruction(doc, text):
+    """Add grey italic instruction text — not part of the protocol content."""
+    p = doc.add_paragraph()
+    run = p.add_run(text)
+    run.font.italic = True
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+    return p
