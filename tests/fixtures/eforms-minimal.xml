@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal eForms fixture for unit tests. Based on real Doffin notice 2026-100122. -->
+<ContractNotice
+    xmlns="urn:oasis:names:specification:ubl:schema:xsd:ContractNotice-2"
+    xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+    xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+    xmlns:efac="http://data.europa.eu/p27/eforms-ubl-extension-aggregate-components/1"
+    xmlns:efbc="http://data.europa.eu/p27/eforms-ubl-extension-basic-components/1"
+    xmlns:efext="http://data.europa.eu/p27/eforms-ubl-extensions/1"
+    xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  <cbc:ID>test-notice-1</cbc:ID>
+  <cbc:IssueDate>2026-01-06</cbc:IssueDate>
+  <cbc:ContractFolderID>cf-001</cbc:ContractFolderID>
+  <cac:ContractingParty>
+    <cac:Party>
+      <cac:PartyName><cbc:Name>Testkommune KF</cbc:Name></cac:PartyName>
+      <cac:PartyIdentification>
+        <cbc:ID schemeName="NO:ORGNR">123456789</cbc:ID>
+      </cac:PartyIdentification>
+    </cac:Party>
+  </cac:ContractingParty>
+  <cac:ProcurementProject>
+    <cbc:Name>Testkontrakt</cbc:Name>
+    <cbc:Description>En beskrivelse</cbc:Description>
+    <cbc:ProcurementTypeCode listName="contract-nature">services</cbc:ProcurementTypeCode>
+    <cac:MainCommodityClassification>
+      <cbc:ItemClassificationCode>50112100</cbc:ItemClassificationCode>
+    </cac:MainCommodityClassification>
+    <cac:PlannedPeriod>
+      <cbc:DurationMeasure unitCode="MONTH">48</cbc:DurationMeasure>
+    </cac:PlannedPeriod>
+    <cac:RequestedTenderTotal>
+      <cbc:EstimatedOverallContractAmount currencyID="NOK">4000000</cbc:EstimatedOverallContractAmount>
+    </cac:RequestedTenderTotal>
+  </cac:ProcurementProject>
+  <cac:TenderingProcess>
+    <cbc:ProcedureCode listName="procurement-procedure-type">open</cbc:ProcedureCode>
+    <cac:TenderSubmissionDeadlinePeriod>
+      <cbc:EndDate>2026-02-09</cbc:EndDate>
+    </cac:TenderSubmissionDeadlinePeriod>
+  </cac:TenderingProcess>
+</ContractNotice>
