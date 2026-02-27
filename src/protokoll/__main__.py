@@ -19,7 +19,9 @@ from pathlib import Path
 from typing import Any
 
 # Add src/ to path so we can import ArtifikClient and protokoll package
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+_SRC_DIR = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = _SRC_DIR.parent
+sys.path.insert(0, str(_SRC_DIR))
 
 from app.client import ArtifikClient  # noqa: E402
 from protokoll.common import (
@@ -380,7 +382,7 @@ def main() -> None:
     )
     parser.add_argument("--id", type=int, help="Procurement ID (skipper interaktiv velging)")
     parser.add_argument("--list", action="store_true", dest="list_only", help="Bare list anskaffelser, ikke generer protokoll")
-    parser.add_argument("-o", "--output", help="Output-fil (default: docs/protokoll-{sequenceId}.md)")
+    parser.add_argument("-o", "--output", help="Output-fil (default: docs/protokoller/protokoll-{sequenceId}.docx)")
     parser.add_argument("--format", choices=["docx", "md"], default="docx", help="Output-format (default: docx)")
 
     args = parser.parse_args()
@@ -445,7 +447,7 @@ def main() -> None:
 
     if fmt == "md":
         result = generate_protokoll(procurement, activities)
-        output_path = args.output or f"docs/protokoll-{seq_id.lower()}.md"
+        output_path = args.output or str(_PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.md")
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         Path(output_path).write_text(result)
     else:
@@ -456,7 +458,7 @@ def main() -> None:
             doc = generate_protokoll_docx_del2(procurement, activities)
         else:
             doc = generate_protokoll_docx(procurement, activities)
-        output_path = args.output or f"docs/protokoll-{seq_id.lower()}.docx"
+        output_path = args.output or str(_PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.docx")
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         doc.save(output_path)
 

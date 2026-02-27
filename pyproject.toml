@@ -15,3 +15,6 @@ dev = [
 protokoll = [
     "python-docx",
 ]
+
+[project.scripts]
+protokoll = "protokoll.__main__:main"
