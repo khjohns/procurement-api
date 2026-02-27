@@ -22,6 +22,9 @@ venv/
 src/frontend/node_modules/
 src/frontend/dist/
 
+# eForms cache
+.cache/
+
 # IDE
 .idea/
 .vscode/
