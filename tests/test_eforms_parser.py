@@ -99,3 +99,34 @@ def test_to_dict_roundtrip():
     assert d["procedure_code"] == "open"
     assert isinstance(d["award_criteria"], list)
     assert isinstance(d["cpv_codes"], list)
+
+
+# -- Integration test against real Doffin fixture --
+
+_FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+def test_parse_real_notice():
+    """Parse a real Doffin notice (2026-100122: Rengjøring av tjenestebiler)."""
+    xml_path = _FIXTURE_DIR / "eforms-2026-100122.xml"
+    if not xml_path.exists():
+        import pytest
+        pytest.skip("Real fixture not available — run Task 1 to download")
+
+    xml_bytes = xml_path.read_bytes()
+    notice = parse_eforms_xml(xml_bytes, doffin_id="2026-100122")
+
+    # Known facts from previous analysis
+    assert notice.notice_type in ("ContractNotice", "ContractAwardNotice")
+    assert notice.buyer_name is not None
+    assert notice.procedure_code is not None
+    assert len(notice.award_criteria) > 0, "Should have award criteria"
+    # OSL0032 had: Pris 30%, Kvalitet 20%, Gjennomføring 20%, Miljø 30%
+    weights = [c.weight_percent for c in notice.award_criteria if c.weight_percent]
+    assert len(weights) >= 2, f"Expected weighted criteria, got {notice.award_criteria}"
+    assert notice.estimated_value is not None or notice.framework_max_value is not None
+
+    # Verify to_dict works
+    d = notice.to_dict()
+    assert isinstance(d, dict)
+    assert len(d["award_criteria"]) > 0

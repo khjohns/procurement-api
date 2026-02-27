@@ -98,6 +98,25 @@ def _int(el: ET.Element, path: str) -> int | None:
         return None
 
 
+def _build_org_map(root: ET.Element) -> dict[str, dict]:
+    """Build lookup map from ORG reference IDs to company details.
+
+    Real eForms XML stores org details in ext:UBLExtensions/efac:Organizations
+    and references them by ID (e.g. ORG-0001) elsewhere in the document.
+    """
+    orgs: dict[str, dict] = {}
+    for org in root.findall(
+        ".//efac:Organizations/efac:Organization/efac:Company", _NS
+    ):
+        org_ref = _text(org, "cac:PartyIdentification/cbc:ID")
+        if not org_ref:
+            continue
+        name = _text(org, "cac:PartyName/cbc:Name")
+        company_id = _text(org, "cac:PartyLegalEntity/cbc:CompanyID")
+        orgs[org_ref] = {"name": name, "company_id": company_id}
+    return orgs
+
+
 def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
     """Parse eForms UBL XML into structured EFormsNotice."""
     root = ET.fromstring(xml_bytes)
@@ -109,11 +128,22 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
     # Metadata
     notice.issue_date = _text(root, "cbc:IssueDate")
 
-    # Buyer
+    # Organization reference map (ORG-0001 → name, company_id)
+    org_map = _build_org_map(root)
+
+    # Buyer — try inline name first, then resolve via org reference
     party = root.find(".//cac:ContractingParty/cac:Party", _NS)
     if party is not None:
         notice.buyer_name = _text(party, "cac:PartyName/cbc:Name")
         notice.buyer_org_id = _text(party, "cac:PartyIdentification/cbc:ID")
+
+        # Resolve org reference if inline name is missing
+        if notice.buyer_org_id and notice.buyer_org_id in org_map:
+            org = org_map[notice.buyer_org_id]
+            if not notice.buyer_name and org["name"]:
+                notice.buyer_name = org["name"]
+            if org["company_id"]:
+                notice.buyer_org_id = org["company_id"]
 
     # Procurement project (top-level or first lot)
     proj = root.find(".//cac:ProcurementProject", _NS)
@@ -224,19 +254,31 @@ def _parse_lots(root: ET.Element, notice: EFormsNotice) -> None:
 
 def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
     """Parse framework agreement details."""
+    # Framework type from ContractingSystem (e.g. fa-wo-rc, fa-w-rc)
+    for cs in root.findall(
+        ".//cac:TenderingProcess/cac:ContractingSystem", _NS
+    ):
+        code_el = cs.find("cbc:ContractingSystemTypeCode", _NS)
+        if code_el is not None and code_el.get("listName") == "framework-agreement":
+            notice.framework_type = code_el.text
+
+    # Framework agreement element for max participants
     fa = root.find(".//cac:FrameworkAgreement", _NS)
     if fa is None:
         fa = root.find(
             ".//cac:TenderingProcess/cac:FrameworkAgreement", _NS
         )
     if fa is not None:
-        notice.framework_type = _text(fa, "cbc:FrequencyCode")
-        max_val = fa.find("cbc:MaximumValueAmount", _NS)
-        if max_val is not None and max_val.text:
-            try:
-                notice.framework_max_value = float(max_val.text)
-            except ValueError:
-                pass
         notice.framework_max_participants = _int(
             fa, "cbc:MaximumOperatorQuantity"
         )
+
+    # Framework max value — eForms extension (efbc:FrameworkMaximumAmount)
+    fma = root.find(".//efbc:FrameworkMaximumAmount", _NS)
+    if fma is not None and fma.text:
+        try:
+            notice.framework_max_value = float(fma.text)
+        except ValueError:
+            pass
+        if not notice.currency:
+            notice.currency = fma.get("currencyID")
