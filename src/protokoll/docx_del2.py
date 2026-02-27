@@ -476,7 +476,7 @@ def _data_quality(doc, procurement, activities, eforms=None):
         ("Ettersending/avklaring", f"API ({len(post_deadline)} meldinger etter frist)" if post_deadline else "API (ingen hendelser)", "Innhold mangler" if post_deadline else "Trenger bekreftelse"),
         # Kvalifisering
         ("Tildelingskriterier", f"eForms ({eforms_ac} kriterier)" if has_eforms and eforms_ac else "Manuelt", "Komplett" if eforms_ac else "Ikke i API"),
-        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i API"),
+        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i eForms (ligger i konkurransegrunnlaget)"),
         # Avvisning
         ("Avvisning formalfeil \u00a7 9-4", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
         ("Avvisning leverandører \u00a7 9-5", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Begrunnelse mangler" if rejections else "Trenger bekreftelse"),

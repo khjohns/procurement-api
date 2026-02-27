@@ -576,7 +576,7 @@ def _data_quality(doc, procurement, activities, eforms=None):
         ("Elektronisk kommunikasjon", "Manuelt", "Betinget \u2014 kun ved unntak"),
         # Kvalifisering
         ("Tildelingskriterier", f"eForms ({eforms_ac} kriterier)" if has_eforms and eforms_ac else "Manuelt", "Komplett" if eforms_ac else "Ikke i API"),
-        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i API"),
+        ("Kvalifikasjonskrav", f"eForms ({eforms_sc} krav)" if has_eforms and eforms_sc else "Manuelt", "Komplett" if eforms_sc else "Ikke i eForms (ligger i konkurransegrunnlaget)"),
         ("Utvelgelse", "Manuelt", "Betinget \u2014 kun begrenset/forhandlet"),
         # Avvisning
         ("Avvisning formalfeil \u00a7 24-1", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),

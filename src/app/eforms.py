@@ -186,6 +186,9 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
     # Award criteria, selection criteria, exclusion grounds — from lots
     _parse_lots(root, notice)
 
+    # Procedure-level exclusion grounds (TendererQualificationRequest outside lots)
+    _parse_procedure_exclusions(root, notice)
+
     # Framework agreement
     _parse_framework(root, notice)
 
@@ -222,25 +225,39 @@ def _parse_lots(root: ET.Element, notice: EFormsNotice) -> None:
                 ac.weight_percent = _float(param, "efbc:ParameterNumeric")
             notice.award_criteria.append(ac)
 
-        # Selection criteria (BT-809 + BT-750)
+        # Selection criteria source (BT-809)
+        # Norwegian notices typically set source=epo-procurement-document,
+        # meaning criteria are in the competition documents, not in the XML.
         for sel in lot.findall(
             ".//cac:TenderingTerms/cac:TendererQualificationRequest", _NS
         ):
+            # Only extract actual selection criteria with descriptions
+            desc = _text(sel, "cbc:Description")
+            if not desc:
+                continue
+            # Skip exclusion grounds (handled below) and meta entries
+            code_el = sel.find(".//cbc:TendererRequirementTypeCode", _NS)
+            if code_el is not None and code_el.get("listName") in (
+                "exclusion-ground", "exclusion-grounds-source",
+                "reserved-procurement", "selection-criteria-source",
+            ):
+                continue
             sc = SelectionCriterion()
-            sc.description = _text(sel, "cbc:Description")
-            code_el = sel.find("cbc:CompanyLegalFormCode", _NS)
-            if code_el is not None:
-                sc.type_code = code_el.text
-            if sc.description or sc.type_code:
-                notice.selection_criteria.append(sc)
+            sc.description = desc
+            sc.type_code = code_el.text if code_el is not None else None
+            notice.selection_criteria.append(sc)
 
-        # Exclusion grounds
-        for eg in lot.findall(".//efac:ExclusionGround", _NS):
-            ground = ExclusionGround()
-            ground.code = _text(eg, "efbc:ExclusionGroundCode")
-            ground.description = _text(eg, "efbc:ExclusionGroundDescription")
-            if ground.code or ground.description:
-                notice.exclusion_grounds.append(ground)
+        # Exclusion grounds — in TendererQualificationRequest with listName="exclusion-ground"
+        for tqr in lot.findall(
+            ".//cac:TenderingTerms/cac:TendererQualificationRequest", _NS
+        ):
+            code_el = tqr.find(".//cbc:TendererRequirementTypeCode", _NS)
+            if code_el is not None and code_el.get("listName") == "exclusion-ground":
+                ground = ExclusionGround()
+                ground.code = code_el.text
+                ground.description = _text(tqr, "cbc:Description")
+                if ground.code or ground.description:
+                    notice.exclusion_grounds.append(ground)
 
         # Norwegian env criterion (NOR extension)
         for sub in lot.findall(
@@ -250,6 +267,25 @@ def _parse_lots(root: ET.Element, notice: EFormsNotice) -> None:
             type_code = _text(sub, "cbc:AwardingCriterionTypeCode")
             if type_code and type_code.startswith("quality-nor-env"):
                 notice.env_criterion_code = type_code
+
+
+def _parse_procedure_exclusions(root: ET.Element, notice: EFormsNotice) -> None:
+    """Parse procedure-level exclusion grounds (outside lots)."""
+    # These appear in TenderingTerms at the top level, not inside ProcurementProjectLot
+    for tqr in root.findall(
+        ".//cac:TenderingTerms/cac:TendererQualificationRequest", _NS
+    ):
+        # Skip if already found inside a lot
+        code_el = tqr.find(
+            "cac:SpecificTendererRequirement/cbc:TendererRequirementTypeCode", _NS
+        )
+        if code_el is not None and code_el.get("listName") == "exclusion-ground":
+            # Avoid duplicates
+            if not any(eg.code == code_el.text for eg in notice.exclusion_grounds):
+                ground = ExclusionGround()
+                ground.code = code_el.text
+                ground.description = _text(tqr, "cbc:Description")
+                notice.exclusion_grounds.append(ground)
 
 
 def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
