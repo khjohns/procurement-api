@@ -95,6 +95,35 @@ def get_activities_by_action(activities: list[dict], action: str) -> list[dict]:
     return result
 
 
+def build_org_lookup(activities: list[dict]) -> dict[str, str]:
+    """Build org-id → org-name mapping from all activities with organization info.
+
+    REJECT_PARTICIPATION events have empty organization but contain
+    description.lotResponseId. Other activity types (SUBMIT_BID, CREATE_TENDER,
+    etc.) carry organization.name + organization.id which we can use.
+    """
+    lookup: dict[str, str] = {}
+    for a in activities:
+        org = a.get("organization") or {}
+        org_id = org.get("id")
+        org_name = org.get("name")
+        if org_id and org_name:
+            lookup[org_id] = org_name
+    return lookup
+
+
+def get_org_name(activity: dict, org_lookup: dict[str, str]) -> str:
+    """Get organization name from activity, falling back to org_lookup."""
+    org = activity.get("organization") or {}
+    name = org.get("name")
+    if name:
+        return name
+    org_id = org.get("id")
+    if org_id and org_id in org_lookup:
+        return org_lookup[org_id]
+    return "Ukjent leverandør"
+
+
 def parse_submission_deadline(procurement: dict) -> datetime | None:
     """Parse the submission deadline from timeline."""
     date_str = get_timeline_date(procurement, "submission")

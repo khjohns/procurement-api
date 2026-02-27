@@ -29,7 +29,7 @@ def docx_setup(doc):
         section.right_margin = Cm(2.0)
 
     # Heading styles: set font explicitly (headings override Normal font)
-    for level in ("Heading 1", "Heading 2", "Heading 3"):
+    for level in ("Heading 1", "Heading 2", "Heading 3", "Heading 4"):
         style = doc.styles[level]
         style.font.name = _FONT
 

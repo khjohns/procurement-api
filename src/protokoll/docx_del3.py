@@ -10,10 +10,12 @@ from docx import Document as DocxDocument
 from .common import (
     ALL_PROCEDURES,
     PROCEDURE_MAP,
+    build_org_lookup,
     fmt_currency,
     fmt_date,
     fmt_datetime,
     get_activities_by_action,
+    get_org_name,
     get_timeline_date,
     parse_submission_deadline,
     strip_html,
@@ -30,8 +32,8 @@ from .docx_helpers import (
 )
 
 
-def _general_info(doc, procurement, activities):
-    doc.add_heading("Generell informasjon", level=2)
+def _general_info(doc, procurement, activities, org_lookup):
+    doc.add_heading("Generell informasjon", level=3)
 
     seq_id = procurement.get("sequenceId") or ""
     ext_id = procurement.get("externalId") or ""
@@ -88,8 +90,7 @@ def _general_info(doc, procurement, activities):
     if submissions:
         rows = []
         for s in submissions:
-            org = s.get("organization") or {}
-            org_name = org.get("name") or "Ukjent leverandør"
+            org_name = get_org_name(s, org_lookup)
             date = fmt_datetime(s.get("date"))
             rows.append((org_name, date))
         docx_add_table(doc, ["Leverandørens navn", "Tidspunkt for mottak"], rows)
@@ -98,7 +99,7 @@ def _general_info(doc, procurement, activities):
 
 
 def _procedure(doc, procurement, activities):
-    doc.add_heading("Anskaffelsesprosedyre", level=2)
+    doc.add_heading("Anskaffelsesprosedyre", level=3)
     doc.add_paragraph("Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:")
 
     procedure = procurement.get("procedure") or ""
@@ -159,9 +160,14 @@ def _procedure(doc, procurement, activities):
         ("Kunngjøring:", kunngj_str),
     ])
 
+    # Betingede lovkrav (§ 22-4 og § 25-5 (2) bokstav f)
+    p = doc.add_paragraph()
+    add_checkbox(p, "Unntak fra krav om elektronisk kommunikasjon ved mottak av tilbud")
+    add_manual(p, " [Fyll inn begrunnelse, jf. FOA \u00a7 22-4]")
 
-def _formal_rejection(doc, activities):
-    doc.add_heading("Avvisning på grunn av formalfeil, jf. FOA \u00a7 24-1", level=2)
+
+def _formal_rejection(doc, activities, org_lookup):
+    doc.add_heading("Avvisning på grunn av formalfeil, jf. FOA \u00a7 24-1", level=3)
 
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
@@ -175,8 +181,7 @@ def _formal_rejection(doc, activities):
 
     rows = []
     for r in rejections:
-        org = r.get("organization") or {}
-        org_name = org.get("name") or "Ukjent"
+        org_name = get_org_name(r, org_lookup)
         date = fmt_date(r.get("date"))
         rows.append((org_name, None, date))
     docx_add_table_with_manual(doc,
@@ -184,7 +189,7 @@ def _formal_rejection(doc, activities):
 
 
 def _preliminary_qualification(doc, procedure):
-    doc.add_heading("Foreløpig kvalifikasjonsvurdering, jf. FOA \u00a7 17-1 annet ledd", level=2)
+    doc.add_heading("Foreløpig kvalifikasjonsvurdering, jf. FOA \u00a7 17-1 annet ledd", level=3)
 
     if procedure == "Open":
         doc.add_paragraph("Ikke relevant (åpen anbudskonkurranse).")
@@ -196,7 +201,7 @@ def _preliminary_qualification(doc, procedure):
 
 
 def _qualification(doc):
-    doc.add_heading("Kvalifikasjonsvurdering", level=2)
+    doc.add_heading("Kvalifikasjonsvurdering", level=3)
     p = doc.add_paragraph()
     add_manual(p, "[Kvalifikasjonskrav og -vurdering er ikke tilgjengelig via API. Fyll inn basert på konkurransegrunnlaget.]")
 
@@ -206,8 +211,8 @@ def _qualification(doc):
     ])
 
 
-def _supplier_rejection(doc, activities):
-    doc.add_heading("Leverandører som er avvist, jf. FOA \u00a7 24-2", level=2)
+def _supplier_rejection(doc, activities, org_lookup):
+    doc.add_heading("Leverandører som er avvist, jf. FOA \u00a7 24-2", level=3)
 
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     if not rejections:
@@ -219,8 +224,7 @@ def _supplier_rejection(doc, activities):
     doc.add_paragraph("Følgende leverandører ble avvist:")
     rows = []
     for r in rejections:
-        org = r.get("organization") or {}
-        org_name = org.get("name") or "Ukjent"
+        org_name = get_org_name(r, org_lookup)
         date = fmt_date(r.get("date"))
         rows.append((org_name, None, date))
     docx_add_table_with_manual(doc,
@@ -228,7 +232,7 @@ def _supplier_rejection(doc, activities):
 
 
 def _supplier_selection(doc, procedure, activities):
-    doc.add_heading("Utvelgelse av leverandører", level=2)
+    doc.add_heading("Utvelgelse av leverandører", level=3)
 
     if procedure == "Open":
         doc.add_paragraph("Ikke relevant (åpen anbudskonkurranse — ingen utvelgelsesfase).")
@@ -254,14 +258,29 @@ def _supplier_selection(doc, procedure, activities):
 
 
 def _bid_rejection(doc):
-    doc.add_heading("Tilbud som er avvist, jf. FOA \u00a7\u00a7 24-8 og 24-9", level=2)
+    doc.add_heading("Tilbud som er avvist, jf. FOA \u00a7\u00a7 24-8 og 24-9", level=3)
     p = doc.add_paragraph()
     add_checkbox(p, "Ingen tilbud ble avvist")
     add_manual(p, " [Bekreft]")
 
+    docx_add_table_with_manual(doc,
+        ["Leverandørens navn", "Begrunnelsen for avvisningen", "Dato sendt"],
+        [(None, None, None)])
 
-def _clarification(doc, procurement, activities):
-    doc.add_heading("Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA \u00a7 23-5", level=2)
+    # Unormalt lave tilbud (§ 24-9)
+    doc.add_heading("Unormalt lave tilbud, jf. FOA \u00a7 24-9", level=4)
+    p = doc.add_paragraph()
+    add_checkbox(p, "Ingen tilbud vurdert som unormalt lave")
+    add_manual(p, " [Bekreft]")
+
+    docx_info_table(doc, [
+        ("Leverandør(er) bedt om redegjørelse:", None),
+        ("Vurdering av redegjørelsen:", None),
+    ])
+
+
+def _clarification(doc, procurement, activities, org_lookup):
+    doc.add_heading("Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA \u00a7 23-5", level=3)
 
     submission_deadline = parse_submission_deadline(procurement)
     conversations = get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
@@ -290,8 +309,7 @@ def _clarification(doc, procurement, activities):
     doc.add_paragraph("F\u00f8lgende avklaringer/ettersendinger ble gjennomf\u00f8rt etter tilbudsfrist:")
     rows = []
     for c in post_deadline_convs:
-        org = c.get("organization") or {}
-        org_name = org.get("name") or "Ukjent"
+        org_name = get_org_name(c, org_lookup)
         date = fmt_date(c.get("date"))
         desc = c.get("description") or {}
         title = desc.get("conversationTitle") or ""
@@ -301,7 +319,7 @@ def _clarification(doc, procurement, activities):
 
 
 def _negotiations(doc, procedure):
-    doc.add_heading("Forhandlinger", level=2)
+    doc.add_heading("Forhandlinger", level=3)
 
     if procedure in ("Competitive negotiated", "Innovation partnership"):
         p = doc.add_paragraph()
@@ -317,7 +335,7 @@ def _negotiations(doc, procedure):
 
 
 def _dialog(doc, procedure):
-    doc.add_heading("Dialog", level=2)
+    doc.add_heading("Dialog", level=3)
 
     if procedure == "Competitive dialogue":
         p = doc.add_paragraph()
@@ -332,27 +350,24 @@ def _dialog(doc, procedure):
         doc.add_paragraph(f"Ikke relevant ({label}).")
 
 
-def _bids_in_evaluation(doc, activities):
-    doc.add_heading("Tilbud som er med i tildelingsvurderingen", level=2)
+def _bids_in_evaluation(doc, activities, org_lookup):
+    doc.add_heading("Tilbud som er med i tildelingsvurderingen", level=3)
 
     submissions = get_activities_by_action(activities, "SUBMIT_BID")
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     withdrawals = get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
 
     rejected_names = {
-        (r.get("organization") or {}).get("name", "").lower()
-        for r in rejections
+        get_org_name(r, org_lookup).lower() for r in rejections
     }
     withdrawn_names = {
-        (w.get("organization") or {}).get("name", "").lower()
-        for w in withdrawals
+        get_org_name(w, org_lookup).lower() for w in withdrawals
     }
     excluded = rejected_names | withdrawn_names
 
     evaluated = []
     for s in submissions:
-        org = s.get("organization") or {}
-        name = org.get("name") or "Ukjent"
+        name = get_org_name(s, org_lookup)
         if name.lower() not in excluded:
             evaluated.append(name)
 
@@ -364,7 +379,7 @@ def _bids_in_evaluation(doc, activities):
 
 
 def _award(doc, procurement, activities):
-    doc.add_heading("Det (de) valgte tilbud med begrunnelse og kontraktsverdi", level=2)
+    doc.add_heading("Det (de) valgte tilbud med begrunnelse og kontraktsverdi", level=3)
     p = doc.add_paragraph()
     add_manual(p, "[Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. API gir kun tenderIds, ikke leverandørnavn eller begrunnelse.]")
 
@@ -398,7 +413,7 @@ def _award(doc, procurement, activities):
 
 
 def _framework_agreement(doc, procurement):
-    doc.add_heading("Tildeling av rammeavtaler", level=2)
+    doc.add_heading("Tildeling av rammeavtaler", level=3)
 
     is_framework = procurement.get("framework_agreement_involved")
     if not is_framework:
@@ -425,8 +440,38 @@ def _framework_agreement(doc, procurement):
         ])
 
 
+def _market_dialogue_and_conflicts(doc):
+    """Dialog med markedet og habilitet, jf. FOA kap. 12 og § 7-5."""
+    doc.add_heading("Dialog med markedet og habilitet", level=3)
+
+    # Kap. 12 — Dialog med markedet før konkurranse
+    doc.add_heading("Dialog med markedet f\u00f8r konkurranse, jf. FOA kap. 12", level=4)
+
+    p = doc.add_paragraph()
+    add_checkbox(p, "Ingen forberedende unders\u00f8kelser eller dialog med leverand\u00f8rer f\u00f8r konkurransen")
+    add_manual(p, " [Bekreft]")
+
+    docx_info_table(doc, [
+        ("Forberedende unders\u00f8kelser (jf. FOA \u00a7 12-1):", None),
+        ("Leverand\u00f8r(er) som deltok i dialog f\u00f8r konkurransen (jf. FOA \u00a7 12-2):", None),
+        ("Avhjelpende tiltak for \u00e5 sikre konkurranse:", None),
+    ])
+
+    # § 7-5 — Habilitet
+    doc.add_heading("Habilitet, jf. FOA \u00a7 7-5", level=4)
+
+    p = doc.add_paragraph()
+    add_checkbox(p, "Ingen habilitetskonflikter identifisert")
+    add_manual(p, " [Bekreft]")
+
+    docx_info_table(doc, [
+        ("Inhabilitet eller konkurransevridning:", None),
+        ("Eventuelle avhjelpende tiltak:", None),
+    ])
+
+
 def _other(doc, procurement):
-    doc.add_heading("Andre opplysninger og avslutning", level=2)
+    doc.add_heading("Andre opplysninger og avslutning", level=3)
 
     is_cancelled = procurement.get("isCancelled")
     if is_cancelled:
@@ -438,13 +483,12 @@ def _other(doc, procurement):
     docx_info_table(doc, [
         ("Underleverandører (hvilke deler av kontrakten, navn):", None),
         ("Begrunnelse for avlysning, jf. FOA \u00a7 25-4:", cancel_str),
-        ("Inhabilitet eller konkurransevridning, og eventuelle avhjelpende tiltak:", None),
         ("Andre opplysninger, vesentlige forhold eller viktige beslutninger:", None),
     ])
 
 
 def _data_quality(doc, procurement, activities):
-    doc.add_heading("Datakvalitet \u2014 API vs. manuelt", level=2)
+    doc.add_heading("Datakvalitet \u2014 API vs. manuelt", level=3)
     add_instruction(doc, "Intern oversikt \u2014 ikke del av den formelle protokollen. Viser hvilke seksjoner som er fylt ut automatisk fra API-data og hvilke som krever manuell utfylling.")
 
     submissions = get_activities_by_action(activities, "SUBMIT_BID")
@@ -465,21 +509,34 @@ def _data_quality(doc, procurement, activities):
                 pass
 
     rows = [
+        # Rammeverk
         ("Generell informasjon", "API", "Komplett"),
         ("Tidspunkt for mottak", "API (SUBMIT_BID)", "Komplett" if submissions else "Ingen tilbud registrert"),
         ("Prosedyretype", "API (procedure)", "Komplett"),
         ("Kunngjøring", f"API {'(DOFFIN_NOTICE)' if doffin or publish else ''}", "Komplett" if doffin or publish else "Trenger bekreftelse"),
-        ("Avvisning (formalfeil)", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
+        ("Delkontrakter (begrunnelse)", "Manuelt", "Ikke i API"),
+        ("Elektronisk kommunikasjon", "Manuelt", "Betinget \u2014 kun ved unntak"),
+        # Kvalifisering
         ("Kvalifikasjonsvurdering", "Manuelt", "Ikke i API"),
-        ("Avvisning av leverandører", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Begrunnelse mangler" if rejections else "Trenger bekreftelse"),
-        ("Avvisning av tilbud", "API (ingen hendelser)", "Trenger bekreftelse"),
+        ("Utvelgelse", "Manuelt", "Betinget \u2014 kun begrenset/forhandlet"),
+        # Avvisning
+        ("Avvisning formalfeil \u00a7 24-1", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Trenger manuell klassifisering" if rejections else "Trenger bekreftelse"),
+        ("Avvisning leverandører \u00a7 24-2", f"API ({len(rejections)} hendelser)" if rejections else "API (ingen hendelser)", "Begrunnelse mangler" if rejections else "Trenger bekreftelse"),
+        ("Avvisning tilbud \u00a7\u00a7 24-8/24-9", "API (ingen hendelser)", "Trenger bekreftelse"),
+        ("Unormalt lave tilbud \u00a7 24-9", "Manuelt", "Ikke i API"),
+        # Ettersending, forhandlinger og dialog
         ("Ettersending/avklaring", f"API ({len(post_deadline)} meldinger etter frist)" if post_deadline else "API (ingen hendelser)", "Innhold mangler" if post_deadline else "Trenger bekreftelse"),
+        ("Forhandlinger", "Manuelt", "Betinget \u2014 kun forhandlet prosedyre"),
+        ("Dialog", "Manuelt", "Betinget \u2014 kun konkurransepreget dialog"),
+        # Tildeling
         ("Tilbud i vurdering", "API (SUBMIT_BID)", "Komplett" if submissions else "Ingen"),
         ("Valgte tilbud + begrunnelse", "Manuelt", "API har kun tenderIds"),
         ("Meddelelsesbrev/karens", "Manuelt", "Kun flag, ikke datoer"),
-        ("Delkontrakter (begrunnelse)", "Manuelt", "Ikke i API"),
+        ("Rammeavtale", "API", "Betinget"),
+        # Avslutning
+        ("Markedsdialog/inhabilitet", "Manuelt", "Ikke i API"),
         ("Underleverandører", "Manuelt", "Ikke i API"),
-        ("Inhabilitet", "Manuelt", "Ikke i API"),
+        ("Avlysning", "API (isCancelled)", "Betinget"),
     ]
     docx_add_table(doc, ["Seksjon", "Kilde", "Merknad"], rows)
 
@@ -494,24 +551,37 @@ def generate_protokoll_docx(procurement: dict, activities: list[dict]) -> DocxDo
 
     doc = DocxDocument()
     docx_setup(doc)
+    org_lookup = build_org_lookup(activities)
 
     doc.add_heading(f"ANSKAFFELSESPROTOKOLL — {seq_id}", level=1)
     docx_subtitle(doc, seq_id, today)
 
-    _general_info(doc, procurement, activities)
+    doc.add_heading("Rammeverk", level=2)
+    _general_info(doc, procurement, activities, org_lookup)
     _procedure(doc, procurement, activities)
-    _formal_rejection(doc, activities)
+
+    doc.add_heading("Kvalifisering", level=2)
     _preliminary_qualification(doc, procedure)
     _qualification(doc)
-    _supplier_rejection(doc, activities)
     _supplier_selection(doc, procedure, activities)
+
+    doc.add_heading("Avvisning", level=2)
+    _formal_rejection(doc, activities, org_lookup)
+    _supplier_rejection(doc, activities, org_lookup)
     _bid_rejection(doc)
-    _clarification(doc, procurement, activities)
+
+    doc.add_heading("Ettersending, forhandlinger og dialog", level=2)
+    _clarification(doc, procurement, activities, org_lookup)
     _negotiations(doc, procedure)
     _dialog(doc, procedure)
-    _bids_in_evaluation(doc, activities)
+
+    doc.add_heading("Tildeling", level=2)
+    _bids_in_evaluation(doc, activities, org_lookup)
     _award(doc, procurement, activities)
     _framework_agreement(doc, procurement)
+
+    doc.add_heading("Avslutning", level=2)
+    _market_dialogue_and_conflicts(doc)
     _other(doc, procurement)
     _data_quality(doc, procurement, activities)
 

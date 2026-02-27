@@ -10,6 +10,7 @@ from docx import Document as DocxDocument
 from .common import (
     ALL_DEL2_PROCEDURES,
     DEL2_PROCEDURE_MAP,
+    build_org_lookup,
     fmt_currency,
     fmt_date,
     fmt_datetime,
@@ -457,6 +458,7 @@ def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> D
 
     doc = DocxDocument()
     docx_setup(doc)
+    org_lookup = build_org_lookup(activities)
 
     doc.add_heading(f"ANSKAFFELSESPROTOKOLL for anskaffelser etter forskriften del II — {seq_id}", level=1)
     docx_subtitle(doc, seq_id, today)
@@ -479,10 +481,10 @@ def generate_protokoll_docx_del2(procurement: dict, activities: list[dict]) -> D
     _bid_rejection(doc)
 
     # Tildeling
-    _bids_in_evaluation(doc, activities)  # reused from Del III
+    _bids_in_evaluation(doc, activities, org_lookup)
     _award(doc, procurement, activities)
     _award_notification(doc, procurement)
-    _framework_agreement(doc, procurement)  # reused from Del III
+    _framework_agreement(doc, procurement)
 
     # Avslutning
     _other(doc, procurement)

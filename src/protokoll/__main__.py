@@ -24,7 +24,7 @@ _PROJECT_ROOT = _SRC_DIR.parent
 sys.path.insert(0, str(_SRC_DIR))
 
 from app.client import ArtifikClient  # noqa: E402
-from protokoll.common import (
+from protokoll.common import (  # noqa: E402
     fmt_date,
     get_activities_by_action,
     get_timeline_date,
