@@ -193,6 +193,60 @@ Sidebar (228px) with same canvas background, border-separated:
 - Active item: amber background tint + amber text
 - User footer: avatar circle + name + organization
 
+### Method Toggle
+
+- Segmented control: `--felt` background, `--wire` border, `--r-md` radius
+- Buttons: 12px, weight 500, `--ink-secondary`
+- Active: `--vekt-bg-strong` background, `--vekt` text, weight 600
+- Placed between header and ranking strip
+
+### Config Strip (Prismodell)
+
+- Horizontal flex row, `--felt` surface, `--wire` border, `--r-md` radius
+- Labels: 11px, weight 500, `--ink-muted`
+- Inputs: `--canvas` background (inset feel), `--font-data`, right-aligned
+- Shows kontraktsverdi + per-supplier prices
+- Hidden by default, visible when prismodell active
+
+### Prismodell Matrix
+
+- Same matrix structure as poengmodell
+- Weight column → "Maks fradrag" in kr (monospace, 11px)
+- Supplier columns → "Fradrag" in kr with `+` prefix on group rows
+- Color coding: `.fradrag-low` (green), `.fradrag-mid` (neutral), `.fradrag-high` (rose), `.fradrag-best` (green bg)
+- Bottom rows: Tilbudt pris → Sum kvalitetsfradrag → Evaluert pris
+- Result row: 16px, weight 700, best = amber
+
+### Innsikt Panel
+
+- Collapsible section below matrix, toggle arrow rotates on collapse
+- Three tabs: Betalingsvilje, Robusthet, Metodekontroll
+- Tabs: flex row, `--wire` bottom border, active = `--vekt` text + amber bottom border (2px)
+- Content panes: `--sp-5` padding
+
+**Betalingsvilje tab:**
+- Data table (`.bv-table`) with criterion, weight, implisitt maks fradrag, per-poeng value
+- Sub-criteria indented with `::before` dash (mirrors matrix pattern)
+- Summary card: `--vekt-bg` background, `--vekt` left border (3px), highlights in amber monospace
+
+**Robusthet tab:**
+- Ranking items: `--felt-raised` background, `--wire` border, leader = amber border
+- Insight cards: `--felt-raised` surface, `--vekt` left border (3px), section label + text
+- Key data in `.mono` spans (amber, monospace)
+
+**Metodekontroll tab:**
+- Side-by-side grid (2 columns) comparing poengmodell vs prismodell rankings
+- Each column: `--felt-raised`, `--wire` border, `--r-md` radius
+- Verdict bar: `.match` (green bg) or `.mismatch` (rose bg) with icon + text
+
+---
+
+## View Switching
+
+- `.view-poeng` and `.view-pris` containers toggle via `.active` class
+- Both share the same matrix CSS patterns, different data columns
+- Method toggle drives visibility of views and config strip
+
 ---
 
 ## States
@@ -201,4 +255,7 @@ Sidebar (228px) with same canvas background, border-separated:
 - **Hover (score cells):** same + cursor pointer
 - **Focus (inputs):** `border-color: var(--wire-focus)` (amber)
 - **Active (score segment):** solid green background
+- **Active (method btn):** amber background tint + amber text
+- **Active (innsikt tab):** amber text + amber bottom border
+- **Collapsed (innsikt):** toggle icon rotates -90deg, body hidden
 - **Status badge:** pill with pulsing dot, amber background

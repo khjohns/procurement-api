@@ -849,10 +849,531 @@
       background: var(--vekt-dim);
     }
 
+    /* ── Method toggle ── */
+    .method-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-6);
+    }
+
+    .method-toggle {
+      display: inline-flex;
+      background: var(--felt);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-md);
+      padding: 3px;
+    }
+
+    .method-btn {
+      padding: var(--sp-2) var(--sp-4);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      background: transparent;
+      border: none;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: -0.005em;
+    }
+
+    .method-btn:hover { color: var(--ink); }
+
+    .method-btn.active {
+      background: var(--vekt-bg-strong);
+      color: var(--vekt);
+      font-weight: 600;
+    }
+
+    .method-info {
+      font-size: 11px;
+      color: var(--ink-ghost);
+    }
+
+    /* ── Config strip (prismodell inputs) ── */
+    .config-strip {
+      display: none;
+      flex-wrap: wrap;
+      gap: var(--sp-4);
+      align-items: center;
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--felt);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-md);
+      margin-bottom: var(--sp-6);
+    }
+
+    .config-strip.visible { display: flex; }
+
+    .config-field {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    .config-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      white-space: nowrap;
+    }
+
+    .config-input {
+      width: 112px;
+      padding: var(--sp-1) var(--sp-2);
+      background: var(--canvas);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-sm);
+      color: var(--ink);
+      font-family: var(--font-data);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      outline: none;
+      transition: border-color 0.12s;
+    }
+
+    .config-input:focus { border-color: var(--wire-focus); }
+
+    .config-unit {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--ink-ghost);
+    }
+
+    .config-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--wire);
+    }
+
+    /* ── View containers ── */
+    .view-poeng, .view-pris { display: none; }
+    .view-poeng.active, .view-pris.active { display: block; }
+
+    /* ── Pris-specific matrix cells ── */
+    .cell-pris {
+      text-align: center;
+      font-family: var(--font-data);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      position: relative;
+    }
+
+    .pris-value {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      padding: var(--sp-1) var(--sp-2);
+      border-radius: var(--r-sm);
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .pris-prefix {
+      font-size: 10px;
+      color: var(--ink-ghost);
+      font-weight: 400;
+    }
+
+    .fradrag-low .pris-value { color: var(--høy); }
+    .fradrag-mid .pris-value { color: var(--ink); }
+    .fradrag-high .pris-value { color: var(--lav); }
+
+    .fradrag-best .pris-value {
+      background: var(--høy-bg);
+      color: var(--høy);
+      font-weight: 600;
+    }
+
+    .row-pris-sum td {
+      background: var(--canvas);
+      border-top: 1px solid var(--wire-strong);
+      padding-top: var(--sp-3);
+      padding-bottom: var(--sp-2);
+    }
+
+    .row-pris-sum td:first-child { border-left: 3px solid var(--vekt); }
+
+    .row-pris-sum .cell-criteria {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--ink-secondary);
+    }
+
+    .row-pris-result td {
+      background: var(--canvas);
+      border-bottom: none;
+      padding-top: var(--sp-2);
+      padding-bottom: var(--sp-4);
+    }
+
+    .row-pris-result td:first-child { border-left: 3px solid var(--vekt); }
+
+    .row-pris-result .cell-criteria {
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-secondary);
+    }
+
+    .row-pris-result .cell-pris .pris-value {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .row-pris-result .fradrag-best .pris-value {
+      color: var(--vekt);
+      background: var(--vekt-bg);
+      padding: var(--sp-1) var(--sp-3);
+    }
+
+    /* ── Innsikt panel ── */
+    .innsikt {
+      margin-top: var(--sp-8);
+    }
+
+    .innsikt-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: var(--sp-2) 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-ghost);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: color 0.12s;
+    }
+
+    .innsikt-toggle:hover { color: var(--ink-muted); }
+
+    .innsikt-toggle-icon {
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .innsikt.collapsed .innsikt-toggle-icon { transform: rotate(-90deg); }
+    .innsikt.collapsed .innsikt-body { display: none; }
+
+    .innsikt-body {
+      margin-top: var(--sp-3);
+      background: var(--felt);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+
+    .innsikt-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--wire);
+    }
+
+    .innsikt-tab {
+      flex: 1;
+      padding: var(--sp-3) var(--sp-4);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      transition: all 0.12s;
+    }
+
+    .innsikt-tab:hover {
+      color: var(--ink-secondary);
+      background: var(--felt-hover);
+    }
+
+    .innsikt-tab.active {
+      color: var(--vekt);
+      border-bottom-color: var(--vekt);
+      font-weight: 600;
+    }
+
+    .innsikt-pane { display: none; padding: var(--sp-5); }
+    .innsikt-pane.active { display: block; }
+
+    /* ── Betalingsvilje table ── */
+    .bv-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .bv-table th {
+      padding: var(--sp-2) var(--sp-3);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-ghost);
+      text-align: left;
+      border-bottom: 1px solid var(--wire);
+    }
+
+    .bv-table th.num { text-align: right; }
+
+    .bv-table td {
+      padding: var(--sp-2) var(--sp-3);
+      font-size: 12px;
+      border-bottom: 1px solid var(--wire);
+    }
+
+    .bv-table tr:last-child td { border-bottom: none; }
+
+    .bv-table .bv-criterion {
+      color: var(--ink-secondary);
+      font-weight: 500;
+    }
+
+    .bv-table .bv-sub {
+      padding-left: var(--sp-8);
+      color: var(--ink-muted);
+      position: relative;
+    }
+
+    .bv-table .bv-sub::before {
+      content: '';
+      position: absolute;
+      left: var(--sp-5);
+      top: 50%;
+      width: 6px;
+      height: 1px;
+      background: var(--ink-ghost);
+    }
+
+    .bv-table .bv-weight {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--vekt-dim);
+      text-align: right;
+    }
+
+    .bv-table .bv-value {
+      font-family: var(--font-data);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      color: var(--ink);
+    }
+
+    .bv-table .bv-per-point {
+      font-family: var(--font-data);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      color: var(--ink-muted);
+    }
+
+    .bv-table .bv-total td {
+      border-top: 1px solid var(--wire-strong);
+      font-weight: 600;
+    }
+
+    .bv-summary {
+      margin-top: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--vekt-bg);
+      border-radius: var(--r-sm);
+      border-left: 3px solid var(--vekt);
+      font-size: 12px;
+      color: var(--ink-secondary);
+      line-height: 1.6;
+    }
+
+    .bv-summary strong { color: var(--ink); font-weight: 600; }
+
+    .bv-summary .bv-highlight {
+      color: var(--vekt);
+      font-family: var(--font-data);
+      font-weight: 600;
+    }
+
+    /* ── Robusthet ── */
+    .robusthet-ranking {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-5);
+    }
+
+    .robusthet-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--felt-raised);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--wire);
+    }
+
+    .robusthet-item.leader { border-color: rgba(232, 168, 56, 0.18); }
+
+    .robusthet-rank {
+      font-family: var(--font-data);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-ghost);
+      width: 20px;
+    }
+
+    .robusthet-item.leader .robusthet-rank { color: var(--vekt-dim); }
+
+    .robusthet-name {
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .robusthet-score {
+      font-family: var(--font-data);
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .robusthet-item.leader .robusthet-score { color: var(--vekt); }
+
+    .robusthet-margin {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--ink-muted);
+      width: 72px;
+      text-align: right;
+    }
+
+    .robusthet-insights {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+
+    .robusthet-insight {
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--felt-raised);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--wire);
+      border-left: 3px solid var(--vekt);
+    }
+
+    .robusthet-insight-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-ghost);
+      margin-bottom: var(--sp-1);
+    }
+
+    .robusthet-insight-text {
+      font-size: 12px;
+      color: var(--ink-secondary);
+      line-height: 1.5;
+    }
+
+    .robusthet-insight-text strong { color: var(--ink); font-weight: 600; }
+
+    .robusthet-insight-text .mono {
+      font-family: var(--font-data);
+      color: var(--vekt);
+      font-weight: 600;
+    }
+
+    /* ── Metodekontroll ── */
+    .mk-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-5);
+    }
+
+    .mk-column {
+      background: var(--felt-raised);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+
+    .mk-column-header {
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--wire);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-muted);
+    }
+
+    .mk-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--wire);
+    }
+
+    .mk-row:last-child { border-bottom: none; }
+
+    .mk-rank {
+      font-family: var(--font-data);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-ghost);
+      width: 20px;
+    }
+
+    .mk-row:first-child .mk-rank { color: var(--vekt-dim); }
+
+    .mk-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .mk-value {
+      font-family: var(--font-data);
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mk-row:first-child .mk-value { color: var(--vekt); }
+
+    .mk-verdict {
+      padding: var(--sp-3) var(--sp-4);
+      border-radius: var(--r-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      font-size: 12px;
+    }
+
+    .mk-verdict.match {
+      background: var(--høy-bg);
+      border: 1px solid rgba(61, 154, 110, 0.15);
+      color: var(--høy);
+    }
+
+    .mk-verdict-icon { font-size: 14px; }
+    .mk-verdict-text { font-weight: 500; }
+
     /* ── Responsive minimum ── */
     @media (max-width: 1024px) {
       .sidebar { display: none; }
       .workspace { padding: var(--sp-4); }
+      .mk-comparison { grid-template-columns: 1fr; }
+      .config-strip { gap: var(--sp-3); }
     }
 
     /* ── Utility ── */
@@ -915,6 +1436,45 @@
           </div>
         </div>
       </header>
+
+      <!-- ── Method toggle ── -->
+      <div class="method-section">
+        <div class="method-toggle">
+          <button class="method-btn active" data-method="poeng">Poengmodell</button>
+          <button class="method-btn" data-method="pris">Prismodell</button>
+        </div>
+        <span class="method-info">Vekt kvalitet 75 % / pris 25 %</span>
+      </div>
+
+      <!-- ── Config strip (prismodell — hidden by default) ── -->
+      <div class="config-strip" id="config-strip">
+        <div class="config-field">
+          <span class="config-label">Kontraktsverdi</span>
+          <input class="config-input" type="text" value="8 000 000" id="config-kontraktsverdi">
+          <span class="config-unit">kr</span>
+        </div>
+        <div class="config-sep"></div>
+        <div class="config-field">
+          <span class="config-label">Bouvet</span>
+          <input class="config-input" type="text" value="7 800 000">
+          <span class="config-unit">kr</span>
+        </div>
+        <div class="config-field">
+          <span class="config-label">Sopra Steria</span>
+          <input class="config-input" type="text" value="8 200 000">
+          <span class="config-unit">kr</span>
+        </div>
+        <div class="config-field">
+          <span class="config-label">Knowit</span>
+          <input class="config-input" type="text" value="7 500 000">
+          <span class="config-unit">kr</span>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════ -->
+      <!-- ═══ POENGMODELL VIEW ═══ -->
+      <!-- ══════════════════════════════════ -->
+      <div class="view-poeng active">
 
       <!-- ── Ranking strip ── -->
       <div class="section-label">Rangering</div>
@@ -1325,14 +1885,594 @@
         </div>
       </div>
 
+      </div><!-- /.view-poeng -->
+
+      <!-- ══════════════════════════════════ -->
+      <!-- ═══ PRISMODELL VIEW ═══ -->
+      <!-- ══════════════════════════════════ -->
+      <div class="view-pris">
+
+      <!-- ── Ranking strip (pris) ── -->
+      <div class="section-label">Rangering etter evaluert pris</div>
+      <div class="ranking-strip">
+        <div class="rank-card rank-1">
+          <div class="rank-card-header">
+            <span class="rank-position">#1</span>
+            <span class="rank-badge">Anbefalt</span>
+          </div>
+          <div class="rank-supplier">Knowit Obiwan AS</div>
+          <div class="rank-score-row">
+            <span class="rank-score" style="font-size: 22px;">8 044 000</span>
+            <span class="rank-max">kr</span>
+          </div>
+          <div class="rank-bar"><div class="rank-bar-fill" style="width: 92%"></div></div>
+        </div>
+
+        <div class="rank-card">
+          <div class="rank-card-header">
+            <span class="rank-position">#2</span>
+          </div>
+          <div class="rank-supplier">Bouvet ASA</div>
+          <div class="rank-score-row">
+            <span class="rank-score" style="font-size: 22px;">8 328 000</span>
+            <span class="rank-max">kr</span>
+          </div>
+          <div class="rank-bar"><div class="rank-bar-fill" style="width: 96%"></div></div>
+        </div>
+
+        <div class="rank-card">
+          <div class="rank-card-header">
+            <span class="rank-position">#3</span>
+          </div>
+          <div class="rank-supplier">Sopra Steria AS</div>
+          <div class="rank-score-row">
+            <span class="rank-score" style="font-size: 22px;">8 712 000</span>
+            <span class="rank-max">kr</span>
+          </div>
+          <div class="rank-bar"><div class="rank-bar-fill" style="width: 100%"></div></div>
+        </div>
+      </div>
+
+      <!-- ── Prismodell matrix ── -->
+      <div class="section-label" style="margin-top: var(--sp-6)">Kvalitetsfradrag</div>
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <colgroup>
+            <col class="col-weight">
+            <col class="col-criteria">
+            <col class="col-supplier">
+            <col class="col-supplier">
+            <col class="col-supplier">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="th-weight">Maks fradrag</th>
+              <th>Kvalitetskriterier</th>
+              <th class="th-supplier">Bouvet ASA</th>
+              <th class="th-supplier">Sopra Steria AS</th>
+              <th class="th-supplier">Knowit Obiwan AS</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- ═══ Group 1: Kompetanse ═══ -->
+            <tr class="row-group">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 11px;">1 120 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Kompetanse og erfaring</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>192 000</span>
+              </td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value"><span class="pris-prefix">+</span>304 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>208 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">480 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Nøkkelpersonellets kvalifikasjoner</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">96 000</span>
+              </td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value">144 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">48 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">320 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Relevante referanseprosjekter</td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">32 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">64 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">96 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub row-group-last">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">320 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Forståelse av oppdraget</td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">64 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">96 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">64 000</span>
+              </td>
+            </tr>
+
+            <!-- ═══ Group 2: Løsningsbeskrivelse ═══ -->
+            <tr class="row-group">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 11px;">960 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Løsningsbeskrivelse</td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value"><span class="pris-prefix">+</span>256 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value"><span class="pris-prefix">+</span>128 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>224 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">480 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Teknisk tilnærming</td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value">144 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">48 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">96 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">320 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Gjennomføringsplan</td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">64 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">64 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">96 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub row-group-last">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">160 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Metodikk og kvalitetssikring</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">48 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">16 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">32 000</span>
+              </td>
+            </tr>
+
+            <!-- ═══ Group 3: Bærekraft ═══ -->
+            <tr class="row-group">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 11px;">320 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Bærekraft og samfunnsansvar</td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value"><span class="pris-prefix">+</span>80 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value"><span class="pris-prefix">+</span>80 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>112 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">160 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Miljøtiltak og sertifiseringer</td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">32 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">48 000</span>
+              </td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value">64 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-sub row-group-last">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 10px; color: var(--ink-muted);">160 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Lærlingordning og mangfold</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">48 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">32 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">48 000</span>
+              </td>
+            </tr>
+
+            <!-- ═══ Summation rows ═══ -->
+            <tr class="row-pris-sum">
+              <td class="cell-weight"></td>
+              <td class="cell-criteria">Tilbudt pris</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">7 800 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">8 200 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">7 500 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-pris-sum">
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num" style="font-size: 11px;">2 400 000</span>
+                </div>
+              </td>
+              <td class="cell-criteria">Sum kvalitetsfradrag</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>528 000</span>
+              </td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value"><span class="pris-prefix">+</span>512 000</span>
+              </td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value"><span class="pris-prefix">+</span>544 000</span>
+              </td>
+            </tr>
+
+            <tr class="row-pris-result">
+              <td class="cell-weight"></td>
+              <td class="cell-criteria">Evaluert pris</td>
+              <td class="cell-pris fradrag-mid">
+                <span class="pris-value">8 328 000</span>
+              </td>
+              <td class="cell-pris fradrag-high">
+                <span class="pris-value">8 712 000</span>
+              </td>
+              <td class="cell-pris fradrag-best">
+                <span class="pris-value">8 044 000</span>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      </div><!-- /.view-pris -->
+
+      <!-- ══════════════════════════════════ -->
+      <!-- ═══ INNSIKT PANEL ═══ -->
+      <!-- ══════════════════════════════════ -->
+      <div class="innsikt">
+        <button class="innsikt-toggle">
+          <span class="innsikt-toggle-icon">&#9662;</span>
+          Innsikt
+        </button>
+        <div class="innsikt-body">
+          <div class="innsikt-tabs">
+            <button class="innsikt-tab active" data-pane="betalingsvilje">Betalingsvilje</button>
+            <button class="innsikt-tab" data-pane="robusthet">Robusthet</button>
+            <button class="innsikt-tab" data-pane="metodekontroll">Metodekontroll</button>
+          </div>
+
+          <!-- ── Tab 1: Betalingsvilje ── -->
+          <div class="innsikt-pane active" id="pane-betalingsvilje">
+            <table class="bv-table">
+              <thead>
+                <tr>
+                  <th>Kriterium</th>
+                  <th class="num">Vekt</th>
+                  <th class="num">Implisitt maks fradrag</th>
+                  <th class="num">Per poeng</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="bv-criterion">Kompetanse og erfaring</td>
+                  <td class="bv-weight">35 %</td>
+                  <td class="bv-value">1 120 000 kr</td>
+                  <td class="bv-per-point">112 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Nøkkelpersonell</td>
+                  <td class="bv-weight">15 %</td>
+                  <td class="bv-value">480 000 kr</td>
+                  <td class="bv-per-point">48 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Referanseprosjekter</td>
+                  <td class="bv-weight">10 %</td>
+                  <td class="bv-value">320 000 kr</td>
+                  <td class="bv-per-point">32 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Forståelse av oppdraget</td>
+                  <td class="bv-weight">10 %</td>
+                  <td class="bv-value">320 000 kr</td>
+                  <td class="bv-per-point">32 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-criterion">Løsningsbeskrivelse</td>
+                  <td class="bv-weight">30 %</td>
+                  <td class="bv-value">960 000 kr</td>
+                  <td class="bv-per-point">96 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Teknisk tilnærming</td>
+                  <td class="bv-weight">15 %</td>
+                  <td class="bv-value">480 000 kr</td>
+                  <td class="bv-per-point">48 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Gjennomføringsplan</td>
+                  <td class="bv-weight">10 %</td>
+                  <td class="bv-value">320 000 kr</td>
+                  <td class="bv-per-point">32 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Metodikk og kvalitetssikring</td>
+                  <td class="bv-weight">5 %</td>
+                  <td class="bv-value">160 000 kr</td>
+                  <td class="bv-per-point">16 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-criterion">Bærekraft og samfunnsansvar</td>
+                  <td class="bv-weight">10 %</td>
+                  <td class="bv-value">320 000 kr</td>
+                  <td class="bv-per-point">32 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Miljøtiltak og sertifiseringer</td>
+                  <td class="bv-weight">5 %</td>
+                  <td class="bv-value">160 000 kr</td>
+                  <td class="bv-per-point">16 000 kr</td>
+                </tr>
+                <tr>
+                  <td class="bv-sub">Lærlingordning og mangfold</td>
+                  <td class="bv-weight">5 %</td>
+                  <td class="bv-value">160 000 kr</td>
+                  <td class="bv-per-point">16 000 kr</td>
+                </tr>
+                <tr class="bv-total">
+                  <td class="bv-criterion">Sum kvalitetskriterier</td>
+                  <td class="bv-weight">75 %</td>
+                  <td class="bv-value">2 400 000 kr</td>
+                  <td class="bv-per-point"></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="bv-summary">
+              Med kontraktsverdi <span class="bv-highlight">8 000 000 kr</span> og kvalitetsvekt <strong>75 %</strong>,
+              er total betalingsvilje <span class="bv-highlight">2 400 000 kr</span>.
+              Det betyr at <strong>hvert poeng</strong> du gir p&aring; Nøkkelpersonell tilsvarer
+              <span class="bv-highlight">48 000 kr</span> i prisforskjell.
+              Ga du Knowit 2 poeng mer enn Sopra? Det aksepterer en prisforskjell p&aring; <span class="bv-highlight">96 000 kr</span>.
+            </div>
+          </div>
+
+          <!-- ── Tab 2: Robusthet ── -->
+          <div class="innsikt-pane" id="pane-robusthet">
+            <div class="robusthet-ranking">
+              <div class="robusthet-item leader">
+                <span class="robusthet-rank">#1</span>
+                <span class="robusthet-name">Knowit Obiwan AS</span>
+                <span class="robusthet-score">7.95</span>
+                <span class="robusthet-margin">leder</span>
+              </div>
+              <div class="robusthet-item">
+                <span class="robusthet-rank">#2</span>
+                <span class="robusthet-name">Bouvet ASA</span>
+                <span class="robusthet-score">7.75</span>
+                <span class="robusthet-margin">&minus;0.20</span>
+              </div>
+              <div class="robusthet-item">
+                <span class="robusthet-rank">#3</span>
+                <span class="robusthet-name">Sopra Steria AS</span>
+                <span class="robusthet-score">7.55</span>
+                <span class="robusthet-margin">&minus;0.40</span>
+              </div>
+            </div>
+
+            <div class="robusthet-insights">
+              <div class="robusthet-insight">
+                <div class="robusthet-insight-label">Margin</div>
+                <div class="robusthet-insight-text">
+                  Marginen mellom <strong>#1</strong> og <strong>#2</strong> er <span class="mono">0.20</span> poeng &mdash;
+                  det tilsvarer 1 poengs forskjell p&aring; ett kriterium med 20 % vekt.
+                  Resultatet er <strong>moderat robust</strong>.
+                </div>
+              </div>
+              <div class="robusthet-insight">
+                <div class="robusthet-insight-label">St&oslash;rste p&aring;virkning</div>
+                <div class="robusthet-insight-text">
+                  <strong>Kompetanse og erfaring</strong> (35 %) har st&oslash;rst innvirkning p&aring; resultatet.
+                  Bouvet leder dette kriteriet med <span class="mono">8.29</span> vs Knowits <span class="mono">8.14</span>.
+                  En endring p&aring; 2 poeng her kan endre rangeringen.
+                </div>
+              </div>
+              <div class="robusthet-insight">
+                <div class="robusthet-insight-label">St&oslash;rste spredning</div>
+                <div class="robusthet-insight-text">
+                  <strong>L&oslash;sningsbeskrivelse</strong> har st&oslash;rst spredning mellom leverandørene
+                  (fra <span class="mono">7.33</span> til <span class="mono">8.67</span>).
+                  Sopra Steria skiller seg positivt ut her.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Tab 3: Metodekontroll ── -->
+          <div class="innsikt-pane" id="pane-metodekontroll">
+            <div class="mk-comparison">
+              <div class="mk-column">
+                <div class="mk-column-header">Poengmodell</div>
+                <div class="mk-row">
+                  <span class="mk-rank">#1</span>
+                  <span class="mk-name">Knowit Obiwan AS</span>
+                  <span class="mk-value">7.95</span>
+                </div>
+                <div class="mk-row">
+                  <span class="mk-rank">#2</span>
+                  <span class="mk-name">Bouvet ASA</span>
+                  <span class="mk-value">7.75</span>
+                </div>
+                <div class="mk-row">
+                  <span class="mk-rank">#3</span>
+                  <span class="mk-name">Sopra Steria AS</span>
+                  <span class="mk-value">7.55</span>
+                </div>
+              </div>
+              <div class="mk-column">
+                <div class="mk-column-header">Prismodell</div>
+                <div class="mk-row">
+                  <span class="mk-rank">#1</span>
+                  <span class="mk-name">Knowit Obiwan AS</span>
+                  <span class="mk-value">8 044 000 kr</span>
+                </div>
+                <div class="mk-row">
+                  <span class="mk-rank">#2</span>
+                  <span class="mk-name">Bouvet ASA</span>
+                  <span class="mk-value">8 328 000 kr</span>
+                </div>
+                <div class="mk-row">
+                  <span class="mk-rank">#3</span>
+                  <span class="mk-name">Sopra Steria AS</span>
+                  <span class="mk-value">8 712 000 kr</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mk-verdict match">
+              <span class="mk-verdict-icon">&#10003;</span>
+              <span class="mk-verdict-text">Rangeringen er konsistent mellom metodene. Begge peker p&aring; Knowit som anbefalt leverandør.</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </main>
   </div>
 
   <script>
+    // ── Method toggle ──
+    const methodBtns = document.querySelectorAll('.method-btn');
+    const viewPoeng = document.querySelector('.view-poeng');
+    const viewPris = document.querySelector('.view-pris');
+    const configStrip = document.getElementById('config-strip');
+
+    methodBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        methodBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const method = btn.dataset.method;
+        if (method === 'poeng') {
+          viewPoeng.classList.add('active');
+          viewPris.classList.remove('active');
+          configStrip.classList.remove('visible');
+        } else {
+          viewPoeng.classList.remove('active');
+          viewPris.classList.add('active');
+          configStrip.classList.add('visible');
+        }
+      });
+    });
+
+    // ── Innsikt toggle ──
+    const innsiktPanel = document.querySelector('.innsikt');
+    const innsiktToggle = document.querySelector('.innsikt-toggle');
+
+    innsiktToggle.addEventListener('click', () => {
+      innsiktPanel.classList.toggle('collapsed');
+    });
+
+    // ── Innsikt tabs ──
+    const innsiktTabs = document.querySelectorAll('.innsikt-tab');
+    const innsiktPanes = document.querySelectorAll('.innsikt-pane');
+
+    innsiktTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        innsiktTabs.forEach(t => t.classList.remove('active'));
+        innsiktPanes.forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('pane-' + tab.dataset.pane).classList.add('active');
+      });
+    });
+
     // ── Interactive score editing (mockup behavior) ──
     document.querySelectorAll('.row-sub .cell-score').forEach(cell => {
       cell.addEventListener('click', () => {
-        // Visual feedback only for mockup
         cell.style.outline = '1px solid var(--wire-focus)';
         cell.style.outlineOffset = '-1px';
         cell.style.borderRadius = 'var(--r-sm)';
