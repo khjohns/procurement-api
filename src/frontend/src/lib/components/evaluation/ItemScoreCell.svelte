@@ -118,7 +118,7 @@
 		background: var(--felt-raised);
 		border: 1px solid var(--wire-strong);
 		border-radius: var(--r-sm);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+		/* borders-only depth: no box-shadow */
 	}
 
 	.pop-seg {
@@ -146,14 +146,14 @@
 
 	.seg-filled {
 		background: var(--score-high-bg);
-		border-color: rgba(61, 154, 110, 0.2);
+		border-color: var(--score-high-bg);
 		color: var(--score-high);
 	}
 
 	.seg-active {
 		background: var(--score-high);
 		border-color: var(--score-high);
-		color: #fff;
+		color: var(--ink);
 		font-weight: 700;
 	}
 </style>

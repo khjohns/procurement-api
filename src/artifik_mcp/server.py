@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from app.client import ArtifikClient
+from app.doffin import DoffinClient
 from artifik_mcp.decorator import get_mcp_tools
 
 logger = logging.getLogger(__name__)
@@ -20,10 +21,12 @@ SERVER_INFO = {
 
 
 class MCPServer:
-    """MCP Server handling JSON-RPC for ArtifikClient tools."""
+    """MCP Server handling JSON-RPC for ArtifikClient and DoffinClient tools."""
 
     def __init__(self):
-        self.client = ArtifikClient()
+        self.artifik = ArtifikClient()
+        self.doffin = DoffinClient()
+        self._clients = [self.artifik, self.doffin]
         self.tools = self._build_tool_defs()
         self._tool_methods: dict[str, Any] = {}
         self._register_tools()
@@ -31,19 +34,21 @@ class MCPServer:
     def _build_tool_defs(self) -> list[dict[str, Any]]:
         """Build MCP tool definitions from @mcp_tool-decorated methods."""
         defs = []
-        for name, method, meta in get_mcp_tools(self.client):
-            schema = self._build_input_schema(method)
-            defs.append({
-                "name": name,
-                "description": meta["description"],
-                "inputSchema": schema,
-            })
+        for client in self._clients:
+            for name, method, meta in get_mcp_tools(client):
+                schema = self._build_input_schema(method)
+                defs.append({
+                    "name": name,
+                    "description": meta["description"],
+                    "inputSchema": schema,
+                })
         return defs
 
     def _register_tools(self) -> None:
         """Map tool names to bound methods."""
-        for name, method, _meta in get_mcp_tools(self.client):
-            self._tool_methods[name] = method
+        for client in self._clients:
+            for name, method, _meta in get_mcp_tools(client):
+                self._tool_methods[name] = method
         logger.info("Registered %d tools", len(self._tool_methods))
 
     @staticmethod

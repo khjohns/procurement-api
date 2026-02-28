@@ -213,7 +213,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 3px;
+		gap: var(--sp-1);
 	}
 
 	.weight-num {
@@ -265,6 +265,10 @@
 	.row-sub {
 		background: var(--canvas);
 		border-bottom: 1px solid var(--wire);
+	}
+
+	.row-sub .cell-weight {
+		border-left-color: rgba(232, 168, 56, 0.15);
 	}
 
 	.row-sub .cell-criteria {

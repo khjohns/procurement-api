@@ -51,11 +51,11 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 ### Score Semantics
 
 ```
---høy: #3d9a6e                          /* high scores (7+) */
---høy-bg: rgba(61, 154, 110, 0.10)     /* high score background */
---midt: #8890a4                         /* mid scores (4-6) */
---lav: #c45858                          /* low scores (≤3) */
---lav-bg: rgba(196, 88, 88, 0.10)      /* low score background */
+--score-high: #3d9a6e                      /* high scores (7+) */
+--score-high-bg: rgba(61, 154, 110, 0.10) /* high score background */
+--score-mid: #8890a4                       /* mid scores (4-6) */
+--score-low: #c45858                       /* low scores (≤3) */
+--score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
 ```
 
 ---

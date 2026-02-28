@@ -352,7 +352,7 @@
 		border-radius: var(--r-sm);
 		border: 1px solid var(--wire);
 	}
-	.robusthet-item.leader { border-color: rgba(232, 168, 56, 0.18); }
+	.robusthet-item.leader { border-color: var(--vekt-bg-strong); }
 	.robusthet-rank { font-family: var(--font-data); font-size: 11px; font-weight: 600; color: var(--ink-ghost); width: 20px; }
 	.robusthet-item.leader .robusthet-rank { color: var(--vekt-dim); }
 	.robusthet-name { font-size: 13px; font-weight: 500; flex: 1; }
@@ -376,7 +376,7 @@
 	/* ── Metodekontroll ── */
 	.mk-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-bottom: var(--sp-5); }
 	.mk-column { background: var(--felt-raised); border: 1px solid var(--wire); border-radius: var(--r-md); overflow: hidden; }
-	.mk-column-header { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--wire); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); }
+	.mk-column-header { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--wire); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); }
 	.mk-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--wire); }
 	.mk-row:last-child { border-bottom: none; }
 	.mk-rank { font-family: var(--font-data); font-size: 11px; font-weight: 600; color: var(--ink-ghost); width: 20px; }
@@ -398,7 +398,7 @@
 	}
 	.mk-verdict.match {
 		background: var(--score-high-bg);
-		border: 1px solid rgba(61, 154, 110, 0.15);
+		border: 1px solid var(--score-high-bg);
 		color: var(--score-high);
 	}
 	.mk-verdict-icon { font-size: 14px; }

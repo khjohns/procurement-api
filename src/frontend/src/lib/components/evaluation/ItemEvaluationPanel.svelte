@@ -221,7 +221,7 @@
 				</table>
 			{:else}
 				<div class="empty-state">
-					Ingen {itemLabel.toLowerCase()}er registrert.
+					Ingen registrerte {itemLabel.toLowerCase()}.
 				</div>
 			{/if}
 
@@ -271,7 +271,9 @@
 						)}
 					placeholder="Skriv overordnet begrunnelse for {itemLabel.toLowerCase()}vurderingen..."
 				></textarea>
+				{#if noteText.length > 0}
 				<div class="notes-charcount">{noteText.length} tegn</div>
+			{/if}
 			</div>
 		</div>
 	</td>
@@ -439,7 +441,6 @@
 		font-family: var(--font-data);
 		font-size: 9px;
 		color: var(--vekt-dim);
-		margin-top: 2px;
 		letter-spacing: normal;
 		text-transform: none;
 	}
@@ -507,6 +508,12 @@
 		background: var(--felt-active);
 	}
 
+	.item-remove:focus-visible {
+		outline: none;
+		border: 1px solid var(--wire-focus);
+		opacity: 1;
+	}
+
 	/* Average column */
 	.cell-avg {
 		text-align: center;
@@ -538,7 +545,7 @@
 		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--ink-muted);
 	}
 
@@ -602,6 +609,13 @@
 		color: var(--vekt);
 	}
 
+	.add-item-btn:focus-visible {
+		outline: none;
+		color: var(--vekt);
+		box-shadow: 0 0 0 1.5px var(--wire-focus);
+		border-radius: var(--r-sm);
+	}
+
 	.add-item-form {
 		display: flex;
 		gap: var(--sp-2);
@@ -649,7 +663,7 @@
 	.add-confirm {
 		background: var(--vekt-bg-strong);
 		color: var(--vekt);
-		border-color: rgba(232, 168, 56, 0.2);
+		border-color: var(--vekt-bg-strong);
 	}
 
 	.add-confirm:hover {
@@ -677,7 +691,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-muted);
+		color: var(--ink-ghost);
 		margin-bottom: var(--sp-2);
 	}
 

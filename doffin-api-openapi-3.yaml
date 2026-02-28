@@ -1,0 +1,630 @@
+openapi: 3.0.1
+info:
+  title: Public API
+  description: Public API used to search for and download published notices
+  version: '1.0'
+servers:
+  - url: https://api.doffin.no/public
+paths:
+  /v2/search:
+    get:
+      summary: search
+      description: "Search notices with given parameters.\n#### Example call \n```\ncurl -X 'GET' \\\n'https://api.doffin.no/public/v2/search?numHitsPerPage=2&page=2&estimatedValueFrom=1000000&estimatedValueTo=1000000000&status=EXPIRED' \\\n-H \"Ocp-Apim-Subscription-Key: <your-subscription-key>\" \n``` "
+      operationId: 65015b9b566f983bdcfcaee8
+      parameters:
+        - name: numHitsPerPage
+          in: query
+          description: total number of results (hits) displayed on a single page (Max value 100)
+          schema:
+            enum:
+              - 20
+            type: integer
+        - name: page
+          in: query
+          description: the current page of results
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          description: "the sort property. Example: 'sortBy=PUBLICATION_DATE_ASC'\n\ndefault: PUBLICATION_DATE_DESC"
+          schema:
+            enum:
+              - DEADLINE
+              - RELEVANCE
+              - PUBLICATION_DATE_ASC
+              - PUBLICATION_DATE_DESC
+              - ESTIMATED_VALUE_ASC
+              - ESTIMATED_VALUE_DESC
+            type: string
+        - name: searchString
+          in: query
+          description: the search text for filtering the dataset
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: 'the notice type:  Example multiple types: ''type=COMPETITION&type=RESULT'''
+          schema:
+            enum:
+              - PLANNING
+              - NOTICE_ON_BUYER_PROFILE
+              - ADVISORY_NOTICE
+              - PRE_ANNOUNCEMENT
+              - COMPETITION
+              - ANNOUNCEMENT_OF_COMPETITION
+              - DYNAMIC_PURCHASING_SCHEME
+              - QUALIFICATION_SCHEME
+              - RESULT
+              - ANNOUNCEMENT_OF_INTENT
+              - ANNOUNCEMENT_OF_CONCLUSION_OF_CONTRACT
+              - CHANGE_OF_CONCLUSION_OF_CONTRACT
+              - CANCELLED_OR_MISSING_CONCLUSION_OF_CONTRACT
+            type: string
+        - name: status
+          in: query
+          description: 'the notice status. Example multiple statues : ''status=ACTIVE&status=EXPIRED'''
+          schema:
+            enum:
+              - ACTIVE
+              - EXPIRED
+              - AWARDED
+              - CANCELLED
+            type: string
+        - name: cpvCode
+          in: query
+          description: 'the cpv codes. Example multiple cpvCodes: ''cpvCode=1&cpvCode=2'''
+          schema:
+            type: string
+        - name: location
+          in: query
+          description: "the location id. Example multiple locations: 'location=123&location=234'\nFor ikke angitt filter 'location=anyw'"
+          schema:
+            type: string
+        - name: issueDateFrom
+          in: query
+          description: Starting date in issue date range on format yyyy-mm-dd (from)
+          schema:
+            type: localdate
+        - name: issueDateTo
+          in: query
+          description: End date in issue date range on format yyyy-mm-dd (to)
+          schema:
+            type: localdate
+        - name: estimatedValueFrom
+          in: query
+          description: 'The estimated value in range (from) '
+          schema:
+            type: long
+        - name: estimatedValueTo
+          in: query
+          description: 'The estimated value in range (to) '
+          schema:
+            type: long
+      responses:
+        '200':
+          description: The search response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedPublicNoticeDto'
+              example:
+                numHitsTotal: 0
+                numHitsAccessible: 0
+                hits:
+                  id: string
+                  buyer:
+                    - id: string
+                      organizationId: string
+                      name: string
+                  heading: string
+                  description: string
+                  locationId:
+                    - string
+                  estimatedValue:
+                    currencyCode: string
+                    amount: 0
+                  type: string
+                  allTypes:
+                    - string
+                  issueDate: string
+                  publicationDate: string
+                  receivedTenders: 0
+                  allReceivedTenders:
+                    - type: string
+                      total: integer
+                  cpvCodes:
+                    - string
+                  lots:
+                    - heading: string
+                      description: string
+                      winner:
+                        - id: string
+                          organizationId: string
+                          name: string
+  '/v2/download/{doffinId}':
+    get:
+      summary: download
+      description: "Download notice with given parameters.\n#### Example call \n```\ncurl -X 'GET' \\\n'https://api.doffin.no/public/v2/download/2023-100282' \\\n-H \"Ocp-Apim-Subscription-Key: <your-subscription-key>\" \n``` "
+      operationId: 65015cc43a2729c87e6be1a8
+      parameters:
+        - name: doffinId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The downloaded notice
+          content:
+            application/octet-stream: { }
+        '404':
+          description: Notice was not found
+          content:
+            application/json: { }
+components:
+  schemas:
+    EFormStatusEnum:
+      enum:
+        - ACTIVE
+        - EXPIRED
+        - AWARDED
+        - CANCELLED
+      type: string
+      description: The Eform status
+    EFormContractNature:
+      enum:
+        - SERVICES
+        - WORKS
+        - SUPPLIES
+      type: string
+      description: The eform contract nature
+    EFormType:
+      enum:
+        - PLANNING
+        - NOTICE_ON_BUYER_PROFILE
+        - ADVISORY_NOTICE
+        - PRE_ANNOUNCEMENT
+        - COMPETITION
+        - ANNOUNCEMENT_OF_COMPETITION
+        - DYNAMIC_PURCHASING_SCHEME
+        - QUALIFICATION_SCHEME
+        - RESULT
+        - ANNOUNCEMENT_OF_INTENT
+        - ANNOUNCEMENT_OF_CONCLUSION_OF_CONTRACT
+        - CHANGE_OF_CONCLUSION_OF_CONTRACT
+        - CANCELLED_OR_MISSING_CONCLUSION_OF_CONTRACT
+      type: string
+      description: The Doffin eform types
+    ProcurementAdditionalType:
+      type: array
+      items:
+        required:
+          - procurementTypeCode
+          - procurementType
+        type: object
+        properties:
+          procurementTypeCode:
+            type: object
+            properties:
+              listName:
+                type: string
+              value:
+                type: string
+          procurementType:
+            type: array
+            items:
+              required:
+                - languageId
+                - description
+              type: object
+              properties:
+                languageId:
+                  type: string
+                description:
+                  type: string
+    AwardCriterion:
+      type: array
+      items:
+        required:
+          - awardCriterionParameter
+          - awardingCriterionTypeCode
+          - description
+        type: object
+        properties:
+          awardCriterionParameter:
+            type: object
+            properties:
+              name:
+                type: string
+              code:
+                type: string
+              parameterNumeric:
+                type: string
+          awardingCriterionTypeCode:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+          description:
+            type: string
+    DurationType:
+      enum:
+        - DURATION_PERIOD
+        - START_END_DATE
+        - OTHER
+      type: string
+      description: The Eform subcontract duration type
+    DurationUnit:
+      enum:
+        - DAY
+        - MONTH
+        - YEAR
+      type: string
+      description: The Eform subcontract duration unit
+    Duration:
+      type: object
+      properties:
+        value:
+          type: integer
+        unit:
+          $ref: '#/components/schemas/DurationUnit'
+        startDate:
+          type: string
+        endDate:
+          type: string
+        other:
+          type: string
+    Currency:
+      type: object
+      properties:
+        amount:
+          type: integer
+        code:
+          type: string
+        fullLocalizedText:
+          type: string
+    Contract:
+      type: object
+      properties:
+        id:
+          type: string
+        identifier:
+          type: string
+        title:
+          type: string
+    LotAddress:
+      type: object
+      properties:
+        cityName:
+          type: string
+        postalCode:
+          type: string
+    Organization:
+      type: array
+      items:
+        required:
+          - id
+          - name
+          - address
+          - legalType
+          - winnerSize
+          - contactEmail
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          address:
+            type: object
+            properties:
+              locationId:
+                type: string
+              streetName:
+                type: array
+                items:
+                  type: string
+              cityName:
+                type: string
+              postalCode:
+                type: string
+          legalType:
+            type: string
+          winnerSize:
+            type: string
+          contactEmail:
+            type: string
+    ReceivedSubmissions:
+      type: array
+      items:
+        type: object
+        properties:
+          count:
+            type: integer
+          type:
+            type: string
+    WinnerOrganization:
+      type: array
+      items:
+        required:
+          - id
+          - name
+          - address
+          - contactEmail
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          address:
+            type: object
+            properties:
+              locationId:
+                type: string
+              streetName:
+                type: array
+              cityName:
+                type: string
+              postalCode:
+                type: string
+          contactEmail:
+            type: string
+    AwardResult:
+      enum:
+        - WINNER_SELECTED
+        - CLOSED_NO_WINNER
+        - OPEN_NO_WINNER
+      type: string
+      description: The Eform subcontract award result
+    NoticeLot:
+      type: object
+      properties:
+        id:
+          type: string
+        internalId:
+          type: string
+        heading:
+          type: string
+        description:
+          type: string
+        locationIds:
+          type: array
+          items:
+            type: string
+        estimatedValue:
+          $ref: '#/components/schemas/Currency'
+        type:
+          type: string
+        contractNature:
+          type: string
+        awardResult:
+          $ref: '#/components/schemas/AwardResult'
+        winners:
+          $ref: '#/components/schemas/WinnerOrganization'
+        status:
+          type: string
+        deadline:
+          type: string
+        durationType:
+          $ref: '#/components/schemas/DurationType'
+        duration:
+          $ref: '#/components/schemas/Duration'
+        receivedSubmissions:
+          $ref: '#/components/schemas/ReceivedSubmissions'
+        isSMEs:
+          type: boolean
+        quantity:
+          type: integer
+        prizeValue:
+          $ref: '#/components/schemas/Currency'
+        lotAddress:
+          $ref: '#/components/schemas/LotAddress'
+        optionDescription:
+          type: string
+        hasRecurrence:
+          type: boolean
+        recurrenceDescription:
+          type: string
+        contract:
+          $ref: '#/components/schemas/Contract'
+    PagedNoticeDto:
+      type: object
+      properties:
+        continuationToken:
+          type: string
+          description: Token use for pagination
+          default: 
+        notices:
+          type: array
+          items:
+            type: object
+            properties:
+              doffinId:
+                type: string
+              eFormId:
+                type: string
+              heading:
+                type: string
+              description:
+                type: string
+              buyers:
+                $ref: '#/components/schemas/Organization'
+              locationIds:
+                type: array
+              estimatedValue:
+                type: object
+                properties:
+                  amount:
+                    type: integer
+                  code:
+                    type: string
+                  fullLocalizedText:
+                    type: string
+              issueDate:
+                type: string
+              deadline:
+                type: string
+              type:
+                $ref: '#/components/schemas/EFormType'
+              contractNature:
+                $ref: '#/components/schemas/EFormContractNature'
+              cpvCodesWithParents:
+                type: array
+                items:
+                  type: string
+              regulationName:
+                type: string
+              publicationDate:
+                type: string
+              procedureType:
+                type: string
+              isDps:
+                type: boolean
+              isAgreement:
+                type: boolean
+              sentToTed:
+                type: boolean
+              status:
+                $ref: '#/components/schemas/EFormStatusEnum'
+              awardCriterion:
+                $ref: '#/components/schemas/AwardCriterion'
+              eformNo:
+                type: integer
+              cpaCoverage:
+                type: boolean
+              competitionDocsUrl:
+                type: string
+              procurementAdditionalType:
+                $ref: '#/components/schemas/ProcurementAdditionalType'
+              lastUpdated:
+                type: string
+              awardedNams:
+                type: array
+              changedNoticeId:
+                type: string
+              mainCpvCode:
+                type: string
+              mainCpvCodeId:
+                type: string
+              reservedParticipation:
+                type: string
+              lots:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NoticeLot'
+    PagedPublicNoticeDto:
+      type: object
+      properties:
+        numHitsTotal:
+          type: integer
+        numHitsAccessible:
+          type: integer
+        hits:
+          $ref: '#/components/schemas/PublicNoticeHitDto'
+    PublicNoticeHitDto:
+      type: object
+      properties:
+        id:
+          type: string
+        buyer:
+          type: array
+          items:
+            required:
+              - id
+              - organizationId
+              - name
+            type: object
+            properties:
+              id:
+                type: string
+              organizationId:
+                type: string
+              name:
+                type: string
+        heading:
+          type: string
+        description:
+          type: string
+        locationId:
+          type: array
+          items:
+            type: string
+        estimatedValue:
+          type: object
+          properties:
+            currencyCode:
+              type: string
+            amount:
+              type: integer
+        type:
+          type: string
+        allTypes:
+          type: array
+          items:
+            type: string
+        status: { }
+        issueDate:
+          type: string
+        deadline: { }
+        publicationDate:
+          type: string
+        receivedTenders:
+          type: integer
+        allReceivedTenders:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              total:
+                type: integer
+        cpvCodes:
+          type: array
+          items:
+            type: string
+        limitedDataFlag: { }
+        doffinClassicUrl: { }
+        lots:
+          type: array
+          items:
+            required:
+              - heading
+              - description
+              - winner
+            type: object
+            properties:
+              heading:
+                type: string
+              description:
+                type: string
+              winner:
+                type: array
+                items:
+                  required:
+                    - id
+                    - organizationId
+                    - name
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    organizationId:
+                      type: string
+                    name:
+                      type: string
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      name: Ocp-Apim-Subscription-Key
+      in: header
+    apiKeyQuery:
+      type: apiKey
+      name: subscription-key
+      in: query
+security:
+  - apiKeyHeader: [ ]
+  - apiKeyQuery: [ ]

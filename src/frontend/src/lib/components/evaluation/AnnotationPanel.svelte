@@ -11,6 +11,8 @@
 
 	let { subCriterionId, subCriterionName, supplierId, supplierName, score }: Props = $props();
 
+	let colCount = $derived(evaluation.data.suppliers.length + 2);
+
 	let noteText = $derived(
 		(() => {
 			for (const c of evaluation.data.criteria) {
@@ -23,7 +25,7 @@
 </script>
 
 <tr class="row-annotation">
-	<td colspan="5">
+	<td colspan={colCount}>
 		<div class="annotation-panel">
 			<div class="annotation-context">
 				<span class="annotation-supplier">{supplierName}</span>
@@ -54,7 +56,9 @@
 						oninput={(e) => evaluation.setNote(subCriterionId, supplierId, e.currentTarget.value)}
 						placeholder="Skriv begrunnelse for poengsettingen..."
 					></textarea>
+					{#if noteText.length > 0}
 					<div class="annotation-charcount">{noteText.length} tegn</div>
+				{/if}
 				</div>
 			</div>
 		</div>
@@ -111,7 +115,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-muted);
+		color: var(--ink-ghost);
 		margin-bottom: var(--sp-2);
 	}
 
@@ -145,14 +149,14 @@
 
 	.seg-filled {
 		background: var(--score-high-bg);
-		border-color: rgba(61, 154, 110, 0.2);
+		border-color: var(--score-high-bg);
 		color: var(--score-high);
 	}
 
 	.seg-active {
 		background: var(--score-high);
 		border-color: var(--score-high);
-		color: #fff;
+		color: var(--ink);
 		font-weight: 700;
 	}
 
