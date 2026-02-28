@@ -645,13 +645,605 @@ The item table supports keyboard navigation for efficient scoring:
 
 ---
 
+## Analysis & Differentiation
+
+The scoring table shows *what* was scored. The analysis layer answers *so what?*
+— surfacing the patterns, differences and decisive factors that drive the result.
+
+Analysis operates at three levels:
+
+### Level 1: ItemInsightsStrip (inline, per supplier)
+
+Embedded directly below the item table in the `ItemEvaluationPanel`. Shows
+at-a-glance diagnostics for the supplier's items on this sub-criterion.
+
+```
+┌─── ANALYSE ──────────────────────────────────────────────────────────┐
+│                                                                      │
+│  ┌─ Sterkeste ressurs ──────────┐  ┌─ Svakeste dimensjon ─────────┐ │
+│  │ Eva Solberg — Arkitekt       │  │ Sertifiseringer               │ │
+│  │ Snitt 8.4                    │  │ Snitt 7.7 (lavest)            │ │
+│  │ Sterkest på erfaring (9)     │  │ Ola Hansen trekker ned (6)    │ │
+│  └──────────────────────────────┘  └───────────────────────────────┘ │
+│                                                                      │
+│  ┌─ Spredning ──────────────────────────────────────────────────────┐│
+│  │ Erfaring  ████████░░  8.0  (spredning: 2)                       ││
+│  │ Utdanning ███████░░░  7.7  (spredning: 1)                       ││
+│  │ Sertif.   ███████░░░  7.7  (spredning: 3)  ← størst variasjon  ││
+│  └──────────────────────────────────────────────────────────────────┘│
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Computed signals:**
+- **Sterkeste/svakeste ressurs**: Item with highest/lowest weighted average
+- **Svakeste dimensjon**: ItemCriterion with lowest average across items
+- **Spredning per dimensjon**: `max - min` score across items, with bar visualization
+- **Risikoflagg**: If any single item scores ≤ 3 on any dimension (amber warning)
+
+**Styling:**
+- Two-column card layout for top insights, `--felt-raised` background
+- Spread bars: horizontal, proportional to score, `--score-high` fill (or `--lav` for low)
+- Section label: "ANALYSE" in standard 10px uppercase ghost style
+- Cards: `--wire` border, `--r-sm` radius, compact `--sp-2` padding
+
+```typescript
+/** Per-supplier item analysis for a single sub-criterion. */
+interface ItemInsights {
+  strongestItem: { name: string; label?: string; score: number; bestDimension: string };
+  weakestDimension: { name: string; average: number; weakestItem: string; weakestScore: number };
+  dimensionSpread: Array<{
+    name: string;
+    average: number;
+    min: number;
+    max: number;
+    spread: number;
+  }>;
+  riskFlags: Array<{ itemName: string; dimensionName: string; score: number }>;
+}
+```
+
+### Level 2: Cross-Supplier Comparison (per sub-criterion)
+
+When items are scored across all suppliers, the key question is: *"What actually
+separates the suppliers on this criterion?"* A dedicated comparison view answers this.
+
+**Trigger:** A tab or toggle at the top of the ItemEvaluationPanel:
+`[Per leverandør]  [Sammenligning]`
+
+The comparison view shows all suppliers side by side for the same sub-criterion.
+
+```
+┌─── SAMMENLIGNING — Tilbudt personell ───────────────────────────────────┐
+│                                                                          │
+│  [Per leverandør ↹]  [◉ Sammenligning]                                   │
+│                                                                          │
+│  DIMENSJONSSAMMENLIGNING                                                 │
+│  ┌────────────────────┬──────────┬──────────┬──────────┬────────────────┐│
+│  │ DIMENSJON          │ Bouvet   │ Sopra    │ Knowit   │ DIFFERANSE     ││
+│  │                    │ (3 res.) │ (2 res.) │ (3 res.) │                ││
+│  ├────────────────────┼──────────┼──────────┼──────────┼────────────────┤│
+│  │ Erfaring     40%   │   8.0    │   7.0    │   8.3    │  1.3 ▲ Knowit ││
+│  │ Utdanning    30%   │   7.7    │   7.5    │   8.7    │  1.2 ▲ Knowit ││
+│  │ Sertif.      30%   │   7.7    │   7.5    │   8.3    │  0.8 ▲ Knowit ││
+│  ├────────────────────┼──────────┼──────────┼──────────┼────────────────┤│
+│  │ TOTALT             │   7.8    │   7.0    │   8.5    │  1.5 ▲ Knowit ││
+│  └────────────────────┴──────────┴──────────┴──────────┴────────────────┘│
+│                                                                          │
+│  UTSLAGSGIVENDE DIMENSJONER                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │                                                                      ││
+│  │  1. Erfaring (40%)  ← størst vektet differanse                      ││
+│  │     Knowit leder med 8.3 — Sopra lavest med 7.0                     ││
+│  │     Vektet bidrag til forskjell: 0.52 poeng                          ││
+│  │                                                                      ││
+│  │  2. Utdanning (30%)                                                  ││
+│  │     Knowit leder med 8.7 — Sopra lavest med 7.5                     ││
+│  │     Vektet bidrag til forskjell: 0.36 poeng                          ││
+│  │                                                                      ││
+│  │  3. Sertifiseringer (30%)                                            ││
+│  │     Knowit leder med 8.3 — Sopra lavest med 7.5                     ││
+│  │     Vektet bidrag til forskjell: 0.24 poeng                          ││
+│  │                                                                      ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│  STYRKE/SVAKHETS-KART                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │      Bouvet          Sopra           Knowit                          ││
+│  │  Erf  ████████░░   ███████░░░   ████████░░   ← stacked horiz bars  ││
+│  │  Utd  ████████░░   ████████░░   █████████░                          ││
+│  │  Ser  ████████░░   ████████░░   ████████░░                          ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key computed values:**
+
+```typescript
+/** Cross-supplier analysis for an item-evaluated sub-criterion. */
+interface CrossSupplierAnalysis {
+  /** Per dimension: average score per supplier + spread. */
+  dimensionComparison: Array<{
+    criterion: ItemCriterion;
+    supplierAverages: Record<string, number>;   // supplierId → avg across items
+    leader: { supplierId: string; score: number };
+    laggard: { supplierId: string; score: number };
+    spread: number;
+  }>;
+
+  /** Dimensions ranked by impact (weight × spread). */
+  impactRanking: Array<{
+    criterion: ItemCriterion;
+    weightedSpread: number;             // weight/100 × spread
+    leader: string;                     // supplier name
+    laggard: string;                    // supplier name
+  }>;
+
+  /** Per supplier: score profile across dimensions for visual comparison. */
+  supplierProfiles: Record<string, {
+    supplierName: string;
+    itemCount: number;
+    dimensionScores: Record<string, number>;  // criterionId → average
+    totalScore: number;
+  }>;
+}
+```
+
+**"Utslagsgivende dimensjoner" algorithm:**
+
+Ranks item-criteria by `(weight / 100) × (max_supplier_avg - min_supplier_avg)`.
+This answers: *"Which dimension, considering its weight, creates the biggest
+point difference between the best and worst supplier?"*
+
+```typescript
+function impactRanking(
+  sub: SubCriterion,
+  suppliers: Supplier[]
+): Array<{ criterionName: string; weightedSpread: number; leader: string; laggard: string }> {
+  if (!sub.itemCriteria || !sub.items) return [];
+
+  return sub.itemCriteria
+    .map(ic => {
+      const avgs = suppliers.map(s => {
+        const items = sub.items![s.id] ?? [];
+        if (items.length === 0) return { supplierId: s.id, avg: 0 };
+        const avg = items.reduce((sum, item) => sum + (item.scores[ic.id] ?? 0), 0) / items.length;
+        return { supplierId: s.id, avg };
+      });
+
+      const sorted = [...avgs].sort((a, b) => b.avg - a.avg);
+      const spread = sorted[0].avg - sorted[sorted.length - 1].avg;
+
+      return {
+        criterionName: ic.name,
+        weightedSpread: (ic.weight / 100) * spread,
+        leader: suppliers.find(s => s.id === sorted[0].supplierId)!.name,
+        laggard: suppliers.find(s => s.id === sorted[sorted.length - 1].supplierId)!.name
+      };
+    })
+    .sort((a, b) => b.weightedSpread - a.weightedSpread);
+}
+```
+
+**Styrke/svakhets-kart** (Strength/weakness map):
+
+A compact grouped horizontal bar chart. One bar group per dimension, one bar
+per supplier. Max bar = 10 (full width). Provides instant visual pattern
+recognition:
+- All bars similar length → suppliers are close on this dimension
+- One bar notably shorter → clear weakness for that supplier
+- Converging/diverging patterns → where differentiation happens
+
+Styling:
+- Bars: 6px height, `--r-sm` radius, `--score-high` fill, `--felt-raised` track
+- Supplier labels: 11px, `--font-data`, positioned above bar group
+- Dimension labels: 11px, `--ink-muted`, left-aligned
+- Best bar per group: `--vekt` color instead of green
+
+### Level 3: Global InsightsPanel — "Ressursanalyse" Tab
+
+Adds a fourth tab to the existing InsightsPanel:
+`Betalingsvilje  Robusthet  Metodekontroll  [Ressursanalyse]`
+
+This tab only appears when at least one sub-criterion has `evaluationType: 'item'`.
+
+```
+┌─── RESSURSANALYSE ──────────────────────────────────────────────────────┐
+│                                                                          │
+│  OVERSIKT ITEM-EVALUERTE KRITERIER                                       │
+│  ┌─────────────────────┬──────┬──────────┬──────────┬──────────┬───────┐│
+│  │ Kriterium           │ Vekt │ Bouvet   │ Sopra    │ Knowit   │ Diff  ││
+│  ├─────────────────────┼──────┼──────────┼──────────┼──────────┼───────┤│
+│  │ Tilbudt personell   │ 20%  │ 7.8 (3r) │ 7.0 (2r) │ 8.5 (3r) │ 1.5  ││
+│  │ Referanseprosjekter │ 10%  │ 8.2 (3p) │ 7.5 (2p) │ 7.8 (4p) │ 0.7  ││
+│  └─────────────────────┴──────┴──────────┴──────────┴──────────┴───────┘│
+│                                                                          │
+│  MEST UTSLAGSGIVENDE DIMENSJONER (PÅ TVERS AV ALLE ITEM-KRITERIER)      │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │  1. Relevant erfaring (under Tilbudt personell, 40%)                 ││
+│  │     Vektet differanse: 0.52 poeng                                    ││
+│  │     Knowit leder (8.3) — Sopra lavest (7.0)                         ││
+│  │                                                                      ││
+│  │  2. Utdanning og fagkompetanse (under Tilbudt personell, 30%)        ││
+│  │     Vektet differanse: 0.36 poeng                                    ││
+│  │     Knowit leder (8.7) — Sopra lavest (7.5)                         ││
+│  │                                                                      ││
+│  │  3. Relevans (under Referanseprosjekter, 50%)                        ││
+│  │     Vektet differanse: 0.21 poeng                                    ││
+│  │     Bouvet leder (9.0) — Knowit lavest (7.5)                        ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+│  RISIKOVARSEL                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐│
+│  │  ⚠  Sopra Steria: Tilbudt personell — bare 2 ressurser             ││
+│  │     vs. Bouvet (3) og Knowit (3). Smalere team kan innebære risiko. ││
+│  │                                                                      ││
+│  │  ⚠  Bouvet: Ola Hansen — Sertifiseringer score 6 (lavest av alle   ││
+│  │     tilbudte ressurser på denne dimensjonen)                         ││
+│  └──────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Analysis Store Computations
+
+New `$derived` blocks on `EvaluationStore`:
+
+```typescript
+/** All item-level analysis, computed reactively. */
+itemAnalysis = $derived.by(() => {
+  const result: ItemAnalysisResult = {
+    perSubCriterion: {},
+    globalImpactRanking: [],
+    riskWarnings: []
+  };
+
+  for (const criterion of this.data.criteria) {
+    for (const sub of criterion.subcriteria) {
+      if (sub.evaluationType !== 'item' || !sub.items || !sub.itemCriteria) continue;
+
+      // ── Per-supplier insights ──
+      const supplierInsights: Record<string, ItemInsights> = {};
+      for (const supplier of this.data.suppliers) {
+        const items = sub.items[supplier.id] ?? [];
+        if (items.length === 0) continue;
+
+        const itemScores = items.map(item => ({
+          item,
+          score: itemScore(item, sub.itemCriteria!)
+        }));
+
+        // Strongest/weakest item
+        const sorted = [...itemScores].sort((a, b) => b.score - a.score);
+        const strongest = sorted[0];
+        const weakest = sorted[sorted.length - 1];
+
+        // Best dimension for strongest item
+        const bestDim = sub.itemCriteria!.reduce((best, ic) =>
+          (strongest.item.scores[ic.id] ?? 0) > (strongest.item.scores[best.id] ?? 0)
+            ? ic : best
+        );
+
+        // Weakest dimension across items
+        const dimAverages = sub.itemCriteria!.map(ic => {
+          const avg = items.reduce((s, item) => s + (item.scores[ic.id] ?? 0), 0) / items.length;
+          const weakestItem = items.reduce((w, item) =>
+            (item.scores[ic.id] ?? 0) < (w.scores[ic.id] ?? 0) ? item : w
+          );
+          return {
+            name: ic.name,
+            average: avg,
+            min: Math.min(...items.map(i => i.scores[ic.id] ?? 0)),
+            max: Math.max(...items.map(i => i.scores[ic.id] ?? 0)),
+            spread: Math.max(...items.map(i => i.scores[ic.id] ?? 0))
+                  - Math.min(...items.map(i => i.scores[ic.id] ?? 0)),
+            weakestItem: weakestItem.name,
+            weakestScore: weakestItem.scores[ic.id] ?? 0
+          };
+        });
+
+        const weakestDim = dimAverages.reduce((w, d) => d.average < w.average ? d : w);
+
+        supplierInsights[supplier.id] = {
+          strongestItem: {
+            name: strongest.item.name,
+            label: strongest.item.label,
+            score: strongest.score,
+            bestDimension: bestDim.name
+          },
+          weakestDimension: {
+            name: weakestDim.name,
+            average: weakestDim.average,
+            weakestItem: weakestDim.weakestItem,
+            weakestScore: weakestDim.weakestScore
+          },
+          dimensionSpread: dimAverages,
+          riskFlags: items.flatMap(item =>
+            sub.itemCriteria!
+              .filter(ic => (item.scores[ic.id] ?? 0) <= 3)
+              .map(ic => ({
+                itemName: item.name,
+                dimensionName: ic.name,
+                score: item.scores[ic.id] ?? 0
+              }))
+          )
+        };
+
+        // Collect global risk warnings
+        for (const flag of supplierInsights[supplier.id].riskFlags) {
+          result.riskWarnings.push({
+            supplierName: supplier.name,
+            subCriterionName: sub.name,
+            ...flag
+          });
+        }
+      }
+
+      // ── Cross-supplier comparison ──
+      const crossSupplier = impactRanking(sub, this.data.suppliers);
+
+      // ── Item count disparity warning ──
+      const itemCounts = this.data.suppliers.map(s => ({
+        name: s.name,
+        count: (sub.items![s.id] ?? []).length
+      }));
+      const maxCount = Math.max(...itemCounts.map(ic => ic.count));
+      const minCount = Math.min(...itemCounts.map(ic => ic.count));
+      if (maxCount > 0 && minCount < maxCount * 0.6) {
+        const fewest = itemCounts.find(ic => ic.count === minCount)!;
+        result.riskWarnings.push({
+          supplierName: fewest.name,
+          subCriterionName: sub.name,
+          itemName: '',
+          dimensionName: '',
+          score: 0,
+          type: 'item-count-disparity',
+          message: `bare ${fewest.count} ${sub.itemLabel?.toLowerCase() ?? 'elementer'}`
+            + ` vs. ${maxCount} hos andre leverandører`
+        });
+      }
+
+      result.perSubCriterion[sub.id] = {
+        supplierInsights,
+        crossSupplier,
+        impactRanking: crossSupplier
+      };
+
+      // Add to global impact ranking (adjusted for sub-criterion weight in parent)
+      const subWeightFactor = sub.weight / 100;
+      for (const impact of crossSupplier) {
+        result.globalImpactRanking.push({
+          ...impact,
+          subCriterionName: sub.name,
+          globalWeightedSpread: impact.weightedSpread * subWeightFactor
+        });
+      }
+    }
+  }
+
+  // Sort global impact ranking
+  result.globalImpactRanking.sort((a, b) => b.globalWeightedSpread - a.globalWeightedSpread);
+
+  return result;
+});
+```
+
+### Analysis types
+
+```typescript
+interface ItemAnalysisResult {
+  perSubCriterion: Record<string, {
+    supplierInsights: Record<string, ItemInsights>;
+    crossSupplier: CrossSupplierAnalysis['dimensionComparison'];
+    impactRanking: CrossSupplierAnalysis['impactRanking'];
+  }>;
+
+  /** All item-criteria ranked by global impact (weight × spread). */
+  globalImpactRanking: Array<{
+    criterionName: string;
+    subCriterionName: string;
+    weightedSpread: number;
+    globalWeightedSpread: number;
+    leader: string;
+    laggard: string;
+  }>;
+
+  /** Risk warnings across all item-evaluated criteria. */
+  riskWarnings: Array<{
+    supplierName: string;
+    subCriterionName: string;
+    itemName: string;
+    dimensionName: string;
+    score: number;
+    type?: 'low-score' | 'item-count-disparity';
+    message?: string;
+  }>;
+}
+```
+
+---
+
+## Updated Component Hierarchy
+
+```
+EvaluationMatrix.svelte
+  └── (for each sub-criterion row)
+        ├── ScoreCell.svelte                    (evaluationType: 'simple')
+        │     └── AnnotationPanel.svelte        (on click)
+        │
+        └── ScoreCell.svelte [variant: drilldown] (evaluationType: 'item')
+              └── ItemEvaluationPanel.svelte     (on click)
+                    ├── ViewToggle.svelte          [Per leverandør | Sammenligning]
+                    │
+                    ├── (Per leverandør view):
+                    │     ├── AggregationStrip.svelte
+                    │     ├── ItemTable.svelte
+                    │     │     ├── ItemRow.svelte
+                    │     │     │     ├── ItemScoreCell.svelte
+                    │     │     │     └── ItemNotes.svelte
+                    │     │     └── ItemTotalRow.svelte
+                    │     ├── AddItemRow.svelte
+                    │     ├── ItemInsightsStrip.svelte    ← NEW: per-supplier analysis
+                    │     └── AnnotationNotes.svelte
+                    │
+                    └── (Sammenligning view):
+                          ├── DimensionComparisonTable.svelte  ← NEW
+                          ├── ImpactRanking.svelte             ← NEW
+                          └── StrengthMap.svelte               ← NEW
+
+InsightsPanel.svelte
+  ├── (existing tabs: Betalingsvilje, Robusthet, Metodekontroll)
+  └── RessursanalyseTab.svelte               ← NEW: global item-level analysis
+        ├── ItemCriteriaOverview.svelte
+        ├── GlobalImpactRanking.svelte
+        └── RiskWarnings.svelte
+```
+
+### New components (analysis layer)
+
+| Component | Level | Responsibility |
+|---|---|---|
+| `ItemInsightsStrip.svelte` | 1 (per supplier) | Strongest/weakest item, dimension spread, risk flags |
+| `ViewToggle.svelte` | 2 (panel) | Toggle between per-supplier scoring and comparison view |
+| `DimensionComparisonTable.svelte` | 2 (comparison) | Side-by-side dimension averages across all suppliers |
+| `ImpactRanking.svelte` | 2 (comparison) | Ranked list of most decisive dimensions |
+| `StrengthMap.svelte` | 2 (comparison) | Grouped horizontal bar chart for visual profiling |
+| `RessursanalyseTab.svelte` | 3 (global) | InsightsPanel tab aggregating all item-level analysis |
+| `GlobalImpactRanking.svelte` | 3 (global) | Impact ranking across all item-evaluated criteria |
+| `RiskWarnings.svelte` | 3 (global) | Collected warnings (low scores, team size disparity) |
+
+---
+
+## Analysis Styling
+
+All analysis components extend the existing InsightsPanel patterns:
+
+**Impact ranking cards** (re-uses `.robusthet-insight` pattern):
+```css
+.impact-item {
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--felt-raised);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--wire);
+  border-left: 3px solid var(--vekt);
+}
+
+.impact-rank {
+  font-family: var(--font-data);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vekt-dim);
+  margin-right: var(--sp-3);
+}
+
+.impact-value {
+  font-family: var(--font-data);
+  font-weight: 600;
+  color: var(--vekt);
+}
+```
+
+**Risk warnings** (amber for disparity, rose for low scores):
+```css
+.risk-warning {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+
+.risk-warning.low-score {
+  background: var(--lav-bg);
+  border: 1px solid rgba(196, 88, 88, 0.15);
+  border-left: 3px solid var(--lav);
+  color: var(--ink-secondary);
+}
+
+.risk-warning.disparity {
+  background: var(--vekt-bg);
+  border: 1px solid rgba(232, 168, 56, 0.12);
+  border-left: 3px solid var(--vekt-dim);
+  color: var(--ink-secondary);
+}
+
+.risk-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+```
+
+**Strength map bars**:
+```css
+.strength-bar-group {
+  display: grid;
+  grid-template-columns: 60px repeat(var(--supplier-count), 1fr);
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-1) 0;
+}
+
+.strength-bar-track {
+  height: 6px;
+  background: var(--felt-raised);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.strength-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.strength-bar-fill.leader { background: var(--vekt); }
+.strength-bar-fill.high   { background: var(--score-high); }
+.strength-bar-fill.mid    { background: var(--ink-muted); }
+.strength-bar-fill.low    { background: var(--score-low); }
+```
+
+**Dimension comparison table** (extends matrix pattern):
+```css
+.dim-comparison {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--felt);
+  border: 1px solid var(--wire);
+  border-radius: var(--r-sm);
+}
+
+.dim-comparison td.diff-cell {
+  font-family: var(--font-data);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.diff-cell .diff-leader {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  margin-left: var(--sp-1);
+}
+
+.diff-cell .diff-arrow {
+  color: var(--vekt);
+  font-size: 10px;
+}
+```
+
+---
+
 ## Future Considerations (Out of Scope)
 
 - **Per-item weighting**: Allow items to have different weights (e.g. project leader
   counts double). Deferred — adds complexity without clear immediate need.
-- **Item comparison view**: Side-by-side comparison of equivalent items across
-  suppliers (e.g. all project leaders). Useful but requires role/category matching.
 - **Import from bid documents**: Auto-populate items from parsed supplier submissions.
   Depends on document parsing capabilities.
-- **Item-level insights**: Extend InsightsPanel with item-level analytics
-  (weakest resource, strongest resource, cross-supplier comparison).
+- **Sensitivity analysis**: "If supplier X's weakest resource improved by 1 point on
+  dimension Y, would the ranking change?" Requires scenario simulation layer.
+- **Export**: Generate a formatted comparison report (PDF/DOCX) for the evaluation
+  protocol, including item-level detail and analysis findings.
