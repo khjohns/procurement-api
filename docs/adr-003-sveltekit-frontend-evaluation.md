@@ -258,23 +258,48 @@ Appen er bak innlogging — SSR/SSG gir ingen SEO-fordel. Men SvelteKit gir vese
 | **Adapter-system** | `adapter-node` for Cloud Run-deploy (offisiell Google Cloud-dokumentasjon finnes) |
 | **Forhåndsbygd optimalisering** | Code splitting, prefetching, preloading uten manuell konfig |
 
-**Anbefalt konfigurasjon:**
+**Valgt konfigurasjon: `adapter-static` (SPA-modus)**
+
+`adapter-node` ble opprinnelig vurdert, men **`adapter-static`** er bedre for dette prosjektet:
+
+1. **Én container.** Flask serverer både API og statiske filer fra samme Cloud Run-instans. Ingen separat Node-server.
+2. **Enklere deploy.** `npm run build` → statiske filer i `build/` → Flask serverer dem. Ingen Node-runtime i prod.
+3. **Billigere.** Ingen ekstra Cloud Run-tjeneste for frontend. Statiske filer koster ingenting å serve.
+4. **Secrets på ett sted.** Alle Cloud Run-secrets tilhører Flask-tjenesten.
 
 ```js
 // svelte.config.js
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-static';
 
 export default {
   kit: {
-    adapter: adapter(),
-    // SPA-modus: Deaktiver SSR for alle sider (bak innlogging)
-    csr: true,
-    ssr: false
+    adapter: adapter({ fallback: 'index.html' })
   }
 };
 ```
 
-Alternativt kan man bruke `adapter-static` med `fallback: 'index.html'` for ren SPA-opplevelse hvis Flask fortsatt skal serve statiske filer.
+```ts
+// src/routes/+layout.ts
+export const ssr = false; // Ren SPA — alt rendres client-side
+```
+
+Flask serverer SvelteKit-buildet:
+```python
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_spa(path):
+    file_path = os.path.join(BUILD_DIR, path)
+    if path and os.path.isfile(file_path):
+        return send_from_directory(BUILD_DIR, path)
+    return send_from_directory(BUILD_DIR, "index.html")
+```
+
+**Deploy-arkitektur:**
+```
+Cloud Run (én tjeneste, Python-container)
+├── Flask API            →  /api/*
+└── SvelteKit build/     →  /* (statisk HTML/JS/CSS)
+```
 
 ---
 
@@ -303,15 +328,13 @@ To alternativer:
 1. **Tradisjonell:** `@testing-library/svelte` + jsdom + Vitest — fungerer, men kan gi problemer med runes-reaktivitet
 2. **Moderne (anbefalt):** `vitest-browser-svelte` + Playwright — tester i ekte browser, bedre runes-støtte
 
-### 6.5 SvelteKit + Flask-integrasjon
+### 6.5 SvelteKit + Flask-integrasjon (VALGT)
 
-Nåværende arkitektur bruker Flask som backend med Vite-proxy. Med SvelteKit må man velge strategi:
+Flask serverer SvelteKit-buildet direkte fra `src/frontend/build/`. Én Cloud Run-instans, ingen CORS, ingen separat frontend-server.
 
-- **Alternativ A:** SvelteKit som ren SPA, Flask API uendret, CORS/proxy i SvelteKit
-- **Alternativ B:** SvelteKit `+server.ts` ruter som proxy til Flask API — eliminerer CORS
-- **Alternativ C:** SvelteKit erstatter Flask for frontend-serving, Flask kun som API
-
-Anbefaling: **Alternativ A** er enklest migrasjon. Flask-backenden er allerede i produksjon.
+- **Dev:** `vite dev` med proxy til Flask (`/api` → `localhost:5000`)
+- **Prod:** `npm run build` → Flask serverer statiske filer + `index.html` fallback
+- **Ingen `adapter-node`** — kun `adapter-static` med `fallback: 'index.html'`
 
 ### 6.6 Migrering av mockup
 
@@ -338,11 +361,31 @@ src/lib/components/
     └── DataCell.svelte              # Gjenbrukbar data-celle
 ```
 
-### 6.7 Cloud Run-deploy med adapter-node
+### 6.7 Cloud Run-deploy (VALGT: adapter-static + Flask)
 
-`adapter-auto` støtter nå Cloud Run (den detekterer miljøet automatisk), men for konfigurasjonsalternativer (`keepAliveTimeout`, `headersTimeout`) må `@sveltejs/adapter-node` installeres eksplisitt. Google har [offisiell dokumentasjon](https://docs.google.com/run/docs/quickstarts/frameworks/deploy-sveltekit-service) for SvelteKit + Cloud Run.
+`adapter-node` er **ikke nødvendig.** SvelteKit bygges med `adapter-static` til rene HTML/JS/CSS-filer som Flask serverer fra samme container. Fordeler:
 
-Tips: Legg til en `src/hooks.server.ts` med graceful shutdown-håndtering (`SIGINT`/`SIGTERM`) for Docker-containere.
+- **Én Cloud Run-tjeneste** — Python-container med Flask. Ingen Node-runtime i prod.
+- **Secrets samlet** — alle Cloud Run-secrets tilhører Flask-instansen.
+- **Ingen CORS** — frontend og API på samme origin.
+- **Enklere Dockerfile** — kun Python-avhengigheter + `npm run build` i build-steg.
+
+```dockerfile
+# Multi-stage: build frontend, then run Python
+FROM node:22-slim AS frontend
+WORKDIR /app/src/frontend
+COPY src/frontend/package*.json ./
+RUN npm ci
+COPY src/frontend/ ./
+RUN npm run build
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=frontend /app/src/frontend/build src/frontend/build
+COPY . .
+RUN pip install -r requirements.txt
+CMD ["gunicorn", "src.app:create_app()", "-b", "0.0.0.0:8080"]
+```
 
 ### 6.8 `.svelte.ts` for delt state — anbefalt mønster
 
@@ -382,7 +425,7 @@ Per februar 2026, bruk følgende versjoner:
   "devDependencies": {
     "svelte": "^5.53.5",
     "@sveltejs/kit": "^2.53.3",
-    "@sveltejs/adapter-node": "^5.5.4",
+    "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "vite": "^6.0.0",
     "typescript": "^5.7.0",

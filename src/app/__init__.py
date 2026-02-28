@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import os
 
-from flask import Flask
+from flask import Flask, send_from_directory
 
 from .client import ArtifikClient
 
+# SvelteKit adapter-static build output
+_BUILD_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
+
 
 def create_app(test_config: dict | None = None) -> Flask:
-    app = Flask(
-        __name__,
-        static_folder=os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"),
-        static_url_path="/static",
-    )
+    app = Flask(__name__, static_folder=None)
 
-    app.config.from_mapping(
-        SECRET_KEY="dev",
-        VITE_DEV_MODE=os.environ.get("FLASK_DEBUG", "0") == "1",
-        VITE_DEV_SERVER="http://localhost:5173",
-    )
+    app.config.from_mapping(SECRET_KEY="dev")
 
     if test_config:
         app.config.update(test_config)
@@ -29,32 +23,18 @@ def create_app(test_config: dict | None = None) -> Flask:
     # Shared API client
     app.artifik = ArtifikClient()  # type: ignore[attr-defined]
 
-    # Vite manifest helper
-    @app.context_processor
-    def vite_context() -> dict:
-        if app.config["VITE_DEV_MODE"]:
-            return {"vite_dev": True, "vite_server": app.config["VITE_DEV_SERVER"]}
-
-        manifest_path = os.path.join(
-            os.path.dirname(__file__), "..", "frontend", "dist", "manifest.json"
-        )
-        try:
-            with open(manifest_path) as f:
-                manifest = json.load(f)
-        except FileNotFoundError:
-            manifest = {}
-        return {"vite_dev": False, "vite_manifest": manifest}
-
     # Register blueprints
     from .api import bp as api_bp
 
     app.register_blueprint(api_bp, url_prefix="/api")
 
-    # Catch-all route for SPA
-    @app.route("/")
+    # Serve SvelteKit SPA — static files + fallback to index.html
+    @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
-    def index(path: str = "") -> str:
-        from flask import render_template
-        return render_template("index.html")
+    def serve_spa(path: str):
+        file_path = os.path.join(_BUILD_DIR, path)
+        if path and os.path.isfile(file_path):
+            return send_from_directory(_BUILD_DIR, path)
+        return send_from_directory(_BUILD_DIR, "index.html")
 
     return app
