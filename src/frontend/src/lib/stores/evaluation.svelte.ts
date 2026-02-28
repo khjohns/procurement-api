@@ -596,6 +596,17 @@ class EvaluationStore {
 		return Math.max(...Object.values(scores));
 	}
 
+	/** Initialize or reset the evaluation with new data. */
+	initialize(newData: EvaluationData) {
+		this.data = newData;
+		this.activeMethod = 'poeng';
+	}
+
+	/** Check if store has been initialized with real data. */
+	get hasData(): boolean {
+		return this.data.criteria.length > 0 && this.data.suppliers.length > 0;
+	}
+
 	/** Find a sub-criterion by id. */
 	private _findSub(subCriterionId: string): SubCriterion | undefined {
 		for (const criterion of this.data.criteria) {

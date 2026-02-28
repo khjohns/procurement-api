@@ -6,16 +6,31 @@
 	}
 
 	let { children }: Props = $props();
+	let sidebarOpen = $state(false);
 
 	const navItems = [
 		{ href: '/', icon: '⊞', label: 'Oversikt' },
 		{ href: '/anskaffelser', icon: '◎', label: 'Anskaffelser' },
-		{ href: '/evaluering', icon: '▦', label: 'Evaluering' }
+		{ href: '/evaluering', icon: '▦', label: 'Evaluering' },
+		{ href: '/evaluering/ny', icon: '⊕', label: 'Ny evaluering' }
 	];
 </script>
 
 <div class="app">
-	<aside class="sidebar">
+	<!-- Mobile hamburger -->
+	<button class="mobile-toggle" onclick={() => (sidebarOpen = true)}>
+		<span class="hamburger-line"></span>
+		<span class="hamburger-line"></span>
+		<span class="hamburger-line"></span>
+	</button>
+
+	<!-- Mobile overlay -->
+	{#if sidebarOpen}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="sidebar-overlay" onclick={() => (sidebarOpen = false)}></div>
+	{/if}
+
+	<aside class="sidebar" class:sidebar-open={sidebarOpen}>
 		<div class="sidebar-brand">
 			<div class="sidebar-brand-icon">◆</div>
 			<span class="sidebar-brand-text">Anskaffelser</span>
@@ -24,7 +39,7 @@
 		<ul class="sidebar-nav">
 			{#each navItems as item}
 				<li>
-					<a href={item.href}>
+					<a href={item.href} onclick={() => (sidebarOpen = false)}>
 						<span class="nav-icon">{item.icon}</span>
 						{item.label}
 					</a>
@@ -74,7 +89,7 @@
 		height: 28px;
 		border-radius: var(--r-md);
 		background: var(--vekt-bg-strong);
-		border: 1px solid rgba(232, 168, 56, 0.2);
+		border: 1px solid var(--vekt-bg-strong);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -176,12 +191,77 @@
 		overflow-x: auto;
 	}
 
+	/* ── Mobile toggle ── */
+	.mobile-toggle {
+		display: none;
+		position: fixed;
+		top: var(--sp-3);
+		left: var(--sp-3);
+		z-index: 50;
+		width: 36px;
+		height: 36px;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		background: var(--felt);
+		border: 1px solid var(--wire);
+		border-radius: var(--r-sm);
+		cursor: pointer;
+		transition: background 0.12s;
+	}
+
+	.mobile-toggle:hover {
+		background: var(--felt-hover);
+	}
+
+	.mobile-toggle:focus-visible {
+		outline: none;
+		border-color: var(--wire-focus);
+	}
+
+	.hamburger-line {
+		width: 16px;
+		height: 1.5px;
+		background: var(--ink-secondary);
+		border-radius: 1px;
+	}
+
+	.sidebar-overlay {
+		display: none;
+		position: fixed;
+		inset: 0;
+		z-index: 99;
+		background: rgba(0, 0, 0, 0.5);
+	}
+
 	@media (max-width: 1024px) {
-		.sidebar {
-			display: none;
+		.mobile-toggle {
+			display: flex;
 		}
+
+		.sidebar {
+			position: fixed;
+			top: 0;
+			left: 0;
+			bottom: 0;
+			z-index: 100;
+			transform: translateX(-100%);
+			transition: transform 0.2s ease-out;
+			background: var(--canvas);
+		}
+
+		.sidebar-open {
+			transform: translateX(0);
+		}
+
+		.sidebar-overlay {
+			display: block;
+		}
+
 		.workspace {
 			padding: var(--sp-4);
+			padding-top: calc(var(--sp-4) + 48px);
 		}
 	}
 </style>
