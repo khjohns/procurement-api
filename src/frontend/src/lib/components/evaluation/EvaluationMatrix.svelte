@@ -1,0 +1,322 @@
+<script lang="ts">
+	import { evaluation, scoreTier } from '$lib/stores/evaluation.svelte';
+	import ScoreCell from './ScoreCell.svelte';
+	import AnnotationPanel from './AnnotationPanel.svelte';
+
+	/** Which annotation panel is expanded: "subId:supplierId" or null. */
+	let expandedAnnotation = $state<string | null>(null);
+
+	function toggleAnnotation(subId: string, supplierId: string) {
+		const key = `${subId}:${supplierId}`;
+		expandedAnnotation = expandedAnnotation === key ? null : key;
+	}
+
+	let totalWeight = $derived(
+		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
+	);
+</script>
+
+<div class="section-label">Evalueringsmatrise</div>
+<div class="matrix-wrap">
+	<table class="matrix">
+		<colgroup>
+			<col class="col-weight" />
+			<col class="col-criteria" />
+			{#each evaluation.data.suppliers as _}
+				<col class="col-supplier" />
+			{/each}
+		</colgroup>
+		<thead>
+			<tr>
+				<th class="th-weight">Vekt</th>
+				<th>Tildelingskriterier</th>
+				{#each evaluation.data.suppliers as supplier}
+					<th class="th-supplier">{supplier.name}</th>
+				{/each}
+			</tr>
+		</thead>
+		<tbody>
+			{#each evaluation.data.criteria as criterion, ci}
+				<!-- Group row -->
+				<tr class="row-group">
+					<td class="cell-weight">
+						<div class="weight-display">
+							<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
+							<div class="weight-bar">
+								<div class="weight-bar-fill" style="width: {(criterion.weight / 35) * 100}%"></div>
+							</div>
+						</div>
+					</td>
+					<td class="cell-criteria">{criterion.name}</td>
+					{#each evaluation.data.suppliers as supplier}
+						{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+						{@const isBest = score === evaluation.bestGroupScore(criterion.id) && score > 0}
+						<ScoreCell {score} {isBest} />
+					{/each}
+				</tr>
+
+				<!-- Sub-criterion rows -->
+				{#each criterion.subcriteria as sub, si}
+					{@const isLast = si === criterion.subcriteria.length - 1}
+					<tr class="row-sub" class:row-group-last={isLast}>
+						<td class="cell-weight">
+							<div class="weight-display">
+								<span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span>
+								<div class="weight-bar">
+									<div class="weight-bar-fill" style="width: {(sub.weight / 35) * 100}%"></div>
+								</div>
+							</div>
+						</td>
+						<td class="cell-criteria">{sub.name}</td>
+						{#each evaluation.data.suppliers as supplier}
+							{@const score = sub.scores[supplier.id] ?? 0}
+							{@const isBest = score === evaluation.bestScore(sub.id) && score > 0}
+							{@const hasNotes = !!sub.notes[supplier.id]}
+							<ScoreCell
+								{score}
+								{isBest}
+								{hasNotes}
+								onclick={() => toggleAnnotation(sub.id, supplier.id)}
+							/>
+						{/each}
+					</tr>
+
+					<!-- Annotation panel (if expanded) -->
+					{#each evaluation.data.suppliers as supplier}
+						{#if expandedAnnotation === `${sub.id}:${supplier.id}`}
+							<AnnotationPanel
+								subCriterionId={sub.id}
+								subCriterionName={sub.name}
+								supplierId={supplier.id}
+								supplierName={supplier.name}
+								score={sub.scores[supplier.id] ?? 0}
+							/>
+						{/if}
+					{/each}
+				{/each}
+			{/each}
+
+			<!-- Total row -->
+			<tr class="row-total">
+				<td class="cell-weight">
+					<div class="weight-display">
+						<span class="weight-num">{totalWeight}<span class="weight-pct">%</span></span>
+					</div>
+				</td>
+				<td class="cell-criteria">Totalsum</td>
+				{#each evaluation.data.suppliers as supplier}
+					{@const score = evaluation.totals[supplier.id] ?? 0}
+					{@const bestTotal = Math.max(...Object.values(evaluation.totals))}
+					{@const isBest = score === bestTotal && score > 0}
+					<ScoreCell {score} {isBest} />
+				{/each}
+			</tr>
+		</tbody>
+	</table>
+</div>
+
+<!-- Progress -->
+<div class="eval-progress">
+	<div class="progress-item">
+		<span class="progress-label">Poenggiving</span>
+		<span class="progress-value">{evaluation.progress.scores.filled} / {evaluation.progress.scores.total}</span>
+		<div class="progress-bar">
+			<div
+				class="progress-bar-fill"
+				style="width: {(evaluation.progress.scores.filled / evaluation.progress.scores.total) * 100}%"
+			></div>
+		</div>
+	</div>
+	<div class="progress-item">
+		<span class="progress-label">Begrunnelser</span>
+		<span class="progress-value">{evaluation.progress.notes.filled} / {evaluation.progress.notes.total}</span>
+		<div class="progress-bar">
+			<div
+				class="progress-bar-fill partial"
+				style="width: {(evaluation.progress.notes.filled / evaluation.progress.notes.total) * 100}%"
+			></div>
+		</div>
+	</div>
+</div>
+
+<style>
+	.section-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--ink-ghost);
+		margin-bottom: var(--sp-3);
+		margin-top: var(--sp-6);
+	}
+
+	.matrix-wrap {
+		overflow-x: auto;
+		border-radius: var(--r-lg);
+		border: 1px solid var(--wire);
+	}
+
+	.matrix {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 12px;
+	}
+
+	.col-weight { width: 80px; }
+	.col-criteria { width: auto; }
+	.col-supplier { width: 140px; }
+
+	.matrix th {
+		padding: var(--sp-3) var(--sp-3);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--ink-ghost);
+		background: var(--felt);
+		border-bottom: 1px solid var(--wire);
+		text-align: left;
+	}
+
+	.th-weight { text-align: center; }
+	.th-supplier { text-align: center; }
+
+	/* Weight column */
+	.cell-weight {
+		padding: var(--sp-2) var(--sp-3);
+		vertical-align: middle;
+		border-left: 3px solid var(--vekt);
+	}
+
+	.weight-display {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 3px;
+	}
+
+	.weight-num {
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--vekt-dim);
+	}
+
+	.weight-pct {
+		font-size: 9px;
+		font-weight: 400;
+		color: var(--ink-ghost);
+	}
+
+	.weight-bar {
+		width: 40px;
+		height: 2px;
+		background: var(--felt-active);
+		border-radius: 1px;
+		overflow: hidden;
+	}
+
+	.weight-bar-fill {
+		height: 100%;
+		background: var(--vekt-dim);
+		border-radius: 1px;
+	}
+
+	/* Criteria column */
+	.cell-criteria {
+		padding: var(--sp-2) var(--sp-3);
+		font-weight: 500;
+		color: var(--ink-secondary);
+	}
+
+	/* Row types */
+	.row-group {
+		background: var(--felt);
+	}
+
+	.row-group .cell-criteria {
+		font-weight: 600;
+		color: var(--ink);
+		font-size: 12px;
+	}
+
+	.row-sub {
+		background: var(--canvas);
+		border-bottom: 1px solid var(--wire);
+	}
+
+	.row-sub .cell-criteria {
+		padding-left: var(--sp-6);
+		font-size: 12px;
+		color: var(--ink-muted);
+	}
+
+	.row-group-last {
+		border-bottom: 1px solid var(--wire-strong);
+	}
+
+	.row-total {
+		background: var(--felt);
+		border-top: 2px solid var(--wire-strong);
+	}
+
+	.row-total .cell-criteria {
+		font-weight: 700;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--ink);
+	}
+
+	.row-total .cell-weight {
+		border-left-color: var(--vekt);
+	}
+
+	/* Progress */
+	.eval-progress {
+		margin-top: var(--sp-6);
+		display: flex;
+		align-items: center;
+		gap: var(--sp-6);
+	}
+
+	.progress-item {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-3);
+		font-size: 12px;
+		color: var(--ink-muted);
+	}
+
+	.progress-label {
+		color: var(--ink-ghost);
+		font-size: 11px;
+	}
+
+	.progress-value {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 12px;
+		color: var(--ink-secondary);
+	}
+
+	.progress-bar {
+		width: 80px;
+		height: 3px;
+		background: var(--felt-raised);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+
+	.progress-bar-fill {
+		height: 100%;
+		border-radius: 2px;
+		background: var(--score-high);
+		transition: width 0.3s ease-out;
+	}
+
+	.progress-bar-fill.partial {
+		background: var(--vekt-dim);
+	}
+</style>
