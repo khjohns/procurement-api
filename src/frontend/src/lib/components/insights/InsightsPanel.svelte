@@ -137,11 +137,11 @@
 							<div class="robusthet-item" class:leader={entry.rank === 1}>
 								<span class="robusthet-rank">#{entry.rank}</span>
 								<span class="robusthet-name">{entry.supplier.name}</span>
-								<span class="robusthet-score">{entry.score.toFixed(2)}</span>
+								<span class="robusthet-score">{entry.score.toFixed(1)}</span>
 								<span class="robusthet-margin">
 									{entry.rank === 1
 										? 'leder'
-										: `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(2)}`}
+										: `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(1)}`}
 								</span>
 							</div>
 						{/each}
@@ -152,7 +152,7 @@
 							<div class="robusthet-insight-label">Margin</div>
 							<div class="robusthet-insight-text">
 								Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-								<span class="mono">{margin.toFixed(2)}</span> poeng.
+								<span class="mono">{margin.toFixed(1)}</span> poeng.
 								Resultatet er <strong>{margin >= 0.5 ? 'robust' : margin >= 0.2 ? 'moderat robust' : 'sårbart'}</strong>.
 							</div>
 						</div>
@@ -166,7 +166,7 @@
 							<div class="robusthet-insight-label">Størst spredning</div>
 							<div class="robusthet-insight-text">
 								<strong>{largestSpread.name}</strong> har størst spredning mellom leverandørene
-								(fra <span class="mono">{largestSpread.low.toFixed(2)}</span> til <span class="mono">{largestSpread.high.toFixed(2)}</span>).
+								(fra <span class="mono">{largestSpread.low.toFixed(1)}</span> til <span class="mono">{largestSpread.high.toFixed(1)}</span>).
 								{largestSpread.leader} skiller seg positivt ut her.
 							</div>
 						</div>
@@ -184,7 +184,7 @@
 								<div class="mk-row">
 									<span class="mk-rank">#{entry.rank}</span>
 									<span class="mk-name">{entry.supplier.name}</span>
-									<span class="mk-value">{entry.score.toFixed(2)}</span>
+									<span class="mk-value">{entry.score.toFixed(1)}</span>
 								</div>
 							{/each}
 						</div>

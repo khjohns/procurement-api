@@ -154,9 +154,11 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 ### Score Cells
 
 - Font: `--font-data`, centered, tabular-nums
-- Color coding: `.score-high` (green), `.score-mid` (neutral), `.score-low` (rose)
+- Color coding: `.score-high` (green ≥7), `.score-mid` (neutral ≥4), `.score-low` (rose <4)
 - Best in row: `.score-best` → green background + bold
 - Has notes: `.has-notes` → 5px amber dot, top-right corner
+- Drilldown variant: `▾` chevron (8px, `--ink-ghost`) after score, rotates on expand
+- Derived scores: always `.toFixed(1)`, integer scores show as-is
 
 ### Annotation Panel
 
@@ -164,6 +166,39 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 - Shows: context (supplier › criterion), score selector (0-10 segments), textarea
 - Score segments: 30×32px buttons, filled state = green, active = solid green
 - Textarea: `var(--felt)` background, wire border, focus → amber wire
+
+### ItemEvaluationPanel
+
+- Full-width row below sub-criterion row (same pattern as AnnotationPanel)
+- Left border: 3px solid `--vekt` (connects to weight spine)
+- Context bar: supplier name (bold) › sub-criterion name (muted), 11px
+- Contains: AggregationStrip + ItemTable + AddItem + Notes textarea
+
+### AggregationStrip
+
+- Horizontal flex, `--felt` background, `--wire` border, `--r-sm` radius
+- Label: "AGGREGERING" in section label style (10px uppercase ghost)
+- Radio-style options: 12px circle (border `--wire-strong`, checked = `--vekt` fill with inset ring)
+- Active option: `--vekt` color, weight 600
+- Result: right-aligned, `--font-data`, 16px, weight 700, tier-colored
+
+### ItemTable
+
+- Dense `<table>`, `--felt` background, `--wire` border, `--r-sm` radius
+- Header: criterion name (10px uppercase) + weight in `--vekt-dim` (9px)
+- Columns: item name (flex) | criteria (80px each) | average (72px)
+- Item rows: name (13px, weight 500) + label after em-dash (muted), hover → `--felt-hover`
+- Remove button: `×`, absolute right, opacity 0 → 1 on row hover, hover → rose
+- Footer: `--canvas` background, `--wire-strong` top border, weight 600 averages
+
+### ItemScoreCell (compact)
+
+- Button: 36×28px, `--font-data`, 13px, tier-colored, transparent border
+- Hover: `--felt-hover` + `--wire` border
+- Focus-visible: `--wire-focus` border
+- Best: green background + weight 700
+- Edit popover: positioned below, `--felt-raised`, `--wire-strong` border, shadow
+- Popover segments: 22×26px, same filled/active states as AnnotationPanel segments
 
 ### Ranking Cards
 

@@ -2,8 +2,9 @@
 	import { evaluation, scoreTier } from '$lib/stores/evaluation.svelte';
 	import ScoreCell from './ScoreCell.svelte';
 	import AnnotationPanel from './AnnotationPanel.svelte';
+	import ItemEvaluationPanel from './ItemEvaluationPanel.svelte';
 
-	/** Which annotation panel is expanded: "subId:supplierId" or null. */
+	/** Which panel is expanded: "subId:supplierId" or null. */
 	let expandedAnnotation = $state<string | null>(null);
 
 	function toggleAnnotation(subId: string, supplierId: string) {
@@ -58,6 +59,7 @@
 				<!-- Sub-criterion rows -->
 				{#each criterion.subcriteria as sub, si}
 					{@const isLast = si === criterion.subcriteria.length - 1}
+					{@const isItemEval = sub.evaluationType === 'item'}
 					<tr class="row-sub" class:row-group-last={isLast}>
 						<td class="cell-weight">
 							<div class="weight-display">
@@ -69,28 +71,47 @@
 						</td>
 						<td class="cell-criteria">{sub.name}</td>
 						{#each evaluation.data.suppliers as supplier}
-							{@const score = sub.scores[supplier.id] ?? 0}
+							{@const score = isItemEval
+								? (evaluation.itemScores[sub.id]?.[supplier.id] ?? 0)
+								: (sub.scores[supplier.id] ?? 0)}
 							{@const isBest = score === evaluation.bestScore(sub.id) && score > 0}
 							{@const hasNotes = !!sub.notes[supplier.id]}
+							{@const panelKey = `${sub.id}:${supplier.id}`}
 							<ScoreCell
 								{score}
 								{isBest}
 								{hasNotes}
+								drilldown={isItemEval}
+								expanded={expandedAnnotation === panelKey}
 								onclick={() => toggleAnnotation(sub.id, supplier.id)}
 							/>
 						{/each}
 					</tr>
 
-					<!-- Annotation panel (if expanded) -->
+					<!-- Expansion panel (if expanded) -->
 					{#each evaluation.data.suppliers as supplier}
 						{#if expandedAnnotation === `${sub.id}:${supplier.id}`}
-							<AnnotationPanel
-								subCriterionId={sub.id}
-								subCriterionName={sub.name}
-								supplierId={supplier.id}
-								supplierName={supplier.name}
-								score={sub.scores[supplier.id] ?? 0}
-							/>
+							{#if isItemEval && sub.itemCriteria}
+								<ItemEvaluationPanel
+									subCriterionId={sub.id}
+									subCriterionName={sub.name}
+									supplierId={supplier.id}
+									supplierName={supplier.name}
+									itemLabel={sub.itemLabel ?? 'Element'}
+									itemCriteria={sub.itemCriteria}
+									items={sub.items?.[supplier.id] ?? []}
+									aggregation={sub.aggregation ?? 'average'}
+									aggregatedScore={evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
+								/>
+							{:else}
+								<AnnotationPanel
+									subCriterionId={sub.id}
+									subCriterionName={sub.name}
+									supplierId={supplier.id}
+									supplierName={supplier.name}
+									score={sub.scores[supplier.id] ?? 0}
+								/>
+							{/if}
 						{/if}
 					{/each}
 				{/each}
@@ -171,7 +192,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--ink-ghost);
 		background: var(--felt);
 		border-bottom: 1px solid var(--wire);
@@ -210,7 +231,7 @@
 	}
 
 	.weight-bar {
-		width: 40px;
+		width: 48px;
 		height: 2px;
 		background: var(--felt-active);
 		border-radius: 1px;
@@ -257,7 +278,7 @@
 	}
 
 	.row-total {
-		background: var(--felt);
+		background: var(--canvas);
 		border-top: 2px solid var(--wire-strong);
 	}
 

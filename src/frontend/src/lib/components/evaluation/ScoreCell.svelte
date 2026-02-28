@@ -5,10 +5,12 @@
 		score: number;
 		isBest?: boolean;
 		hasNotes?: boolean;
+		drilldown?: boolean;
+		expanded?: boolean;
 		onclick?: () => void;
 	}
 
-	let { score, isBest = false, hasNotes = false, onclick }: Props = $props();
+	let { score, isBest = false, hasNotes = false, drilldown = false, expanded = false, onclick }: Props = $props();
 	let tier = $derived(scoreTier(score));
 </script>
 
@@ -16,12 +18,14 @@
 	class="cell-score score-{tier}"
 	class:score-best={isBest}
 	class:has-notes={hasNotes}
+	class:score-drilldown={drilldown}
+	class:expanded
 	role={onclick ? 'button' : undefined}
 	tabindex={onclick ? 0 : undefined}
 	onclick={onclick}
 	onkeydown={(e) => { if (onclick && (e.key === 'Enter' || e.key === ' ')) onclick(); }}
 >
-	<span class="score-value">{typeof score === 'number' && !Number.isInteger(score) ? score.toFixed(2) : score}</span>
+	<span class="score-value">{typeof score === 'number' && !Number.isInteger(score) ? score.toFixed(1) : score}</span>
 </td>
 
 <style>
@@ -42,6 +46,11 @@
 
 	.cell-score[role='button']:hover {
 		background: var(--felt-hover);
+	}
+
+	.cell-score:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--wire-focus);
 	}
 
 	.score-value {
@@ -73,9 +82,23 @@
 		position: absolute;
 		top: var(--sp-1);
 		right: var(--sp-1);
-		width: 4px;
-		height: 4px;
+		width: 5px;
+		height: 5px;
 		border-radius: 50%;
 		background: var(--vekt-dim);
+	}
+
+	/* Drilldown chevron for item-evaluated sub-criteria */
+	.score-drilldown .score-value::after {
+		content: '▾';
+		font-size: 8px;
+		color: var(--ink-ghost);
+		margin-left: 2px;
+		display: inline-block;
+		transition: transform 0.15s;
+	}
+
+	.score-drilldown.expanded .score-value::after {
+		transform: rotate(180deg);
 	}
 </style>

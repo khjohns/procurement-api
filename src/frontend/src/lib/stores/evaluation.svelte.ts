@@ -5,12 +5,38 @@
  * All cascading calculations use $derived — no $effect.
  */
 
+// ── Item-level types ──
+
+export interface ItemCriterion {
+	id: string;
+	name: string;
+	weight: number; // sums to 100 within sub-criterion
+}
+
+export interface EvaluationItem {
+	id: string;
+	name: string;
+	label?: string; // role, type, category
+	scores: Record<string, number>; // itemCriterionId → 0–10
+	notes: Record<string, string>; // itemCriterionId → text
+}
+
+export type AggregationMethod = 'average' | 'minimum';
+
+// ── Core types ──
+
 export interface SubCriterion {
 	id: string;
 	name: string;
 	weight: number;
 	scores: Record<string, number>;
 	notes: Record<string, string>;
+	// Item-level evaluation (optional)
+	evaluationType?: 'simple' | 'item';
+	itemLabel?: string; // "Ressurs", "Prosjekt", "Tiltak"
+	itemCriteria?: ItemCriterion[];
+	items?: Record<string, EvaluationItem[]>; // supplierId → items
+	aggregation?: AggregationMethod;
 }
 
 export interface Criterion {
@@ -40,17 +66,46 @@ export interface EvaluationData {
 
 export type ActiveMethod = 'poeng' | 'pris';
 
+// ── Score computation functions ──
+
+/** Weighted average of item-criteria scores for a single item. */
+export function itemScore(item: EvaluationItem, criteria: ItemCriterion[]): number {
+	const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
+	if (totalWeight === 0) return 0;
+	const sum = criteria.reduce((acc, c) => acc + (item.scores[c.id] ?? 0) * c.weight, 0);
+	return sum / totalWeight;
+}
+
+/** Aggregate item scores for a supplier on one sub-criterion. */
+export function supplierItemScore(
+	items: EvaluationItem[],
+	criteria: ItemCriterion[],
+	method: AggregationMethod
+): number {
+	if (items.length === 0) return 0;
+	const scores = items.map((item) => itemScore(item, criteria));
+
+	switch (method) {
+		case 'average':
+			return scores.reduce((a, b) => a + b, 0) / scores.length;
+		case 'minimum':
+			return Math.min(...scores);
+	}
+}
+
 /** Weighted average for a single supplier across subcriteria. */
 function weightedAverage(
 	subcriteria: SubCriterion[],
 	supplierId: string,
-	totalWeight: number
+	totalWeight: number,
+	itemScoresOverlay?: Record<string, Record<string, number>>
 ): number {
 	if (totalWeight === 0) return 0;
-	const sum = subcriteria.reduce(
-		(acc, sub) => acc + (sub.scores[supplierId] ?? 0) * sub.weight,
-		0
-	);
+	const sum = subcriteria.reduce((acc, sub) => {
+		const score =
+			itemScoresOverlay?.[sub.id]?.[supplierId] ?? sub.scores[supplierId] ?? 0;
+		return acc + score * sub.weight;
+	}, 0);
 	return sum / totalWeight;
 }
 
@@ -61,8 +116,8 @@ export function formatNOK(value: number): string {
 
 /** Determine score tier for CSS class. */
 export function scoreTier(score: number): 'high' | 'mid' | 'low' {
-	if (score >= 7.5) return 'high';
-	if (score >= 5) return 'mid';
+	if (score >= 7) return 'high';
+	if (score >= 4) return 'mid';
 	return 'low';
 }
 
@@ -87,14 +142,86 @@ class EvaluationStore {
 				weight: 35,
 				subcriteria: [
 					{
-						id: 'nokkelpersonell',
-						name: 'Nøkkelpersonellets kvalifikasjoner',
+						id: 'personell',
+						name: 'Tilbudt personell',
 						weight: 15,
-						scores: { bouvet: 8, sopra: 7, knowit: 9 },
-						notes: {
-							knowit:
-								'Svært sterkt team med bred erfaring fra tilsvarende prosjekter i offentlig sektor. Alle tre nøkkelpersoner har relevant sertifisering (PMP, PRINCE2) og dokumentert erfaring med lignende oppdrag hos Bergen kommune og Helse Vest.'
-						}
+						evaluationType: 'item',
+						itemLabel: 'Ressurs',
+						aggregation: 'average',
+						itemCriteria: [
+							{ id: 'erfaring', name: 'Relevant erfaring', weight: 40 },
+							{ id: 'utdanning', name: 'Utdanning og fagkompetanse', weight: 30 },
+							{ id: 'sertifisering', name: 'Sertifiseringer', weight: 30 }
+						],
+						items: {
+							bouvet: [
+								{
+									id: 'b1',
+									name: 'Kari Nordmann',
+									label: 'Prosjektleder',
+									scores: { erfaring: 8, utdanning: 7, sertifisering: 9 },
+									notes: {
+										erfaring:
+											'Dokumentert 8 års erfaring fra tilsvarende prosjekter.'
+									}
+								},
+								{
+									id: 'b2',
+									name: 'Ola Hansen',
+									label: 'Seniorutvikler',
+									scores: { erfaring: 7, utdanning: 8, sertifisering: 6 },
+									notes: {}
+								},
+								{
+									id: 'b3',
+									name: 'Eva Solberg',
+									label: 'Løsningsarkitekt',
+									scores: { erfaring: 9, utdanning: 8, sertifisering: 8 },
+									notes: {}
+								}
+							],
+							sopra: [
+								{
+									id: 's1',
+									name: 'Lars Eriksen',
+									label: 'Prosjektleder',
+									scores: { erfaring: 7, utdanning: 8, sertifisering: 7 },
+									notes: {}
+								},
+								{
+									id: 's2',
+									name: 'Maria Johansen',
+									label: 'Utvikler',
+									scores: { erfaring: 7, utdanning: 7, sertifisering: 8 },
+									notes: {}
+								}
+							],
+							knowit: [
+								{
+									id: 'k1',
+									name: 'Anders Berg',
+									label: 'Prosjektleder',
+									scores: { erfaring: 9, utdanning: 9, sertifisering: 9 },
+									notes: {}
+								},
+								{
+									id: 'k2',
+									name: 'Ingrid Dahl',
+									label: 'Seniorutvikler',
+									scores: { erfaring: 8, utdanning: 8, sertifisering: 9 },
+									notes: {}
+								},
+								{
+									id: 'k3',
+									name: 'Thomas Lie',
+									label: 'Arkitekt',
+									scores: { erfaring: 8, utdanning: 9, sertifisering: 7 },
+									notes: {}
+								}
+							]
+						},
+						scores: {},
+						notes: {}
 					},
 					{
 						id: 'referanseprosjekter',
@@ -187,7 +314,27 @@ class EvaluationStore {
 
 	activeMethod = $state<ActiveMethod>('poeng');
 
-	/** Computed group averages per supplier. */
+	/** Pure $derived: computed scores for item-evaluated subcriteria. */
+	itemScores = $derived.by(() => {
+		const result: Record<string, Record<string, number>> = {};
+		for (const criterion of this.data.criteria) {
+			for (const sub of criterion.subcriteria) {
+				if (sub.evaluationType !== 'item' || !sub.items || !sub.itemCriteria) continue;
+				result[sub.id] = {};
+				for (const supplier of this.data.suppliers) {
+					const items = sub.items[supplier.id] ?? [];
+					result[sub.id][supplier.id] = supplierItemScore(
+						items,
+						sub.itemCriteria,
+						sub.aggregation ?? 'average'
+					);
+				}
+			}
+		}
+		return result;
+	});
+
+	/** Computed group averages per supplier (uses itemScores overlay). */
 	groupScores = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
 		for (const criterion of this.data.criteria) {
@@ -196,7 +343,8 @@ class EvaluationStore {
 				result[criterion.id][supplier.id] = weightedAverage(
 					criterion.subcriteria,
 					supplier.id,
-					criterion.weight
+					criterion.weight,
+					this.itemScores
 				);
 			}
 		}
@@ -210,7 +358,12 @@ class EvaluationStore {
 		for (const supplier of this.data.suppliers) {
 			let sum = 0;
 			for (const criterion of this.data.criteria) {
-				const avg = weightedAverage(criterion.subcriteria, supplier.id, criterion.weight);
+				const avg = weightedAverage(
+					criterion.subcriteria,
+					supplier.id,
+					criterion.weight,
+					this.itemScores
+				);
 				sum += avg * criterion.weight;
 			}
 			result[supplier.id] = totalWeight > 0 ? sum / totalWeight : 0;
@@ -240,7 +393,10 @@ class EvaluationStore {
 				if (!result[sub.id]) result[sub.id] = {};
 				const maxDeduction = qualityBudget * (sub.weight / totalWeight);
 				for (const supplier of this.data.suppliers) {
-					const score = sub.scores[supplier.id] ?? 0;
+					const score =
+						this.itemScores[sub.id]?.[supplier.id] ??
+						sub.scores[supplier.id] ??
+						0;
 					result[sub.id][supplier.id] = maxDeduction * ((10 - score) / 10);
 				}
 			}
@@ -290,11 +446,29 @@ class EvaluationStore {
 
 		for (const criterion of this.data.criteria) {
 			for (const sub of criterion.subcriteria) {
-				for (const supplier of this.data.suppliers) {
-					totalCells++;
-					if (sub.scores[supplier.id] !== undefined) filledCells++;
-					totalNotes++;
-					if (sub.notes[supplier.id]) filledNotes++;
+				if (sub.evaluationType === 'item' && sub.items && sub.itemCriteria) {
+					// Count item-level cells
+					for (const supplier of this.data.suppliers) {
+						const items = sub.items[supplier.id] ?? [];
+						for (const item of items) {
+							for (const ic of sub.itemCriteria) {
+								totalCells++;
+								if (item.scores[ic.id] !== undefined) filledCells++;
+							}
+						}
+					}
+					// Count sub-level notes
+					for (const supplier of this.data.suppliers) {
+						totalNotes++;
+						if (sub.notes[supplier.id]) filledNotes++;
+					}
+				} else {
+					for (const supplier of this.data.suppliers) {
+						totalCells++;
+						if (sub.scores[supplier.id] !== undefined) filledCells++;
+						totalNotes++;
+						if (sub.notes[supplier.id]) filledNotes++;
+					}
 				}
 			}
 		}
@@ -304,6 +478,8 @@ class EvaluationStore {
 			notes: { filled: filledNotes, total: totalNotes }
 		};
 	});
+
+	// ── Mutation methods ──
 
 	/** Update a single score. */
 	setScore(subCriterionId: string, supplierId: string, value: number) {
@@ -333,12 +509,81 @@ class EvaluationStore {
 		if (supplier) supplier.price = price;
 	}
 
-	/** Best score for a subcriterion. */
+	/** Set a score for a specific item on a specific item-criterion. */
+	setItemScore(
+		subCriterionId: string,
+		supplierId: string,
+		itemId: string,
+		itemCriterionId: string,
+		value: number
+	) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub?.items) return;
+		const items = sub.items[supplierId];
+		if (!items) return;
+		const item = items.find((i) => i.id === itemId);
+		if (item) item.scores[itemCriterionId] = Math.max(0, Math.min(10, value));
+	}
+
+	/** Set a note for a specific item on a specific item-criterion. */
+	setItemNote(
+		subCriterionId: string,
+		supplierId: string,
+		itemId: string,
+		itemCriterionId: string,
+		text: string
+	) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub?.items) return;
+		const items = sub.items[supplierId];
+		if (!items) return;
+		const item = items.find((i) => i.id === itemId);
+		if (item) item.notes[itemCriterionId] = text;
+	}
+
+	/** Add an item to a supplier's list for a sub-criterion. */
+	addItem(subCriterionId: string, supplierId: string, name: string, label?: string) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub || sub.evaluationType !== 'item') return;
+		if (!sub.items) sub.items = {};
+		if (!sub.items[supplierId]) sub.items[supplierId] = [];
+		sub.items[supplierId].push({
+			id: `item-${Date.now()}`,
+			name,
+			label,
+			scores: {},
+			notes: {}
+		});
+	}
+
+	/** Remove an item. */
+	removeItem(subCriterionId: string, supplierId: string, itemId: string) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub?.items) return;
+		const items = sub.items[supplierId];
+		if (!items) return;
+		sub.items[supplierId] = items.filter((i) => i.id !== itemId);
+	}
+
+	/** Change aggregation method. */
+	setAggregation(subCriterionId: string, method: AggregationMethod) {
+		const sub = this._findSub(subCriterionId);
+		if (sub) sub.aggregation = method;
+	}
+
+	/** Best score for a subcriterion (uses itemScores overlay). */
 	bestScore(subCriterionId: string): number {
+		// Check itemScores first
+		const itemOverlay = this.itemScores[subCriterionId];
+		if (itemOverlay) {
+			const vals = Object.values(itemOverlay);
+			return vals.length > 0 ? Math.max(...vals) : 0;
+		}
 		for (const criterion of this.data.criteria) {
 			const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
 			if (sub) {
-				return Math.max(...Object.values(sub.scores));
+				const vals = Object.values(sub.scores);
+				return vals.length > 0 ? Math.max(...vals) : 0;
 			}
 		}
 		return 0;
@@ -349,6 +594,15 @@ class EvaluationStore {
 		const scores = this.groupScores[criterionId];
 		if (!scores) return 0;
 		return Math.max(...Object.values(scores));
+	}
+
+	/** Find a sub-criterion by id. */
+	private _findSub(subCriterionId: string): SubCriterion | undefined {
+		for (const criterion of this.data.criteria) {
+			const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
+			if (sub) return sub;
+		}
+		return undefined;
 	}
 }
 
