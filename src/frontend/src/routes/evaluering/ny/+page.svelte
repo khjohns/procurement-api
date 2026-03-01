@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import {
 		evaluation,
 		type EvaluationData,
@@ -14,6 +14,7 @@
 	let reference = $state('');
 	let qualityWeight = $state(70);
 	let contractValue = $state(0);
+	let contractValueDisplay = $state('');
 	let suppliers = $state<{ id: string; name: string; price: number }[]>([]);
 	let criteria = $state<SetupCriterion[]>([]);
 
@@ -25,6 +26,20 @@
 	// New supplier input
 	let addingSupplier = $state(false);
 	let newSupplierName = $state('');
+
+	// ── Navigation guard ──
+
+	let isDirty = $derived(
+		title.trim().length > 0 ||
+		suppliers.length > 0 ||
+		criteria.length > 0
+	);
+
+	beforeNavigate(({ cancel }) => {
+		if (isDirty && !confirm('Du har ulagrede endringer. Vil du forlate siden?')) {
+			cancel();
+		}
+	});
 
 	interface SetupSubCriterion {
 		id: string;
@@ -93,6 +108,39 @@
 		}
 	];
 
+	// ── Contract value formatting ──
+
+	const fmt = new Intl.NumberFormat('nb-NO');
+
+	function handleContractValueInput(e: Event) {
+		const raw = (e.target as HTMLInputElement).value.replace(/\s/g, '');
+		const num = parseInt(raw, 10);
+		if (!isNaN(num) && num >= 0) {
+			contractValue = num;
+			contractValueDisplay = fmt.format(num);
+		} else if (raw === '') {
+			contractValue = 0;
+			contractValueDisplay = '';
+		}
+	}
+
+	function handleContractValueBlur() {
+		contractValueDisplay = contractValue > 0 ? fmt.format(contractValue) : '';
+	}
+
+	function handleContractValueFocus(e: Event) {
+		const input = e.target as HTMLInputElement;
+		contractValueDisplay = contractValue > 0 ? String(contractValue) : '';
+		requestAnimationFrame(() => input.select());
+	}
+
+	// ── ID generation ──
+
+	let idCounter = 0;
+	function uid(prefix: string): string {
+		return `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 8)}`;
+	}
+
 	// ── Derived state ──
 
 	let priceWeight = $derived(100 - qualityWeight);
@@ -138,25 +186,33 @@
 	}
 
 	function importProcurement(proc: MockProcurement) {
+		const hasData = criteria.length > 0 || suppliers.length > 0;
+		if (hasData && !confirm('Importering vil overskrive eksisterende kriterier og leverandører. Fortsett?')) {
+			return;
+		}
+
 		title = proc.title;
 		reference = proc.id;
 
 		// Import criteria — each top-level criterion becomes a group with one sub
-		criteria = proc.criteria.map((c, i) => ({
-			id: `c-${i}`,
-			name: c.name,
-			subcriteria: [
-				{
-					id: `c-${i}-s-0`,
-					name: c.name,
-					weight: c.weight
-				}
-			]
-		}));
+		criteria = proc.criteria.map((c) => {
+			const cid = uid('c');
+			return {
+				id: cid,
+				name: c.name,
+				subcriteria: [
+					{
+						id: uid(`${cid}-s`),
+						name: c.name,
+						weight: c.weight
+					}
+				]
+			};
+		});
 
 		// Import suppliers
-		suppliers = proc.suppliers.map((name, i) => ({
-			id: `sup-${i}`,
+		suppliers = proc.suppliers.map((name) => ({
+			id: uid('sup'),
 			name,
 			price: 0
 		}));
@@ -173,16 +229,15 @@
 	// ── Criteria CRUD ──
 
 	function addCriterion() {
-		const id = `c-${Date.now()}`;
+		const id = uid('c');
 		criteria = [
 			...criteria,
 			{
 				id,
 				name: '',
-				subcriteria: [{ id: `${id}-s-0`, name: '', weight: 0 }]
+				subcriteria: [{ id: uid(`${id}-s`), name: '', weight: 0 }]
 			}
 		];
-		// Focus the new input after render
 		requestAnimationFrame(() => {
 			const el = document.querySelector(`[data-criterion-id="${id}"] .criterion-name-input`) as HTMLInputElement;
 			el?.focus();
@@ -196,7 +251,7 @@
 	function addSubCriterion(criterionId: string) {
 		const c = criteria.find((c) => c.id === criterionId);
 		if (!c) return;
-		const subId = `${criterionId}-s-${Date.now()}`;
+		const subId = uid(`${criterionId}-s`);
 		c.subcriteria = [...c.subcriteria, { id: subId, name: '', weight: 0 }];
 		requestAnimationFrame(() => {
 			const el = document.querySelector(`[data-sub-id="${subId}"] .sub-name-input`) as HTMLInputElement;
@@ -216,7 +271,7 @@
 		if (!newSupplierName.trim()) return;
 		suppliers = [
 			...suppliers,
-			{ id: `sup-${Date.now()}`, name: newSupplierName.trim(), price: 0 }
+			{ id: uid('sup'), name: newSupplierName.trim(), price: 0 }
 		];
 		newSupplierName = '';
 		addingSupplier = false;
@@ -232,7 +287,7 @@
 		if (!isValid) return;
 
 		const data: EvaluationData = {
-			id: reference || `eval-${Date.now()}`,
+			id: reference || uid('eval'),
 			title: title.trim(),
 			reference: reference.trim(),
 			status: 'Under evaluering',
@@ -290,12 +345,15 @@
 			oninput={handleSearch}
 			onfocus={handleSearch}
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => { if (e.key === 'Escape') searchOpen = false; }}
+			role="combobox"
+			aria-expanded={searchOpen && searchResults.length > 0}
+			aria-haspopup="listbox"
 		/>
 		{#if searchOpen && searchResults.length > 0}
-			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-			<div class="picker-results" onclick={(e) => e.stopPropagation()}>
+			<div class="picker-results" role="listbox" onclick={(e) => e.stopPropagation()}>
 				{#each searchResults as result}
-					<button class="picker-result" onclick={() => importProcurement(result)}>
+					<button class="picker-result" role="option" onclick={() => importProcurement(result)}>
 						<div class="picker-result-title">{result.title}</div>
 						<div class="picker-result-meta">
 							<span>{result.buyer}</span>
@@ -317,9 +375,8 @@
 			</div>
 		{/if}
 		{#if searchOpen && searchQuery.trim().length >= 2 && searchResults.length === 0}
-			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-			<div class="picker-results" onclick={(e) => e.stopPropagation()}>
-				<div class="picker-empty">Ingen treff for «{searchQuery}»</div>
+			<div class="picker-results" role="listbox" onclick={(e) => e.stopPropagation()}>
+				<div class="picker-empty" role="status">Ingen treff for «{searchQuery}»</div>
 			</div>
 		{/if}
 	</div>
@@ -352,7 +409,17 @@
 		<div class="config-field">
 			<label class="config-label" for="setup-cv">Kontraktsverdi</label>
 			<div class="config-input-group">
-				<input id="setup-cv" class="config-input config-input-num config-input-wide" type="number" min="0" bind:value={contractValue} />
+				<input
+					id="setup-cv"
+					class="config-input config-input-num config-input-wide"
+					type="text"
+					inputmode="numeric"
+					value={contractValueDisplay}
+					oninput={handleContractValueInput}
+					onblur={handleContractValueBlur}
+					onfocus={handleContractValueFocus}
+					placeholder="0"
+				/>
 				<span class="config-unit">kr</span>
 			</div>
 		</div>
@@ -384,7 +451,7 @@
 						if (e.key === 'Escape') (addingSupplier = false);
 					}}
 				/>
-				<button class="supplier-confirm" onclick={addSupplier}>✓</button>
+				<button class="supplier-confirm" onclick={addSupplier} title="Bekreft" aria-label="Bekreft leverandør">✓</button>
 			</div>
 		{:else}
 			<button class="supplier-add" onclick={() => { addingSupplier = true; requestAnimationFrame(() => { (document.querySelector('.supplier-chip-new .supplier-name-input') as HTMLInputElement)?.focus(); }); }}>
@@ -396,6 +463,11 @@
 	<!-- Criteria editor -->
 	<div class="section-label">Tildelingskriterier</div>
 	<div class="criteria-editor">
+		{#if criteria.length === 0}
+			<div class="criteria-empty">
+				<div class="criteria-empty-text">Importer fra en anskaffelse, eller legg til kriterier manuelt</div>
+			</div>
+		{/if}
 		{#each criteria as criterion, ci (criterion.id)}
 			{@const groupWeight = groupWeights.find((g) => g.id === criterion.id)?.sum ?? 0}
 			<div class="criterion-group" data-criterion-id={criterion.id}>
@@ -452,7 +524,8 @@
 
 				<!-- Add sub-criterion -->
 				<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
-					+ Underkriterium
+					<span class="add-sub-spacer"></span>
+					<span class="add-sub-label">+ Underkriterium</span>
 				</button>
 			</div>
 		{/each}
@@ -532,13 +605,13 @@
 
 	/* ── Section labels ── */
 	.section-label {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--ink-ghost);
 		margin-bottom: var(--sp-3);
-		margin-top: var(--sp-6);
+		margin-top: var(--sp-8);
 	}
 
 	/* ── Procurement picker ── */
@@ -682,11 +755,11 @@
 	}
 
 	.config-label {
-		font-size: 10px;
-		font-weight: 600;
+		font-size: 11px;
+		font-weight: 500;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 	}
 
 	.config-input {
@@ -777,7 +850,8 @@
 		font-family: var(--font-ui);
 		font-size: 13px;
 		font-weight: 500;
-		width: 140px;
+		min-width: 100px;
+		width: auto;
 		padding: var(--sp-1) 0;
 	}
 
@@ -896,9 +970,9 @@
 		border-bottom: none;
 	}
 
-	/* Weight column */
+	/* Weight column — matches system.md matrix weight column (72px) */
 	.criterion-weight {
-		width: 80px;
+		width: 72px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
@@ -1063,10 +1137,11 @@
 
 	/* Add buttons */
 	.add-sub-btn {
-		display: block;
+		display: flex;
+		align-items: center;
 		width: 100%;
 		padding: var(--sp-2) var(--sp-3);
-		padding-left: calc(80px + var(--sp-3) + var(--sp-3) + var(--sp-4));
+		padding-left: var(--sp-3);
 		text-align: left;
 		font-family: var(--font-ui);
 		font-size: 11px;
@@ -1077,6 +1152,15 @@
 		border-left: 3px solid rgba(232, 168, 56, 0.15);
 		cursor: pointer;
 		transition: color 0.1s;
+	}
+
+	.add-sub-spacer {
+		width: 72px;
+		flex-shrink: 0;
+	}
+
+	.add-sub-label {
+		padding-left: var(--sp-4);
 	}
 
 	.add-sub-btn:hover {
@@ -1216,8 +1300,40 @@
 		border: 1px solid var(--wire);
 	}
 
+	/* ── Criteria empty state ── */
+	.criteria-empty {
+		padding: var(--sp-6) var(--sp-4);
+		text-align: center;
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
+	}
+
+	.criteria-empty-text {
+		font-size: 12px;
+		color: var(--ink-muted);
+		line-height: 1.5;
+	}
+
+	/* ── Missing focus-visible states ── */
+	.picker-input:focus-visible {
+		border-color: var(--wire-focus);
+	}
+
+	.picker-result:focus-visible {
+		outline: none;
+		background: var(--felt-hover);
+	}
+
+	.supplier-confirm:focus-visible {
+		outline: none;
+		border: 1px solid var(--wire-focus);
+	}
+
+	.config-input:focus-visible {
+		border-color: var(--wire-focus);
+	}
+
 	/* ── Responsive ── */
-	@media (max-width: 1024px) {
+	@media (max-width: 768px) {
 		.config-strip {
 			flex-direction: column;
 			gap: var(--sp-3);
