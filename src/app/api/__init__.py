@@ -4,13 +4,60 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
+from protokoll.common import get_timeline_date, parse_submission_deadline, strip_html
 
 bp = Blueprint("api", __name__)
 log = logging.getLogger(__name__)
+
+
+# -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
+
+THRESHOLD_SHORT = {
+    "over_eea_threshold_value": "Over EØS",
+    "below_eea_threshold_value": "Under EØS",
+    "national_threshold": "Nasjonal",
+    "below_national_threshold": "Under terskel",
+}
+
+PROCEDURE_SHORT = {
+    "Open": "Åpen",
+    "Limited": "Begrenset",
+    "Competitive negotiated": "Forhandling",
+    "Competitive dialogue": "Dialog",
+    "Innovation partnership": "Innovasjon",
+    "Negotiated without publication": "Uten kunngj.",
+    "Direct award": "Direkte",
+}
+
+
+def _is_mature(procurement: dict) -> bool:
+    """Procurement has passed submission deadline and is not template/cancelled."""
+    if procurement.get("isTemplate") or procurement.get("isCancelled"):
+        return False
+    deadline = parse_submission_deadline(procurement)
+    if not deadline:
+        return False
+    return datetime.now(deadline.tzinfo) > deadline
+
+
+def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
+    """Keep the richest record per sequenceId."""
+    best: dict[str, dict] = {}
+    for p in procs:
+        seq = p.get("sequenceId") or str(p.get("id"))
+        existing = best.get(seq)
+        richness = sum(1 for v in p.values() if v not in (None, "", [], {}))
+        if existing is None or richness > existing["_richness"]:
+            p["_richness"] = richness
+            best[seq] = p
+    for p in best.values():
+        p.pop("_richness", None)
+    return list(best.values())
 
 
 def _client():
@@ -40,16 +87,42 @@ def list_procurements():
     return jsonify(data)
 
 
+@bp.route("/procurements/mature")
+def list_mature_procurements():
+    """Filtered list: past deadline, no templates/cancelled, deduplicated."""
+    all_procs = _client().list_procurements()
+    mature = [p for p in all_procs if _is_mature(p)]
+    mature = _dedup_by_sequence_id(mature)
+    mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
+
+    results = []
+    for p in mature:
+        raw_name = p.get("name") or p.get("title") or p.get("description") or ""
+        name = strip_html(raw_name).split("\n")[0]  # first line only
+        raw_proc = p.get("procedure") or ""
+        raw_thresh = p.get("threshold") or ""
+        deadline_str = get_timeline_date(p, "submission") or ""
+
+        results.append({
+            "id": p.get("id"),
+            "sequenceId": p.get("sequenceId"),
+            "name": name or f"Anskaffelse {p.get('id')}",
+            "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
+            "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
+            "deadline": deadline_str[:10] if deadline_str else "",
+        })
+
+    return jsonify(results)
+
+
 @bp.route("/procurements/<int:procurement_id>")
 def get_procurement(procurement_id: int):
-    """Get a single procurement by ID (activities endpoint proxied from list)."""
-    # Artifik API doesn't have a single-procurement endpoint,
-    # so we fetch the list and filter. This keeps the frontend simple.
+    """Get a single procurement by ID (filtered from list endpoint)."""
     all_procs = _client().list_procurements()
-    for proc in all_procs:
-        if proc.get("id") == procurement_id:
-            return jsonify(proc)
-    return jsonify({"error": f"Procurement {procurement_id} not found"}), 404
+    for p in all_procs:
+        if p.get("id") == procurement_id:
+            return jsonify(p)
+    return jsonify({"error": "Not found"}), 404
 
 
 @bp.route("/procurements/<int:procurement_id>/activities")
