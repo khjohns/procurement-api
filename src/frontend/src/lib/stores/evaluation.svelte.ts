@@ -5,6 +5,8 @@
  * All cascading calculations use $derived — no $effect.
  */
 
+import { demoData } from './demo-data';
+
 // ── Item-level types ──
 
 export interface ItemCriterion {
@@ -42,7 +44,7 @@ export interface SubCriterion {
 export interface Criterion {
 	id: string;
 	name: string;
-	type?: 'quality' | 'price';
+	type: 'quality' | 'price';
 	weight: number;
 	subcriteria: SubCriterion[];
 }
@@ -95,12 +97,12 @@ export function supplierItemScore(
 }
 
 /** Weighted average for a single supplier across subcriteria. */
-function weightedAverage(
+export function weightedAverage(
 	subcriteria: SubCriterion[],
 	supplierId: string,
-	totalWeight: number,
 	itemScoresOverlay?: Record<string, Record<string, number>>
 ): number {
+	const totalWeight = subcriteria.reduce((s, sub) => s + sub.weight, 0);
 	if (totalWeight === 0) return 0;
 	const sum = subcriteria.reduce((acc, sub) => {
 		const score =
@@ -123,199 +125,7 @@ export function scoreTier(score: number): 'high' | 'mid' | 'low' {
 }
 
 class EvaluationStore {
-	data = $state<EvaluationData>({
-		id: '2024-1847',
-		title: 'Evaluering av tilbud',
-		reference: '2024/1847-KJH',
-		status: 'Under evaluering',
-		qualityWeight: 75,
-		priceWeight: 25,
-		contractValue: 8_000_000,
-		suppliers: [
-			{ id: 'bouvet', name: 'Bouvet ASA', price: 7_800_000 },
-			{ id: 'sopra', name: 'Sopra Steria AS', price: 8_200_000 },
-			{ id: 'knowit', name: 'Knowit Obiwan AS', price: 7_500_000 }
-		],
-		criteria: [
-			{
-				id: 'kompetanse',
-				name: 'Kompetanse og erfaring',
-				type: 'quality',
-				weight: 35,
-				subcriteria: [
-					{
-						id: 'personell',
-						name: 'Tilbudt personell',
-						weight: 15,
-						evaluationType: 'item',
-						itemLabel: 'Ressurs',
-						aggregation: 'average',
-						itemCriteria: [
-							{ id: 'erfaring', name: 'Relevant erfaring', weight: 40 },
-							{ id: 'utdanning', name: 'Utdanning og fagkompetanse', weight: 30 },
-							{ id: 'sertifisering', name: 'Sertifiseringer', weight: 30 }
-						],
-						items: {
-							bouvet: [
-								{
-									id: 'b1',
-									name: 'Kari Nordmann',
-									label: 'Prosjektleder',
-									scores: { erfaring: 8, utdanning: 7, sertifisering: 9 },
-									notes: {
-										erfaring:
-											'Dokumentert 8 års erfaring fra tilsvarende prosjekter.'
-									}
-								},
-								{
-									id: 'b2',
-									name: 'Ola Hansen',
-									label: 'Seniorutvikler',
-									scores: { erfaring: 7, utdanning: 8, sertifisering: 6 },
-									notes: {}
-								},
-								{
-									id: 'b3',
-									name: 'Eva Solberg',
-									label: 'Løsningsarkitekt',
-									scores: { erfaring: 9, utdanning: 8, sertifisering: 8 },
-									notes: {}
-								}
-							],
-							sopra: [
-								{
-									id: 's1',
-									name: 'Lars Eriksen',
-									label: 'Prosjektleder',
-									scores: { erfaring: 7, utdanning: 8, sertifisering: 7 },
-									notes: {}
-								},
-								{
-									id: 's2',
-									name: 'Maria Johansen',
-									label: 'Utvikler',
-									scores: { erfaring: 7, utdanning: 7, sertifisering: 8 },
-									notes: {}
-								}
-							],
-							knowit: [
-								{
-									id: 'k1',
-									name: 'Anders Berg',
-									label: 'Prosjektleder',
-									scores: { erfaring: 9, utdanning: 9, sertifisering: 9 },
-									notes: {}
-								},
-								{
-									id: 'k2',
-									name: 'Ingrid Dahl',
-									label: 'Seniorutvikler',
-									scores: { erfaring: 8, utdanning: 8, sertifisering: 9 },
-									notes: {}
-								},
-								{
-									id: 'k3',
-									name: 'Thomas Lie',
-									label: 'Arkitekt',
-									scores: { erfaring: 8, utdanning: 9, sertifisering: 7 },
-									notes: {}
-								}
-							]
-						},
-						scores: {},
-						notes: {}
-					},
-					{
-						id: 'referanseprosjekter',
-						name: 'Relevante referanseprosjekter',
-						weight: 10,
-						scores: { bouvet: 9, sopra: 8, knowit: 7 },
-						notes: {}
-					},
-					{
-						id: 'forstaelse',
-						name: 'Forståelse av oppdraget',
-						weight: 10,
-						scores: { bouvet: 8, sopra: 7, knowit: 8 },
-						notes: {}
-					}
-				]
-			},
-			{
-				id: 'losning',
-				name: 'Løsningsbeskrivelse',
-				type: 'quality',
-				weight: 30,
-				subcriteria: [
-					{
-						id: 'teknisk',
-						name: 'Teknisk tilnærming',
-						weight: 15,
-						scores: { bouvet: 7, sopra: 9, knowit: 8 },
-						notes: {}
-					},
-					{
-						id: 'gjennomforing',
-						name: 'Gjennomføringsplan',
-						weight: 10,
-						scores: { bouvet: 8, sopra: 8, knowit: 7 },
-						notes: {}
-					},
-					{
-						id: 'metodikk',
-						name: 'Metodikk og kvalitetssikring',
-						weight: 5,
-						scores: { bouvet: 7, sopra: 9, knowit: 8 },
-						notes: {}
-					}
-				]
-			},
-			{
-				id: 'pris',
-				name: 'Pris',
-				type: 'price',
-				weight: 25,
-				subcriteria: [
-					{
-						id: 'fastpris',
-						name: 'Fastpris prosjektleveranser',
-						weight: 15,
-						scores: { bouvet: 8, sopra: 7, knowit: 9 },
-						notes: {}
-					},
-					{
-						id: 'timepriser',
-						name: 'Timepriser nøkkelroller',
-						weight: 10,
-						scores: { bouvet: 7, sopra: 6, knowit: 8 },
-						notes: {}
-					}
-				]
-			},
-			{
-				id: 'baerekraft',
-				name: 'Bærekraft og samfunnsansvar',
-				type: 'quality',
-				weight: 10,
-				subcriteria: [
-					{
-						id: 'miljo',
-						name: 'Miljøtiltak og sertifiseringer',
-						weight: 5,
-						scores: { bouvet: 8, sopra: 7, knowit: 6 },
-						notes: {}
-					},
-					{
-						id: 'laerling',
-						name: 'Lærlingordning og mangfold',
-						weight: 5,
-						scores: { bouvet: 7, sopra: 8, knowit: 7 },
-						notes: {}
-					}
-				]
-			}
-		]
-	});
+	data = $state<EvaluationData>(structuredClone(demoData));
 
 	activeMethod = $state<ActiveMethod>('poeng');
 
@@ -348,7 +158,6 @@ class EvaluationStore {
 				result[criterion.id][supplier.id] = weightedAverage(
 					criterion.subcriteria,
 					supplier.id,
-					criterion.weight,
 					this.itemScores
 				);
 			}
@@ -366,7 +175,6 @@ class EvaluationStore {
 				const avg = weightedAverage(
 					criterion.subcriteria,
 					supplier.id,
-					criterion.weight,
 					this.itemScores
 				);
 				sum += avg * criterion.weight;
@@ -422,18 +230,20 @@ class EvaluationStore {
 		return result;
 	});
 
-	/** Evaluated price per supplier = offered price + deduction. */
+	/** Evaluated price per supplier = offered price + deduction. Only includes suppliers with a price. */
 	evaluatedPrices = $derived.by(() => {
 		const result: Record<string, number> = {};
 		for (const supplier of this.data.suppliers) {
-			result[supplier.id] = (supplier.price ?? 0) + this.totalDeductions[supplier.id];
+			if (supplier.price == null) continue;
+			result[supplier.id] = supplier.price + this.totalDeductions[supplier.id];
 		}
 		return result;
 	});
 
-	/** Price model ranking (lowest evaluated price wins). */
+	/** Price model ranking (lowest evaluated price wins). Excludes suppliers without a price. */
 	priceRanking = $derived.by(() => {
 		return this.data.suppliers
+			.filter((s) => s.price != null)
 			.map((s) => ({
 				supplier: s,
 				evaluatedPrice: this.evaluatedPrices[s.id]
@@ -451,14 +261,20 @@ class EvaluationStore {
 
 		for (const criterion of this.data.criteria) {
 			for (const sub of criterion.subcriteria) {
-				if (sub.evaluationType === 'item' && sub.items && sub.itemCriteria) {
+				if (sub.evaluationType === 'item' && sub.itemCriteria) {
+					const nCriteria = sub.itemCriteria.length;
 					// Count item-level cells
 					for (const supplier of this.data.suppliers) {
-						const items = sub.items[supplier.id] ?? [];
-						for (const item of items) {
-							for (const ic of sub.itemCriteria) {
-								totalCells++;
-								if (item.scores[ic.id] !== undefined) filledCells++;
+						const items = sub.items?.[supplier.id] ?? [];
+						if (items.length === 0) {
+							// Expect at least 1 item per supplier
+							totalCells += nCriteria;
+						} else {
+							for (const item of items) {
+								for (const ic of sub.itemCriteria) {
+									totalCells++;
+									if (item.scores[ic.id] !== undefined) filledCells++;
+								}
 							}
 						}
 					}
@@ -484,28 +300,58 @@ class EvaluationStore {
 		};
 	});
 
+	/** Best score per sub-criterion: subId → max score across suppliers. */
+	bestScores = $derived.by(() => {
+		const result: Record<string, number> = {};
+		for (const criterion of this.data.criteria) {
+			for (const sub of criterion.subcriteria) {
+				const overlay = this.itemScores[sub.id];
+				const vals = overlay
+					? Object.values(overlay)
+					: Object.values(sub.scores);
+				result[sub.id] = vals.length > 0 ? Math.max(...vals) : 0;
+			}
+		}
+		return result;
+	});
+
+	/** Best group score per criterion: criterionId → max group score. */
+	bestGroupScores = $derived.by(() => {
+		const result: Record<string, number> = {};
+		for (const criterion of this.data.criteria) {
+			const scores = this.groupScores[criterion.id];
+			if (scores) {
+				const vals = Object.values(scores);
+				result[criterion.id] = vals.length > 0 ? Math.max(...vals) : 0;
+			}
+		}
+		return result;
+	});
+
+	/** Weight warnings: criterion id → mismatch between criterion weight and sub-criteria sum. */
+	weightWarnings = $derived.by(() => {
+		const result: Record<string, { criterionWeight: number; subSum: number }> = {};
+		for (const criterion of this.data.criteria) {
+			const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
+			if (subSum !== criterion.weight) {
+				result[criterion.id] = { criterionWeight: criterion.weight, subSum };
+			}
+		}
+		return result;
+	});
+
 	// ── Mutation methods ──
 
 	/** Update a single score. */
 	setScore(subCriterionId: string, supplierId: string, value: number) {
-		for (const criterion of this.data.criteria) {
-			const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
-			if (sub) {
-				sub.scores[supplierId] = Math.max(0, Math.min(10, value));
-				return;
-			}
-		}
+		const sub = this._findSub(subCriterionId);
+		if (sub) sub.scores[supplierId] = Math.max(0, Math.min(10, value));
 	}
 
 	/** Update a note. */
 	setNote(subCriterionId: string, supplierId: string, text: string) {
-		for (const criterion of this.data.criteria) {
-			const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
-			if (sub) {
-				sub.notes[supplierId] = text;
-				return;
-			}
-		}
+		const sub = this._findSub(subCriterionId);
+		if (sub) sub.notes[supplierId] = text;
 	}
 
 	/** Update supplier price. */
@@ -553,7 +399,7 @@ class EvaluationStore {
 		if (!sub.items) sub.items = {};
 		if (!sub.items[supplierId]) sub.items[supplierId] = [];
 		sub.items[supplierId].push({
-			id: `item-${Date.now()}`,
+			id: crypto.randomUUID(),
 			name,
 			label,
 			scores: {},
@@ -586,31 +432,6 @@ class EvaluationStore {
 	setAggregation(subCriterionId: string, method: AggregationMethod) {
 		const sub = this._findSub(subCriterionId);
 		if (sub) sub.aggregation = method;
-	}
-
-	/** Best score for a subcriterion (uses itemScores overlay). */
-	bestScore(subCriterionId: string): number {
-		// Check itemScores first
-		const itemOverlay = this.itemScores[subCriterionId];
-		if (itemOverlay) {
-			const vals = Object.values(itemOverlay);
-			return vals.length > 0 ? Math.max(...vals) : 0;
-		}
-		for (const criterion of this.data.criteria) {
-			const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
-			if (sub) {
-				const vals = Object.values(sub.scores);
-				return vals.length > 0 ? Math.max(...vals) : 0;
-			}
-		}
-		return 0;
-	}
-
-	/** Best group score for a criterion. */
-	bestGroupScore(criterionId: string): number {
-		const scores = this.groupScores[criterionId];
-		if (!scores) return 0;
-		return Math.max(...Object.values(scores));
 	}
 
 	/** Initialize or reset the evaluation with new data. */

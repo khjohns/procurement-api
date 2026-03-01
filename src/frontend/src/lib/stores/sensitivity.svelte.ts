@@ -3,7 +3,7 @@
  * Uses $state overrides Map merged into $derived for simulation.
  */
 
-import { evaluation, type Criterion } from './evaluation.svelte';
+import { evaluation, weightedAverage, type Criterion } from './evaluation.svelte';
 
 export interface SimulatedWeight {
 	id: string;
@@ -59,8 +59,8 @@ class SensitivityStore {
 	/** Simulated totals per supplier using simulated weights. */
 	simulatedTotals = $derived.by(() => {
 		const result: Record<string, number> = {};
-		const totalWeight = this.simulatedWeights.reduce((s, w) => s + w.weight, 0);
-		if (totalWeight === 0) return result;
+		const totalSimWeight = this.simulatedWeights.reduce((s, w) => s + w.weight, 0);
+		if (totalSimWeight === 0) return result;
 
 		const weightMap = new Map(this.simulatedWeights.map((w) => [w.id, w.weight]));
 
@@ -68,17 +68,14 @@ class SensitivityStore {
 			let sum = 0;
 			for (const criterion of evaluation.data.criteria) {
 				const simWeight = weightMap.get(criterion.id) ?? criterion.weight;
-				// Use criterion.weight as divisor to match EvaluationStore's weightedAverage
-				if (criterion.weight === 0) continue;
-				const avg = criterion.subcriteria.reduce((acc, sub) => {
-					const score =
-						evaluation.itemScores[sub.id]?.[supplier.id] ??
-						sub.scores[supplier.id] ?? 0;
-					return acc + score * sub.weight;
-				}, 0) / criterion.weight;
+				const avg = weightedAverage(
+					criterion.subcriteria,
+					supplier.id,
+					evaluation.itemScores
+				);
 				sum += avg * simWeight;
 			}
-			result[supplier.id] = sum / totalWeight;
+			result[supplier.id] = sum / totalSimWeight;
 		}
 		return result;
 	});

@@ -103,7 +103,7 @@
 					<td class="cell-criteria">{criterion.name}</td>
 					{#each evaluation.data.suppliers as supplier}
 						{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
-						{@const isBest = score === evaluation.bestGroupScore(criterion.id) && score > 0}
+						{@const isBest = score === (evaluation.bestGroupScores[criterion.id] ?? 0) && score > 0}
 						<ScoreCell {score} {isBest} />
 					{/each}
 				</tr>
@@ -143,7 +143,7 @@
 							{@const score = isItemEval
 								? (evaluation.itemScores[sub.id]?.[supplier.id] ?? 0)
 								: (sub.scores[supplier.id] ?? 0)}
-							{@const isBest = score === evaluation.bestScore(sub.id) && score > 0}
+							{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
 							{@const hasNotes = !!sub.notes[supplier.id]}
 							{@const panelKey = `${sub.id}:${supplier.id}`}
 							<ScoreCell

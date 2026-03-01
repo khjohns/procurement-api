@@ -7,12 +7,6 @@
 		if (margin >= 0.2) return 'tier-moderate';
 		return 'tier-vulnerable';
 	}
-
-	function tierLabel(margin: number): string {
-		if (margin >= 0.5) return 'stabil';
-		if (margin >= 0.2) return 'moderat';
-		return 'sårbar';
-	}
 </script>
 
 <div class="sensitivity">
