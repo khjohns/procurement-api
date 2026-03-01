@@ -28,6 +28,12 @@ src/frontend/dist/
 # eForms cache
 .cache/
 
+# Playwright MCP
+.playwright-mcp/
+
+# Screenshots (temp)
+*.png
+
 # IDE
 .idea/
 .vscode/

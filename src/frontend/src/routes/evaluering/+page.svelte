@@ -66,7 +66,7 @@
 		padding: var(--sp-1) var(--sp-3);
 		border-radius: 100px;
 		background: var(--vekt-bg);
-		border: 1px solid rgba(232, 168, 56, 0.15);
+		border: 1px solid var(--vekt-bg-strong);
 		font-size: 11px;
 		font-weight: 600;
 		color: var(--vekt);
