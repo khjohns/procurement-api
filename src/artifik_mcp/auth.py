@@ -4,6 +4,7 @@ When deployed behind Cloud Run IAM, the Authorization header is consumed
 by the IAM layer.  The app-level MCP token is sent in X-MCP-Token instead.
 """
 
+import hmac
 import os
 
 
@@ -22,7 +23,7 @@ def require_bearer_token():
     if not token:
         return jsonify({"error": "Missing X-MCP-Token header"}), 401
 
-    if token != expected:
+    if not hmac.compare_digest(token, expected):
         return jsonify({"error": "Invalid token"}), 403
 
     return None

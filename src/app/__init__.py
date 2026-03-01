@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 
 from .client import ArtifikClient
+from .doffin import DoffinClient
 
 # SvelteKit adapter-static build output
 _BUILD_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
@@ -15,13 +16,19 @@ _BUILD_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__, static_folder=None)
 
-    app.config.from_mapping(SECRET_KEY="dev")
+    app.config.from_mapping(SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-fallback"))
 
     if test_config:
         app.config.update(test_config)
 
-    # Shared API client
+    # Shared API clients
     app.artifik = ArtifikClient()  # type: ignore[attr-defined]
+    app.doffin = DoffinClient(cache_dir=".cache/eforms")  # type: ignore[attr-defined]
+
+    # Health check
+    @app.route("/health")
+    def health():
+        return jsonify({"status": "ok"})
 
     # Register blueprints
     from .api import bp as api_bp

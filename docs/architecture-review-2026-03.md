@@ -536,16 +536,82 @@ tests/
 
 ---
 
-## 11. Konklusjon
+## 11. API-vurdering (tillegg)
 
-Systemet har en solid arkitekturfundament med gjennomtenkte beslutninger (secrets-isolasjon, deklarativ UI, delt kode). De viktigste forbedringene er:
+### 11.1 Manglende rute: `/api/procurements/<id>`
 
-1. **Sikkerhet:** Fiks hardkodet `SECRET_KEY` umiddelbart
-2. **Vedlikehold:** Oppgrader Vite til v7, Python til 3.12, og Svelte/SvelteKit til sikkerhetspatchede versjoner
-3. **Robusthet:** Legg til health checks, feilhåndtering og manglende Docker-kopier
-4. **Testdekning:** Fiks broken tester og ekspander med Flask API- og frontend-tester
+Protokoll-storen kaller `fetch('/api/procurements/${procurementId}')`, men ruten fantes ikke. Bare `/api/procurements` (liste) og `/api/procurements/<id>/activities` eksisterte. **Fikset** — rute lagt til i denne reviewen.
 
-Ingen av funnene krever arkitekturendring — det er operasjonelle forbedringer innenfor en god arkitektur.
+### 11.2 Root-redirect bruker `onMount` + `goto`
+
+```ts
+// +page.svelte (FØR)
+onMount(() => { goto('/evaluering') });
+```
+
+Bør bruke SvelteKit's `redirect()` i `+page.ts` load-funksjon for å unngå flash av tom side. **Fikset** — `+page.ts` med `redirect(307, '/evaluering')`.
+
+### 11.3 `$effect` for data-fetching i anskaffelsessiden
+
+`anskaffelser/+page.svelte:18` bruker `$effect(() => { loadProcurements() })` for data-lasting. Fungerer, men er et anti-mønster — bør bruke `onMount` eller `+page.ts` load-funksjon. **Dokumentert** — ikke fikset i denne omgangen.
+
+### 11.4 Ingen API-input-validering
+
+`/api/protokoll/generate` leser `request.get_json()` uten å validere form. Feilformet input kan gi uventede feil i `python-docx`. Vurder `pydantic` for payload-validering. **Dokumentert** — backlog.
+
+### 11.5 `analyze_buyer()` er en tung operasjon
+
+DoffinClient's `analyze_buyer()` kan laste ned hundrevis av eForms XML-filer med `time.sleep(10-30s)` for rate-limiting. Ikke eksponert som web-endepunkt i dag (kun MCP), men bør merkes tydelig som MCP-only. **Dokumentert** — ikke et problem per i dag.
+
+### 11.6 Broken test: `test_credentials.py`
+
+Refererer `artifik_mcp.credentials` som ikke lenger eksisterer. Pre-eksisterende feil fra før credentials ble flyttet til env vars. **Dokumentert** — bør fjernes eller oppdateres.
+
+---
+
+## 12. Teknologier verdt å vurdere
+
+| Teknologi | Hva det løser | Prioritet |
+|-----------|--------------|-----------|
+| **`uv`** | Erstatter pip/pip-tools. 10-100x raskere installs, innebygd lockfile (`uv.lock`), reproduserbare builds. Drop-in | HØY |
+| **Structured logging** (`structlog`) | JSON-logging til Cloud Logging. Gjør logger søkbare/filtrerbare | MIDDELS |
+| **Sentry / Cloud Error Reporting** | Feilrapportering med stack traces, automatisk alerting | MIDDELS |
+| **Vitest** | Frontend-testing — nevnt i ADR-003 men ikke satt opp | MIDDELS |
+| **`pydantic`** | Validering av API-input (protokoll-payload). Erstatter manuell `get()`-kaskade | LAV |
+| **Cloud Run `--cpu-boost`** | 2x CPU under oppstart — raskere cold starts uten min-instances-kostnad | LAV |
+
+**Ikke anbefalt nå:**
+- **FastAPI** — Flask dekker behovene, ingen asynkron gevinst med nåværende trafikk
+- **Bun** — Node 22 fungerer fint for frontend-build
+- **Redis/database** — localStorage + JSON-cache dekker behovene
+
+---
+
+## 13. Fikser gjort i denne reviewen
+
+| Fil | Endring |
+|-----|---------|
+| `src/app/__init__.py` | SECRET_KEY fra env var, delt DoffinClient, `/health`-endepunkt |
+| `src/app/api/__init__.py` | Ny `/api/procurements/<id>` rute, error handlers, delt DoffinClient |
+| `src/artifik_mcp/auth.py` | `hmac.compare_digest()` for timing-safe token-sjekk |
+| `Dockerfile` | Python 3.12, `python-docx`, `src/protokoll/`, non-root user, Gunicorn-tuning |
+| `tests/test_server.py` | Rewritten for `MCPServer()` — 3 tester som passerer |
+| `src/frontend/src/routes/+page.svelte` | Fjernet `onMount`/`goto` redirect |
+| `src/frontend/src/routes/+page.ts` | Ny fil — SvelteKit `redirect(307, '/evaluering')` |
+
+---
+
+## 14. Konklusjon
+
+Systemet har et solid arkitekturfundament med gjennomtenkte beslutninger (secrets-isolasjon, deklarativ UI, delt kode).
+
+De viktigste forbedringene er fikset direkte:
+1. **Sikkerhet:** SECRET_KEY fra env var, timing-safe token-sjekk
+2. **Robusthet:** Health check, error handlers, manglende API-rute, Docker-kopier
+3. **Testdekning:** Rewritten `test_server.py` (19 av 19 tester passerer)
+4. **Docker:** Python 3.12, non-root user, Gunicorn-tuning, protokoll-modul
+
+Gjenstående forbedringer er dokumentert i seksjon 9 (prioritert handlingsplan) og seksjon 12 (teknologier å vurdere). Ingen av de gjenstående funnene krever arkitekturendring.
 
 ---
 
