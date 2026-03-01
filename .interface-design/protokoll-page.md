@@ -10,6 +10,55 @@
 
 ---
 
+## Document Variants: Del I, II, III
+
+The protocol has three structural variants based on procurement threshold:
+
+| Del | Threshold | FOA chapter | Status |
+|-----|-----------|-------------|--------|
+| Del I | Under nasjonal terskel | Del I (§§ 1-7) | Future scope |
+| Del II | Nasjonal, under EØS-terskel | Del II (§§ 8-10) | Supported |
+| Del III | Over EØS-terskel | Del III (§§ 11-27) | Supported |
+
+Del II and Del III share the same rendering engine and component patterns, but have **different chapter structures, different sections, and different conditional logic.** A section registry per del defines the document structure declaratively — the page reads the appropriate registry based on `isDel2` and renders through shared components.
+
+### Chapter Structure Comparison
+
+**Del II:**
+```
+RAMMEVERK                           ← Generell info, Prosedyre
+DIALOG OG AVKLARING                 ← Dialog/forhandlinger, Ettersending
+KVALIFISERING                       ← Kvalifikasjonsvurdering, Utvelgelse
+AVVISNING                           ← Formalfeil, Leverandør, Tilbud
+TILDELING                           ← Kriterier, Vurdering, Tildeling, Meddelelse, Rammeavtale
+AVSLUTNING                          ← Markedsdialog, Habilitet, Annet, Datakvalitet
+```
+
+**Del III:**
+```
+RAMMEVERK                           ← Generell info, Prosedyre
+KVALIFISERING                       ← Foreløpig kvalifisering, Kvalifikasjon, Utvelgelse
+AVVISNING                           ← Formalfeil, Leverandør, Tilbud (+ unormalt lave)
+ETTERSENDING, FORHANDLINGER OG DIALOG  ← Ettersending, Forhandlinger, Dialog
+TILDELING                           ← Kriterier, Vurdering, Tildeling, Rammeavtale
+AVSLUTNING                          ← Markedsdialog, Habilitet, Annet, Datakvalitet
+```
+
+**Key differences:**
+- Chapter ordering differs (Dialog is chapter 2 in Del II, chapter 4 in Del III)
+- Del III adds Foreløpig kvalifikasjonsvurdering (FOA § 17-1)
+- Del III splits Ettersending/Forhandlinger/Dialog into three separate sections
+- Del III adds "Unormalt lave tilbud" (FOA § 24-9) subsection
+- Del II has Meddelelse om tildeling as separate section; Del III merges it into Tildeling
+- Del II has three-tier qualification assessment (FOA § 8-10 stages); Del III has one
+- Both end with a Datakvalitet section (internal reference, not exported to Word)
+
+### Design Implication
+
+The page renders from a section definition array. Each section definition declares its chapter group, fields, data sources, and visibility condition. Adding Del I later means adding a third array — no new components needed. Chapter labels and section numbering are derived from the active definition, not hardcoded.
+
+---
+
 ## Layout
 
 ### Page Structure
@@ -36,6 +85,7 @@
 │         │  │ ┌──────────────────────────────────────────────────┐   │
 │         │  │ │  Prosedyretype  │ Åpen anbudskonkurranse        │   │
 │         │  │ └──────────────────────────────────────────────────┘   │
+│         │  │  ☐ Unntak fra elektronisk kommunikasjon               │
 │         │  │  BEGRUNNELSE FOR PROSEDYREVALG                        │
 │         │  │ ┌──────────────────────────────────────────────────┐   │
 │         │  │ │ Åpen anbud ble valgt fordi...                   │   │
@@ -53,14 +103,14 @@
 │         │  │ │  Kontraktsverdi│ 25 000 000 kr                  │   │
 │         │  │ └──────────────────────────────────────────────────┘   │
 │         │  │  TILDELINGSBEGRUNNELSE                                  │
-│         │  │ ┌─ Tipex ──────────────────────────────────────────┐   │
-│         │  │ │ B I U │ H2 H3 │ • 1. │ ""                      │   │
-│         │  │ ├──────────────────────────────────────────────────┤   │
+│         │  │ ┌─ Tipex (floating toolbar) ──────────────────────┐   │
 │         │  │ │ Bouvet tildeles kontrakten basert på...         │   │
 │         │  │ │                              max-height: 60vh ↕ │   │
 │         │  │ └──────────────────────────────────────────────────┘   │
 │         │  │  2 847 tegn                                            │
 │         │  ...                                                       │
+│         │  ──── AVSLUTNING ──────────────────────────────────────   │
+│         │  ▸  18  Datakvalitet                          ✓  AUTO     │
 │         │                                                            │
 │         │  ┌── Sticky footer (full workspace width) ───────────────┐│
 │         │  │ ██████░░░ 12/15 · 3 mangler  Lukk alle  Generer .docx││
@@ -85,21 +135,21 @@ Three decisions control scroll behavior:
 ## Page Header
 
 ```
-ANSKAFFELSESPROTOKOLL              section-label style (11px, uppercase, --ink-ghost)
+ANSKAFFELSESPROTOKOLL              section-label style (11px, uppercase, --color-ink-ghost)
 
-IT-rammeavtale konsulenter 2026    headline (20px, --font-ui, weight 700, --ink)
-Ref: 2026-1795 · Del II            body (13px, --ink-secondary)
+IT-rammeavtale konsulenter 2026    headline (20px, --font-ui, weight 700, --color-ink)
+Ref: 2026-1795 · Del II            body (13px, --color-ink-secondary)
 
                             ┌──────────────────────┐
                             │  ↓  Generer .docx     │  primary action button
                             └──────────────────────┘
 ```
 
-- Section label: same 11px/600/uppercase/`--ink-ghost` pattern from system.md
+- Section label: same 11px/600/uppercase/`--color-ink-ghost` pattern from system.md
 - Title: procurement name from API, same headline style as evaluation page
 - Reference + del (II or III): derived from procurement threshold
-- Generate button: right-aligned, `--vekt` background, `--canvas` text, `--r-sm` radius, weight 600
-- Generate button disabled state: `--felt-active` background, `--ink-muted` text — when completeness < 100% or still loading
+- Generate button: right-aligned, `--color-vekt` background, `--color-canvas` text, `--radius-sm` radius, weight 600
+- Generate button disabled state: `--color-felt-active` background, `--color-ink-muted` text — when completeness < 100% or still loading
 
 ---
 
@@ -114,12 +164,12 @@ Horizontal bar showing overall document completeness. Lives between header and s
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Container: `--felt` background, `--wire` border, `--r-md` radius, `--sp-4` padding
-- Progress bar: 4px height, `--score-high` fill (green) when >80%, `--vekt` when 40-80%, `--score-low` when <40%
-- Fraction: `--font-data`, 13px, `--ink` color
-- Missing count: 13px, `--ink-secondary`, emphasizes what's incomplete
-- When 100%: bar fully green, text changes to "Fullstendig — klar for generering" in `--score-high`
-- **Denominator excludes N/A sections.** If 4 of 19 possible sections are N/A for this procurement, show "12 av 15" — not "12 av 19". Parenthetical "(4 ikke relevant)" in `--ink-ghost` if needed for transparency.
+- Container: `--color-felt` background, `--color-wire` border, `--radius-md` radius, `--spacing-4` padding
+- Progress bar: 4px height, `--color-score-high` fill (green) when >80%, `--color-vekt` when 40-80%, `--color-score-low` when <40%
+- Fraction: `--font-data`, 13px, `--color-ink` color
+- Missing count: 13px, `--color-ink-secondary`, emphasizes what's incomplete
+- When 100%: bar fully green, text changes to "Fullstendig — klar for generering" in `--color-score-high`
+- **Denominator excludes N/A sections.** If 4 sections are N/A for this procurement, show "12 av 15" — not "12 av 19". Parenthetical "(4 ikke relevant)" in `--color-ink-ghost` if needed for transparency.
 
 ---
 
@@ -127,29 +177,21 @@ Horizontal bar showing overall document completeness. Lives between header and s
 
 Sections are grouped into chapters matching the Word document's heading structure (mirroring the Python generator's output). Chapter labels are non-collapsible visual landmarks — they give the accordion document-level rhythm.
 
+Chapter names are **derived from the section registry** for the active del (II or III). See the Document Variants section above for the per-del chapter structures.
+
 ```
 ──── RAMMEVERK ─────────────────────────────────────────────────
 ▸  1   Generell informasjon                          ✓  AUTO
 ─────────────────────────────────────────────────────────────────
 ▸  2   Prosedyre                                     ◐  DELVIS
-─────────────────────────────────────────────────────────────────
-▸  3   Kunngjøring                                   ✓  AUTO
-──── DIALOG OG AVKLARING ───────────────────────────────────────
-▸  4   Dialog og forhandlinger                       — N/A
-─────────────────────────────────────────────────────────────────
-▸  5   Ettersending og avklaring                     ✓  AUTO
 ──── KVALIFISERING ─────────────────────────────────────────────
-...
-──── TILDELING ─────────────────────────────────────────────────
-...
-──── AVSLUTNING ────────────────────────────────────────────────
+▸  3   Kvalifikasjonskrav                            ✓  AUTO
 ...
 ```
 
-- Chapter label: 10px, uppercase, weight 600, `--ink-ghost`, letter-spacing 0.12em
-- Horizontal rule: `--wire` border, top and bottom of the label line
+- Chapter label: 10px, uppercase, weight 600, `--color-ink-ghost`, letter-spacing 0.12em
+- Horizontal rule: `--color-wire` border, top and bottom of the label line
 - Not collapsible, not interactive — purely structural
-- Chapters match the Python generator's top-level headings: RAMMEVERK, DIALOG OG AVKLARING, KVALIFISERING, AVVISNING, TILDELING, AVSLUTNING
 
 ---
 
@@ -165,22 +207,22 @@ The core of the page. Collapsible sections within chapter groups. Multiple secti
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Container: `--felt` background on hover, transparent by default
+- Container: `--color-felt` background on hover, transparent by default
 - **Sticky:** `position: sticky; top: 0; z-index: 10` — stays pinned when scrolling through expanded section content. The collapse chevron remains reachable regardless of how long the section content is.
-- Bottom border: `--wire` (separator between sections)
-- Chevron: `▸` rotates to `▾` when expanded, 10px, `--ink-ghost`, transition 150ms
-- Section number: `--font-data`, 13px, `--ink-muted` — plain ordinal (no § prefix — § is reserved for actual FOA references within section content)
-- Section name: `--font-ui`, 13px, weight 500, `--ink`
+- Bottom border: `--color-wire` (separator between sections)
+- Chevron: `▸` rotates to `▾` when expanded, 10px, `--color-ink-ghost`, transition 150ms
+- Section number: `--font-data`, 13px, `--color-ink-muted` — plain ordinal (no § prefix — § is reserved for actual FOA references within section content)
+- Section name: `--font-ui`, 13px, weight 500, `--color-ink`
 - Status badge (right-aligned):
 
 | Status | Badge | Color |
 |--------|-------|-------|
-| Complete (all fields filled) | `✓ AUTO` or `✓ OK` | `--score-high` text, `--score-high-bg` background |
-| Partial (some manual fields empty) | `◐ DELVIS` | `--vekt` text, `--vekt-bg` background |
-| Empty (manual fields required, none filled) | `○ MANGLER` | `--score-low` text, `--score-low-bg` background |
-| Not applicable (section hidden for this procurement) | `— N/A` | `--ink-ghost` text |
+| Complete (all fields filled) | `✓ AUTO` or `✓ OK` | `--color-score-high` text, `--color-score-high-bg` background |
+| Partial (some manual fields empty) | `◐ DELVIS` | `--color-vekt` text, `--color-vekt-bg` background |
+| Empty (manual fields required, none filled) | `○ MANGLER` | `--color-score-low` text, `--color-score-low-bg` background |
+| Not applicable (section hidden for this procurement) | `— N/A` | `--color-ink-ghost` text |
 
-- Badge: pill shape (`--r-sm`), 10px uppercase, weight 600, letter-spacing 0.06em, padding 2px 8px
+- Badge: pill shape (`--radius-sm`), 10px uppercase, weight 600, letter-spacing 0.06em, padding 2px 8px
 - Click anywhere on row to toggle expand/collapse
 - `AUTO` vs `OK`: sections with only API data show "AUTO" (nothing for user to do), sections with completed manual fields show "OK"
 
@@ -199,13 +241,13 @@ API data displayed in a read-only info table. Not editable — the user verifies
 ```
 
 - Two-column layout: label | value
-- Label column: 13px, weight 500, `--ink-secondary`, **left-aligned**, 160px fixed width
-- Value column: 13px, weight 500, `--ink`, `--font-data` for numbers/dates, `--font-ui` for text
-- Row: `--sp-2` vertical padding, `--wire` bottom border
-- Container: `--felt` background, `--wire` border, `--r-sm` radius
+- Label column: 13px, weight 500, `--color-ink-secondary`, **left-aligned**, 160px fixed width
+- Value column: 13px, weight 500, `--color-ink`, `--font-data` for numbers/dates, `--font-ui` for text
+- Row: `--spacing-2` vertical padding, `--color-wire` bottom border
+- Container: `--color-felt` background, `--color-wire` border, `--radius-sm` radius
 - Numbers formatted with Norwegian locale (`Intl.NumberFormat('nb-NO')`)
 
-When data is missing from API: show `—` in `--ink-ghost` with a small info tooltip: "Ikke tilgjengelig fra Artifik"
+When data is missing from API: show `—` in `--color-ink-ghost` with a small info tooltip: "Ikke tilgjengelig fra Artifik"
 
 ### Section Content — Supplier Lists (from Activities)
 
@@ -221,16 +263,16 @@ Several sections show lists of suppliers derived from activities (SUBMIT_BID, QU
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Section label: 11px, uppercase, weight 600, `--ink-ghost`, letter-spacing 0.08em
-- Supplier items: 13px, `--font-ui`, weight 500, `--ink`
-- Numbered list: `--font-data` for numbers, `--ink-muted`
-- Container: same `--felt` / `--wire` treatment as info tables
+- Section label: 11px, uppercase, weight 600, `--color-ink-ghost`, letter-spacing 0.08em
+- Supplier items: 13px, `--font-ui`, weight 500, `--color-ink`
+- Numbered list: `--font-data` for numbers, `--color-ink-muted`
+- Container: same `--color-felt` / `--color-wire` treatment as info tables
 
 ### Section Content — Manual Fields
 
-Manual input areas for justifications and assessments the user must write.
+Manual input areas for justifications and assessments the user must write. Six field types used across sections:
 
-**Short text fields (begrunnelser, one-liners):**
+#### Short text fields (begrunnelser, one-liners)
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -246,23 +288,44 @@ Manual input areas for justifications and assessments the user must write.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Textarea: `--canvas` background (inset feel — darker than surrounding `--felt`), `--wire` border, `--r-sm` radius
-- Focus: `--wire-focus` border (amber)
-- Placeholder: `--ink-ghost`, italic
-- Hint text below: 11px, `--ink-muted`, not italic
-- Character count: 11px, `--ink-muted`, `--font-data`, right-aligned on same line as hint (or alone if no hint)
+- Textarea: `--color-canvas` background (inset feel — darker than surrounding `--color-felt`), `--color-wire` border, `--radius-sm` radius
+- Focus: `--color-wire-focus` border (amber)
+- Placeholder: `--color-ink-ghost`, italic
+- Hint text below: 11px, `--color-ink-muted`, not italic
+- Character count: 11px, `--color-ink-muted`, `--font-data`, right-aligned on same line as hint (or alone if no hint)
 - Min-height: 80px, auto-grows with content (no max-height — short fields)
 
-**Rich text fields (tildelingsbegrunnelse, kvalifikasjonsvurdering):**
+#### Checkbox with conditional textarea
+
+Used for Del II-specific boolean fields (unntak fra elektronisk kommunikasjon, reservasjon for ideelle organisasjoner) and section-level "Ingen avvist" / "Ingen forhandlinger" checkboxes.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  ☐  Unntak fra elektronisk kommunikasjon, jf. FOA § 10-5      │
+│                                                                │
+│  (textarea appears only when checked:)                         │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Begrunnelse for unntak...                               │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│  Begrunn hvorfor elektronisk kommunikasjon ikke benyttes.      │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- Checkbox: 16×16px, `--color-wire-strong` border, `--radius-sm`. Checked: `--color-vekt` fill, `✓` in `--color-canvas`
+- Label: 13px, weight 500, `--color-ink`, inline with checkbox. FOA reference in `--color-ink-muted`
+- Conditional textarea: slides in with `transition:slide` (200ms) when checkbox is checked
+- Textarea: same `--color-canvas` inset pattern as short text fields
+- Completeness: checkbox alone = complete (if unchecked, no begrunnelse needed). Checkbox checked + empty textarea = incomplete.
+
+#### Rich text fields (Tipex)
+
+Used for three fields: **utvelgelsesbegrunnelse** (section 9), **forhandlinger/dialog** (section 12), and **tildelingsbegrunnelse** (section 14).
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  TILDELINGSBEGRUNNELSE                       section-label     │
 │                                                                │
-│  ┌─ Tipex toolbar ─────────────────────────────────────────┐  │
-│  │  B  I  U  │  H2  H3  │  •  1.  │  ""                   │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │                                                          │  │
+│  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Bouvet ASA tildeles kontrakten basert på følgende       │  │
 │  │  vurdering av tildelingskriteriene:                      │  │
 │  │                                                          │  │
@@ -276,35 +339,34 @@ Manual input areas for justifications and assessments the user must write.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Tipex editor container: `--canvas` background, `--wire` border, `--r-sm` radius
-- Toolbar: `--felt` background, `--wire` bottom border, `--sp-2` padding
-- Toolbar buttons: 24×24px, `--r-sm`, `--ink-secondary`, hover → `--felt-hover`
-- Toolbar active state: `--vekt-bg` background, `--vekt` color
-- Toolbar dividers: 1px `--wire`, 16px height, vertical
-- Editor area: `--sp-4` padding, min-height 200px, **max-height 60vh, overflow-y auto** (internal scroll when content exceeds ~1.5 A4 pages)
-- Editor text: `--font-ui`, 14px (slightly larger for writing comfort), `--ink`, line-height 1.6
-- Focus: entire container border → `--wire-focus`
-- Character count below: 11px, `--ink-muted`, `--font-data`
+- Uses Tipex (`@friendofsvelte/tipex`) with **standard floating toolbar** — toolbar appears near cursor/selection, not pinned to top. This is Tipex's default `floating focal` mode.
+- Tipex editor container: `--color-canvas` background, `--color-wire` border, `--radius-sm` radius
+- Tipex CSS variables overridden in `@theme` to match design system (surface colors, accent colors)
+- Editor area: `--spacing-4` padding, min-height 200px, **max-height 60vh, overflow-y auto** (internal scroll when content exceeds ~1.5 A4 pages)
+- Editor text: `--font-ui`, 14px (slightly larger for writing comfort), `--color-ink`, line-height 1.6
+- Focus: entire container border → `--color-wire-focus`
+- Character count below: 11px, `--color-ink-muted`, `--font-data`
+- Extensions: CharacterCount (for tegn count), Placeholder
 
-**Toolbar items and Word export mapping:**
+**Word export mapping** (applies to all Tipex fields):
 
-| Toolbar | Word mapping | Use case |
-|---------|-------------|----------|
-| **B** (Bold) | Bold run | Emphasis, supplier names |
-| *I* (Italic) | Italic run | Terms, document names |
-| U (Underline) | Underline run | Legal emphasis convention |
+| Formatting | Word mapping | Use case |
+|------------|-------------|----------|
+| Bold | Bold run | Emphasis, supplier names |
+| Italic | Italic run | Terms, document names |
+| Underline | Underline run | Legal emphasis convention |
 | H2, H3 | Heading 2, 3 styles | Structuring long begrunnelse by criterion |
-| • (Unordered list) | Bullet list | Listing evaluation points |
-| 1. (Ordered list) | Numbered list | Sequential arguments |
-| "" (Blockquote) | Indented paragraph | Quoting from tilbud or FOA text |
+| Bullet list | Bullet list | Listing evaluation points |
+| Numbered list | Numbered list | Sequential arguments |
+| Blockquote | Indented paragraph | Quoting from tilbud or FOA text |
 
-**Per-supplier fields (utvelgelsesbegrunnelser, avvisningsbegrunnelser):**
+#### Per-supplier text fields
 
-When a section requires justification per supplier, show a stacked card layout:
+When a section requires plain-text justification per supplier (kvalifikasjonsvurdering, avvisningsbegrunnelse):
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  UTVELGELSESBEGRUNNELSE PER LEVERANDØR       section-label     │
+│  KVALIFIKASJONSVURDERING PER LEVERANDØR      section-label     │
 │                                                                │
 │  ┌─ Bouvet ASA ────────────────────────────────────────────┐  │
 │  │  ┌──────────────────────────────────────────────────┐   │  │
@@ -323,13 +385,80 @@ When a section requires justification per supplier, show a stacked card layout:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Supplier card: `--felt` background, `--wire` border, `--r-sm` radius, `--sp-4` padding
-- Supplier name: 13px, weight 600, `--ink`, with left border 3px `--vekt` (weight spine, consistent with matrix identity)
-- Gap between cards: `--sp-3`
-- Textarea inside: same `--canvas` inset treatment
-- Character count: 11px, `--ink-muted`, `--font-data`, below each textarea
+- Supplier card: `--color-felt` background, `--color-wire` border, `--radius-sm` radius, `--spacing-4` padding
+- Supplier name: 13px, weight 600, `--color-ink`, with left border 3px `--color-vekt` (weight spine, consistent with matrix identity)
+- Gap between cards: `--spacing-3`
+- Textarea inside: same `--color-canvas` inset treatment
+- Character count: 11px, `--color-ink-muted`, `--font-data`, below each textarea
 - Cards with empty textarea: faded left border (15% amber — sub-criterion pattern from matrix)
 - Cards with filled textarea: solid left border (amber — group-row pattern)
+
+#### Per-supplier rich text fields (Tipex)
+
+Used for **utvelgelsesbegrunnelse** (section 9) where each supplier needs a structured justification. Same supplier-card layout as above, but with Tipex instead of plain textarea:
+
+- Tipex inside supplier card: same `--color-canvas` container, `floating focal` toolbar
+- Min-height: 120px (smaller than standalone Tipex — multiple editors on screen simultaneously)
+- Max-height: 40vh (tighter than standalone — prevents one supplier card from dominating)
+- All other Tipex patterns apply (character count, focus, Word export)
+
+#### Avvisningsbegrunnelse with category selector
+
+Used for rejection sections (Avvisning formalfeil, Avvisning leverandør, Avvisning tilbud). The Python generator needs the FOA reference per rejection, not just a text justification.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  AVVISNING PER LEVERANDØR                    section-label     │
+│                                                                │
+│  ┌─ Konsulentfirma AS ──────────────────────────────────────┐ │
+│  │  HJEMMEL                                                  │ │
+│  │  ○ § 9-4 / § 24-1 Formalfeil                             │ │
+│  │  ● § 9-5 / § 24-2 Kvalifikasjonssvikt                    │ │
+│  │  ○ § 9-6 / § 24-8 Avvisning av tilbud                    │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  Leverandøren oppfyller ikke krav til erfaring...    │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │  186 tegn                                                 │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- Radio group: `--font-ui`, 13px, weight 500. FOA references in `--font-data`, `--color-ink-muted`
+- Radio indicator: 14px circle, `--color-wire-strong` border. Selected: `--color-vekt` fill with inset ring (same pattern as AggregationStrip in evaluation)
+- The displayed FOA references adapt to del: Del II shows §§ 9-4/9-5/9-6, Del III shows §§ 24-1/24-2/24-8
+- Textarea below: same `--color-canvas` inset pattern
+- Completeness: requires both category selection AND text justification
+
+---
+
+## Datakvalitet Section
+
+The final section in both Del II and Del III. An auto-generated internal reference showing which sections were populated from API, eForms, or manual input. Not exported to the Word document — purely a transparency aid for the innkjøper.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  DATAKVALITET — API VS. MANUELT              section-label     │
+│                                                                │
+│  Seksjon                   │  Kilde                            │
+│  ─────────────────────────┼──────────────────────────────      │
+│  Generell informasjon      │  ● Artifik API                    │
+│  Prosedyre                 │  ● Artifik API  ◐ Manuelt         │
+│  Kvalifikasjonskrav        │  ● Doffin eForms                  │
+│  Tildelingskriterier       │  ● Doffin eForms                  │
+│  Leverandører med tilbud   │  ● Artifik API                    │
+│  Tildelingsbegrunnelse     │  ◐ Manuelt                        │
+│  ...                                                           │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- Auto-generated from section registry metadata (no user input)
+- Source indicators: `●` = full, `◐` = partial, colored by source type
+  - Artifik API: `--color-score-high` (green)
+  - Doffin eForms: `--color-vekt` (amber)
+  - Manuelt: `--color-ink-secondary` (neutral)
+- Status: always `✓ AUTO`
+- Not included in progress denominator (it's meta-information, not a user task)
 
 ---
 
@@ -343,14 +472,14 @@ Always visible at bottom of viewport. Spans full workspace width (it's chrome, n
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Container: `--felt` background, `--wire` top border, `position: sticky; bottom: 0`
+- Container: `--color-felt` background, `--color-wire` top border, `position: sticky; bottom: 0`
 - Inner content: `max-width: 800px; margin: 0 auto` — aligns with page column
-- Padding: `--sp-3` vertical, `--sp-4` horizontal
-- Left: compact progress bar (3px height, 80px width) + fraction (`--font-data`, 12px) + missing count (`--ink-secondary`, 12px)
-- Center: "Lukk alle" ghost button — `--wire` border, `--ink-secondary` text, 12px. Collapses all open sections. Only visible when ≥2 sections are expanded.
-- Right: generate button (same as header — `--vekt` bg, `--canvas` text)
-- When all sections complete: progress text → "Klar" in `--score-high`, progress bar fully green
-- Generating state: button shows spinner + "Genererer..." in `--ink-muted`, disabled
+- Padding: `--spacing-3` vertical, `--spacing-4` horizontal
+- Left: compact progress bar (3px height, 80px width) + fraction (`--font-data`, 12px) + missing count (`--color-ink-secondary`, 12px)
+- Center: "Lukk alle" ghost button — `--color-wire` border, `--color-ink-secondary` text, 12px. Collapses all open sections. Only visible when ≥2 sections are expanded.
+- Right: generate button (same as header — `--color-vekt` bg, `--color-canvas` text)
+- When all sections complete: progress text → "Klar" in `--color-score-high`, progress bar fully green
+- Generating state: button shows spinner + "Genererer..." in `--color-ink-muted`, disabled
 - Auto-save indicator: "Lagret" appears briefly (1s fade) to left of Lukk alle after successful save
 
 ---
@@ -377,12 +506,12 @@ When no procurement is selected (initial page state), show a selector:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Search input: same combobox pattern as evaluation setup page (Picker component). SVG search icon (16×16, `--ink-ghost` stroke) — no emoji.
-- Results: `--felt` rows, hover → `--felt-hover`, `--wire` separator
-- Procurement name: 13px, weight 500, `--ink`
-- Reference number: `--font-data`, `--ink-muted`, right-aligned
+- Search input: same combobox pattern as evaluation setup page (Picker component). SVG search icon (16×16, `--color-ink-ghost` stroke) — no emoji.
+- Results: `--color-felt` rows, hover → `--color-felt-hover`, `--color-wire` separator
+- Procurement name: 13px, weight 500, `--color-ink`
+- Reference number: `--font-data`, `--color-ink-muted`, right-aligned
 - On select: fetches procurement data + activities, transitions to form view
-- Loading state: skeleton lines in `--felt-active` with subtle pulse animation
+- Loading state: skeleton lines in `--color-felt-active` with subtle pulse animation
 
 ---
 
@@ -403,9 +532,9 @@ When procurement is selected and data is being fetched:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Chapter labels and section numbers shown immediately (they're static)
-- Content areas show skeleton lines: `--felt-active` background, `--r-sm` radius, 12px height, fixed widths matching expected content proportions (label: 160px, value: ~200px), pulse animation
-- Progress strip shows "Henter data fra Artifik..." in `--ink-muted`
+- Chapter labels and section numbers shown immediately (they're static, derived from section registry)
+- Content areas show skeleton lines: `--color-felt-active` background, `--radius-sm` radius, 12px height, fixed widths matching expected content proportions (label: 160px, value: ~200px), pulse animation
+- Progress strip shows "Henter data fra Artifik..." in `--color-ink-muted`
 
 ---
 
@@ -421,9 +550,9 @@ When procurement is selected and data is being fetched:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Warning container: `--vekt-bg` background, `--vekt` left border (3px), `--r-sm` radius
-- Icon + text: 13px, `--vekt-dim`
-- Retry button: ghost style, `--wire` border, `--ink-secondary` text
+- Warning container: `--color-vekt-bg` background, `--color-vekt` left border (3px), `--radius-sm` radius
+- Icon + text: 13px, `--color-vekt-dim`
+- Retry button: ghost style, `--color-wire` border, `--color-ink-secondary` text
 
 **eForms not available:**
 
@@ -434,7 +563,7 @@ eForms-data ikke tilgjengelig for denne kunngjøringen.
 Kvalifikasjonskrav og tildelingskriterier fylles ut manuelt.
 ```
 
-- 12px, `--ink-muted`, italic
+- 12px, `--color-ink-muted`, italic
 - Displayed in sections for Kvalifikasjonskrav and Tildelingskriterier
 - Those sections switch from auto-display to manual textarea mode
 
@@ -462,7 +591,7 @@ Kvalifikasjonskrav og tildelingskriterier fylles ut manuelt.
 ### Generate flow
 1. Click "Generer .docx"
 2. Button shows spinner + "Genererer..."
-3. POST to `/api/protokoll/generate` with merged data
+3. POST to `/api/protokoll/generate` with merged data (includes `del` indicator for backend)
 4. On success: browser downloads .docx blob
 5. On error: toast/inline error below button
 
@@ -476,7 +605,7 @@ Kvalifikasjonskrav og tildelingskriterier fylles ut manuelt.
 |--------|------|
 | **Artifik API** (procurement + activities) | Procurement metadata, supplier lists (SUBMIT_BID, REJECT_PARTICIPATION, QUALIFYING_PARTICIPANTS, AWARDING_PARTICIPANTS), conversation events, dates |
 | **Doffin eForms** (when available) | Award criteria + weights, selection criteria, contract nature, framework agreement details |
-| **Manual** (always) | All begrunnelse fields, kvalifikasjonsvurderinger, inhabilitet, underleverandører |
+| **Manual** (always) | All begrunnelse fields, kvalifikasjonsvurderinger, inhabilitet, underleverandører, avvisningskategorier |
 
 **Important:** Evaluation scores (from the evaluation matrix) are **not** auto-filled into the protocol. The Artifik API provides award participant names and contract values, but not evaluation scores. Section 14 (Valgt tilbud + begrunnelse) auto-fills the winner name and contract value from the API; the tildelingsbegrunnelse is always manual. Section 14's default status is ◐ DELVIS (auto-filled metadata + empty manual begrunnelse).
 
@@ -488,7 +617,7 @@ Kvalifikasjonskrav og tildelingskriterier fylles ut manuelt.
 - Below 768px: label/value tables stack vertically (label above value)
 - Below 768px: page header stacks (title above button)
 - Sidebar collapses per shared app behavior
-- Tipex toolbar wraps naturally (flex-wrap)
+- Tipex floating toolbar adapts to viewport naturally
 - Sticky footer: progress bar and fraction hide below 480px, only button + status text remain
 
 ---
@@ -499,9 +628,11 @@ Kvalifikasjonskrav og tildelingskriterier fylles ut manuelt.
 - Content panels: `role="region"`, `aria-labelledby` pointing to header
 - Status badges: `aria-label` with full status text (e.g., "Seksjon 2, Prosedyre, delvis utfylt")
 - Progress bar: `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`
-- Tipex editor: `aria-label="Tildelingsbegrunnelse"`, inherits TipTap's ARIA support
+- Tipex editor: `aria-label` matching field name, inherits TipTap's ARIA support
+- Checkboxes: native `<input type="checkbox">` with `<label>` — no custom ARIA needed
+- Radio groups (avvisningskategori): `role="radiogroup"` with `role="radio"` + `aria-checked`
 - Generate button: `aria-disabled` when incomplete + `title` explaining why
-- Keyboard: Enter/Space toggles sections, Tab moves between sections, focus-visible with `--wire-focus`
+- Keyboard: Enter/Space toggles sections, Tab moves between sections, focus-visible with `--color-wire-focus`
 - Skip link: "Gå til seksjon med mangler" — jumps to first incomplete section
 - Chapter labels: `role="separator"` with `aria-label` for screen readers
 

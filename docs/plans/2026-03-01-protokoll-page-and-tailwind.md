@@ -2,7 +2,7 @@
 
 **Dato:** 2026-03-01
 **Avhenger av:** ADR-003 (SvelteKit-valg), protokoll-datagrunnlag.md
-**Design-doc:** Lages i neste steg (interface-design)
+**Design-doc:** `.interface-design/protokoll-page.md`
 
 ---
 
@@ -144,7 +144,8 @@ Eksisterende komponenter bruker de gamle navnene i scoped `<style>`. **Strategi:
      /* ... alle aliaser */
    }
    ```
-2. Nye komponenter bruker kun Tailwind-klasser eller `--color-*`-navn
+2. Nye komponenter bruker kun Tailwind-klasser eller `--color-*`-navn.
+   Design-doc bruker `--color-*`-navnene (Tailwind-konvensjonen).
 3. Eksisterende komponenter migreres gradvis når de redigeres
 
 ### 2.6 Dark/light forberedelse
@@ -200,17 +201,33 @@ Tipex inkluderer TipTap-avhengigheter (`@tiptap/core`, `@tiptap/pm`,
 </script>
 
 <Tipex {body} bind:tipex={editor} floating focal
-  class="border border-wire rounded-md bg-felt min-h-[200px]" />
+  class="border border-wire rounded-md bg-canvas min-h-[200px] max-h-[60vh] overflow-y-auto" />
 ```
 
 ### 3.4 Tilpasning
 
-- **Toolbar:** Tipex har innebygd toolbar med formatering, lister, lenker.
-  Custom `controlComponent`-snippet kan brukes for å forenkle til kun
-  det som trengs (bold, italic, lister, overskrifter)
-- **Styling:** Tipex har egne CSS-variabler (`--color-tipex-*`) som kan
+- **Toolbar:** Standard `floating focal` toolbar (Tipex' innebygde). Viser
+  formatering (bold, italic, underline), overskrifter (H2, H3), lister,
+  sitat — matcher Word-eksport-behov. Ingen custom `controlComponent` i v1.
+- **Styling:** Tipex har egne CSS-variabler (`--color-tipex-*`) som
   overstyres i `@theme` for å matche designsystemet
-- **Extensions:** Kan utvides med Placeholder, CharacterCount m.fl.
+- **Extensions:** CharacterCount (for tegntelling), Placeholder
+- **Max-height:** `max-height: 60vh; overflow-y: auto` — forhindrer at
+  lange begrunnelser (5–10 A4 sider) skaper ubegrenset sidehøyde.
+  Se design-doc for begrunnelse.
+
+### 3.5 Tipex-felt i protokollen
+
+Tre felt bruker Tipex (rik tekst), resten bruker plain textarea:
+
+| Seksjon | Felt | Begrunnelse for Tipex |
+|---------|------|----------------------|
+| 9 — Utvelgelse | Utvelgelsesbegrunnelse per leverandør | Strukturert argumentasjon med kriterier, ofte flere avsnitt |
+| 12 — Forhandlinger/dialog | Forhandlingsreferat | Kronologisk struktur med overskrifter og lister |
+| 14 — Valgt tilbud | Tildelingsbegrunnelse | Hoveddokument, 3–8 A4 sider, strukturert per kriterium |
+
+Andre felt (prosedyrebegrunnelse, avvisning, kvalifikasjonsvurdering, inhabilitet etc.) er
+korte nok for plain textarea med auto-grow.
 
 ---
 
@@ -294,15 +311,26 @@ Flask-appen trenger tre nye endepunkter:
 ```typescript
 // src/lib/stores/protokoll.svelte.ts
 
+/** FOA-hjemmel for avvisning. Verdier tilpasses del (II/III). */
+type AvvisningKategori =
+  | 'formalfeil'     // § 9-4 (del II) / § 24-1 (del III)
+  | 'leverandor'     // § 9-5 (del II) / § 24-2 (del III)
+  | 'tilbud';        // § 9-6 (del II) / § 24-8 (del III)
+
+interface Avvisning {
+  kategori: AvvisningKategori;
+  begrunnelse: string;
+}
+
 export interface ManualFields {
   // § 25-5 bokstav c — begrunnelse for ikke å dele opp
   delingsbegrunnelse?: string;
   // § 25-5 bokstav d — begrunnelse for prosedyrevalg
   prosedyrebegrunnelse?: string;
-  // § 25-5 bokstav h — utvelgelsesbegrunnelse per leverandør
+  // § 25-5 bokstav h — utvelgelsesbegrunnelse per leverandør (rik tekst via Tipex)
   utvelgelsesbegrunnelser?: Record<string, string>;
-  // § 25-5 bokstav j — avvisningsbegrunnelse per leverandør
-  avvisningsbegrunnelser?: Record<string, string>;
+  // § 25-5 bokstav j — avvisning per leverandør med kategori + begrunnelse
+  avvisninger?: Record<string, Avvisning>;
   // § 25-5 bokstav k — forkastede tilbud
   forkastedeTilbud?: string;
   // § 25-5 bokstav l — inhabilitet
@@ -311,15 +339,22 @@ export interface ManualFields {
   tildelingsbegrunnelse?: string;
   // § 25-5 bokstav n — underleverandører
   underleverandorer?: string;
-  // Kvalifikasjonsvurdering per leverandør
+  // Kvalifikasjonsvurdering per leverandør (plain textarea)
   kvalifikasjonsvurderinger?: Record<string, string>;
+  // Forhandlinger/dialog referat (rik tekst via Tipex)
+  forhandlingsreferat?: string;
   // Klagefrist (dato)
   klagefrist?: string;
+  // Markedsdialog
+  markedsdialog?: string;
   // Del II-spesifikke
   unntakElektronisk?: boolean;
   unntakElektroniskBegrunnelse?: string;
   reservasjonIdeell?: boolean;
   reservasjonIdeellBegrunnelse?: string;
+  // Del III-spesifikke
+  unormaltLavtTilbud?: boolean;
+  unormaltLavtTilbudBegrunnelse?: string;
 }
 
 class ProtokollStore {
@@ -330,40 +365,124 @@ class ProtokollStore {
   loading = $state(false);
   error = $state<string | null>(null);
 
-  // Derived
+  // Derived: which document part
   isDel2 = $derived(/* threshold check */);
-  sections = $derived(/* merged view of all sections */);
-  completeness = $derived(/* % filled, missing fields list */);
+
+  // Derived: active section definitions (from registry)
+  sectionDefs = $derived(this.isDel2 ? DEL2_SECTIONS : DEL3_SECTIONS);
+
+  // Derived: merged view with completeness per section
+  sections = $derived.by(() => {
+    return this.sectionDefs.map(def => ({
+      ...def,
+      data: this.resolveData(def),
+      status: this.resolveStatus(def),
+    }));
+  });
+
+  // Derived: overall completeness (excludes N/A sections)
+  completeness = $derived.by(() => {
+    const applicable = this.sections.filter(s => s.status !== 'na');
+    const complete = applicable.filter(s => s.status === 'complete');
+    return {
+      done: complete.length,
+      total: applicable.length,
+      missing: applicable.filter(s => s.status !== 'complete'),
+    };
+  });
 }
 ```
 
 ### 4.5 Seksjoner og felter
 
-Basert på Python-generatoren (docx_del2.py / docx_del3.py):
+Seksjonslisten er dynamisk per del (II eller III). Seksjonsdefinisjonene lever i
+en `SectionDefinition[]`-registry per del. Rendering-motoren er felles.
 
-| # | Seksjon | API-data | Manuelt felt | Rik tekst |
-|---|---------|----------|--------------|-----------|
-| 1 | Generell informasjon | Oppdragsgiver, ref, beskrivelse, verdi, varighet, frist | — | — |
-| 2 | Prosedyre | Prosedyretype, terskel, kunngjøringsdato | Begrunnelse for valgt prosedyre | — |
-| 3 | Kvalifikasjonskrav | eForms: selection_criteria | — | — |
-| 4 | Tildelingskriterier | eForms: award_criteria + vekter | — | — |
-| 5 | Leverandører med tilbud | Activities: SUBMIT_BID | — | — |
-| 6 | Avvisning formalfeil | Activities: REJECT_PARTICIPATION | Begrunnelse per leverandør | — |
-| 7 | Kvalifikasjonsvurdering | — | Vurdering per leverandør | Ja |
-| 8 | Avviste leverandører | Activities: REJECT_PARTICIPATION | Kategori + begrunnelse | — |
-| 9 | Utvelgelse | Activities: QUALIFYING_PARTICIPANTS | Begrunnelse per leverandør | Ja |
-| 10 | Avviste tilbud | — | Forkastede tilbud + begrunnelse | — |
-| 11 | Ettersending/avklaring | Activities: CONVERSATION_MARKED_COMPLETED | — | — |
-| 12 | Forhandlinger/dialog | — | Detaljer (kun relevante prosedyrer) | Ja |
-| 13 | Tilbud i vurderingen | Activities: SUBMIT_BID (ikke avvist) | — | — |
-| 14 | **Valgt tilbud + begrunnelse** | Activities: AWARDING_PARTICIPANTS | **Tildelingsbegrunnelse** | **Ja** |
-| 15 | Rammeavtaler | Procurement: framework_agreement_* | — | — |
-| 16 | Underleverandører | — | Navn og omfang | — |
-| 17 | Inhabilitet | — | Erklæring | — |
-| 18 | Andre opplysninger | Activities: PUBLISH_ADDITIONAL_INFORMATION | Tilleggsinfo | Ja |
-| 19 | Avslutning | Klagefrist-flagg | Klagefrist-dato | — |
+#### Del II — seksjoner
 
-Seksjon 14 er hovedfeltet — her brukes Tipex for tildelingsbegrunnelsen.
+| Kap. | Seksjon | API-data | Manuelt felt | Felttype | Betinget |
+|------|---------|----------|--------------|----------|----------|
+| RAMMEVERK | Generell informasjon | Oppdragsgiver, ref, beskrivelse, verdi, varighet, frist | — | info-table | — |
+| RAMMEVERK | Prosedyre | Prosedyretype, terskel, kunngjøring | Prosedyrebegrunnelse; unntak elektronisk ☐; reservasjon ideell ☐ | textarea, checkbox-textarea | — |
+| DIALOG | Dialog/forhandlinger | — | Detaljer, deltakere | checkbox-textarea | — |
+| DIALOG | Ettersending/avklaring | Activities: CONVERSATION_MARKED_COMPLETED | — | info-table | Vis tabell kun hvis conversations finnes |
+| KVALIF. | Kvalifikasjonsvurdering | eForms: selection_criteria | Vurdering per leverandør | per-supplier-textarea | — |
+| KVALIF. | Utvelgelse | Activities: QUALIFYING_PARTICIPANTS | Begrunnelse per leverandør | **per-supplier-tipex** | Kun begrenset anbudskonkurranse |
+| AVVISNING | Avvisning formalfeil | Activities: REJECT_PARTICIPATION | Kategori + begrunnelse per leverandør | avvisning-card | — |
+| AVVISNING | Avviste leverandører | Activities: REJECT_PARTICIPATION | Kategori + begrunnelse per leverandør | avvisning-card | — |
+| AVVISNING | Avviste tilbud | — | Forkastede tilbud | checkbox-textarea | — |
+| TILDELING | Tildelingskriterier | eForms: award_criteria + vekter | — | info-table | — |
+| TILDELING | Tilbud i vurderingen | Activities: SUBMIT_BID (ikke avvist) | — | supplier-list | — |
+| TILDELING | Valgt tilbud + begrunnelse | Activities: AWARDING_PARTICIPANTS | **Tildelingsbegrunnelse** | **tipex** | — |
+| TILDELING | Meddelelse og klagefrist | API: areAwardLettersSent | Klagefrist-dato | textarea | — |
+| TILDELING | Rammeavtaler | Procurement: framework_agreement_* | — | info-table | Kun hvis rammeavtale |
+| AVSLUTNING | Markedsdialog og habilitet | — | Dialog + habilitetserklæring | checkbox-textarea | — |
+| AVSLUTNING | Andre opplysninger | Activities: PUBLISH_ADDITIONAL_INFORMATION | Tilleggsinfo, underleverandører | textarea | — |
+| AVSLUTNING | Datakvalitet | Meta (auto-generert) | — | data-quality-table | Alltid, ikke i Word |
+
+#### Del III — strukturelle forskjeller fra Del II
+
+| Forskjell | Del III-variant |
+|-----------|----------------|
+| Kapittelrekkefølge | RAMMEVERK → KVALIFISERING → AVVISNING → ETTERSENDING/FORHANDLINGER/DIALOG → TILDELING → AVSLUTNING |
+| Foreløpig kvalifisering | Ny seksjon (FOA § 17-1), betinget: kun ikke-åpen prosedyre |
+| Utvelgelse | Gjelder flere prosedyrer (begrenset, forhandling, innovasjon, dialog) |
+| Ettersending/Forhandlinger/Dialog | Tre separate seksjoner (i stedet for to i Del II) |
+| Forhandlinger | **Tipex**-felt, betinget: kun forhandlet/innovasjonspartnerskap |
+| Unormalt lave tilbud | Ny delseksjon under Avviste tilbud (FOA § 24-9), checkbox-textarea |
+| Meddelelse + karensperiode | Slått sammen med Tildeling-seksjonen (ikke separat) |
+| FOA-referanser | §§ 24-1/24-2/24-8 i stedet for §§ 9-4/9-5/9-6 |
+
+**Del I** (under nasjonal terskel) legges til senere som tredje `SectionDefinition[]`-array.
+Ingen nye komponenter trengs — kun en ny seksjonsdefinisjon.
+
+### 4.6 Seksjonsregistrering (SectionDefinition)
+
+```typescript
+// src/lib/stores/protokoll-sections.ts
+
+/** Felttyper som rendering-motoren støtter */
+type FieldType =
+  | 'info-table'              // Skrivebeskyttet nøkkel-verdi-tabell (API-data)
+  | 'supplier-list'           // Nummerert leverandørliste (fra activities)
+  | 'textarea'                // Plain auto-grow textarea
+  | 'tipex'                   // Tipex rik-tekst-editor (floating toolbar)
+  | 'checkbox-textarea'       // Avkrysningsboks med betinget begrunnelsesfelt
+  | 'per-supplier-textarea'   // Textarea per leverandør (stacked cards)
+  | 'per-supplier-tipex'      // Tipex per leverandør (stacked cards)
+  | 'avvisning-card'          // Per leverandør: kategori-radio + begrunnelse
+  | 'data-quality-table';     // Auto-generert datakvalitet-oversikt
+
+interface FieldDefinition {
+  key: string;                 // Nøkkel i ManualFields eller API-sti
+  type: FieldType;
+  label: string;               // Norsk visningsnavn (section-label)
+  hint?: string;               // Hjelpetekst under felt
+  required?: boolean;          // Teller mot completeness
+  foaRef?: string;             // FOA-referanse (vises i checkbox-label etc.)
+}
+
+interface SectionDefinition {
+  id: string;
+  title: string;               // Norsk seksjonsnavn
+  chapter: string;             // Kapittelnavn (RAMMEVERK, TILDELING, etc.)
+  fields: FieldDefinition[];
+  dataSource: 'api' | 'eforms' | 'manual' | 'mixed';
+  condition?: (ctx: SectionContext) => boolean;
+}
+
+interface SectionContext {
+  isDel2: boolean;
+  procedure: string;           // Prosedyretype fra API
+  hasEforms: boolean;
+  hasFramework: boolean;
+  activities: Activity[];
+}
+
+// Registry
+export const DEL2_SECTIONS: SectionDefinition[] = [/* ... */];
+export const DEL3_SECTIONS: SectionDefinition[] = [/* ... */];
+```
 
 ---
 
@@ -382,9 +501,11 @@ Seksjon 14 er hovedfeltet — her brukes Tipex for tildelingsbegrunnelsen.
 
 1. Installer `@friendofsvelte/tipex`
 2. Lag wrapper-komponent `RichTextEditor.svelte` som:
-   - Importerer Tipex med prosjektets tema-overstyringer
+   - Importerer Tipex med `floating focal` (standard toolbar)
+   - Overstyrer `--color-tipex-*` i `@theme` for designsystem-match
    - Eksponerer `body` (initial), `bind:html` (reaktivt output), `placeholder`
-   - Håndterer read-only modus for API-data-visning
+   - Støtter `maxHeight`-prop (default 60vh, 40vh for per-supplier variant)
+   - Inkluderer CharacterCount extension for tegntelling
 3. Test isolert med dummy-data
 
 ### Fase 3: Backend API-endepunkter
@@ -394,13 +515,21 @@ Seksjon 14 er hovedfeltet — her brukes Tipex for tildelingsbegrunnelsen.
 3. Eventuelt: `GET /api/procurements` og `GET /api/procurements/{id}/activities`
    via proxy (allerede konfigurert i Vite)
 
-### Fase 4: Protokollside (design først)
+### Fase 4: Protokollside
 
-1. **Interface-design** — detaljert UI-spec med layout, seksjoner, interaksjon
-2. Protokoll-store (`protokoll.svelte.ts`)
-3. Route + sidekomponent (`/protokoll/+page.svelte`)
-4. Seksjonskomponenter (akkordeon med status)
-5. Word-generering og nedlasting
+1. ~~**Interface-design**~~ ✓ — `.interface-design/protokoll-page.md`
+2. Seksjonsregistrering (`protokoll-sections.ts`) — DEL2_SECTIONS, DEL3_SECTIONS
+3. Protokoll-store (`protokoll.svelte.ts`) — state, derived, localStorage
+4. Route + sidekomponent (`/protokoll/+page.svelte`)
+5. Felles seksjonskomponenter:
+   - `SectionAccordion.svelte` — sticky header, expand/collapse
+   - `InfoTable.svelte` — skrivebeskyttet nøkkel-verdi
+   - `SupplierList.svelte` — nummerert liste
+   - `CheckboxTextarea.svelte` — avkrysning med betinget felt
+   - `AvvisningCard.svelte` — kategori-radio + begrunnelse
+   - `PerSupplierCards.svelte` — stacked leverandørkort (textarea eller Tipex)
+   - `DataQualityTable.svelte` — auto-generert kildetabell
+6. Word-generering og nedlasting
 
 ---
 
@@ -424,11 +553,14 @@ Seksjon 14 er hovedfeltet — her brukes Tipex for tildelingsbegrunnelsen.
 
 | Risiko | Mitigering |
 |---|---|
-| Tipex-styling kolliderer med tokens | Overstyring via `@theme` + CSS custom properties |
+| Tipex-styling kolliderer med tokens | Overstyring via `@theme` (`--color-tipex-*` → designsystem-verdier) |
 | Tailwind v4 er relativt nytt | Kun CSS-lag — fallback til scoped CSS fungerer alltid |
 | Python-generator forventer visse manuelle felter | Utvid generator-funksjoner med `manual_fields`-parameter |
 | eForms ikke tilgjengelig for alle anskaffelser | Vis "ikke tilgjengelig" med manuell input som fallback |
-| Stora begrunnelsesfelt kan bli tunge å lagre | LocalStorage-autosave + evt. backend draft-lagring |
+| Lange begrunnelsesfelt (10 A4 sider) | Tipex: `max-height: 60vh` med intern scroll (se design-doc) |
+| localStorage grense (~5-10 MB) | Nøkkel per anskaffelse (`protokoll:{id}`), størrelsesovervåking, fremtidig API-lagring |
+| Del II / Del III har ulik struktur | Seksjonsregistrering per del — felles renderingsmotor, separate definisjoner |
+| Avvisning trenger FOA-kategorisering | `AvvisningKategori`-type med radio-valg per leverandør — generatoren mottar kategori + begrunnelse |
 
 ---
 
@@ -439,3 +571,5 @@ Seksjon 14 er hovedfeltet — her brukes Tipex for tildelingsbegrunnelsen.
 - Protokoll-deling / samarbeid mellom brukere
 - PDF-eksport (kun .docx via eksisterende generator)
 - Automatisk utfylling fra evalueringsmatrisen (kobling mellom evaluering → protokoll)
+- Del I (under nasjonal terskel) — legges til som ny `SectionDefinition[]` senere
+- Server-side draft-lagring (v2 — design-doc forbereder abstraksjonen)
