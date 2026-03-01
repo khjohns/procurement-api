@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
+	import SensitivityPane from './SensitivityPane.svelte';
 
 	let collapsed = $state(false);
-	let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll'>('betalingsvilje');
+	let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll' | 'sensitivitet'>('betalingsvilje');
 
 	const tabs = [
 		{ id: 'betalingsvilje' as const, label: 'Betalingsvilje' },
 		{ id: 'robusthet' as const, label: 'Robusthet' },
-		{ id: 'metodekontroll' as const, label: 'Metodekontroll' }
+		{ id: 'metodekontroll' as const, label: 'Metodekontroll' },
+		{ id: 'sensitivitet' as const, label: 'Sensitivitet' }
 	];
 
 	let qualityBudget = $derived(
@@ -213,6 +215,13 @@
 								: 'Metodene gir ulik rangering — vurder årsaken'}
 						</span>
 					</div>
+				</div>
+			{/if}
+
+			<!-- Sensitivitet -->
+			{#if activeTab === 'sensitivitet'}
+				<div class="innsikt-pane">
+					<SensitivityPane />
 				</div>
 			{/if}
 		</div>

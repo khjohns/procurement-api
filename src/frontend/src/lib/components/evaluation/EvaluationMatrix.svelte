@@ -15,6 +15,41 @@
 	let totalWeight = $derived(
 		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
 	);
+
+	/** Inline weight editing state. */
+	let editingWeight = $state<string | null>(null);
+	let editValue = $state('');
+
+	function startEdit(id: string, currentWeight: number) {
+		editingWeight = id;
+		editValue = String(currentWeight);
+	}
+
+	function commitEdit(type: 'criterion' | 'sub', id: string) {
+		const num = parseInt(editValue, 10);
+		if (!isNaN(num) && num >= 0 && num <= 100) {
+			if (type === 'criterion') {
+				evaluation.setCriterionWeight(id, num);
+			} else {
+				evaluation.setSubCriterionWeight(id, num);
+			}
+		}
+		editingWeight = null;
+	}
+
+	function cancelEdit() {
+		editingWeight = null;
+	}
+
+	function handleWeightKeydown(e: KeyboardEvent, type: 'criterion' | 'sub', id: string) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			commitEdit(type, id);
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEdit();
+		}
+	}
 </script>
 
 <div class="section-label">Evalueringsmatrise</div>
@@ -41,12 +76,29 @@
 				<!-- Group row -->
 				<tr class="row-group">
 					<td class="cell-weight">
-						<div class="weight-display">
-							<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
-							<div class="weight-bar">
-								<div class="weight-bar-fill" style="width: {(criterion.weight / 35) * 100}%"></div>
+						{#if editingWeight === criterion.id}
+							<div class="weight-edit">
+								<!-- svelte-ignore a11y_autofocus -->
+								<input
+									type="number"
+									class="weight-input"
+									min="0"
+									max="100"
+									bind:value={editValue}
+									onkeydown={(e) => handleWeightKeydown(e, 'criterion', criterion.id)}
+									onblur={() => commitEdit('criterion', criterion.id)}
+									autofocus
+								/>
+								<span class="weight-pct-edit">%</span>
 							</div>
-						</div>
+						{:else}
+							<button class="weight-display weight-clickable" onclick={() => startEdit(criterion.id, criterion.weight)}>
+								<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
+								<div class="weight-bar">
+									<div class="weight-bar-fill" style="width: {(criterion.weight / 35) * 100}%"></div>
+								</div>
+							</button>
+						{/if}
 					</td>
 					<td class="cell-criteria">{criterion.name}</td>
 					{#each evaluation.data.suppliers as supplier}
@@ -62,12 +114,29 @@
 					{@const isItemEval = sub.evaluationType === 'item'}
 					<tr class="row-sub" class:row-group-last={isLast}>
 						<td class="cell-weight">
-							<div class="weight-display">
-								<span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span>
-								<div class="weight-bar">
-									<div class="weight-bar-fill" style="width: {(sub.weight / 35) * 100}%"></div>
+							{#if editingWeight === sub.id}
+								<div class="weight-edit">
+									<!-- svelte-ignore a11y_autofocus -->
+									<input
+										type="number"
+										class="weight-input"
+										min="0"
+										max="100"
+										bind:value={editValue}
+										onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
+										onblur={() => commitEdit('sub', sub.id)}
+										autofocus
+									/>
+									<span class="weight-pct-edit">%</span>
 								</div>
-							</div>
+							{:else}
+								<button class="weight-display weight-clickable" onclick={() => startEdit(sub.id, sub.weight)}>
+									<span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span>
+									<div class="weight-bar">
+										<div class="weight-bar-fill" style="width: {(sub.weight / 35) * 100}%"></div>
+									</div>
+								</button>
+							{/if}
 						</td>
 						<td class="cell-criteria">{sub.name}</td>
 						{#each evaluation.data.suppliers as supplier}
@@ -135,6 +204,10 @@
 		</tbody>
 	</table>
 </div>
+
+{#if totalWeight !== 100}
+	<div class="weight-warning">Vektsum: {totalWeight} % (forventet 100 %)</div>
+{/if}
 
 <!-- Progress -->
 <div class="eval-progress">
@@ -216,6 +289,19 @@
 		gap: var(--spacing-1);
 	}
 
+	.weight-clickable {
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: var(--spacing-1);
+		border-radius: var(--radius-sm);
+		transition: background 0.12s;
+	}
+
+	.weight-clickable:hover {
+		background: var(--color-vekt-bg);
+	}
+
 	.weight-num {
 		font-family: var(--font-data);
 		font-size: 12px;
@@ -242,6 +328,58 @@
 		height: 100%;
 		background: var(--color-vekt-dim);
 		border-radius: 1px;
+	}
+
+	/* Weight inline edit */
+	.weight-edit {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+	}
+
+	.weight-input {
+		width: 40px;
+		padding: 2px 4px;
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--color-vekt);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-vekt-dim);
+		border-radius: var(--radius-sm);
+		text-align: center;
+		outline: none;
+		-moz-appearance: textfield;
+	}
+
+	.weight-input::-webkit-inner-spin-button,
+	.weight-input::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	.weight-input:focus {
+		border-color: var(--color-vekt);
+		box-shadow: 0 0 0 1px var(--color-vekt-bg-strong);
+	}
+
+	.weight-pct-edit {
+		font-family: var(--font-data);
+		font-size: 9px;
+		color: var(--color-ink-ghost);
+	}
+
+	/* Weight sum warning */
+	.weight-warning {
+		margin-top: var(--spacing-2);
+		padding: var(--spacing-2) var(--spacing-3);
+		font-family: var(--font-data);
+		font-size: 11px;
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
+		border-radius: var(--radius-sm);
+		border-left: 3px solid var(--color-score-low);
 	}
 
 	/* Criteria column */

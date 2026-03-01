@@ -570,6 +570,18 @@ class EvaluationStore {
 		sub.items[supplierId] = items.filter((i) => i.id !== itemId);
 	}
 
+	/** Update a criterion's weight. */
+	setCriterionWeight(criterionId: string, weight: number) {
+		const criterion = this.data.criteria.find((c) => c.id === criterionId);
+		if (criterion) criterion.weight = Math.max(0, Math.min(100, Math.round(weight)));
+	}
+
+	/** Update a sub-criterion's weight. */
+	setSubCriterionWeight(subCriterionId: string, weight: number) {
+		const sub = this._findSub(subCriterionId);
+		if (sub) sub.weight = Math.max(0, Math.min(100, Math.round(weight)));
+	}
+
 	/** Change aggregation method. */
 	setAggregation(subCriterionId: string, method: AggregationMethod) {
 		const sub = this._findSub(subCriterionId);
