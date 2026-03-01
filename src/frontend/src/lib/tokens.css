@@ -1,57 +1,58 @@
-/* ── Analysebordet Design Tokens ──
-   Extracted from evaluation-mockup.html
-   Dense, number-forward evaluation workspace.
-   Dark mode. Financial analysis tool aesthetic. */
+/* ── Analysebordet Design Tokens — backward-compatible aliases ──
+   These map old variable names (--canvas, --sp-4, --r-sm) to the
+   new Tailwind v4 @theme names (--color-canvas, --spacing-4, --radius-sm).
+   Existing components use these; new components use Tailwind classes
+   or --color-* names directly. */
 
 :root {
-	/* Canvas & surfaces — the analyst's desk */
-	--canvas: #0c0e14;
-	--felt: #12151e;
-	--felt-raised: #181c28;
-	--felt-hover: #1e2233;
-	--felt-active: #242840;
+	/* Canvas & surfaces */
+	--canvas: var(--color-canvas, #0c0e14);
+	--felt: var(--color-felt, #12151e);
+	--felt-raised: var(--color-felt-raised, #181c28);
+	--felt-hover: var(--color-felt-hover, #1e2233);
+	--felt-active: var(--color-felt-active, #242840);
 
-	/* Ink hierarchy — text on evaluation documents */
-	--ink: #e2e5ef;
-	--ink-secondary: #8890a4;
-	--ink-muted: #505568;
-	--ink-ghost: #353a4d;
+	/* Ink hierarchy */
+	--ink: var(--color-ink, #e2e5ef);
+	--ink-secondary: var(--color-ink-secondary, #8890a4);
+	--ink-muted: var(--color-ink-muted, #505568);
+	--ink-ghost: var(--color-ink-ghost, #353a4d);
 
-	/* Wire — structural borders */
-	--wire: rgba(255, 255, 255, 0.06);
-	--wire-strong: rgba(255, 255, 255, 0.10);
-	--wire-focus: rgba(232, 168, 56, 0.35);
+	/* Wire — borders */
+	--wire: var(--color-wire, rgba(255, 255, 255, 0.06));
+	--wire-strong: var(--color-wire-strong, rgba(255, 255, 255, 0.10));
+	--wire-focus: var(--color-wire-focus, rgba(232, 168, 56, 0.35));
 
-	/* Vekt — weight accent (amber from spreadsheet highlighting) */
-	--vekt: #e8a838;
-	--vekt-dim: #c49030;
-	--vekt-bg: rgba(232, 168, 56, 0.08);
-	--vekt-bg-strong: rgba(232, 168, 56, 0.14);
+	/* Vekt — weight accent */
+	--vekt: var(--color-vekt, #e8a838);
+	--vekt-dim: var(--color-vekt-dim, #c49030);
+	--vekt-bg: var(--color-vekt-bg, rgba(232, 168, 56, 0.08));
+	--vekt-bg-strong: var(--color-vekt-bg-strong, rgba(232, 168, 56, 0.14));
 
 	/* Score semantics */
-	--score-high: #3d9a6e;
-	--score-high-bg: rgba(61, 154, 110, 0.10);
-	--score-mid: #8890a4;
-	--score-low: #c45858;
-	--score-low-bg: rgba(196, 88, 88, 0.10);
+	--score-high: var(--color-score-high, #3d9a6e);
+	--score-high-bg: var(--color-score-high-bg, rgba(61, 154, 110, 0.10));
+	--score-mid: var(--color-score-mid, #8890a4);
+	--score-low: var(--color-score-low, #c45858);
+	--score-low-bg: var(--color-score-low-bg, rgba(196, 88, 88, 0.10));
 
 	/* Typography */
 	--font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
 	--font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
 	/* Spacing (4px base grid) */
-	--sp-1: 4px;
-	--sp-2: 8px;
-	--sp-3: 12px;
-	--sp-4: 16px;
-	--sp-5: 20px;
-	--sp-6: 24px;
-	--sp-8: 32px;
-	--sp-10: 40px;
-	--sp-12: 48px;
+	--sp-1: var(--spacing-1, 4px);
+	--sp-2: var(--spacing-2, 8px);
+	--sp-3: var(--spacing-3, 12px);
+	--sp-4: var(--spacing-4, 16px);
+	--sp-5: var(--spacing-5, 20px);
+	--sp-6: var(--spacing-6, 24px);
+	--sp-8: var(--spacing-8, 32px);
+	--sp-10: var(--spacing-10, 40px);
+	--sp-12: var(--spacing-12, 48px);
 
-	/* Radius — technical, not friendly */
-	--r-sm: 4px;
-	--r-md: 6px;
-	--r-lg: 8px;
+	/* Radius */
+	--r-sm: var(--radius-sm, 4px);
+	--r-md: var(--radius-md, 6px);
+	--r-lg: var(--radius-lg, 8px);
 }

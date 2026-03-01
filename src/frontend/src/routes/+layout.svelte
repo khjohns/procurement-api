@@ -12,7 +12,8 @@
 		{ href: '/', icon: '⊞', label: 'Oversikt' },
 		{ href: '/anskaffelser', icon: '◎', label: 'Anskaffelser' },
 		{ href: '/evaluering', icon: '▦', label: 'Evaluering' },
-		{ href: '/evaluering/ny', icon: '⊕', label: 'Ny evaluering' }
+		{ href: '/evaluering/ny', icon: '⊕', label: 'Ny evaluering' },
+		{ href: '/protokoll', icon: '☰', label: 'Protokoll' }
 	];
 </script>
 
