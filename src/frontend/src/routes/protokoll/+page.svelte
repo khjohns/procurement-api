@@ -133,6 +133,70 @@
 		generating = false;
 	}
 
+	// ── Helpers ──
+
+	function stripHtml(text: string): string {
+		if (!text) return '';
+		return text
+			.replace(/<br\s*\/?>/gi, '\n')
+			.replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
+			.replace(/<[^>]+>/g, '')
+			.replace(/&nbsp;/g, ' ')
+			.replace(/&amp;/g, '&')
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&quot;/g, '"')
+			.replace(/&#39;/g, "'")
+			.replace(/[ \t]+/g, ' ')
+			.split('\n')
+			.map(l => l.trim())
+			.filter((l, i, arr) => l || (i > 0 && arr[i - 1]))
+			.join('\n')
+			.trim();
+	}
+
+	function getTimelineDate(proc: any, type: string): string | null {
+		if (!proc?.timeline) return null;
+		for (const entry of Object.values(proc.timeline) as any[]) {
+			if (entry?.type === type && entry?.date) {
+				return entry.date;
+			}
+		}
+		return null;
+	}
+
+	function getProcName(proc: any): string {
+		const raw = proc?.name || proc?.title || '';
+		return stripHtml(raw) || `Anskaffelse ${proc?.id ?? ''}`;
+	}
+
+	function getOrgName(activity: any): string {
+		const org = activity?.organization ?? activity?.supplier;
+		return org?.name ?? `Leverandør ${org?.id ?? '?'}`;
+	}
+
+	/** Build org-id → name lookup from all activities (for REJECT_PARTICIPATION fallback). */
+	function buildOrgLookup(): Map<string, string> {
+		const lookup = new Map<string, string>();
+		for (const a of protokoll.activities) {
+			const org = a.organization ?? a.supplier;
+			if (org?.id && org?.name) lookup.set(org.id, org.name);
+		}
+		return lookup;
+	}
+
+	function getOrgNameWithLookup(activity: any, lookup: Map<string, string>): string {
+		const org = activity?.organization ?? activity?.supplier;
+		if (org?.name) return org.name;
+		if (org?.id && lookup.has(org.id)) return lookup.get(org.id)!;
+		return `Leverandør ${org?.id ?? '?'}`;
+	}
+
+	function fmtCurrency(value: number | null | undefined, currency?: string): string | null {
+		if (value == null) return null;
+		return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
+	}
+
 	// ── Field rendering helpers ──
 
 	function getInfoRows(section: ResolvedSection): { label: string; value: any; mono?: boolean }[] {
@@ -140,19 +204,76 @@
 		if (!proc) return [];
 
 		switch (section.id) {
-			case 'generell-info':
+			case 'generell-info': {
+				const procurer = proc.about_procurer ?? {};
+				const procurerStr = procurer.name
+					? (procurer.national_id ? `${procurer.name} (org.nr. ${procurer.national_id})` : procurer.name)
+					: proc.buyerName ?? proc.buyer?.name;
+
+				const name = stripHtml(proc.name ?? '');
+				const desc = stripHtml(proc.description ?? '').replace(/\s*\n\s*/g, ' ');
+				const descStr = name && desc && desc.toLowerCase() !== name.toLowerCase()
+					? `${name}. ${desc}` : (name || desc);
+
+				const durationMonths = proc.duration_months;
+				const duration = proc.duration;
+				const durationStr = durationMonths ? `${durationMonths} måneder` : duration ? String(duration) : null;
+
+				const seqId = proc.sequenceId ?? '';
+				const extId = proc.externalId;
+				const refStr = extId ? `${seqId} (ekstern ref: ${extId})` : seqId;
+
 				return [
-					{ label: 'Oppdragsgiver', value: proc.buyerName ?? proc.buyer?.name },
-					{ label: 'Referanse', value: proc.sequenceId, mono: true },
-					{ label: 'Beskrivelse', value: proc.description ?? proc.title },
-					{ label: 'Estimert verdi', value: proc.estimatedTotalValue ? `${new Intl.NumberFormat('nb-NO').format(proc.estimatedTotalValue)} kr` : null, mono: true },
-					{ label: 'Frist', value: formatDate(proc.deadline) },
+					{ label: 'Saksnummer', value: refStr, mono: true },
+					{ label: 'Oppdragsgiver', value: procurerStr },
+					{ label: 'Protokollfører', value: procurer.contact_person },
+					{ label: 'Beskrivelse', value: descStr },
+					{ label: 'Estimert verdi', value: fmtCurrency(proc.estimated_value, proc.currency), mono: true },
+					{ label: 'Kontraktens varighet', value: durationStr },
+					{ label: 'Tilbudsfrist', value: formatDateTime(getTimelineDate(proc, 'submission')) },
 				];
-			case 'prosedyre':
-				return [
-					{ label: 'Prosedyretype', value: proc.procedureName ?? proc.procedure },
-					{ label: 'Terskel', value: formatThreshold(proc.threshold) },
+			}
+			case 'mottak-tilbud':
+				return getSubmissionRows();
+			case 'prosedyre': {
+				const procedure = proc.procedure ?? '';
+				const procedureMap: Record<string, string> = {
+					'Open': 'Åpen anbudskonkurranse',
+					'Limited': 'Begrenset anbudskonkurranse',
+					'Competitive negotiated': 'Konkurranse med forhandling etter forutgående kunngjøring',
+					'Competitive dialogue': 'Konkurransepreget dialog',
+					'Innovation partnership': 'Innovasjonspartnerskap',
+					'Negotiated without publication': 'Konkurranse med forhandling uten forutgående kunngjøring',
+					'Direct award': 'Anskaffelse uten konkurranse',
+				};
+
+				const rows: { label: string; value: any; mono?: boolean }[] = [
+					{ label: 'Prosedyre', value: procedureMap[procedure] ?? procedure },
 				];
+
+				// Kontraktstype fra eForms
+				if (protokoll.eforms?.contract_nature) {
+					const natureLabels: Record<string, string> = { services: 'Tjeneste', supplies: 'Varer', works: 'Bygg og anlegg' };
+					rows.push({ label: 'Kontraktstype', value: natureLabels[protokoll.eforms.contract_nature] ?? protokoll.eforms.contract_nature });
+				}
+
+				// Kunngjøring
+				const kunngj = getKunngjoring();
+				if (kunngj) rows.push({ label: 'Kunngjøring', value: kunngj });
+
+				// Direct award justification
+				if (['Negotiated without publication', 'Direct award'].includes(procedure)) {
+					const code = proc.direct_award_justification_code ?? '';
+					const reason = proc.direct_award_justification_reason ?? '';
+					const justification = code && reason ? `Hjemmel: ${code}. ${reason}` : code || reason || null;
+					rows.push({ label: 'Hjemmel for direkteanskaffelse', value: justification });
+				}
+
+				rows.push({ label: 'Terskel', value: formatThreshold(proc.threshold) });
+				return rows;
+			}
+			case 'ettersending-avklaring':
+				return getConversationRows();
 			case 'tildelingskriterier':
 				if (protokoll.eforms?.award_criteria) {
 					return protokoll.eforms.award_criteria.map((c: any) => ({
@@ -163,39 +284,159 @@
 				}
 				return [{ label: 'Tildelingskriterier', value: 'Ikke tilgjengelig fra eForms' }];
 			case 'valgt-tilbud': {
-				const winner = protokoll.activities.find(
-					(a: any) => a.action === 'AWARDING_PARTICIPANTS'
-				);
+				const totalValue = proc.contracts_total_value_amount;
+				const estimated = proc.estimated_value;
+				const currency = proc.currency ?? 'NOK';
+				let valueStr: string | null = null;
+				if (totalValue) valueStr = fmtCurrency(totalValue, currency);
+				else if (estimated) valueStr = `${fmtCurrency(estimated, currency)} (estimert verdi)`;
+
+				let awardDate = getTimelineDate(proc, 'award decision');
+				if (!awardDate) {
+					const awardAct = protokoll.activities.find((a: any) => a.action === 'AWARDING_PARTICIPANTS');
+					awardDate = awardAct?.date ?? null;
+				}
+
 				return [
-					{ label: 'Tildelt til', value: winner?.supplier?.name ?? '—' },
-					{ label: 'Kontraktsverdi', value: proc.contractValue ? `${new Intl.NumberFormat('nb-NO').format(proc.contractValue)} kr` : '—', mono: true },
+					{ label: 'Kontraktsverdi', value: valueStr ?? '—', mono: true },
+					{ label: 'Tildelingsbeslutning', value: formatDate(awardDate) },
+					{ label: 'Meddelelsesbrev sendt', value: proc.areAwardLettersSent ? 'Sendt (dato ikke tilgjengelig i API)' : 'Nei' },
 				];
 			}
-			case 'meddelelse-klagefrist':
-				return [
-					{ label: 'Meddelelse sendt', value: proc.areAwardLettersSent ? 'Ja' : 'Nei' },
-				];
-			case 'rammeavtaler':
-				return [
-					{ label: 'Type', value: proc.frameworkAgreementTypeCode },
-					{ label: 'Maks deltakere', value: proc.frameworkAgreementMaximumParticipants, mono: true },
-				];
+			case 'rammeavtaler': {
+				const maxPart = proc.framework_agreement_maximum_participants ?? proc.frameworkAgreementMaximumParticipants;
+				const rows: { label: string; value: any; mono?: boolean }[] = [];
+				if (maxPart && Number(maxPart) === 1) {
+					rows.push({ label: 'Rammeavtale med én leverandør', value: 'Ja' });
+					rows.push({ label: 'Rammeavtale med flere leverandører', value: 'Nei' });
+				} else if (maxPart && Number(maxPart) > 1) {
+					rows.push({ label: 'Rammeavtale med én leverandør', value: 'Nei' });
+					rows.push({ label: 'Rammeavtale med flere leverandører', value: `Ja (maks ${maxPart} deltakere)` });
+				} else {
+					rows.push({ label: 'Rammeavtale', value: proc.framework_agreement_involved ? 'Ja' : '—' });
+				}
+				if (protokoll.eforms?.framework_max_value) {
+					rows.push({ label: 'Maksimal verdi', value: fmtCurrency(protokoll.eforms.framework_max_value, protokoll.eforms.currency), mono: true });
+				}
+				return rows;
+			}
+			case 'andre-opplysninger': {
+				const rows: { label: string; value: any; mono?: boolean }[] = [];
+				if (proc.isCancelled) {
+					rows.push({ label: 'Avlysning', value: proc.cancelingReason ? stripHtml(proc.cancelingReason) : '(ingen begrunnelse oppgitt)' });
+				} else {
+					rows.push({ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' });
+				}
+				return rows;
+			}
 			default:
 				return [];
 		}
 	}
 
-	function getSuppliers(_section: ResolvedSection): { id: string; name: string }[] {
+	/** Tidspunkt for mottak av tilbud — SUBMIT_BID activities with supplier + timestamp. */
+	function getSubmissionRows(): { label: string; value: any; mono?: boolean }[] {
+		const submissions = protokoll.activities.filter((a: any) => a.action === 'SUBMIT_BID');
+		if (!submissions.length) return [{ label: 'Mottak av tilbud', value: 'Ingen tilbud registrert' }];
+		return submissions.map((s: any) => ({
+			label: getOrgName(s),
+			value: formatDateTime(s.date),
+			mono: true
+		}));
+	}
+
+	/** Kunngjøring — Doffin/TED ref from activities. */
+	function getKunngjoring(): string | null {
+		const proc = protokoll.procurement;
+		const doffinActs = protokoll.activities.filter((a: any) => a.action === 'DOFFIN_NOTICE_STATUS_PUBLISHED');
+		const publishActs = protokoll.activities.filter((a: any) => a.action === 'PUBLISH_TO_DOFFIN');
+
+		let announcementDate = '';
+		let doffinRef = '';
+		let tedRef = '';
+
+		if (publishActs.length) announcementDate = formatDate(publishActs[0].date);
+		if (doffinActs.length) {
+			const desc = doffinActs[0].description ?? {};
+			const notice = desc.doffinNotice ?? {};
+			doffinRef = notice.ngoj ?? '';
+			tedRef = notice.publicationId ?? '';
+			if (!announcementDate) {
+				announcementDate = formatDate(notice.publicationDate ?? doffinActs[0].date);
+			}
+		}
+
+		if (announcementDate) {
+			const parts = [`Kunngjort ${announcementDate} på Doffin`];
+			if (doffinRef) parts.push(`ref. ${doffinRef} (NGOJ)`);
+			if (tedRef) parts.push(`TED ${tedRef}`);
+			return parts.join(', ');
+		}
+
+		const pubDate = proc?.publicationDate;
+		return pubDate ? `Kunngjort ${formatDate(pubDate)}` : null;
+	}
+
+	/** Ettersending/avklaring — post-deadline conversations. */
+	function getConversationRows(): { label: string; value: any; mono?: boolean }[] {
+		const proc = protokoll.procurement;
+		const submissionDate = getTimelineDate(proc, 'submission');
+		const conversations = protokoll.activities.filter((a: any) => a.action === 'CONVERSATION_MARKED_COMPLETED');
+		const orgLookup = buildOrgLookup();
+
+		if (!submissionDate || !conversations.length) {
+			return [{ label: 'Status', value: 'Ingen avklaringer registrert' }];
+		}
+
+		const deadline = new Date(submissionDate);
+		const postDeadline = conversations.filter((c: any) => {
+			try { return new Date(c.date) > deadline; } catch { return false; }
+		});
+
+		if (!postDeadline.length) {
+			return [{ label: 'Status', value: 'Ingen avklaringer etter tilbudsfrist (meldinger finnes, men alle er Q&A før frist)' }];
+		}
+
+		return postDeadline.map((c: any) => {
+			const name = getOrgNameWithLookup(c, orgLookup);
+			const title = c.description?.conversationTitle ?? '';
+			const how = title ? `Melding i KGV: «${title}»` : 'Melding i KGV';
+			return { label: name, value: `${formatDate(c.date)} — ${how}` };
+		});
+	}
+
+	function getSuppliers(section: ResolvedSection): { id: string; name: string }[] {
+		if (section.id === 'tilbud-vurdering') return getEvaluatedSuppliers();
 		return protokoll.suppliers;
 	}
 
+	/** Suppliers that have been evaluated (excludes rejected and withdrawn). */
+	function getEvaluatedSuppliers(): { id: string; name: string }[] {
+		const orgLookup = buildOrgLookup();
+		const rejected = new Set(
+			protokoll.activities
+				.filter((a: any) => a.action === 'REJECT_PARTICIPATION')
+				.map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
+		);
+		const withdrawn = new Set(
+			protokoll.activities
+				.filter((a: any) => a.action === 'WITHDRAW_PARTICIPATION')
+				.map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
+		);
+		const excluded = new Set([...rejected, ...withdrawn]);
+		return protokoll.suppliers.filter(s => !excluded.has(s.name.toLowerCase()));
+	}
+
 	function getRejectedSuppliers(): { id: string; name: string }[] {
+		const orgLookup = buildOrgLookup();
 		const seen = new Map<string, { id: string; name: string }>();
 		for (const a of protokoll.activities) {
-			if (a.action === 'REJECT_PARTICIPATION' && a.supplier) {
-				const key = String(a.supplier.id ?? a.supplier.name);
+			if (a.action === 'REJECT_PARTICIPATION') {
+				const name = getOrgNameWithLookup(a, orgLookup);
+				const org = a.organization ?? a.supplier;
+				const key = String(org?.id ?? name);
 				if (!seen.has(key)) {
-					seen.set(key, { id: key, name: a.supplier.name ?? `Leverandør ${key}` });
+					seen.set(key, { id: key, name });
 				}
 			}
 		}
@@ -207,6 +448,18 @@
 		try {
 			const dt = new Date(iso);
 			return dt.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+		} catch {
+			return String(iso);
+		}
+	}
+
+	function formatDateTime(iso: string | null | undefined): string {
+		if (!iso) return '—';
+		try {
+			const dt = new Date(iso);
+			const date = dt.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+			const time = dt.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+			return `${date}, kl. ${time}`;
 		} catch {
 			return String(iso);
 		}
@@ -324,7 +577,7 @@
 		<header class="page-header">
 			<div class="page-header-left">
 				<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-				<h1 class="page-title">{protokoll.procurement?.title ?? protokoll.procurement?.description ?? 'Protokoll'}</h1>
+				<h1 class="page-title">{getProcName(protokoll.procurement)}</h1>
 				<div class="page-meta">
 					Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
 					&middot; {protokoll.delLabel}

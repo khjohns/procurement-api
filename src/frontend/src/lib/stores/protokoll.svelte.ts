@@ -97,12 +97,14 @@ class ProtokollStore {
 	suppliers = $derived.by(() => {
 		const seen = new Map<string, { id: string; name: string }>();
 		for (const a of this.activities) {
-			if (a.action === 'SUBMIT_BID' && a.supplier) {
-				const key = String(a.supplier.id ?? a.supplier.name);
+			if (a.action === 'SUBMIT_BID') {
+				const org = a.organization ?? a.supplier;
+				if (!org) continue;
+				const key = String(org.id ?? org.name);
 				if (!seen.has(key)) {
 					seen.set(key, {
 						id: key,
-						name: a.supplier.name ?? `Leverandør ${key}`
+						name: org.name ?? `Leverandør ${key}`
 					});
 				}
 			}

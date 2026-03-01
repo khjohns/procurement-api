@@ -56,6 +56,16 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 		]
 	},
 	{
+		id: 'mottak-tilbud',
+		title: 'Tidspunkt for mottak av tilbud',
+		chapter: 'RAMMEVERK',
+		dataSource: 'api',
+		fields: [
+			{ key: 'submissionTimes', type: 'info-table', label: 'Tidspunkt for mottak av tilbud' }
+		],
+		condition: (ctx) => ctx.activities.some(a => a.action === 'SUBMIT_BID')
+	},
+	{
 		id: 'prosedyre',
 		title: 'Prosedyre',
 		chapter: 'RAMMEVERK',
@@ -249,9 +259,21 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 		id: 'rammeavtaler',
 		title: 'Rammeavtaler',
 		chapter: 'TILDELING',
-		dataSource: 'api',
+		dataSource: 'mixed',
 		fields: [
-			{ key: 'frameworkInfo', type: 'info-table', label: 'Rammeavtaleinformasjon' }
+			{ key: 'frameworkInfo', type: 'info-table', label: 'Rammeavtaleinformasjon' },
+			{
+				key: 'fordelingsmekanisme',
+				type: 'textarea',
+				label: 'Fordelingsmekanisme',
+				hint: 'Beskriv fordelingsmekanismen for rammeavtalen.'
+			},
+			{
+				key: 'minikonkurranseKriterier',
+				type: 'textarea',
+				label: 'Ved minikonkurranse; hvilke kriterier',
+				hint: 'Oppgi kriterier for minikonkurranser.'
+			}
 		],
 		condition: (ctx) => ctx.hasFramework
 	},
@@ -264,11 +286,18 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 		dataSource: 'manual',
 		fields: [
 			{
+				key: 'markedsdialogForKonkurranse',
+				type: 'checkbox-textarea',
+				label: 'Ingen forberedende undersøkelser eller dialog med leverandører før konkurransen',
+				foaRef: 'FOA kap. 12',
+				hint: 'Beskriv forberedende undersøkelser (§ 12-1), leverandører i dialog (§ 12-2) og avhjelpende tiltak.'
+			},
+			{
 				key: 'inhabilitet',
 				type: 'checkbox-textarea',
-				label: 'Inhabilitet',
-				foaRef: 'FOA kap. 7-5',
-				hint: 'Erklær om det foreligger inhabilitet.'
+				label: 'Ingen habilitetskonflikter identifisert',
+				foaRef: 'FOA § 7-5',
+				hint: 'Beskriv eventuell inhabilitet eller konkurransevridning og avhjelpende tiltak.'
 			}
 		]
 	},
@@ -276,13 +305,20 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 		id: 'andre-opplysninger',
 		title: 'Andre opplysninger',
 		chapter: 'AVSLUTNING',
-		dataSource: 'manual',
+		dataSource: 'mixed',
 		fields: [
+			{ key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
 			{
 				key: 'underleverandorer',
 				type: 'textarea',
 				label: 'Underleverandører',
-				hint: 'Oppgi eventuelle underleverandører.'
+				hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.'
+			},
+			{
+				key: 'andreOpplysninger',
+				type: 'textarea',
+				label: 'Andre vesentlige forhold',
+				hint: 'Andre opplysninger, vesentlige forhold eller viktige beslutninger.'
 			}
 		]
 	},
@@ -309,6 +345,16 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 		fields: [
 			{ key: 'generalInfo', type: 'info-table', label: 'Generell informasjon' }
 		]
+	},
+	{
+		id: 'mottak-tilbud',
+		title: 'Tidspunkt for mottak av tilbud',
+		chapter: 'RAMMEVERK',
+		dataSource: 'api',
+		fields: [
+			{ key: 'submissionTimes', type: 'info-table', label: 'Tidspunkt for mottak av tilbud' }
+		],
+		condition: (ctx) => ctx.activities.some(a => a.action === 'SUBMIT_BID')
 	},
 	{
 		id: 'prosedyre',
@@ -347,7 +393,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 				hint: 'Vurder kvalifisering basert på egenerklæring (ESPD), jf. FOA § 17-1.'
 			}
 		],
-		condition: (ctx) => ctx.procedure !== 'OPEN'
+		condition: (ctx) => ctx.procedure !== 'Open'
 	},
 	{
 		id: 'kvalifikasjonsvurdering',
@@ -379,7 +425,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 				required: true
 			}
 		],
-		condition: (ctx) => ['RESTRICTED', 'NEGOTIATED', 'INNOVATION', 'COMPETITIVE_DIALOGUE'].includes(ctx.procedure)
+		condition: (ctx) => ['Limited', 'Competitive negotiated', 'Innovation partnership', 'Competitive dialogue'].includes(ctx.procedure)
 	},
 
 	// AVVISNING
@@ -463,7 +509,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 				required: true
 			}
 		],
-		condition: (ctx) => ['NEGOTIATED', 'INNOVATION'].includes(ctx.procedure)
+		condition: (ctx) => ['Competitive negotiated', 'Innovation partnership'].includes(ctx.procedure)
 	},
 	{
 		id: 'dialog',
@@ -513,6 +559,24 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 				label: 'Tildelingsbegrunnelse',
 				hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
 				required: true
+			},
+			{
+				key: 'karensperiode',
+				type: 'textarea',
+				label: 'Karensperiodens utløp',
+				hint: 'Oppgi dato for karensperiodens utløp.'
+			},
+			{
+				key: 'klager',
+				type: 'textarea',
+				label: 'Eventuelle klager',
+				hint: 'Oppgi eventuelle klager mottatt.'
+			},
+			{
+				key: 'klageutfall',
+				type: 'textarea',
+				label: 'Resultat av klage',
+				hint: 'Beskriv utfallet av klagen.'
 			}
 		]
 	},
@@ -520,9 +584,21 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 		id: 'rammeavtaler',
 		title: 'Rammeavtaler',
 		chapter: 'TILDELING',
-		dataSource: 'api',
+		dataSource: 'mixed',
 		fields: [
-			{ key: 'frameworkInfo', type: 'info-table', label: 'Rammeavtaleinformasjon' }
+			{ key: 'frameworkInfo', type: 'info-table', label: 'Rammeavtaleinformasjon' },
+			{
+				key: 'fordelingsmekanisme',
+				type: 'textarea',
+				label: 'Fordelingsmekanisme',
+				hint: 'Beskriv fordelingsmekanismen for rammeavtalen.'
+			},
+			{
+				key: 'minikonkurranseKriterier',
+				type: 'textarea',
+				label: 'Ved minikonkurranse; hvilke kriterier',
+				hint: 'Oppgi kriterier for minikonkurranser.'
+			}
 		],
 		condition: (ctx) => ctx.hasFramework
 	},
@@ -535,11 +611,18 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 		dataSource: 'manual',
 		fields: [
 			{
+				key: 'markedsdialogForKonkurranse',
+				type: 'checkbox-textarea',
+				label: 'Ingen forberedende undersøkelser eller dialog med leverandører før konkurransen',
+				foaRef: 'FOA kap. 12',
+				hint: 'Beskriv forberedende undersøkelser (§ 12-1), leverandører i dialog (§ 12-2) og avhjelpende tiltak.'
+			},
+			{
 				key: 'inhabilitet',
 				type: 'checkbox-textarea',
-				label: 'Inhabilitet',
-				foaRef: 'FOA kap. 7-5',
-				hint: 'Erklær om det foreligger inhabilitet.'
+				label: 'Ingen habilitetskonflikter identifisert',
+				foaRef: 'FOA § 7-5',
+				hint: 'Beskriv eventuell inhabilitet eller konkurransevridning og avhjelpende tiltak.'
 			}
 		]
 	},
@@ -547,13 +630,20 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 		id: 'andre-opplysninger',
 		title: 'Andre opplysninger',
 		chapter: 'AVSLUTNING',
-		dataSource: 'manual',
+		dataSource: 'mixed',
 		fields: [
+			{ key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
 			{
 				key: 'underleverandorer',
 				type: 'textarea',
 				label: 'Underleverandører',
-				hint: 'Oppgi eventuelle underleverandører.'
+				hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.'
+			},
+			{
+				key: 'andreOpplysninger',
+				type: 'textarea',
+				label: 'Andre vesentlige forhold',
+				hint: 'Andre opplysninger, vesentlige forhold eller viktige beslutninger.'
 			}
 		]
 	},
