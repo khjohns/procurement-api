@@ -12,7 +12,6 @@
 
 	let title = $state('');
 	let reference = $state('');
-	let qualityWeight = $state(70);
 	let contractValue = $state(0);
 	let contractValueDisplay = $state('');
 	let suppliers = $state<{ id: string; name: string; price: number }[]>([]);
@@ -50,6 +49,7 @@
 	interface SetupCriterion {
 		id: string;
 		name: string;
+		type: 'quality' | 'price';
 		subcriteria: SetupSubCriterion[];
 	}
 
@@ -143,7 +143,19 @@
 
 	// ── Derived state ──
 
-	let priceWeight = $derived(100 - qualityWeight);
+	let qualityWeight = $derived(
+		criteria
+			.filter((c) => c.type === 'quality')
+			.flatMap((c) => c.subcriteria)
+			.reduce((s, sub) => s + sub.weight, 0)
+	);
+
+	let priceWeight = $derived(
+		criteria
+			.filter((c) => c.type === 'price')
+			.flatMap((c) => c.subcriteria)
+			.reduce((s, sub) => s + sub.weight, 0)
+	);
 
 	let groupWeights = $derived(
 		criteria.map((c) => ({
@@ -200,6 +212,7 @@
 			return {
 				id: cid,
 				name: c.name,
+				type: (c.type === 'price' ? 'price' : 'quality') as 'quality' | 'price',
 				subcriteria: [
 					{
 						id: uid(`${cid}-s`),
@@ -217,10 +230,6 @@
 			price: 0
 		}));
 
-		qualityWeight = proc.criteria
-			.filter((c) => c.type === 'quality')
-			.reduce((s, c) => s + c.weight, 0);
-
 		searchQuery = '';
 		searchOpen = false;
 		searchResults = [];
@@ -235,6 +244,7 @@
 			{
 				id,
 				name: '',
+				type: 'quality' as const,
 				subcriteria: [{ id: uid(`${id}-s`), name: '', weight: 0 }]
 			}
 		];
@@ -263,6 +273,26 @@
 		const c = criteria.find((c) => c.id === criterionId);
 		if (!c) return;
 		c.subcriteria = c.subcriteria.filter((s) => s.id !== subId);
+	}
+
+	// ── Reorder ──
+
+	function moveCriterion(index: number, direction: 'up' | 'down') {
+		const target = direction === 'up' ? index - 1 : index + 1;
+		if (target < 0 || target >= criteria.length) return;
+		const copy = [...criteria];
+		[copy[index], copy[target]] = [copy[target], copy[index]];
+		criteria = copy;
+	}
+
+	function moveSubCriterion(criterionId: string, subIndex: number, direction: 'up' | 'down') {
+		const c = criteria.find((c) => c.id === criterionId);
+		if (!c) return;
+		const target = direction === 'up' ? subIndex - 1 : subIndex + 1;
+		if (target < 0 || target >= c.subcriteria.length) return;
+		const copy = [...c.subcriteria];
+		[copy[subIndex], copy[target]] = [copy[target], copy[subIndex]];
+		c.subcriteria = copy;
 	}
 
 	// ── Suppliers CRUD ──
@@ -393,17 +423,11 @@
 			<input id="setup-ref" class="config-input config-input-mono" type="text" bind:value={reference} placeholder="2026/1234" />
 		</div>
 		<div class="config-field">
-			<label class="config-label" for="setup-qw">Kvalitet</label>
-			<div class="config-input-group">
-				<input id="setup-qw" class="config-input config-input-num" type="number" min="0" max="100" bind:value={qualityWeight} />
-				<span class="config-unit">%</span>
-			</div>
-		</div>
-		<div class="config-field">
-			<span class="config-label">Pris</span>
-			<div class="config-input-group">
-				<span class="config-input config-input-num config-derived">{priceWeight}</span>
-				<span class="config-unit">%</span>
+			<span class="config-label">Kvalitet / Pris</span>
+			<div class="config-split">
+				<span class="config-split-value">{qualityWeight}<span class="config-split-pct">%</span></span>
+				<span class="config-split-sep">/</span>
+				<span class="config-split-value">{priceWeight}<span class="config-split-pct">%</span></span>
 			</div>
 		</div>
 		<div class="config-field">
@@ -487,6 +511,18 @@
 							placeholder="Hovedkriterium..."
 						/>
 					</div>
+					<button
+						class="criterion-type"
+						class:type-quality={criterion.type === 'quality'}
+						class:type-price={criterion.type === 'price'}
+						onclick={() => (criterion.type = criterion.type === 'quality' ? 'price' : 'quality')}
+					>
+						{criterion.type === 'quality' ? 'Kvalitet' : 'Pris'}
+					</button>
+					<div class="criterion-move">
+						<button class="move-btn" disabled={ci === 0} onclick={() => moveCriterion(ci, 'up')} title="Flytt opp">&#9650;</button>
+						<button class="move-btn" disabled={ci === criteria.length - 1} onclick={() => moveCriterion(ci, 'down')} title="Flytt ned">&#9660;</button>
+					</div>
 					<button class="criterion-remove" onclick={() => removeCriterion(criterion.id)} title="Fjern kriterium">×</button>
 				</div>
 
@@ -513,6 +549,10 @@
 								bind:value={sub.name}
 								placeholder="Underkriterium..."
 							/>
+						</div>
+						<div class="criterion-move">
+							<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
+							<button class="move-btn" disabled={si === criterion.subcriteria.length - 1} onclick={() => moveSubCriterion(criterion.id, si, 'down')} title="Flytt ned">&#9660;</button>
 						</div>
 						<button
 							class="criterion-remove criterion-remove-sub"
@@ -819,6 +859,35 @@
 		border-color: transparent;
 	}
 
+	.config-split {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--sp-2);
+		padding: var(--sp-2) var(--sp-3);
+		background: var(--canvas);
+		border: 1px solid var(--wire);
+		border-radius: var(--r-sm);
+	}
+
+	.config-split-value {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--vekt);
+	}
+
+	.config-split-pct {
+		font-size: 10px;
+		font-weight: 400;
+		color: var(--ink-ghost);
+	}
+
+	.config-split-sep {
+		font-size: 11px;
+		color: var(--ink-ghost);
+	}
+
 	/* ── Supplier bar ── */
 	.supplier-bar {
 		display: flex;
@@ -1102,6 +1171,90 @@
 		color: var(--ink-ghost);
 	}
 
+	/* Criterion type toggle */
+	.criterion-type {
+		padding: 2px var(--sp-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		border: 1px solid;
+		border-radius: var(--r-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+		flex-shrink: 0;
+		line-height: 1.4;
+	}
+
+	.type-quality {
+		color: var(--vekt-dim);
+		border-color: var(--vekt-bg-strong);
+		background: var(--vekt-bg);
+	}
+
+	.type-quality:hover {
+		color: var(--vekt);
+		background: var(--vekt-bg-strong);
+	}
+
+	.type-price {
+		color: var(--ink-secondary);
+		border-color: var(--wire);
+		background: var(--felt-hover);
+	}
+
+	.type-price:hover {
+		color: var(--ink);
+		border-color: var(--wire-strong);
+	}
+
+	.criterion-type:focus-visible {
+		outline: none;
+		border-color: var(--wire-focus);
+	}
+
+	/* Move buttons */
+	.criterion-move {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		flex-shrink: 0;
+	}
+
+	.move-btn {
+		width: 20px;
+		height: 14px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 8px;
+		color: var(--ink-ghost);
+		background: none;
+		border: none;
+		border-radius: 2px;
+		cursor: pointer;
+		transition: all 0.1s;
+		padding: 0;
+		line-height: 1;
+	}
+
+	.move-btn:hover:not(:disabled) {
+		color: var(--ink-secondary);
+		background: var(--felt-active);
+	}
+
+	.move-btn:disabled {
+		opacity: 0.2;
+		cursor: default;
+	}
+
+	.move-btn:focus-visible {
+		outline: none;
+		color: var(--ink-secondary);
+		background: var(--felt-active);
+	}
+
 	/* Remove buttons */
 	.criterion-remove {
 		width: 24px;
@@ -1336,6 +1489,7 @@
 	@media (max-width: 768px) {
 		.config-strip {
 			flex-direction: column;
+			align-items: stretch;
 			gap: var(--sp-3);
 		}
 	}
