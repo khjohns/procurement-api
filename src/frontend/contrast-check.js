@@ -4,34 +4,57 @@
  * Kontrastsjekk for Analysebordet design tokens.
  *
  * Beregner WCAG 2.1 kontrastforhold for alle tekst/bakgrunn-kombinasjoner
- * i designsystemet og rapporterer brudd.
+ * i designsystemet og rapporterer brudd — for både lyst og mørkt tema.
  *
  * Bruk:  node contrast-check.js
  */
 
 // ── Tokens ──────────────────────────────────────────────────────────
 
-const surfaces = {
-	'canvas':       '#0c0e14',
-	'felt':         '#12151e',
-	'felt-raised':  '#181c28',
-	'felt-hover':   '#1e2233',
-	'felt-active':  '#242840',
+const light = {
+	surfaces: {
+		'canvas':       '#f4f5f8',
+		'felt':         '#ffffff',
+		'felt-raised':  '#ffffff',
+		'felt-hover':   '#eef0f5',
+		'felt-active':  '#e4e7ee',
+	},
+	inks: {
+		'ink':           '#1a1d26',
+		'ink-secondary': '#555b6e',
+		'ink-muted':     '#666c82',
+		'ink-ghost':     '#9ba1b4',
+	},
+	accents: {
+		'vekt':       '#996510',
+		'vekt-dim':   '#7a5210',
+		'score-high': '#2d7a54',
+		'score-mid':  '#555b6e',
+		'score-low':  '#b04040',
+	},
 };
 
-const inks = {
-	'ink':           '#e2e5ef',
-	'ink-secondary': '#8890a4',
-	'ink-muted':     '#7b829b',
-	'ink-ghost':     '#5a6178',
-};
-
-const accents = {
-	'vekt':      '#e8a838',
-	'vekt-dim':  '#c49030',
-	'score-high':'#3d9a6e',
-	'score-mid': '#8890a4',
-	'score-low': '#c45858',
+const dark = {
+	surfaces: {
+		'canvas':       '#0c0e14',
+		'felt':         '#12151e',
+		'felt-raised':  '#181c28',
+		'felt-hover':   '#1e2233',
+		'felt-active':  '#242840',
+	},
+	inks: {
+		'ink':           '#e2e5ef',
+		'ink-secondary': '#8890a4',
+		'ink-muted':     '#7b829b',
+		'ink-ghost':     '#5a6178',
+	},
+	accents: {
+		'vekt':       '#e8a838',
+		'vekt-dim':   '#c49030',
+		'score-high': '#3d9a6e',
+		'score-mid':  '#8890a4',
+		'score-low':  '#c45858',
+	},
 };
 
 // ── Actual usage in the codebase ────────────────────────────────────
@@ -120,99 +143,109 @@ function wcagLevel(ratio, sizePx, weight) {
 	return 'FAIL';
 }
 
-// ── Run audit ───────────────────────────────────────────────────────
+// ── analyzeTheme ─────────────────────────────────────────────────────
 
-const allColors = { ...inks, ...accents };
+function analyzeTheme(themeName, theme) {
+	const allColors = { ...theme.inks, ...theme.accents };
+
+	console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);
+	console.log(`║  ${themeName.padEnd(64)}║`);
+	console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
+
+	// Token-par oversikt
+	console.log('── Alle token-par mot overflater ──────────────────────────────────\n');
+	console.log(
+		'Farge'.padEnd(16) +
+		Object.keys(theme.surfaces).map(s => s.padEnd(13)).join('') +
+		'  Hex'
+	);
+	console.log('─'.repeat(16 + Object.keys(theme.surfaces).length * 13 + 10));
+
+	for (const [inkName, inkHex] of Object.entries(allColors)) {
+		let line = inkName.padEnd(16);
+		for (const [, bgHex] of Object.entries(theme.surfaces)) {
+			const ratio = contrastRatio(inkHex, bgHex);
+			const marker = ratio < 3 ? ' ✗' : ratio < 4.5 ? ' △' : ratio < 7 ? ' ○' : ' ●';
+			line += `${ratio.toFixed(2)}:1${marker}`.padEnd(13);
+		}
+		line += `  ${inkHex}`;
+		console.log(line);
+	}
+
+	console.log('\n  ● ≥ 7:1 (AAA)  ○ ≥ 4.5:1 (AA)  △ ≥ 3:1 (stor tekst)  ✗ < 3:1 (utilstrekkelig)\n');
+
+	// Bruksspesifikk rapport
+	console.log('── Faktisk bruk i kodebasen ───────────────────────────────────────\n');
+
+	const failures = [];
+	const warnings = [];
+
+	for (const u of usages) {
+		const fgHex = allColors[u.fg];
+		const bgHex = theme.surfaces[u.bg];
+		if (!fgHex || !bgHex) continue;
+
+		const ratio = contrastRatio(fgHex, bgHex);
+		const level = wcagLevel(ratio, u.size, u.weight);
+		const entry = {
+			...u,
+			ratio: ratio.toFixed(2),
+			level,
+			fgHex,
+			bgHex,
+		};
+
+		if (level === 'FAIL') failures.push(entry);
+		else if (level === 'AA') warnings.push(entry);
+	}
+
+	if (failures.length > 0) {
+		console.log(`  ✗ BRUDD (${failures.length} stk — under WCAG AA):\n`);
+		for (const f of failures) {
+			console.log(`    ${f.ratio}:1  ${f.fg} → ${f.bg}  (${f.size}px/${f.weight}w)`);
+			console.log(`    └─ ${f.label}`);
+			const needed = isLargeText(f.size, f.weight) ? '3.0:1' : '4.5:1';
+			console.log(`       Trenger minst ${needed} for WCAG AA\n`);
+		}
+	}
+
+	if (warnings.length > 0) {
+		console.log(`  △ Passerer AA, men ikke AAA (${warnings.length} stk):\n`);
+		for (const w of warnings) {
+			console.log(`    ${w.ratio}:1  ${w.fg} → ${w.bg}  (${w.size}px/${w.weight}w)`);
+			console.log(`    └─ ${w.label}\n`);
+		}
+	}
+
+	const passes = usages.length - failures.length - warnings.length;
+	console.log(`  ● Godkjent AAA: ${passes}/${usages.length}`);
+	console.log(`  ○ Godkjent AA:  ${warnings.length}/${usages.length}`);
+	console.log(`  ✗ Brudd:        ${failures.length}/${usages.length}\n`);
+
+	// Forslag ved brudd
+	if (failures.length > 0) {
+		console.log('── Forslag ────────────────────────────────────────────────────────\n');
+
+		const canvasL = relativeLuminance(theme.surfaces.canvas);
+		const targetRatio = 4.5;
+		const neededL = targetRatio * (canvasL + 0.05) - 0.05;
+
+		console.log(`  Mot canvas (${theme.surfaces.canvas}), L=${canvasL.toFixed(4)}:`);
+		console.log(`  For 4.5:1 (AA normal tekst) trenger fg L ≥ ${neededL.toFixed(4)}\n`);
+
+		for (const f of failures) {
+			const needed = isLargeText(f.size, f.weight) ? '3.0:1' : '4.5:1';
+			console.log(`  ${f.fg}: Hev hex-verdien til minst ${needed} kontrast mot ${f.bg}`);
+		}
+		console.log('');
+	}
+}
+
+// ── Run audit ───────────────────────────────────────────────────────
 
 console.log('\n╔══════════════════════════════════════════════════════════════════╗');
 console.log('║  Analysebordet — Kontrastsjekk (WCAG 2.1)                      ║');
-console.log('╚══════════════════════════════════════════════════════════════════╝\n');
+console.log('╚══════════════════════════════════════════════════════════════════╝');
 
-// Token-par oversikt
-console.log('── Alle token-par mot overflater ──────────────────────────────────\n');
-console.log(
-	'Farge'.padEnd(16) +
-	Object.keys(surfaces).map(s => s.padEnd(13)).join('') +
-	'  Hex'
-);
-console.log('─'.repeat(16 + Object.keys(surfaces).length * 13 + 10));
-
-for (const [inkName, inkHex] of Object.entries({ ...inks, ...accents })) {
-	let line = inkName.padEnd(16);
-	for (const [, bgHex] of Object.entries(surfaces)) {
-		const ratio = contrastRatio(inkHex, bgHex);
-		const marker = ratio < 3 ? ' ✗' : ratio < 4.5 ? ' △' : ratio < 7 ? ' ○' : ' ●';
-		line += `${ratio.toFixed(2)}:1${marker}`.padEnd(13);
-	}
-	line += `  ${inkHex}`;
-	console.log(line);
-}
-
-console.log('\n  ● ≥ 7:1 (AAA)  ○ ≥ 4.5:1 (AA)  △ ≥ 3:1 (stor tekst)  ✗ < 3:1 (utilstrekkelig)\n');
-
-// Bruksspesifikk rapport
-console.log('── Faktisk bruk i kodebasen ───────────────────────────────────────\n');
-
-const failures = [];
-const warnings = [];
-
-for (const u of usages) {
-	const fgHex = allColors[u.fg];
-	const bgHex = surfaces[u.bg];
-	if (!fgHex || !bgHex) continue;
-
-	const ratio = contrastRatio(fgHex, bgHex);
-	const level = wcagLevel(ratio, u.size, u.weight);
-	const entry = {
-		...u,
-		ratio: ratio.toFixed(2),
-		level,
-		fgHex,
-		bgHex,
-	};
-
-	if (level === 'FAIL') failures.push(entry);
-	else if (level === 'AA') warnings.push(entry);
-}
-
-if (failures.length > 0) {
-	console.log(`  ✗ BRUDD (${failures.length} stk — under WCAG AA):\n`);
-	for (const f of failures) {
-		console.log(`    ${f.ratio}:1  ${f.fg} → ${f.bg}  (${f.size}px/${f.weight}w)`);
-		console.log(`    └─ ${f.label}`);
-		const needed = isLargeText(f.size, f.weight) ? '3.0:1' : '4.5:1';
-		console.log(`       Trenger minst ${needed} for WCAG AA\n`);
-	}
-}
-
-if (warnings.length > 0) {
-	console.log(`  △ Passerer AA, men ikke AAA (${warnings.length} stk):\n`);
-	for (const w of warnings) {
-		console.log(`    ${w.ratio}:1  ${w.fg} → ${w.bg}  (${w.size}px/${w.weight}w)`);
-		console.log(`    └─ ${w.label}\n`);
-	}
-}
-
-const passes = usages.length - failures.length - warnings.length;
-console.log(`  ● Godkjent AAA: ${passes}/${usages.length}`);
-console.log(`  ○ Godkjent AA:  ${warnings.length}/${usages.length}`);
-console.log(`  ✗ Brudd:        ${failures.length}/${usages.length}\n`);
-
-// ── Forslag ─────────────────────────────────────────────────────────
-
-if (failures.length > 0) {
-	console.log('── Forslag ────────────────────────────────────────────────────────\n');
-
-	const canvasL = relativeLuminance(surfaces.canvas);
-	const targetRatio = 4.5;
-	const neededL = targetRatio * (canvasL + 0.05) - 0.05;
-
-	console.log(`  Mot canvas (${surfaces.canvas}), L=${canvasL.toFixed(4)}:`);
-	console.log(`  For 4.5:1 (AA normal tekst) trenger fg L ≥ ${neededL.toFixed(4)}\n`);
-
-	for (const f of failures) {
-		const needed = isLargeText(f.size, f.weight) ? '3.0:1' : '4.5:1';
-		console.log(`  ${f.fg}: Hev hex-verdien til minst ${needed} kontrast mot ${f.bg}`);
-	}
-	console.log('');
-}
+analyzeTheme('LYST TEMA (standard)', light);
+analyzeTheme('MØRKT TEMA (.dark)', dark);

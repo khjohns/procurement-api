@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { themeStore } from '$lib/stores/theme.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -54,6 +55,13 @@
 				<div class="sidebar-user-name">Kari Johansen</div>
 				<div class="sidebar-user-org">Bergen kommune</div>
 			</div>
+			<button
+				class="theme-toggle"
+				onclick={() => themeStore.toggle()}
+				title="Tema: {themeStore.label}"
+			>
+				{themeStore.icon}
+			</button>
 		</div>
 	</aside>
 
@@ -183,6 +191,33 @@
 	.sidebar-user-org {
 		color: var(--color-ink-muted);
 		font-size: 11px;
+	}
+
+	.theme-toggle {
+		margin-left: auto;
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-sm);
+		border: 1px solid transparent;
+		background: transparent;
+		color: var(--color-ink-secondary);
+		font-size: 14px;
+		cursor: pointer;
+		transition: background 0.12s, color 0.12s;
+	}
+
+	.theme-toggle:hover {
+		background: var(--color-felt-hover);
+		color: var(--color-ink);
+	}
+
+	.theme-toggle:focus-visible {
+		outline: none;
+		border-color: var(--color-wire-focus);
 	}
 
 	.workspace {

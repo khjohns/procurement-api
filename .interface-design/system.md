@@ -12,6 +12,8 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 
 ## Tokens
 
+The following subsections show the **dark theme** token values. For light theme values and the full side-by-side comparison, see [## Themes](#themes) below.
+
 ### Surfaces (cool dark blues)
 
 ```
@@ -57,6 +59,47 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 --color-score-low: #c45858                       /* low scores (≤3) */
 --color-score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
 ```
+
+---
+
+## Themes
+
+Light theme is the default (standard web convention). Dark mode is activated by adding a `.dark` class to `<html>`. OS-level preference (`prefers-color-scheme: dark`) is respected automatically; a manual toggle overrides it. An anti-flash inline script in `<head>` reads `localStorage` and applies `.dark` before first paint to prevent FOUC.
+
+All tokens are defined in `@theme` (light values) in `app.css` and overridden in a `.dark { ... }` block.
+
+### Token values by theme
+
+| Token | Light | Dark |
+|---|---|---|
+| **Surfaces** | | |
+| `--color-canvas` | `#f4f5f8` | `#0c0e14` |
+| `--color-felt` | `#ffffff` | `#12151e` |
+| `--color-felt-raised` | `#ffffff` | `#181c28` |
+| `--color-felt-hover` | `#eef0f5` | `#1e2233` |
+| `--color-felt-active` | `#e4e7ee` | `#242840` |
+| **Ink** | | |
+| `--color-ink` | `#1a1d26` | `#e2e5ef` |
+| `--color-ink-secondary` | `#555b6e` | `#8890a4` |
+| `--color-ink-muted` | `#666c82` | `#7b829b` |
+| `--color-ink-ghost` | `#9ba1b4` | `#5a6178` |
+| **Wire** | | |
+| `--color-wire` | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.06)` |
+| `--color-wire-strong` | `rgba(0,0,0,0.13)` | `rgba(255,255,255,0.10)` |
+| `--color-wire-focus` | `rgba(153,101,16,0.35)` | `rgba(232,168,56,0.35)` |
+| **Vekt** | | |
+| `--color-vekt` | `#996510` | `#e8a838` |
+| `--color-vekt-dim` | `#7a5210` | `#c49030` |
+| `--color-vekt-bg` | `rgba(153,101,16,0.06)` | `rgba(232,168,56,0.08)` |
+| `--color-vekt-bg-strong` | `rgba(153,101,16,0.10)` | `rgba(232,168,56,0.14)` |
+| **Score** | | |
+| `--color-score-high` | `#2d7a54` | `#3d9a6e` |
+| `--color-score-high-bg` | `rgba(45,122,84,0.08)` | `rgba(61,154,110,0.10)` |
+| `--color-score-mid` | `#555b6e` | `#8890a4` |
+| `--color-score-low` | `#b04040` | `#c45858` |
+| `--color-score-low-bg` | `rgba(176,64,64,0.08)` | `rgba(196,88,88,0.10)` |
+
+The subsections below document the **dark theme** token values in CSS custom property format.
 
 ---
 
