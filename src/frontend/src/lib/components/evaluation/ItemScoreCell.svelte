@@ -64,7 +64,7 @@
 <style>
 	.item-score-cell {
 		position: relative;
-		padding: var(--sp-1);
+		padding: var(--spacing-1);
 		text-align: center;
 	}
 
@@ -78,8 +78,8 @@
 		font-weight: 500;
 		min-width: 36px;
 		height: 28px;
-		padding: 0 var(--sp-2);
-		border-radius: var(--r-sm);
+		padding: 0 var(--spacing-2);
+		border-radius: var(--radius-sm);
 		border: 1px solid transparent;
 		background: none;
 		cursor: pointer;
@@ -87,21 +87,21 @@
 	}
 
 	.item-score:hover {
-		background: var(--felt-hover);
-		border-color: var(--wire);
+		background: var(--color-felt-hover);
+		border-color: var(--color-wire);
 	}
 
 	.item-score:focus-visible {
 		outline: none;
-		border-color: var(--wire-focus);
+		border-color: var(--color-wire-focus);
 	}
 
-	.tier-high { color: var(--score-high); }
-	.tier-mid { color: var(--ink-secondary); }
-	.tier-low { color: var(--score-low); }
+	.tier-high { color: var(--color-score-high); }
+	.tier-mid { color: var(--color-ink-secondary); }
+	.tier-low { color: var(--color-score-low); }
 
 	.score-best {
-		background: var(--score-high-bg);
+		background: var(--color-score-high-bg);
 		font-weight: 700;
 	}
 
@@ -114,10 +114,10 @@
 		z-index: 20;
 		display: flex;
 		gap: 1px;
-		padding: var(--sp-1);
-		background: var(--felt-raised);
-		border: 1px solid var(--wire-strong);
-		border-radius: var(--r-sm);
+		padding: var(--spacing-1);
+		background: var(--color-felt-raised);
+		border: 1px solid var(--color-wire-strong);
+		border-radius: var(--radius-sm);
 		/* borders-only depth: no box-shadow */
 	}
 
@@ -130,30 +130,30 @@
 		font-family: var(--font-data);
 		font-size: 10px;
 		font-weight: 500;
-		color: var(--ink-muted);
-		background: var(--felt);
-		border: 1px solid var(--wire);
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
 		border-radius: 2px;
 		cursor: pointer;
 		transition: all 0.08s;
 	}
 
 	.pop-seg:hover {
-		background: var(--felt-hover);
-		border-color: var(--wire-strong);
-		color: var(--ink);
+		background: var(--color-felt-hover);
+		border-color: var(--color-wire-strong);
+		color: var(--color-ink);
 	}
 
 	.seg-filled {
-		background: var(--score-high-bg);
-		border-color: var(--score-high-bg);
-		color: var(--score-high);
+		background: var(--color-score-high-bg);
+		border-color: var(--color-score-high-bg);
+		color: var(--color-score-high);
 	}
 
 	.seg-active {
-		background: var(--score-high);
-		border-color: var(--score-high);
-		color: var(--ink);
+		background: var(--color-score-high);
+		border-color: var(--color-score-high);
+		color: var(--color-ink);
 		font-weight: 700;
 	}
 </style>

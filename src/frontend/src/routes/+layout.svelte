@@ -71,8 +71,8 @@
 	.sidebar {
 		width: 228px;
 		flex-shrink: 0;
-		border-right: 1px solid var(--wire);
-		padding: var(--sp-4);
+		border-right: 1px solid var(--color-wire);
+		padding: var(--spacing-4);
 		display: flex;
 		flex-direction: column;
 	}
@@ -80,17 +80,17 @@
 	.sidebar-brand {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
-		padding: var(--sp-2);
-		margin-bottom: var(--sp-6);
+		gap: var(--spacing-2);
+		padding: var(--spacing-2);
+		margin-bottom: var(--spacing-6);
 	}
 
 	.sidebar-brand-icon {
 		width: 28px;
 		height: 28px;
-		border-radius: var(--r-md);
-		background: var(--vekt-bg-strong);
-		border: 1px solid var(--vekt-bg-strong);
+		border-radius: var(--radius-md);
+		background: var(--color-vekt-bg-strong);
+		border: 1px solid var(--color-vekt-bg-strong);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -107,16 +107,16 @@
 		list-style: none;
 		display: flex;
 		flex-direction: column;
-		gap: var(--sp-1);
+		gap: var(--spacing-1);
 	}
 
 	.sidebar-nav a {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-3);
-		padding: var(--sp-2) var(--sp-3);
-		border-radius: var(--r-sm);
-		color: var(--ink-secondary);
+		gap: var(--spacing-3);
+		padding: var(--spacing-2) var(--spacing-3);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink-secondary);
 		text-decoration: none;
 		font-size: 13px;
 		font-weight: 500;
@@ -124,13 +124,13 @@
 	}
 
 	.sidebar-nav a:hover {
-		background: var(--felt);
-		color: var(--ink);
+		background: var(--color-felt);
+		color: var(--color-ink);
 	}
 
 	.sidebar-nav :global(a.active) {
-		background: var(--vekt-bg);
-		color: var(--vekt);
+		background: var(--color-vekt-bg);
+		color: var(--color-vekt);
 	}
 
 	.nav-icon {
@@ -149,25 +149,25 @@
 
 	.sidebar-footer {
 		margin-top: auto;
-		padding: var(--sp-3);
-		border-top: 1px solid var(--wire);
+		padding: var(--spacing-3);
+		border-top: 1px solid var(--color-wire);
 		display: flex;
 		align-items: center;
-		gap: var(--sp-3);
+		gap: var(--spacing-3);
 	}
 
 	.sidebar-avatar {
 		width: 28px;
 		height: 28px;
 		border-radius: 50%;
-		background: var(--felt-raised);
-		border: 1px solid var(--wire-strong);
+		background: var(--color-felt-raised);
+		border: 1px solid var(--color-wire-strong);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-size: 11px;
 		font-weight: 600;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
 	.sidebar-user {
@@ -177,18 +177,18 @@
 
 	.sidebar-user-name {
 		font-weight: 500;
-		color: var(--ink);
+		color: var(--color-ink);
 	}
 
 	.sidebar-user-org {
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 		font-size: 11px;
 	}
 
 	.workspace {
 		flex: 1;
 		min-width: 0;
-		padding: var(--sp-8) var(--sp-8) var(--sp-12);
+		padding: var(--spacing-8) var(--spacing-8) var(--spacing-12);
 		overflow-x: auto;
 	}
 
@@ -196,8 +196,8 @@
 	.mobile-toggle {
 		display: none;
 		position: fixed;
-		top: var(--sp-3);
-		left: var(--sp-3);
+		top: var(--spacing-3);
+		left: var(--spacing-3);
 		z-index: 50;
 		width: 36px;
 		height: 36px;
@@ -205,26 +205,26 @@
 		align-items: center;
 		justify-content: center;
 		gap: 4px;
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-sm);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition: background 0.12s;
 	}
 
 	.mobile-toggle:hover {
-		background: var(--felt-hover);
+		background: var(--color-felt-hover);
 	}
 
 	.mobile-toggle:focus-visible {
 		outline: none;
-		border-color: var(--wire-focus);
+		border-color: var(--color-wire-focus);
 	}
 
 	.hamburger-line {
 		width: 16px;
 		height: 1.5px;
-		background: var(--ink-secondary);
+		background: var(--color-ink-secondary);
 		border-radius: 1px;
 	}
 
@@ -249,7 +249,7 @@
 			z-index: 100;
 			transform: translateX(-100%);
 			transition: transform 0.2s ease-out;
-			background: var(--canvas);
+			background: var(--color-canvas);
 		}
 
 		.sidebar-open {
@@ -261,8 +261,8 @@
 		}
 
 		.workspace {
-			padding: var(--sp-4);
-			padding-top: calc(var(--sp-4) + 48px);
+			padding: var(--spacing-4);
+			padding-top: calc(var(--spacing-4) + 48px);
 		}
 	}
 </style>

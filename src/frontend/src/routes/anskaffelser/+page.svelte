@@ -55,7 +55,7 @@
 
 <style>
 	.page-header {
-		margin-bottom: var(--sp-6);
+		margin-bottom: var(--spacing-6);
 	}
 
 	.page-title {
@@ -65,17 +65,17 @@
 	}
 
 	.status-text {
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 		font-size: 13px;
 	}
 
 	.status-text.error {
-		color: var(--score-low);
+		color: var(--color-score-low);
 	}
 
 	.table-wrap {
-		border: 1px solid var(--wire);
-		border-radius: var(--r-lg);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-lg);
 		overflow: hidden;
 	}
 
@@ -85,21 +85,21 @@
 	}
 
 	.data-table th {
-		padding: var(--sp-3);
+		padding: var(--spacing-3);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ink-muted);
-		background: var(--felt);
-		border-bottom: 1px solid var(--wire);
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border-bottom: 1px solid var(--color-wire);
 		text-align: left;
 	}
 
 	.data-table td {
-		padding: var(--sp-3);
+		padding: var(--spacing-3);
 		font-size: 13px;
-		border-bottom: 1px solid var(--wire);
+		border-bottom: 1px solid var(--color-wire);
 	}
 
 	.data-table tr:last-child td {
@@ -107,22 +107,22 @@
 	}
 
 	.data-table tr:hover td {
-		background: var(--felt-hover);
+		background: var(--color-felt-hover);
 	}
 
 	.cell-id {
 		font-family: var(--font-data);
 		font-size: 12px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.cell-status {
 		font-size: 12px;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
 	a {
-		color: var(--vekt);
+		color: var(--color-vekt);
 		text-decoration: none;
 	}
 

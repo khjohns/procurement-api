@@ -15,47 +15,47 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 ### Surfaces (cool dark blues)
 
 ```
---canvas: #0c0e14          /* workspace background */
---felt: #12151e             /* cards, panels — barely lifted */
---felt-raised: #181c28      /* elevated: dropdowns, popovers */
---felt-hover: #1e2233       /* hover state */
---felt-active: #242840      /* pressed/active state */
+--color-canvas: #0c0e14          /* workspace background */
+--color-felt: #12151e             /* cards, panels — barely lifted */
+--color-felt-raised: #181c28      /* elevated: dropdowns, popovers */
+--color-felt-hover: #1e2233       /* hover state */
+--color-felt-active: #242840      /* pressed/active state */
 ```
 
 ### Ink (text hierarchy)
 
 ```
---ink: #e2e5ef              /* primary text */
---ink-secondary: #8890a4    /* supporting text, labels */
---ink-muted: #7b829b        /* labels, metadata, section titles */
---ink-ghost: #5a6178        /* disabled, placeholder, decorative */
+--color-ink: #e2e5ef              /* primary text */
+--color-ink-secondary: #8890a4    /* supporting text, labels */
+--color-ink-muted: #7b829b        /* labels, metadata, section titles */
+--color-ink-ghost: #5a6178        /* disabled, placeholder, decorative */
 ```
 
 ### Wire (borders)
 
 ```
---wire: rgba(255, 255, 255, 0.06)       /* standard separation */
---wire-strong: rgba(255, 255, 255, 0.10) /* emphasis, group dividers */
---wire-focus: rgba(232, 168, 56, 0.35)   /* focus rings */
+--color-wire: rgba(255, 255, 255, 0.06)       /* standard separation */
+--color-wire-strong: rgba(255, 255, 255, 0.10) /* emphasis, group dividers */
+--color-wire-focus: rgba(232, 168, 56, 0.35)   /* focus rings */
 ```
 
 ### Vekt (weight accent — amber)
 
 ```
---vekt: #e8a838                         /* primary weight color */
---vekt-dim: #c49030                     /* secondary weight */
---vekt-bg: rgba(232, 168, 56, 0.08)    /* weight row tint */
---vekt-bg-strong: rgba(232, 168, 56, 0.14) /* weight emphasis */
+--color-vekt: #e8a838                         /* primary weight color */
+--color-vekt-dim: #c49030                     /* secondary weight */
+--color-vekt-bg: rgba(232, 168, 56, 0.08)    /* weight row tint */
+--color-vekt-bg-strong: rgba(232, 168, 56, 0.14) /* weight emphasis */
 ```
 
 ### Score Semantics
 
 ```
---score-high: #3d9a6e                      /* high scores (7+) */
---score-high-bg: rgba(61, 154, 110, 0.10) /* high score background */
---score-mid: #8890a4                       /* mid scores (4-6) */
---score-low: #c45858                       /* low scores (≤3) */
---score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
+--color-score-high: #3d9a6e                      /* high scores (7+) */
+--color-score-high-bg: rgba(61, 154, 110, 0.10) /* high score background */
+--color-score-mid: #8890a4                       /* mid scores (4-6) */
+--color-score-low: #c45858                       /* low scores (≤3) */
+--color-score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
 ```
 
 ---
@@ -70,7 +70,7 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 - **Numbers/scores/percentages:** Always `--font-data` with `font-variant-numeric: tabular-nums`
 - **Headlines:** `--font-ui`, 20px, weight 700, tracking -0.025em
 - **Body/labels:** `--font-ui`, 13px, weight 500
-- **Section labels:** 11px, weight 600, uppercase, tracking 0.08em, color `--ink-muted`
+- **Section labels:** 11px, weight 600, uppercase, tracking 0.08em, color `--color-ink-muted`
 - **Data values:** `--font-data`, 13px, weight 500
 
 ---
@@ -80,14 +80,14 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 Base unit: **4px**
 
 ```
---sp-1: 4px      /* micro: icon gaps */
---sp-2: 8px      /* tight: element pairs */
---sp-3: 12px     /* component: cell padding */
---sp-4: 16px     /* card padding */
---sp-5: 20px     /* generous card padding */
---sp-6: 24px     /* section gaps */
---sp-8: 32px     /* workspace padding, major separation */
---sp-12: 48px    /* page bottom padding */
+--spacing-1: 4px      /* micro: icon gaps */
+--spacing-2: 8px      /* tight: element pairs */
+--spacing-3: 12px     /* component: cell padding */
+--spacing-4: 16px     /* card padding */
+--spacing-5: 20px     /* generous card padding */
+--spacing-6: 24px     /* section gaps */
+--spacing-8: 32px     /* workspace padding, major separation */
+--spacing-12: 48px    /* page bottom padding */
 ```
 
 ---
@@ -97,9 +97,9 @@ Base unit: **4px**
 Technical, not friendly:
 
 ```
---r-sm: 4px      /* inputs, buttons, score segments */
---r-md: 6px      /* small cards, badges */
---r-lg: 8px      /* major containers, matrix wrap */
+--radius-sm: 4px      /* inputs, buttons, score segments */
+--radius-md: 6px      /* small cards, badges */
+--radius-lg: 8px      /* major containers, matrix wrap */
 ```
 
 ---
@@ -108,10 +108,10 @@ Technical, not friendly:
 
 **Borders-only.** No shadows. Dark mode + dense data = borders define structure quietly.
 
-- Group rows: `border-left: 3px solid var(--vekt)` (weight spine)
+- Group rows: `border-left: 3px solid var(--color-vekt)` (weight spine)
 - Sub-rows: `border-left: 3px solid rgba(232, 168, 56, 0.15)` (faded spine)
-- Separators: `1px solid var(--wire)` standard, `var(--wire-strong)` for group dividers
-- Annotation panel: `border-left: 3px solid var(--vekt)` (connects to spine)
+- Separators: `1px solid var(--color-wire)` standard, `var(--color-wire-strong)` for group dividers
+- Annotation panel: `border-left: 3px solid var(--color-vekt)` (connects to spine)
 
 ---
 
@@ -139,14 +139,14 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 
 ### Group Rows (main criteria)
 
-- Background: `var(--vekt-bg)` (amber tint)
+- Background: `var(--color-vekt-bg)` (amber tint)
 - Left border: solid amber (weight spine)
 - Score values: 14px, weight 700, one decimal
 - Criteria name: weight 600
 
 ### Sub-criterion Rows
 
-- Background: transparent, hover → `var(--felt-hover)`
+- Background: transparent, hover → `var(--color-felt-hover)`
 - Left border: faded amber
 - Criteria name: indented (padding-left: 32px), with `::before` dash
 - Score values: integer, weight 500
@@ -157,7 +157,7 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 - Color coding: `.score-high` (green ≥7), `.score-mid` (neutral ≥4), `.score-low` (rose <4)
 - Best in row: `.score-best` → green background + bold
 - Has notes: `.has-notes` → 5px amber dot, top-right corner
-- Drilldown variant: `▾` chevron (8px, `--ink-ghost`) after score, rotates on expand
+- Drilldown variant: `▾` chevron (8px, `--color-ink-ghost`) after score, rotates on expand
 - Derived scores: always `.toFixed(1)`, integer scores show as-is
 
 ### Annotation Panel
@@ -165,39 +165,39 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 - Full-width row below the scored row
 - Shows: context (supplier › criterion), score selector (0-10 segments), textarea
 - Score segments: 30×32px buttons, filled state = green, active = solid green
-- Textarea: `var(--felt)` background, wire border, focus → amber wire
+- Textarea: `var(--color-felt)` background, wire border, focus → amber wire
 
 ### ItemEvaluationPanel
 
 - Full-width row below sub-criterion row (same pattern as AnnotationPanel)
-- Left border: 3px solid `--vekt` (connects to weight spine)
+- Left border: 3px solid `--color-vekt` (connects to weight spine)
 - Context bar: supplier name (bold) › sub-criterion name (muted), 11px
 - Contains: AggregationStrip + ItemTable + AddItem + Notes textarea
 
 ### AggregationStrip
 
-- Horizontal flex, `--felt` background, `--wire` border, `--r-sm` radius
+- Horizontal flex, `--color-felt` background, `--color-wire` border, `--radius-sm` radius
 - Label: "AGGREGERING" in section label style (10px uppercase ghost)
-- Radio-style options: 12px circle (border `--wire-strong`, checked = `--vekt` fill with inset ring)
-- Active option: `--vekt` color, weight 600
+- Radio-style options: 12px circle (border `--color-wire-strong`, checked = `--color-vekt` fill with inset ring)
+- Active option: `--color-vekt` color, weight 600
 - Result: right-aligned, `--font-data`, 16px, weight 700, tier-colored
 
 ### ItemTable
 
-- Dense `<table>`, `--felt` background, `--wire` border, `--r-sm` radius
-- Header: criterion name (10px uppercase) + weight in `--vekt-dim` (9px)
+- Dense `<table>`, `--color-felt` background, `--color-wire` border, `--radius-sm` radius
+- Header: criterion name (10px uppercase) + weight in `--color-vekt-dim` (9px)
 - Columns: item name (flex) | criteria (80px each) | average (72px)
-- Item rows: name (13px, weight 500) + label after em-dash (muted), hover → `--felt-hover`
+- Item rows: name (13px, weight 500) + label after em-dash (muted), hover → `--color-felt-hover`
 - Remove button: `×`, absolute right, opacity 0 → 1 on row hover, hover → rose
-- Footer: `--canvas` background, `--wire-strong` top border, weight 600 averages
+- Footer: `--color-canvas` background, `--color-wire-strong` top border, weight 600 averages
 
 ### ItemScoreCell (compact)
 
 - Button: 36×28px, `--font-data`, 13px, tier-colored, transparent border
-- Hover: `--felt-hover` + `--wire` border
-- Focus-visible: `--wire-focus` border
+- Hover: `--color-felt-hover` + `--color-wire` border
+- Focus-visible: `--color-wire-focus` border
 - Best: green background + weight 700
-- Edit popover: positioned below, `--felt-raised`, `--wire-strong` border, shadow
+- Edit popover: positioned below, `--color-felt-raised`, `--color-wire-strong` border, shadow
 - Popover segments: 22×26px, same filled/active states as AnnotationPanel segments
 
 ### Ranking Cards
@@ -208,7 +208,7 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 
 ### Total Row
 
-- Background: `var(--canvas)` (darker than matrix)
+- Background: `var(--color-canvas)` (darker than matrix)
 - Score: 18px, weight 700
 - Best score: amber color + amber background
 
@@ -230,16 +230,16 @@ Sidebar (228px) with same canvas background, border-separated:
 
 ### Method Toggle
 
-- Segmented control: `--felt` background, `--wire` border, `--r-md` radius
-- Buttons: 12px, weight 500, `--ink-secondary`
-- Active: `--vekt-bg-strong` background, `--vekt` text, weight 600
+- Segmented control: `--color-felt` background, `--color-wire` border, `--radius-md` radius
+- Buttons: 12px, weight 500, `--color-ink-secondary`
+- Active: `--color-vekt-bg-strong` background, `--color-vekt` text, weight 600
 - Placed between header and ranking strip
 
 ### Config Strip (Prismodell)
 
-- Horizontal flex row, `--felt` surface, `--wire` border, `--r-md` radius
-- Labels: 11px, weight 500, `--ink-muted`
-- Inputs: `--canvas` background (inset feel), `--font-data`, right-aligned
+- Horizontal flex row, `--color-felt` surface, `--color-wire` border, `--radius-md` radius
+- Labels: 11px, weight 500, `--color-ink-muted`
+- Inputs: `--color-canvas` background (inset feel), `--font-data`, right-aligned
 - Shows kontraktsverdi + per-supplier prices
 - Hidden by default, visible when prismodell active
 
@@ -256,22 +256,22 @@ Sidebar (228px) with same canvas background, border-separated:
 
 - Collapsible section below matrix, toggle arrow rotates on collapse
 - Three tabs: Betalingsvilje, Robusthet, Metodekontroll
-- Tabs: flex row, `--wire` bottom border, active = `--vekt` text + amber bottom border (2px)
-- Content panes: `--sp-5` padding
+- Tabs: flex row, `--color-wire` bottom border, active = `--color-vekt` text + amber bottom border (2px)
+- Content panes: `--spacing-5` padding
 
 **Betalingsvilje tab:**
 - Data table (`.bv-table`) with criterion, weight, implisitt maks fradrag, per-poeng value
 - Sub-criteria indented with `::before` dash (mirrors matrix pattern)
-- Summary card: `--vekt-bg` background, `--vekt` left border (3px), highlights in amber monospace
+- Summary card: `--color-vekt-bg` background, `--color-vekt` left border (3px), highlights in amber monospace
 
 **Robusthet tab:**
-- Ranking items: `--felt-raised` background, `--wire` border, leader = amber border
-- Insight cards: `--felt-raised` surface, `--vekt` left border (3px), section label + text
+- Ranking items: `--color-felt-raised` background, `--color-wire` border, leader = amber border
+- Insight cards: `--color-felt-raised` surface, `--color-vekt` left border (3px), section label + text
 - Key data in `.mono` spans (amber, monospace)
 
 **Metodekontroll tab:**
 - Side-by-side grid (2 columns) comparing poengmodell vs prismodell rankings
-- Each column: `--felt-raised`, `--wire` border, `--r-md` radius
+- Each column: `--color-felt-raised`, `--color-wire` border, `--radius-md` radius
 - Verdict bar: `.match` (green bg) or `.mismatch` (rose bg) with icon + text
 
 ---
@@ -286,9 +286,9 @@ Sidebar (228px) with same canvas background, border-separated:
 
 ## States
 
-- **Hover (rows):** `var(--felt-hover)` background
+- **Hover (rows):** `var(--color-felt-hover)` background
 - **Hover (score cells):** same + cursor pointer
-- **Focus (inputs):** `border-color: var(--wire-focus)` (amber)
+- **Focus (inputs):** `border-color: var(--color-wire-focus)` (amber)
 - **Active (score segment):** solid green background
 - **Active (method btn):** amber background tint + amber text
 - **Active (innsikt tab):** amber text + amber bottom border

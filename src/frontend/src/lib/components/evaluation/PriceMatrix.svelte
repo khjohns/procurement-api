@@ -176,43 +176,43 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-muted);
-		margin-bottom: var(--sp-3);
-		margin-top: var(--sp-6);
+		color: var(--color-ink-muted);
+		margin-bottom: var(--spacing-3);
+		margin-top: var(--spacing-6);
 	}
 
 	.config-strip {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--sp-4);
+		gap: var(--spacing-4);
 		align-items: center;
-		padding: var(--sp-3) var(--sp-4);
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-md);
-		margin-bottom: var(--sp-6);
+		padding: var(--spacing-3) var(--spacing-4);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-md);
+		margin-bottom: var(--spacing-6);
 	}
 
 	.config-field {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
+		gap: var(--spacing-2);
 	}
 
 	.config-label {
 		font-size: 11px;
 		font-weight: 500;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 		white-space: nowrap;
 	}
 
 	.config-input {
 		width: 112px;
-		padding: var(--sp-1) var(--sp-2);
-		background: var(--canvas);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-sm);
-		color: var(--ink);
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
 		font-family: var(--font-data);
 		font-size: 12px;
 		font-variant-numeric: tabular-nums;
@@ -221,24 +221,24 @@
 		transition: border-color 0.12s;
 	}
 
-	.config-input:focus { border-color: var(--wire-focus); }
+	.config-input:focus { border-color: var(--color-wire-focus); }
 
 	.config-unit {
 		font-family: var(--font-data);
 		font-size: 11px;
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	.config-sep {
 		width: 1px;
 		height: 24px;
-		background: var(--wire);
+		background: var(--color-wire);
 	}
 
 	.matrix-wrap {
 		overflow-x: auto;
-		border-radius: var(--r-lg);
-		border: 1px solid var(--wire);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--color-wire);
 	}
 
 	.matrix {
@@ -252,14 +252,14 @@
 	.col-supplier { width: 140px; }
 
 	.matrix th {
-		padding: var(--sp-3);
+		padding: var(--spacing-3);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ink-muted);
-		background: var(--felt);
-		border-bottom: 1px solid var(--wire);
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border-bottom: 1px solid var(--color-wire);
 		text-align: left;
 	}
 
@@ -267,9 +267,9 @@
 	.th-supplier { text-align: center; }
 
 	.cell-weight {
-		padding: var(--sp-2) var(--sp-3);
+		padding: var(--spacing-2) var(--spacing-3);
 		vertical-align: middle;
-		border-left: 3px solid var(--vekt);
+		border-left: 3px solid var(--color-vekt);
 		text-align: center;
 	}
 
@@ -284,75 +284,75 @@
 		font-size: 11px;
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
-	.weight-num-small.muted { color: var(--ink-muted); font-size: 10px; }
+	.weight-num-small.muted { color: var(--color-ink-muted); font-size: 10px; }
 
 	.cell-criteria {
-		padding: var(--sp-2) var(--sp-3);
+		padding: var(--spacing-2) var(--spacing-3);
 		font-weight: 500;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
-	.row-group { background: var(--felt); }
-	.row-group .cell-criteria { font-weight: 600; color: var(--ink); }
-	.row-sub { background: var(--canvas); border-bottom: 1px solid var(--wire); }
-	.row-sub .cell-criteria { padding-left: var(--sp-6); color: var(--ink-muted); }
-	.row-group-last { border-bottom: 1px solid var(--wire-strong); }
+	.row-group { background: var(--color-felt); }
+	.row-group .cell-criteria { font-weight: 600; color: var(--color-ink); }
+	.row-sub { background: var(--color-canvas); border-bottom: 1px solid var(--color-wire); }
+	.row-sub .cell-criteria { padding-left: var(--spacing-6); color: var(--color-ink-muted); }
+	.row-group-last { border-bottom: 1px solid var(--color-wire-strong); }
 
 	.cell-pris {
 		text-align: center;
 		font-family: var(--font-data);
 		font-variant-numeric: tabular-nums;
 		font-size: 12px;
-		padding: var(--sp-2) var(--sp-3);
+		padding: var(--spacing-2) var(--spacing-3);
 	}
 
 	.pris-value {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--sp-1);
-		padding: var(--sp-1) var(--sp-2);
-		border-radius: var(--r-sm);
+		gap: var(--spacing-1);
+		padding: var(--spacing-1) var(--spacing-2);
+		border-radius: var(--radius-sm);
 		font-weight: 500;
 		line-height: 1;
 	}
 
-	.pris-prefix { font-size: 10px; color: var(--ink-ghost); font-weight: 400; }
+	.pris-prefix { font-size: 10px; color: var(--color-ink-ghost); font-weight: 400; }
 
-	.fradrag-best .pris-value { background: var(--score-high-bg); color: var(--score-high); font-weight: 600; }
-	.fradrag-mid .pris-value { color: var(--ink); }
-	.fradrag-high .pris-value { color: var(--score-low); }
+	.fradrag-best .pris-value { background: var(--color-score-high-bg); color: var(--color-score-high); font-weight: 600; }
+	.fradrag-mid .pris-value { color: var(--color-ink); }
+	.fradrag-high .pris-value { color: var(--color-score-low); }
 
 	.row-pris-sum td {
-		background: var(--canvas);
-		border-top: 1px solid var(--wire-strong);
-		padding: var(--sp-3) var(--sp-3) var(--sp-2);
+		background: var(--color-canvas);
+		border-top: 1px solid var(--color-wire-strong);
+		padding: var(--spacing-3) var(--spacing-3) var(--spacing-2);
 	}
 
-	.row-pris-sum td:first-child { border-left: 3px solid var(--vekt); }
+	.row-pris-sum td:first-child { border-left: 3px solid var(--color-vekt); }
 
 	.row-pris-sum .cell-criteria {
 		font-weight: 600;
 		font-size: 12px;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
 	.row-pris-result td {
-		background: var(--canvas);
+		background: var(--color-canvas);
 		border-bottom: none;
-		padding: var(--sp-2) var(--sp-3) var(--sp-4);
+		padding: var(--spacing-2) var(--spacing-3) var(--spacing-4);
 	}
 
-	.row-pris-result td:first-child { border-left: 3px solid var(--vekt); }
+	.row-pris-result td:first-child { border-left: 3px solid var(--color-vekt); }
 
 	.row-pris-result .cell-criteria {
 		font-weight: 700;
 		font-size: 12px;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
 	.row-pris-result .pris-value {
@@ -362,8 +362,8 @@
 	}
 
 	.row-pris-result .fradrag-best .pris-value {
-		color: var(--vekt);
-		background: var(--vekt-bg);
-		padding: var(--sp-1) var(--sp-3);
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg);
+		padding: var(--spacing-1) var(--spacing-3);
 	}
 </style>

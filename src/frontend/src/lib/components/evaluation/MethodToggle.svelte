@@ -29,43 +29,43 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: var(--sp-6);
+		margin-bottom: var(--spacing-6);
 	}
 
 	.method-toggle {
 		display: inline-flex;
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-md);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-md);
 		padding: 3px;
 	}
 
 	.method-btn {
-		padding: var(--sp-2) var(--sp-4);
+		padding: var(--spacing-2) var(--spacing-4);
 		font-family: var(--font-ui);
 		font-size: 12px;
 		font-weight: 500;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 		background: transparent;
 		border: none;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition: all 0.15s;
 		letter-spacing: -0.005em;
 	}
 
 	.method-btn:hover {
-		color: var(--ink);
+		color: var(--color-ink);
 	}
 
 	.method-btn.active {
-		background: var(--vekt-bg-strong);
-		color: var(--vekt);
+		background: var(--color-vekt-bg-strong);
+		color: var(--color-vekt);
 		font-weight: 600;
 	}
 
 	.method-info {
 		font-size: 11px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 </style>

@@ -60,55 +60,6 @@
 	--color-tipex-accent: #e8a838;
 }
 
-/* Dark mode variant for future use */
-@variant dark (&:where(.dark, .dark *));
-
-/* ── Backward-compatible aliases ── */
-:root {
-	--canvas: var(--color-canvas);
-	--felt: var(--color-felt);
-	--felt-raised: var(--color-felt-raised);
-	--felt-hover: var(--color-felt-hover);
-	--felt-active: var(--color-felt-active);
-
-	--ink: var(--color-ink);
-	--ink-secondary: var(--color-ink-secondary);
-	--ink-muted: var(--color-ink-muted);
-	--ink-ghost: var(--color-ink-ghost);
-
-	--wire: var(--color-wire);
-	--wire-strong: var(--color-wire-strong);
-	--wire-focus: var(--color-wire-focus);
-
-	--vekt: var(--color-vekt);
-	--vekt-dim: var(--color-vekt-dim);
-	--vekt-bg: var(--color-vekt-bg);
-	--vekt-bg-strong: var(--color-vekt-bg-strong);
-
-	--score-high: var(--color-score-high);
-	--score-high-bg: var(--color-score-high-bg);
-	--score-mid: var(--color-score-mid);
-	--score-low: var(--color-score-low);
-	--score-low-bg: var(--color-score-low-bg);
-
-	--font-data: var(--font-data);
-	--font-ui: var(--font-ui);
-
-	--sp-1: var(--spacing-1);
-	--sp-2: var(--spacing-2);
-	--sp-3: var(--spacing-3);
-	--sp-4: var(--spacing-4);
-	--sp-5: var(--spacing-5);
-	--sp-6: var(--spacing-6);
-	--sp-8: var(--spacing-8);
-	--sp-10: var(--spacing-10);
-	--sp-12: var(--spacing-12);
-
-	--r-sm: var(--radius-sm);
-	--r-md: var(--radius-md);
-	--r-lg: var(--radius-lg);
-}
-
 /* ── Reset ── */
 *,
 *::before,

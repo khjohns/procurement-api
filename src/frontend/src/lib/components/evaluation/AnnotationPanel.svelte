@@ -68,40 +68,40 @@
 <style>
 	.row-annotation td {
 		padding: 0;
-		background: var(--canvas);
-		border-bottom: 1px solid var(--wire);
+		background: var(--color-canvas);
+		border-bottom: 1px solid var(--color-wire);
 	}
 
 	.annotation-panel {
-		padding: var(--sp-4) var(--sp-5);
-		border-left: 3px solid var(--vekt);
-		margin: 0 var(--sp-3);
+		padding: var(--spacing-4) var(--spacing-5);
+		border-left: 3px solid var(--color-vekt);
+		margin: 0 var(--spacing-3);
 	}
 
 	.annotation-context {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
-		margin-bottom: var(--sp-3);
+		gap: var(--spacing-2);
+		margin-bottom: var(--spacing-3);
 		font-size: 11px;
 	}
 
 	.annotation-supplier {
 		font-weight: 600;
-		color: var(--ink);
+		color: var(--color-ink);
 	}
 
 	.annotation-sep {
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	.annotation-criterion {
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.annotation-body {
 		display: flex;
-		gap: var(--sp-6);
+		gap: var(--spacing-6);
 		align-items: flex-start;
 	}
 
@@ -115,8 +115,8 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-muted);
-		margin-bottom: var(--sp-2);
+		color: var(--color-ink-muted);
+		margin-bottom: var(--spacing-2);
 	}
 
 	.score-selector {
@@ -133,30 +133,30 @@
 		font-family: var(--font-data);
 		font-size: 11px;
 		font-weight: 500;
-		color: var(--ink-muted);
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-sm);
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition: all 0.1s;
 	}
 
 	.score-seg:hover {
-		background: var(--felt-hover);
-		border-color: var(--wire-strong);
-		color: var(--ink);
+		background: var(--color-felt-hover);
+		border-color: var(--color-wire-strong);
+		color: var(--color-ink);
 	}
 
 	.seg-filled {
-		background: var(--score-high-bg);
-		border-color: var(--score-high-bg);
-		color: var(--score-high);
+		background: var(--color-score-high-bg);
+		border-color: var(--color-score-high-bg);
+		color: var(--color-score-high);
 	}
 
 	.seg-active {
-		background: var(--score-high);
-		border-color: var(--score-high);
-		color: var(--ink);
+		background: var(--color-score-high);
+		border-color: var(--color-score-high);
+		color: var(--color-ink);
 		font-weight: 700;
 	}
 
@@ -168,11 +168,11 @@
 	.annotation-textarea {
 		width: 100%;
 		min-height: 72px;
-		padding: var(--sp-3);
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-sm);
-		color: var(--ink);
+		padding: var(--spacing-3);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
 		font-family: var(--font-ui);
 		font-size: 12px;
 		line-height: 1.5;
@@ -182,18 +182,18 @@
 	}
 
 	.annotation-textarea:focus {
-		border-color: var(--wire-focus);
+		border-color: var(--color-wire-focus);
 	}
 
 	.annotation-textarea::placeholder {
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	.annotation-charcount {
 		font-family: var(--font-data);
 		font-size: 10px;
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 		text-align: right;
-		margin-top: var(--sp-1);
+		margin-top: var(--spacing-1);
 	}
 </style>

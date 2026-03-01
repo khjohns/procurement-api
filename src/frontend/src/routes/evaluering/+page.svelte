@@ -41,15 +41,15 @@
 
 <style>
 	.eval-header {
-		margin-bottom: var(--sp-8);
+		margin-bottom: var(--spacing-8);
 	}
 
 	.eval-header-top {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: var(--sp-4);
-		margin-bottom: var(--sp-3);
+		gap: var(--spacing-4);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.eval-title {
@@ -62,14 +62,14 @@
 	.eval-status {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--sp-2);
-		padding: var(--sp-1) var(--sp-3);
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-3);
 		border-radius: 100px;
-		background: var(--vekt-bg);
-		border: 1px solid var(--vekt-bg-strong);
+		background: var(--color-vekt-bg);
+		border: 1px solid var(--color-vekt-bg-strong);
 		font-size: 11px;
 		font-weight: 600;
-		color: var(--vekt);
+		color: var(--color-vekt);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		white-space: nowrap;
@@ -80,7 +80,7 @@
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
-		background: var(--vekt);
+		background: var(--color-vekt);
 		animation: pulse 2s ease-in-out infinite;
 	}
 
@@ -91,23 +91,23 @@
 
 	.eval-meta {
 		display: flex;
-		gap: var(--sp-6);
+		gap: var(--spacing-6);
 		font-size: 12px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.eval-meta-item {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
+		gap: var(--spacing-2);
 	}
 
 	.eval-meta-label {
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.eval-meta-value {
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 		font-family: var(--font-data);
 		font-size: 11px;
 	}
