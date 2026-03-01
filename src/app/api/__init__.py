@@ -7,6 +7,8 @@ import logging
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
+from app.client import ArtifikAPIError
+
 bp = Blueprint("api", __name__)
 log = logging.getLogger(__name__)
 
@@ -15,11 +17,39 @@ def _client():
     return current_app.artifik  # type: ignore[attr-defined]
 
 
+def _doffin():
+    return current_app.doffin  # type: ignore[attr-defined]
+
+
+@bp.errorhandler(ArtifikAPIError)
+def handle_artifik_error(e: ArtifikAPIError):
+    log.warning("Artifik API error: %s", e)
+    return jsonify({"error": str(e)}), e.status_code
+
+
+@bp.errorhandler(Exception)
+def handle_unexpected_error(e: Exception):
+    log.exception("Unexpected API error: %s", e)
+    return jsonify({"error": "Internal server error"}), 500
+
+
 @bp.route("/procurements")
 def list_procurements():
     org_id = request.args.get("organizationId")
     data = _client().list_procurements(organization_id=org_id)
     return jsonify(data)
+
+
+@bp.route("/procurements/<int:procurement_id>")
+def get_procurement(procurement_id: int):
+    """Get a single procurement by ID (activities endpoint proxied from list)."""
+    # Artifik API doesn't have a single-procurement endpoint,
+    # so we fetch the list and filter. This keeps the frontend simple.
+    all_procs = _client().list_procurements()
+    for proc in all_procs:
+        if proc.get("id") == procurement_id:
+            return jsonify(proc)
+    return jsonify({"error": f"Procurement {procurement_id} not found"}), 404
 
 
 @bp.route("/procurements/<int:procurement_id>/activities")
@@ -66,11 +96,8 @@ def list_organizations():
 @bp.route("/eforms/<doffin_id>")
 def get_eforms(doffin_id: str):
     """Return parsed eForms data for a Doffin notice."""
-    from app.doffin import DoffinClient
-
     try:
-        client = DoffinClient()
-        data = client.get_notice(doffin_id)
+        data = _doffin().get_notice(doffin_id)
         return jsonify(data)
     except Exception as e:
         log.warning("eForms lookup failed for %s: %s", doffin_id, e)
