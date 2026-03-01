@@ -74,11 +74,11 @@
 		align-items: center;
 		gap: var(--spacing-3);
 		width: 100%;
-		padding: var(--spacing-3) var(--spacing-4);
+		padding: 10px var(--spacing-4);
 		background: var(--color-canvas);
 		border: none;
 		cursor: pointer;
-		transition: background 0.12s;
+		transition: background-color 0.12s;
 		text-align: left;
 		font-family: var(--font-ui);
 	}
@@ -159,9 +159,9 @@
 	}
 
 	.section-content {
-		padding: var(--spacing-4);
+		padding: var(--spacing-4) var(--spacing-4) var(--spacing-5) 48px;
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-4);
+		gap: var(--spacing-5);
 	}
 </style>

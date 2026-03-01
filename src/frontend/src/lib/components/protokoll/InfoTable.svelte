@@ -80,6 +80,7 @@
 
 	.info-mono {
 		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.info-empty {

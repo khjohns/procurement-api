@@ -182,6 +182,7 @@
 		font-size: 11px;
 		font-family: var(--font-data);
 		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.rte-hint {

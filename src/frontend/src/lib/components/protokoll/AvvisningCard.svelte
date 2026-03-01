@@ -90,7 +90,7 @@
 	.supplier-card {
 		background: var(--color-felt);
 		border: 1px solid var(--color-wire);
-		border-left: 3px solid rgba(232, 168, 56, 0.15);
+		border-left: 3px solid var(--color-vekt-bg-strong);
 		border-radius: var(--radius-sm);
 		padding: var(--spacing-4);
 		display: flex;
@@ -182,6 +182,7 @@
 		font-family: var(--font-data);
 		font-size: 11px;
 		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.field-hint {

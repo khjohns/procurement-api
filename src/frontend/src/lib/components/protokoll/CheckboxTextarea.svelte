@@ -137,6 +137,7 @@
 		font-family: var(--font-data);
 		font-size: 11px;
 		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.field-hint {

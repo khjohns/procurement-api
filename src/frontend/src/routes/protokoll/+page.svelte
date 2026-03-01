@@ -179,17 +179,8 @@
 		}
 	}
 
-	function getSuppliers(section: ResolvedSection): { id: string; name: string }[] {
-		switch (section.id) {
-			case 'tilbud-vurdering':
-				return protokoll.suppliers;
-			case 'utvelgelse':
-			case 'kvalifikasjonsvurdering':
-			case 'forelopig-kvalifisering':
-				return protokoll.suppliers;
-			default:
-				return protokoll.suppliers;
-		}
+	function getSuppliers(_section: ResolvedSection): { id: string; name: string }[] {
+		return protokoll.suppliers;
 	}
 
 	function getRejectedSuppliers(): { id: string; name: string }[] {
@@ -259,11 +250,9 @@
 			{#if searchOpen && searchResults.length > 0}
 				<div class="picker-results" role="listbox" onclick={(e) => e.stopPropagation()}>
 					{#each searchResults as result}
-						<button class="picker-result" role="option" onclick={() => selectProcurement(result)}>
-							<div class="picker-result-title">{result.title ?? result.description ?? `Anskaffelse ${result.id}`}</div>
-							<div class="picker-result-meta">
-								<span class="picker-ref">{result.sequenceId ?? result.id}</span>
-							</div>
+						<button class="picker-result" role="option" aria-selected="false" onclick={() => selectProcurement(result)}>
+							<span class="picker-result-title">{result.title ?? result.description ?? `Anskaffelse ${result.id}`}</span>
+							<span class="picker-ref">{result.sequenceId ?? result.id}</span>
 						</button>
 					{/each}
 				</div>
@@ -335,7 +324,14 @@
 
 		<!-- Progress strip -->
 		<div class="progress-strip">
-			<div class="progress-bar-track">
+			<div
+				class="progress-bar-track"
+				role="progressbar"
+				aria-valuenow={protokoll.completeness.done}
+				aria-valuemin={0}
+				aria-valuemax={protokoll.completeness.total}
+				aria-label="Seksjoner fullført: {protokoll.completeness.done} av {protokoll.completeness.total}"
+			>
 				<div
 					class="progress-bar-fill"
 					style="width: {protokoll.completeness.percent}%; background: {progressColor}"
@@ -509,7 +505,7 @@
 	.protokoll-page {
 		max-width: 800px;
 		margin: 0 auto;
-		padding-bottom: 64px;
+		padding-bottom: 72px;
 	}
 
 	/* ── Page header ── */
@@ -567,7 +563,7 @@
 		font-size: 13px;
 		font-weight: 600;
 		cursor: pointer;
-		transition: all 0.12s;
+		transition: background-color 0.12s, filter 0.12s;
 		white-space: nowrap;
 		flex-shrink: 0;
 	}
@@ -649,6 +645,7 @@
 		font-family: var(--font-data);
 		font-size: 13px;
 		color: var(--color-ink);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.progress-missing {
@@ -672,7 +669,11 @@
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-3) 0;
-		margin-top: var(--spacing-2);
+		margin-top: var(--spacing-6);
+	}
+
+	.chapter-label:first-child {
+		margin-top: 0;
 	}
 
 	.chapter-label::before,
@@ -684,7 +685,7 @@
 	}
 
 	.chapter-text {
-		padding: 0 var(--spacing-3);
+		padding: 0 var(--spacing-4);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -750,6 +751,7 @@
 		font-family: var(--font-data);
 		font-size: 11px;
 		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.field-hint {
@@ -761,7 +763,7 @@
 	/* ── Picker ── */
 	.picker-wrap {
 		position: relative;
-		margin-top: var(--spacing-6);
+		margin-top: var(--spacing-8);
 	}
 
 	.picker-input-wrap {
@@ -770,7 +772,7 @@
 
 	.picker-icon {
 		position: absolute;
-		left: var(--spacing-3);
+		left: var(--spacing-4);
 		top: 50%;
 		transform: translateY(-50%);
 		color: var(--color-ink-ghost);
@@ -779,14 +781,14 @@
 
 	.picker-input {
 		width: 100%;
-		padding: var(--spacing-3) var(--spacing-4);
-		padding-left: 40px;
+		padding: var(--spacing-4);
+		padding-left: 44px;
 		background: var(--color-felt);
 		border: 1px solid var(--color-wire);
 		border-radius: var(--radius-md);
 		color: var(--color-ink);
 		font-family: var(--font-ui);
-		font-size: 13px;
+		font-size: 14px;
 		outline: none;
 		transition: border-color 0.12s;
 	}
@@ -815,7 +817,10 @@
 	}
 
 	.picker-result {
-		display: block;
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--spacing-3);
 		width: 100%;
 		text-align: left;
 		padding: var(--spacing-3) var(--spacing-4);
@@ -823,7 +828,7 @@
 		border: none;
 		border-bottom: 1px solid var(--color-wire);
 		cursor: pointer;
-		transition: background 0.08s;
+		transition: background-color 0.08s;
 	}
 
 	.picker-result:last-child {
@@ -841,19 +846,21 @@
 
 	.picker-result-title {
 		font-size: 13px;
-		font-weight: 600;
+		font-weight: 500;
 		color: var(--color-ink);
-	}
-
-	.picker-result-meta {
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		margin-top: var(--spacing-1);
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.picker-ref {
 		font-family: var(--font-data);
-		font-size: 10px;
+		font-size: 11px;
+		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
+		flex-shrink: 0;
 	}
 
 	.picker-empty {
@@ -867,7 +874,7 @@
 	.skeleton-sections {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-2);
+		gap: var(--spacing-1);
 		margin-top: var(--spacing-4);
 	}
 
@@ -876,6 +883,7 @@
 		align-items: center;
 		gap: var(--spacing-3);
 		padding: var(--spacing-3) var(--spacing-4);
+		border-bottom: 1px solid var(--color-wire);
 	}
 
 	.skeleton-num {
@@ -883,6 +891,7 @@
 		font-size: 13px;
 		color: var(--color-ink-ghost);
 		min-width: 20px;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.skeleton-line {
@@ -921,14 +930,20 @@
 		border: 1px solid var(--color-wire);
 		border-radius: var(--radius-sm);
 		color: var(--color-ink-secondary);
+		font-family: var(--font-ui);
 		font-size: 12px;
 		cursor: pointer;
-		transition: all 0.12s;
+		transition: background-color 0.12s, color 0.12s;
 	}
 
 	.error-retry:hover {
 		background: var(--color-felt);
 		color: var(--color-ink);
+	}
+
+	.error-retry:focus-visible {
+		outline: none;
+		border-color: var(--color-wire-focus);
 	}
 
 	/* ── Sticky footer ── */
@@ -975,6 +990,7 @@
 		font-family: var(--font-data);
 		font-size: 12px;
 		color: var(--color-ink);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.footer-complete {
@@ -995,12 +1011,17 @@
 		font-size: 12px;
 		font-family: var(--font-ui);
 		cursor: pointer;
-		transition: all 0.12s;
+		transition: background-color 0.12s, color 0.12s;
 	}
 
 	.footer-collapse:hover {
 		background: var(--color-felt-hover);
 		color: var(--color-ink);
+	}
+
+	.footer-collapse:focus-visible {
+		outline: none;
+		border-color: var(--color-wire-focus);
 	}
 
 	/* ── Responsive ── */
