@@ -78,7 +78,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--color-ink-ghost);
+		color: var(--color-ink-muted);
 	}
 
 	.rte-container {

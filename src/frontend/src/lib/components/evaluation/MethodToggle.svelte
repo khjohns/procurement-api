@@ -66,6 +66,6 @@
 
 	.method-info {
 		font-size: 11px;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 	}
 </style>

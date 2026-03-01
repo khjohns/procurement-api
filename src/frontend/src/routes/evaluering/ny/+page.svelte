@@ -650,7 +650,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		margin-bottom: var(--sp-3);
 		margin-top: var(--sp-8);
 	}
@@ -1300,7 +1300,7 @@
 		font-family: var(--font-ui);
 		font-size: 11px;
 		font-weight: 500;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		background: none;
 		border: none;
 		border-left: 3px solid rgba(232, 168, 56, 0.15);

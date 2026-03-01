@@ -103,7 +103,7 @@
 	}
 
 	.eval-meta-label {
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 	}
 
 	.eval-meta-value {

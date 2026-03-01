@@ -166,7 +166,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		margin-bottom: var(--sp-3);
 		margin-top: var(--sp-6);
 	}
@@ -193,7 +193,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		background: var(--felt);
 		border-bottom: 1px solid var(--wire);
 		text-align: left;

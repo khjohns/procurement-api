@@ -235,13 +235,13 @@
 		font-family: var(--font-ui);
 		font-size: 11px;
 		font-weight: 600;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		transition: color 0.12s;
 	}
 
-	.innsikt-toggle:hover { color: var(--ink-muted); }
+	.innsikt-toggle:hover { color: var(--ink-secondary); }
 
 	.innsikt-toggle-icon {
 		font-size: 10px;
@@ -302,7 +302,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		text-align: left;
 		border-bottom: 1px solid var(--wire);
 	}
@@ -389,7 +389,7 @@
 		border: 1px solid var(--wire);
 		border-left: 3px solid var(--vekt);
 	}
-	.robusthet-insight-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-ghost); margin-bottom: var(--sp-1); }
+	.robusthet-insight-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-secondary); margin-bottom: var(--sp-1); }
 	.robusthet-insight-text { font-size: 12px; color: var(--ink-secondary); line-height: 1.5; }
 	.robusthet-insight-text strong { color: var(--ink); font-weight: 600; }
 	.mono { font-family: var(--font-data); color: var(--vekt); font-weight: 600; }

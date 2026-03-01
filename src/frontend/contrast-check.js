@@ -22,8 +22,8 @@ const surfaces = {
 const inks = {
 	'ink':           '#e2e5ef',
 	'ink-secondary': '#8890a4',
-	'ink-muted':     '#505568',
-	'ink-ghost':     '#353a4d',
+	'ink-muted':     '#7b829b',
+	'ink-ghost':     '#5a6178',
 };
 
 const accents = {
@@ -38,17 +38,17 @@ const accents = {
 
 const usages = [
 	// Table headers
-	{ fg: 'ink-ghost',     bg: 'felt',        size: 10, weight: 600, label: 'Tabellhode (vekt/tildelingskriterier/leverandør)' },
-	{ fg: 'ink-ghost',     bg: 'canvas',      size: 10, weight: 600, label: 'Tabellhode på canvas' },
+	{ fg: 'ink-muted',     bg: 'felt',        size: 10, weight: 600, label: 'Tabellhode (vekt/tildelingskriterier/leverandør)' },
+	{ fg: 'ink-muted',     bg: 'canvas',      size: 10, weight: 600, label: 'Tabellhode på canvas' },
 
 	// Section labels
-	{ fg: 'ink-ghost',     bg: 'canvas',      size: 11, weight: 600, label: 'Seksjonstittel (Evalueringsmatrise, Rangering…)' },
-	{ fg: 'ink-ghost',     bg: 'felt',        size: 11, weight: 600, label: 'Seksjonstittel på felt' },
-	{ fg: 'ink-ghost',     bg: 'felt',        size: 10, weight: 600, label: 'Panel-label (Poeng, Begrunnelse, Aggregering)' },
-	{ fg: 'ink-ghost',     bg: 'felt-raised', size: 10, weight: 600, label: 'Innsikt-label (Margin, Størst påvirkning)' },
+	{ fg: 'ink-muted',     bg: 'canvas',      size: 11, weight: 600, label: 'Seksjonstittel (Evalueringsmatrise, Rangering…)' },
+	{ fg: 'ink-muted',     bg: 'felt',        size: 11, weight: 600, label: 'Seksjonstittel på felt' },
+	{ fg: 'ink-muted',     bg: 'felt',        size: 10, weight: 600, label: 'Panel-label (Poeng, Begrunnelse, Aggregering)' },
+	{ fg: 'ink-secondary', bg: 'felt-raised', size: 10, weight: 600, label: 'Innsikt-label (Margin, Størst påvirkning)' },
 
 	// Meta/config labels
-	{ fg: 'ink-ghost',     bg: 'canvas',      size: 12, weight: 500, label: 'Meta-label (Anskaffelse, Ref)' },
+	{ fg: 'ink-muted',     bg: 'canvas',      size: 12, weight: 500, label: 'Meta-label (Anskaffelse, Ref)' },
 	{ fg: 'ink-muted',     bg: 'canvas',      size: 12, weight: 500, label: 'Meta-verdi' },
 	{ fg: 'ink-muted',     bg: 'felt',        size: 11, weight: 500, label: 'Config-label (Tittel, Referanse…)' },
 
@@ -201,32 +201,18 @@ console.log(`  ✗ Brudd:        ${failures.length}/${usages.length}\n`);
 // ── Forslag ─────────────────────────────────────────────────────────
 
 if (failures.length > 0) {
-	console.log('── Forslag til nye token-verdier ──────────────────────────────────\n');
+	console.log('── Forslag ────────────────────────────────────────────────────────\n');
 
-	// Beregn minimumsverdier for 4.5:1 mot darkest surface (canvas)
 	const canvasL = relativeLuminance(surfaces.canvas);
 	const targetRatio = 4.5;
 	const neededL = targetRatio * (canvasL + 0.05) - 0.05;
 
 	console.log(`  Mot canvas (${surfaces.canvas}), L=${canvasL.toFixed(4)}:`);
-	console.log(`  For 4.5:1 trenger fg L ≥ ${neededL.toFixed(4)}\n`);
+	console.log(`  For 4.5:1 (AA normal tekst) trenger fg L ≥ ${neededL.toFixed(4)}\n`);
 
-	// Foreslåtte nye verdier
-	const proposals = [
-		{ token: '--ink-ghost',  current: '#353a4d', proposed: '#5a6178', purpose: 'Deaktivert, placeholder. Nå 3.5:1 (stor tekst OK)' },
-		{ token: '--ink-muted',  current: '#505568', proposed: '#747b94', purpose: 'Labels, metadata. Nå 4.6:1 (AA for all tekst)' },
-	];
-
-	for (const p of proposals) {
-		const oldRatio = contrastRatio(p.current, surfaces.canvas);
-		const newRatio = contrastRatio(p.proposed, surfaces.canvas);
-		const newOnFelt = contrastRatio(p.proposed, surfaces.felt);
-		console.log(`  ${p.token}`);
-		console.log(`    Nå:     ${p.current}  →  ${oldRatio.toFixed(2)}:1 mot canvas`);
-		console.log(`    Forslag: ${p.proposed}  →  ${newRatio.toFixed(2)}:1 mot canvas, ${newOnFelt.toFixed(2)}:1 mot felt`);
-		console.log(`    Bruk: ${p.purpose}\n`);
+	for (const f of failures) {
+		const needed = isLargeText(f.size, f.weight) ? '3.0:1' : '4.5:1';
+		console.log(`  ${f.fg}: Hev hex-verdien til minst ${needed} kontrast mot ${f.bg}`);
 	}
-
-	console.log('  I tillegg: Tabellhoder (th) og seksjonstitler bør bruke');
-	console.log('  --ink-muted (ny) i stedet for --ink-ghost.\n');
+	console.log('');
 }

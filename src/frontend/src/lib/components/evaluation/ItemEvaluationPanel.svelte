@@ -331,7 +331,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 	}
 
 	.agg-options {

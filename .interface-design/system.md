@@ -27,8 +27,8 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 ```
 --ink: #e2e5ef              /* primary text */
 --ink-secondary: #8890a4    /* supporting text, labels */
---ink-muted: #505568        /* metadata, less important */
---ink-ghost: #353a4d        /* disabled, placeholder */
+--ink-muted: #7b829b        /* labels, metadata, section titles */
+--ink-ghost: #5a6178        /* disabled, placeholder, decorative */
 ```
 
 ### Wire (borders)
@@ -70,7 +70,7 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 - **Numbers/scores/percentages:** Always `--font-data` with `font-variant-numeric: tabular-nums`
 - **Headlines:** `--font-ui`, 20px, weight 700, tracking -0.025em
 - **Body/labels:** `--font-ui`, 13px, weight 500
-- **Section labels:** 11px, weight 600, uppercase, tracking 0.08em, color `--ink-ghost`
+- **Section labels:** 11px, weight 600, uppercase, tracking 0.08em, color `--ink-muted`
 - **Data values:** `--font-data`, 13px, weight 500
 
 ---

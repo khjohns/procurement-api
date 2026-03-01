@@ -90,7 +90,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 		background: var(--felt);
 		border-bottom: 1px solid var(--wire);
 		text-align: left;
