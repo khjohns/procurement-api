@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, request
+import io
+import logging
+
+from flask import Blueprint, current_app, jsonify, request, send_file
 
 bp = Blueprint("api", __name__)
+log = logging.getLogger(__name__)
 
 
 def _client():
@@ -54,3 +58,61 @@ def list_organizations():
     include_sub = request.args.get("includeSubOrgs") == "1"
     data = _client().list_organizations(include_sub_orgs=include_sub)
     return jsonify(data)
+
+
+# ── eForms (Doffin) ──
+
+
+@bp.route("/eforms/<doffin_id>")
+def get_eforms(doffin_id: str):
+    """Return parsed eForms data for a Doffin notice."""
+    from app.doffin import DoffinClient
+
+    try:
+        client = DoffinClient()
+        data = client.get_notice(doffin_id)
+        return jsonify(data)
+    except Exception as e:
+        log.warning("eForms lookup failed for %s: %s", doffin_id, e)
+        return jsonify({"error": str(e)}), 404
+
+
+# ── Protokoll generation ──
+
+
+@bp.route("/protokoll/generate", methods=["POST"])
+def generate_protokoll():
+    """Generate a Word protocol document from merged API + manual data."""
+    from protokoll import generate_protokoll_docx, generate_protokoll_docx_del2
+
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"error": "Missing JSON body"}), 400
+
+    procurement = payload.get("procurement", {})
+    activities = payload.get("activities", [])
+    eforms = payload.get("eforms")
+    is_del2 = payload.get("isDel2", False)
+
+    try:
+        if is_del2:
+            doc = generate_protokoll_docx_del2(procurement, activities, eforms)
+        else:
+            doc = generate_protokoll_docx(procurement, activities, eforms)
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+
+        seq_id = procurement.get("sequenceId", "protokoll")
+        filename = f"protokoll-{seq_id}.docx"
+
+        return send_file(
+            buf,
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        log.exception("Protokoll generation failed")
+        return jsonify({"error": str(e)}), 500

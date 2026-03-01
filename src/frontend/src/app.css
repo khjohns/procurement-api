@@ -1,4 +1,113 @@
-@import '$lib/tokens.css';
+@import "tailwindcss";
+
+@theme {
+	/* Canvas & surfaces */
+	--color-canvas: #0c0e14;
+	--color-felt: #12151e;
+	--color-felt-raised: #181c28;
+	--color-felt-hover: #1e2233;
+	--color-felt-active: #242840;
+
+	/* Ink hierarchy */
+	--color-ink: #e2e5ef;
+	--color-ink-secondary: #8890a4;
+	--color-ink-muted: #505568;
+	--color-ink-ghost: #353a4d;
+
+	/* Wire — borders */
+	--color-wire: rgba(255, 255, 255, 0.06);
+	--color-wire-strong: rgba(255, 255, 255, 0.10);
+	--color-wire-focus: rgba(232, 168, 56, 0.35);
+
+	/* Vekt — weight accent */
+	--color-vekt: #e8a838;
+	--color-vekt-dim: #c49030;
+	--color-vekt-bg: rgba(232, 168, 56, 0.08);
+	--color-vekt-bg-strong: rgba(232, 168, 56, 0.14);
+
+	/* Score semantics */
+	--color-score-high: #3d9a6e;
+	--color-score-high-bg: rgba(61, 154, 110, 0.10);
+	--color-score-mid: #8890a4;
+	--color-score-low: #c45858;
+	--color-score-low-bg: rgba(196, 88, 88, 0.10);
+
+	/* Typography */
+	--font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+	--font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+	/* Spacing (4px grid) */
+	--spacing-1: 4px;
+	--spacing-2: 8px;
+	--spacing-3: 12px;
+	--spacing-4: 16px;
+	--spacing-5: 20px;
+	--spacing-6: 24px;
+	--spacing-8: 32px;
+	--spacing-10: 40px;
+	--spacing-12: 48px;
+
+	/* Radius */
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+
+	/* Tipex editor overrides */
+	--color-tipex-bg: #0c0e14;
+	--color-tipex-text: #e2e5ef;
+	--color-tipex-toolbar-bg: #181c28;
+	--color-tipex-toolbar-text: #8890a4;
+	--color-tipex-accent: #e8a838;
+}
+
+/* Dark mode variant for future use */
+@variant dark (&:where(.dark, .dark *));
+
+/* ── Backward-compatible aliases ── */
+:root {
+	--canvas: var(--color-canvas);
+	--felt: var(--color-felt);
+	--felt-raised: var(--color-felt-raised);
+	--felt-hover: var(--color-felt-hover);
+	--felt-active: var(--color-felt-active);
+
+	--ink: var(--color-ink);
+	--ink-secondary: var(--color-ink-secondary);
+	--ink-muted: var(--color-ink-muted);
+	--ink-ghost: var(--color-ink-ghost);
+
+	--wire: var(--color-wire);
+	--wire-strong: var(--color-wire-strong);
+	--wire-focus: var(--color-wire-focus);
+
+	--vekt: var(--color-vekt);
+	--vekt-dim: var(--color-vekt-dim);
+	--vekt-bg: var(--color-vekt-bg);
+	--vekt-bg-strong: var(--color-vekt-bg-strong);
+
+	--score-high: var(--color-score-high);
+	--score-high-bg: var(--color-score-high-bg);
+	--score-mid: var(--color-score-mid);
+	--score-low: var(--color-score-low);
+	--score-low-bg: var(--color-score-low-bg);
+
+	--font-data: var(--font-data);
+	--font-ui: var(--font-ui);
+
+	--sp-1: var(--spacing-1);
+	--sp-2: var(--spacing-2);
+	--sp-3: var(--spacing-3);
+	--sp-4: var(--spacing-4);
+	--sp-5: var(--spacing-5);
+	--sp-6: var(--spacing-6);
+	--sp-8: var(--spacing-8);
+	--sp-10: var(--spacing-10);
+	--sp-12: var(--spacing-12);
+
+	--r-sm: var(--radius-sm);
+	--r-md: var(--radius-md);
+	--r-lg: var(--radius-lg);
+}
 
 /* ── Reset ── */
 *,
@@ -11,8 +120,8 @@
 
 body {
 	font-family: var(--font-ui);
-	background: var(--canvas);
-	color: var(--ink);
+	background: var(--color-canvas);
+	color: var(--color-ink);
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
