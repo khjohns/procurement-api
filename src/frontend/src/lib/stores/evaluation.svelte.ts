@@ -42,6 +42,7 @@ export interface SubCriterion {
 export interface Criterion {
 	id: string;
 	name: string;
+	type?: 'quality' | 'price';
 	weight: number;
 	subcriteria: SubCriterion[];
 }
@@ -139,6 +140,7 @@ class EvaluationStore {
 			{
 				id: 'kompetanse',
 				name: 'Kompetanse og erfaring',
+				type: 'quality',
 				weight: 35,
 				subcriteria: [
 					{
@@ -242,6 +244,7 @@ class EvaluationStore {
 			{
 				id: 'losning',
 				name: 'Løsningsbeskrivelse',
+				type: 'quality',
 				weight: 30,
 				subcriteria: [
 					{
@@ -270,6 +273,7 @@ class EvaluationStore {
 			{
 				id: 'pris',
 				name: 'Pris',
+				type: 'price',
 				weight: 25,
 				subcriteria: [
 					{
@@ -291,6 +295,7 @@ class EvaluationStore {
 			{
 				id: 'baerekraft',
 				name: 'Bærekraft og samfunnsansvar',
+				type: 'quality',
 				weight: 10,
 				subcriteria: [
 					{

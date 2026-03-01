@@ -334,6 +334,7 @@
 				return {
 					id: c.id,
 					name: c.name.trim() || c.subcriteria[0]?.name.trim() || 'Uten navn',
+					type: c.type,
 					weight: groupWeight,
 					subcriteria: c.subcriteria.map((sub) => ({
 						id: sub.id,

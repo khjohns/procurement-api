@@ -96,15 +96,20 @@
 						<tbody>
 							{#each evaluation.data.criteria as criterion}
 								{@const maxDeduction = qualityBudget * (criterion.weight / totalWeight)}
-								<tr>
-									<td class="bv-criterion">{criterion.name}</td>
+								<tr class:bv-row-price={criterion.type === 'price'}>
+									<td class="bv-criterion">
+										{criterion.name}
+										{#if criterion.type === 'price'}
+											<span class="bv-type-badge bv-type-price">Pris</span>
+										{/if}
+									</td>
 									<td class="bv-weight">{criterion.weight} %</td>
 									<td class="bv-value">{formatNOK(maxDeduction)} kr</td>
 									<td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
 								</tr>
 								{#each criterion.subcriteria as sub}
 									{@const subMaxDeduction = qualityBudget * (sub.weight / totalWeight)}
-									<tr>
+									<tr class:bv-row-price={criterion.type === 'price'}>
 										<td class="bv-sub">{sub.name}</td>
 										<td class="bv-weight">{sub.weight} %</td>
 										<td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
@@ -326,6 +331,22 @@
 	.bv-weight { font-family: var(--font-data); font-size: 11px; color: var(--vekt-dim); text-align: right; }
 	.bv-value { font-family: var(--font-data); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
 	.bv-per-point { font-family: var(--font-data); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; color: var(--ink-muted); }
+	.bv-row-price td { opacity: 0.5; }
+	.bv-type-badge {
+		display: inline-block;
+		margin-left: var(--sp-2);
+		padding: 1px var(--sp-2);
+		font-size: 9px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		border-radius: var(--r-sm);
+		vertical-align: middle;
+	}
+	.bv-type-price {
+		color: var(--ink-muted);
+		background: var(--felt-active);
+	}
 	.bv-total td { border-top: 1px solid var(--wire-strong); font-weight: 600; }
 
 	.bv-summary {
