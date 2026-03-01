@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let procurements = $state<Array<{ id: number; name: string; status: string }>>([]);
 	let loading = $state(true);
 	let error = $state('');
@@ -15,7 +17,7 @@
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		loadProcurements();
 	});
 </script>
