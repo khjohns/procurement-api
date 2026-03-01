@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import {
 		evaluation,
 		type EvaluationData,
@@ -12,8 +12,8 @@
 
 	let title = $state('');
 	let reference = $state('');
-	let qualityWeight = $state(70);
 	let contractValue = $state(0);
+	let contractValueDisplay = $state('');
 	let suppliers = $state<{ id: string; name: string; price: number }[]>([]);
 	let criteria = $state<SetupCriterion[]>([]);
 
@@ -26,6 +26,20 @@
 	let addingSupplier = $state(false);
 	let newSupplierName = $state('');
 
+	// ── Navigation guard ──
+
+	let isDirty = $derived(
+		title.trim().length > 0 ||
+		suppliers.length > 0 ||
+		criteria.length > 0
+	);
+
+	beforeNavigate(({ cancel }) => {
+		if (isDirty && !confirm('Du har ulagrede endringer. Vil du forlate siden?')) {
+			cancel();
+		}
+	});
+
 	interface SetupSubCriterion {
 		id: string;
 		name: string;
@@ -35,6 +49,7 @@
 	interface SetupCriterion {
 		id: string;
 		name: string;
+		type: 'quality' | 'price';
 		subcriteria: SetupSubCriterion[];
 	}
 
@@ -93,9 +108,54 @@
 		}
 	];
 
+	// ── Contract value formatting ──
+
+	const fmt = new Intl.NumberFormat('nb-NO');
+
+	function handleContractValueInput(e: Event) {
+		const raw = (e.target as HTMLInputElement).value.replace(/\s/g, '');
+		const num = parseInt(raw, 10);
+		if (!isNaN(num) && num >= 0) {
+			contractValue = num;
+			contractValueDisplay = fmt.format(num);
+		} else if (raw === '') {
+			contractValue = 0;
+			contractValueDisplay = '';
+		}
+	}
+
+	function handleContractValueBlur() {
+		contractValueDisplay = contractValue > 0 ? fmt.format(contractValue) : '';
+	}
+
+	function handleContractValueFocus(e: Event) {
+		const input = e.target as HTMLInputElement;
+		contractValueDisplay = contractValue > 0 ? String(contractValue) : '';
+		requestAnimationFrame(() => input.select());
+	}
+
+	// ── ID generation ──
+
+	let idCounter = 0;
+	function uid(prefix: string): string {
+		return `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 8)}`;
+	}
+
 	// ── Derived state ──
 
-	let priceWeight = $derived(100 - qualityWeight);
+	let qualityWeight = $derived(
+		criteria
+			.filter((c) => c.type === 'quality')
+			.flatMap((c) => c.subcriteria)
+			.reduce((s, sub) => s + sub.weight, 0)
+	);
+
+	let priceWeight = $derived(
+		criteria
+			.filter((c) => c.type === 'price')
+			.flatMap((c) => c.subcriteria)
+			.reduce((s, sub) => s + sub.weight, 0)
+	);
 
 	let groupWeights = $derived(
 		criteria.map((c) => ({
@@ -138,32 +198,37 @@
 	}
 
 	function importProcurement(proc: MockProcurement) {
+		const hasData = criteria.length > 0 || suppliers.length > 0;
+		if (hasData && !confirm('Importering vil overskrive eksisterende kriterier og leverandører. Fortsett?')) {
+			return;
+		}
+
 		title = proc.title;
 		reference = proc.id;
 
 		// Import criteria — each top-level criterion becomes a group with one sub
-		criteria = proc.criteria.map((c, i) => ({
-			id: `c-${i}`,
-			name: c.name,
-			subcriteria: [
-				{
-					id: `c-${i}-s-0`,
-					name: c.name,
-					weight: c.weight
-				}
-			]
-		}));
+		criteria = proc.criteria.map((c) => {
+			const cid = uid('c');
+			return {
+				id: cid,
+				name: c.name,
+				type: (c.type === 'price' ? 'price' : 'quality') as 'quality' | 'price',
+				subcriteria: [
+					{
+						id: uid(`${cid}-s`),
+						name: c.name,
+						weight: c.weight
+					}
+				]
+			};
+		});
 
 		// Import suppliers
-		suppliers = proc.suppliers.map((name, i) => ({
-			id: `sup-${i}`,
+		suppliers = proc.suppliers.map((name) => ({
+			id: uid('sup'),
 			name,
 			price: 0
 		}));
-
-		qualityWeight = proc.criteria
-			.filter((c) => c.type === 'quality')
-			.reduce((s, c) => s + c.weight, 0);
 
 		searchQuery = '';
 		searchOpen = false;
@@ -173,16 +238,16 @@
 	// ── Criteria CRUD ──
 
 	function addCriterion() {
-		const id = `c-${Date.now()}`;
+		const id = uid('c');
 		criteria = [
 			...criteria,
 			{
 				id,
 				name: '',
-				subcriteria: [{ id: `${id}-s-0`, name: '', weight: 0 }]
+				type: 'quality' as const,
+				subcriteria: [{ id: uid(`${id}-s`), name: '', weight: 0 }]
 			}
 		];
-		// Focus the new input after render
 		requestAnimationFrame(() => {
 			const el = document.querySelector(`[data-criterion-id="${id}"] .criterion-name-input`) as HTMLInputElement;
 			el?.focus();
@@ -196,7 +261,7 @@
 	function addSubCriterion(criterionId: string) {
 		const c = criteria.find((c) => c.id === criterionId);
 		if (!c) return;
-		const subId = `${criterionId}-s-${Date.now()}`;
+		const subId = uid(`${criterionId}-s`);
 		c.subcriteria = [...c.subcriteria, { id: subId, name: '', weight: 0 }];
 		requestAnimationFrame(() => {
 			const el = document.querySelector(`[data-sub-id="${subId}"] .sub-name-input`) as HTMLInputElement;
@@ -210,13 +275,33 @@
 		c.subcriteria = c.subcriteria.filter((s) => s.id !== subId);
 	}
 
+	// ── Reorder ──
+
+	function moveCriterion(index: number, direction: 'up' | 'down') {
+		const target = direction === 'up' ? index - 1 : index + 1;
+		if (target < 0 || target >= criteria.length) return;
+		const copy = [...criteria];
+		[copy[index], copy[target]] = [copy[target], copy[index]];
+		criteria = copy;
+	}
+
+	function moveSubCriterion(criterionId: string, subIndex: number, direction: 'up' | 'down') {
+		const c = criteria.find((c) => c.id === criterionId);
+		if (!c) return;
+		const target = direction === 'up' ? subIndex - 1 : subIndex + 1;
+		if (target < 0 || target >= c.subcriteria.length) return;
+		const copy = [...c.subcriteria];
+		[copy[subIndex], copy[target]] = [copy[target], copy[subIndex]];
+		c.subcriteria = copy;
+	}
+
 	// ── Suppliers CRUD ──
 
 	function addSupplier() {
 		if (!newSupplierName.trim()) return;
 		suppliers = [
 			...suppliers,
-			{ id: `sup-${Date.now()}`, name: newSupplierName.trim(), price: 0 }
+			{ id: uid('sup'), name: newSupplierName.trim(), price: 0 }
 		];
 		newSupplierName = '';
 		addingSupplier = false;
@@ -232,7 +317,7 @@
 		if (!isValid) return;
 
 		const data: EvaluationData = {
-			id: reference || `eval-${Date.now()}`,
+			id: reference || uid('eval'),
 			title: title.trim(),
 			reference: reference.trim(),
 			status: 'Under evaluering',
@@ -249,6 +334,7 @@
 				return {
 					id: c.id,
 					name: c.name.trim() || c.subcriteria[0]?.name.trim() || 'Uten navn',
+					type: c.type,
 					weight: groupWeight,
 					subcriteria: c.subcriteria.map((sub) => ({
 						id: sub.id,
@@ -290,12 +376,15 @@
 			oninput={handleSearch}
 			onfocus={handleSearch}
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => { if (e.key === 'Escape') searchOpen = false; }}
+			role="combobox"
+			aria-expanded={searchOpen && searchResults.length > 0}
+			aria-haspopup="listbox"
 		/>
 		{#if searchOpen && searchResults.length > 0}
-			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-			<div class="picker-results" onclick={(e) => e.stopPropagation()}>
+			<div class="picker-results" role="listbox" onclick={(e) => e.stopPropagation()}>
 				{#each searchResults as result}
-					<button class="picker-result" onclick={() => importProcurement(result)}>
+					<button class="picker-result" role="option" onclick={() => importProcurement(result)}>
 						<div class="picker-result-title">{result.title}</div>
 						<div class="picker-result-meta">
 							<span>{result.buyer}</span>
@@ -317,9 +406,8 @@
 			</div>
 		{/if}
 		{#if searchOpen && searchQuery.trim().length >= 2 && searchResults.length === 0}
-			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-			<div class="picker-results" onclick={(e) => e.stopPropagation()}>
-				<div class="picker-empty">Ingen treff for «{searchQuery}»</div>
+			<div class="picker-results" role="listbox" onclick={(e) => e.stopPropagation()}>
+				<div class="picker-empty" role="status">Ingen treff for «{searchQuery}»</div>
 			</div>
 		{/if}
 	</div>
@@ -336,23 +424,27 @@
 			<input id="setup-ref" class="config-input config-input-mono" type="text" bind:value={reference} placeholder="2026/1234" />
 		</div>
 		<div class="config-field">
-			<label class="config-label" for="setup-qw">Kvalitet</label>
-			<div class="config-input-group">
-				<input id="setup-qw" class="config-input config-input-num" type="number" min="0" max="100" bind:value={qualityWeight} />
-				<span class="config-unit">%</span>
-			</div>
-		</div>
-		<div class="config-field">
-			<span class="config-label">Pris</span>
-			<div class="config-input-group">
-				<span class="config-input config-input-num config-derived">{priceWeight}</span>
-				<span class="config-unit">%</span>
+			<span class="config-label">Kvalitet / Pris</span>
+			<div class="config-split">
+				<span class="config-split-value">{qualityWeight}<span class="config-split-pct">%</span></span>
+				<span class="config-split-sep">/</span>
+				<span class="config-split-value">{priceWeight}<span class="config-split-pct">%</span></span>
 			</div>
 		</div>
 		<div class="config-field">
 			<label class="config-label" for="setup-cv">Kontraktsverdi</label>
 			<div class="config-input-group">
-				<input id="setup-cv" class="config-input config-input-num config-input-wide" type="number" min="0" bind:value={contractValue} />
+				<input
+					id="setup-cv"
+					class="config-input config-input-num config-input-wide"
+					type="text"
+					inputmode="numeric"
+					value={contractValueDisplay}
+					oninput={handleContractValueInput}
+					onblur={handleContractValueBlur}
+					onfocus={handleContractValueFocus}
+					placeholder="0"
+				/>
 				<span class="config-unit">kr</span>
 			</div>
 		</div>
@@ -384,7 +476,7 @@
 						if (e.key === 'Escape') (addingSupplier = false);
 					}}
 				/>
-				<button class="supplier-confirm" onclick={addSupplier}>✓</button>
+				<button class="supplier-confirm" onclick={addSupplier} title="Bekreft" aria-label="Bekreft leverandør">✓</button>
 			</div>
 		{:else}
 			<button class="supplier-add" onclick={() => { addingSupplier = true; requestAnimationFrame(() => { (document.querySelector('.supplier-chip-new .supplier-name-input') as HTMLInputElement)?.focus(); }); }}>
@@ -396,6 +488,11 @@
 	<!-- Criteria editor -->
 	<div class="section-label">Tildelingskriterier</div>
 	<div class="criteria-editor">
+		{#if criteria.length === 0}
+			<div class="criteria-empty">
+				<div class="criteria-empty-text">Importer fra en anskaffelse, eller legg til kriterier manuelt</div>
+			</div>
+		{/if}
 		{#each criteria as criterion, ci (criterion.id)}
 			{@const groupWeight = groupWeights.find((g) => g.id === criterion.id)?.sum ?? 0}
 			<div class="criterion-group" data-criterion-id={criterion.id}>
@@ -414,6 +511,18 @@
 							bind:value={criterion.name}
 							placeholder="Hovedkriterium..."
 						/>
+					</div>
+					<button
+						class="criterion-type"
+						class:type-quality={criterion.type === 'quality'}
+						class:type-price={criterion.type === 'price'}
+						onclick={() => (criterion.type = criterion.type === 'quality' ? 'price' : 'quality')}
+					>
+						{criterion.type === 'quality' ? 'Kvalitet' : 'Pris'}
+					</button>
+					<div class="criterion-move">
+						<button class="move-btn" disabled={ci === 0} onclick={() => moveCriterion(ci, 'up')} title="Flytt opp">&#9650;</button>
+						<button class="move-btn" disabled={ci === criteria.length - 1} onclick={() => moveCriterion(ci, 'down')} title="Flytt ned">&#9660;</button>
 					</div>
 					<button class="criterion-remove" onclick={() => removeCriterion(criterion.id)} title="Fjern kriterium">×</button>
 				</div>
@@ -442,6 +551,10 @@
 								placeholder="Underkriterium..."
 							/>
 						</div>
+						<div class="criterion-move">
+							<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
+							<button class="move-btn" disabled={si === criterion.subcriteria.length - 1} onclick={() => moveSubCriterion(criterion.id, si, 'down')} title="Flytt ned">&#9660;</button>
+						</div>
 						<button
 							class="criterion-remove criterion-remove-sub"
 							onclick={() => removeSubCriterion(criterion.id, sub.id)}
@@ -452,7 +565,8 @@
 
 				<!-- Add sub-criterion -->
 				<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
-					+ Underkriterium
+					<span class="add-sub-spacer"></span>
+					<span class="add-sub-label">+ Underkriterium</span>
 				</button>
 			</div>
 		{/each}
@@ -532,13 +646,13 @@
 
 	/* ── Section labels ── */
 	.section-label {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--ink-ghost);
 		margin-bottom: var(--sp-3);
-		margin-top: var(--sp-6);
+		margin-top: var(--sp-8);
 	}
 
 	/* ── Procurement picker ── */
@@ -682,11 +796,11 @@
 	}
 
 	.config-label {
-		font-size: 10px;
-		font-weight: 600;
+		font-size: 11px;
+		font-weight: 500;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
+		color: var(--ink-muted);
 	}
 
 	.config-input {
@@ -746,6 +860,35 @@
 		border-color: transparent;
 	}
 
+	.config-split {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--sp-2);
+		padding: var(--sp-2) var(--sp-3);
+		background: var(--canvas);
+		border: 1px solid var(--wire);
+		border-radius: var(--r-sm);
+	}
+
+	.config-split-value {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--vekt);
+	}
+
+	.config-split-pct {
+		font-size: 10px;
+		font-weight: 400;
+		color: var(--ink-ghost);
+	}
+
+	.config-split-sep {
+		font-size: 11px;
+		color: var(--ink-ghost);
+	}
+
 	/* ── Supplier bar ── */
 	.supplier-bar {
 		display: flex;
@@ -777,7 +920,8 @@
 		font-family: var(--font-ui);
 		font-size: 13px;
 		font-weight: 500;
-		width: 140px;
+		min-width: 100px;
+		width: auto;
 		padding: var(--sp-1) 0;
 	}
 
@@ -896,9 +1040,9 @@
 		border-bottom: none;
 	}
 
-	/* Weight column */
+	/* Weight column — matches system.md matrix weight column (72px) */
 	.criterion-weight {
-		width: 80px;
+		width: 72px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
@@ -1028,6 +1172,90 @@
 		color: var(--ink-ghost);
 	}
 
+	/* Criterion type toggle */
+	.criterion-type {
+		padding: 2px var(--sp-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		border: 1px solid;
+		border-radius: var(--r-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+		flex-shrink: 0;
+		line-height: 1.4;
+	}
+
+	.type-quality {
+		color: var(--vekt-dim);
+		border-color: var(--vekt-bg-strong);
+		background: var(--vekt-bg);
+	}
+
+	.type-quality:hover {
+		color: var(--vekt);
+		background: var(--vekt-bg-strong);
+	}
+
+	.type-price {
+		color: var(--ink-secondary);
+		border-color: var(--wire);
+		background: var(--felt-hover);
+	}
+
+	.type-price:hover {
+		color: var(--ink);
+		border-color: var(--wire-strong);
+	}
+
+	.criterion-type:focus-visible {
+		outline: none;
+		border-color: var(--wire-focus);
+	}
+
+	/* Move buttons */
+	.criterion-move {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		flex-shrink: 0;
+	}
+
+	.move-btn {
+		width: 20px;
+		height: 14px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 8px;
+		color: var(--ink-ghost);
+		background: none;
+		border: none;
+		border-radius: 2px;
+		cursor: pointer;
+		transition: all 0.1s;
+		padding: 0;
+		line-height: 1;
+	}
+
+	.move-btn:hover:not(:disabled) {
+		color: var(--ink-secondary);
+		background: var(--felt-active);
+	}
+
+	.move-btn:disabled {
+		opacity: 0.2;
+		cursor: default;
+	}
+
+	.move-btn:focus-visible {
+		outline: none;
+		color: var(--ink-secondary);
+		background: var(--felt-active);
+	}
+
 	/* Remove buttons */
 	.criterion-remove {
 		width: 24px;
@@ -1063,10 +1291,11 @@
 
 	/* Add buttons */
 	.add-sub-btn {
-		display: block;
+		display: flex;
+		align-items: center;
 		width: 100%;
 		padding: var(--sp-2) var(--sp-3);
-		padding-left: calc(80px + var(--sp-3) + var(--sp-3) + var(--sp-4));
+		padding-left: var(--sp-3);
 		text-align: left;
 		font-family: var(--font-ui);
 		font-size: 11px;
@@ -1077,6 +1306,15 @@
 		border-left: 3px solid rgba(232, 168, 56, 0.15);
 		cursor: pointer;
 		transition: color 0.1s;
+	}
+
+	.add-sub-spacer {
+		width: 72px;
+		flex-shrink: 0;
+	}
+
+	.add-sub-label {
+		padding-left: var(--sp-4);
 	}
 
 	.add-sub-btn:hover {
@@ -1216,10 +1454,43 @@
 		border: 1px solid var(--wire);
 	}
 
+	/* ── Criteria empty state ── */
+	.criteria-empty {
+		padding: var(--sp-6) var(--sp-4);
+		text-align: center;
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
+	}
+
+	.criteria-empty-text {
+		font-size: 12px;
+		color: var(--ink-muted);
+		line-height: 1.5;
+	}
+
+	/* ── Missing focus-visible states ── */
+	.picker-input:focus-visible {
+		border-color: var(--wire-focus);
+	}
+
+	.picker-result:focus-visible {
+		outline: none;
+		background: var(--felt-hover);
+	}
+
+	.supplier-confirm:focus-visible {
+		outline: none;
+		border: 1px solid var(--wire-focus);
+	}
+
+	.config-input:focus-visible {
+		border-color: var(--wire-focus);
+	}
+
 	/* ── Responsive ── */
-	@media (max-width: 1024px) {
+	@media (max-width: 768px) {
 		.config-strip {
 			flex-direction: column;
+			align-items: stretch;
 			gap: var(--sp-3);
 		}
 	}

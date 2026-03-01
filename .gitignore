@@ -6,7 +6,6 @@
 credentials.*
 secrets.*
 .claude/mcp.json
-CLAUDE.md
 
 # Generated protokoller
 docs/protokoll-osl*.md
