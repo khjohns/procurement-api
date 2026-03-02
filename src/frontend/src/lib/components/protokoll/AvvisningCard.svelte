@@ -32,6 +32,11 @@
 		const current = avvisninger[supplierId] ?? { kategori: 'formalfeil', begrunnelse: '' };
 		onchange(supplierId, { ...current, begrunnelse });
 	}
+
+	function handleDato(supplierId: string, datoAvvist: string) {
+		const current = avvisninger[supplierId] ?? { kategori: 'formalfeil', begrunnelse: '' };
+		onchange(supplierId, { ...current, datoAvvist });
+	}
 </script>
 
 <div class="avvisning-cards">
@@ -40,6 +45,16 @@
 		<div class="supplier-card" class:supplier-card-filled={avv?.begrunnelse?.trim()}>
 			<div class="supplier-card-header">
 				<span class="supplier-name">{supplier.name}</span>
+				<div class="dato-field">
+					<label class="dato-label" for="dato-{supplier.id}">AVVIST</label>
+					<input
+						type="date"
+						id="dato-{supplier.id}"
+						class="dato-input"
+						value={avv?.datoAvvist ?? ''}
+						oninput={(e) => handleDato(supplier.id, (e.target as HTMLInputElement).value)}
+					/>
+				</div>
 			</div>
 
 			<div class="kategori-group" role="radiogroup" aria-label="Hjemmel for {supplier.name}">
@@ -105,12 +120,52 @@
 	.supplier-card-header {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-3);
 	}
 
 	.supplier-name {
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--color-ink);
+	}
+
+	.dato-field {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		flex-shrink: 0;
+	}
+
+	.dato-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-ghost);
+	}
+
+	.dato-input {
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
+		outline: none;
+		transition: border-color 0.12s;
+		color-scheme: dark;
+	}
+
+	.dato-input:focus {
+		border-color: var(--color-wire-focus);
+	}
+
+	.dato-input::-webkit-calendar-picker-indicator {
+		filter: invert(0.7);
+		cursor: pointer;
 	}
 
 	.kategori-group {
