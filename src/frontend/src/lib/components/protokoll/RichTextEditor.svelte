@@ -93,7 +93,14 @@
 		border-color: var(--color-wire-focus);
 	}
 
-	.rte-container :global(.tipex) {
+	.rte-container :global(.tipex-editor) {
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		backdrop-filter: none;
+	}
+
+	.rte-container :global(.tipex-editor-section) {
 		min-height: 200px;
 		max-height: var(--rte-max-height, 60vh);
 		overflow-y: auto;
@@ -104,12 +111,12 @@
 		color: var(--color-ink);
 	}
 
-	.rte-container :global(.tipex .tiptap) {
+	.rte-container :global(.tipex-editor-section .ProseMirror) {
 		outline: none;
 		min-height: 160px;
 	}
 
-	.rte-container :global(.tipex .tiptap p.is-editor-empty:first-child::before) {
+	.rte-container :global(.tipex-editor-section .ProseMirror p.is-editor-empty:first-child::before) {
 		color: var(--color-ink-ghost);
 		font-style: italic;
 		content: attr(data-placeholder);
@@ -119,22 +126,23 @@
 	}
 
 	/* Tipex toolbar overrides */
-	.rte-container :global(.tipex-fc) {
+	.rte-container :global(.tipex-controller) {
 		background: var(--color-felt-raised) !important;
-		border: 1px solid var(--color-wire-strong) !important;
-		border-radius: var(--radius-md) !important;
+		border-top: 1px solid var(--color-wire-strong) !important;
+		border-radius: 0 !important;
+		backdrop-filter: none;
 	}
 
-	.rte-container :global(.tipex-fc button) {
+	.rte-container :global(.tipex-controller button) {
 		color: var(--color-ink-secondary) !important;
 	}
 
-	.rte-container :global(.tipex-fc button:hover) {
+	.rte-container :global(.tipex-controller button:hover) {
 		color: var(--color-ink) !important;
 		background: var(--color-felt-hover) !important;
 	}
 
-	.rte-container :global(.tipex-fc button.active) {
+	.rte-container :global(.tipex-controller button.active) {
 		color: var(--color-vekt) !important;
 		background: var(--color-vekt-bg) !important;
 	}

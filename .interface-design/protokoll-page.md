@@ -339,7 +339,7 @@ Used for three fields: **utvelgelsesbegrunnelse** (section 9), **forhandlinger/d
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Uses Tipex (`@friendofsvelte/tipex`) with **standard floating toolbar** — toolbar appears near cursor/selection, not pinned to top. This is Tipex's default `floating focal` mode.
+- Uses Tipex (`@friendofsvelte/tipex`) with **sticky bottom toolbar** — the formatting toolbar is pinned to the bottom of the editor container (Tipex's default `Controls` component). The `floating` prop enables a link-editing bubble near text selection, not a floating format toolbar.
 - Tipex editor container: `--color-canvas` background, `--color-wire` border, `--radius-sm` radius
 - Tipex CSS variables overridden in `@theme` to match design system (surface colors, accent colors)
 - Editor area: `--spacing-4` padding, min-height 200px, **max-height 60vh, overflow-y auto** (internal scroll when content exceeds ~1.5 A4 pages)
@@ -397,7 +397,7 @@ When a section requires plain-text justification per supplier (kvalifikasjonsvur
 
 Used for **utvelgelsesbegrunnelse** (section 9) where each supplier needs a structured justification. Same supplier-card layout as above, but with Tipex instead of plain textarea:
 
-- Tipex inside supplier card: same `--color-canvas` container, `floating focal` toolbar
+- Tipex inside supplier card: same `--color-canvas` container, sticky bottom toolbar
 - Min-height: 120px (smaller than standalone Tipex — multiple editors on screen simultaneously)
 - Max-height: 40vh (tighter than standalone — prevents one supplier card from dominating)
 - All other Tipex patterns apply (character count, focus, Word export)
