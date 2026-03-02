@@ -276,6 +276,73 @@ Sidebar (228px) with same canvas background, border-separated:
 
 ---
 
+## Qualification Matrix (Kvalifikasjonsmatrise)
+
+Binary pass/fail matrix for supplier qualification requirements. Fundamentally different from
+the evaluation matrix: no weighting, no scoring, binary verdicts.
+
+### Structural accent
+
+- Left spine: `--wire-strong` (not amber) — no weights, so the vektlinjen concept doesn't apply
+- The cells carry all semantic color (green/rose/ghost)
+- Differentiates visually from the amber-spined evaluation matrix
+
+### QualificationMatrix
+
+- Same `<table>` structure as EvaluationMatrix but simpler
+- No weight column — requirements aren't weighted
+- Columns: requirement description (auto) | suppliers (140px each)
+- Header: same sticky uppercase pattern (10px, tracking 0.08em)
+
+### Requirement Rows
+
+- Background: `var(--canvas)`, hover → `var(--felt-hover)`
+- Left border: `3px solid var(--wire-strong)` (structural spine)
+- Name: weight 600, `--ink`, 12px
+- Description: 11px, `--ink-muted`, line-height 1.4 (brief text below name)
+
+### QualificationCell (verdict cells)
+
+- Clickable `<td>` centered, opens expansion panel
+- Icon container: 28×28px, `--r-sm` radius
+- **Oppfylt (met):** `✓` in `--score-high`, background `--score-high-bg`
+- **Ikke oppfylt (not_met):** `✗` in `--score-low`, background `--score-low-bg`
+- **Ikke vurdert (not_assessed):** `—` in `--ink-ghost`, transparent
+- **Støtte-markør:** amber `◆` (7px) positioned top-right when supplier relies on supporting entity
+- **Notat-markør:** 5px amber dot bottom-right (same pattern as ScoreCell `.has-notes`)
+
+### QualificationPanel (expansion panel)
+
+- Same full-width row pattern as AnnotationPanel
+- Left border: `3px solid var(--wire-strong)` (connects to spine)
+- Context bar: supplier name (bold) › requirement name (muted), 11px
+- Three field groups in horizontal flex: Dokumentasjon, Grunnlag, Vurdering
+- Radio-style option buttons: `--felt` background, `--wire` border, `--r-sm` radius
+  - Active state has semantic color: submitted = green, not_submitted = rose, met = green, not_met = rose
+- Support entity input: appears when "Støtter seg på" is selected, `--canvas` inset input
+- Notes textarea: same pattern as AnnotationPanel
+
+### QualificationSummary (status strip)
+
+- Same card layout as RankingStrip
+- Per-supplier cards with flex-equal width
+- Badge: 9px uppercase bold pill
+  - **Kvalifisert:** green text + `--score-high-bg`
+  - **Avvist:** rose text + `--score-low-bg`
+  - **Uavklart:** `--ink-muted` text + `--felt-active`
+- Count: `met/total oppfylt` in monospace (22px value, 14px denominator)
+- Green top bar accent on qualified cards (same `::before` pattern as rank-1)
+- Rose top bar accent on rejected cards
+- Progress bar: 3px, green fill
+
+### Result Row
+
+- Bottom of matrix, `border-top: 2px solid var(--wire-strong)`
+- Label: "KVALIFISERT" uppercase, weight 700
+- Value pills: "Ja" (green bg) / "Nei" (rose bg) / "—" (ghost)
+
+---
+
 ## View Switching
 
 - `.view-poeng` and `.view-pris` containers toggle via `.active` class
