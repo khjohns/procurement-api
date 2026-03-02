@@ -3,51 +3,43 @@
 
 	let items = $derived(
 		qualification.data.suppliers.map((s) => {
-			const result = qualification.supplierResults[s.id];
+			const r = qualification.supplierResults[s.id];
 			return {
 				id: s.id,
 				name: s.name,
-				qualified: result?.qualified ?? false,
-				met: result?.met ?? 0,
-				total: result?.total ?? 0,
-				allAssessed: result ? result.met + countNotMet(s.id) === result.total : false
+				qualified: r?.qualified ?? false,
+				met: r?.met ?? 0,
+				total: r?.total ?? 0,
+				allAssessed: r?.allAssessed ?? false
 			};
 		})
 	);
-
-	function countNotMet(supplierId: string): number {
-		let count = 0;
-		for (const req of qualification.data.requirements) {
-			if (req.assessments[supplierId]?.verdict === 'not_met') count++;
-		}
-		return count;
-	}
 </script>
 
-<div class="section-label">Kvalifiseringsstatus</div>
+<div class="section-label">Kvalifikasjonsstatus</div>
 <div class="summary-strip">
 	{#each items as item}
-		{@const pending = item.total - item.met - countNotMet(item.id)}
 		<div
 			class="summary-card"
 			class:summary-qualified={item.qualified}
 			class:summary-rejected={item.allAssessed && !item.qualified}
 		>
-			<div class="summary-header">
+			<div class="summary-name">{item.name}</div>
+			<div class="summary-verdict">
 				{#if item.qualified}
-					<span class="summary-badge badge-qualified">Kvalifisert</span>
+					<span class="verdict-mark verdict-pass">✓</span>
+					<span class="verdict-text verdict-pass-text">Kvalifisert</span>
 				{:else if item.allAssessed}
-					<span class="summary-badge badge-rejected">Avvist</span>
+					<span class="verdict-mark verdict-fail">✗</span>
+					<span class="verdict-text verdict-fail-text">Avvist</span>
 				{:else}
-					<span class="summary-badge badge-pending">Uavklart</span>
+					<span class="verdict-mark verdict-pending">—</span>
+					<span class="verdict-text verdict-pending-text">Uavklart</span>
 				{/if}
 			</div>
-			<div class="summary-name">{item.name}</div>
 			<div class="summary-count">
-				<span class="summary-count-value">{item.met}</span>
-				<span class="summary-count-sep">/</span>
-				<span class="summary-count-total">{item.total}</span>
-				<span class="summary-count-label">oppfylt</span>
+				<span class="summary-count-num">{item.met}/{item.total}</span>
+				<span class="summary-count-label">krav oppfylt</span>
 			</div>
 			<div class="summary-bar">
 				<div class="summary-bar-fill" style="width: {(item.met / Math.max(item.total, 1)) * 100}%"></div>
@@ -69,7 +61,7 @@
 	.summary-strip {
 		display: flex;
 		gap: var(--sp-3);
-		margin-bottom: var(--sp-6);
+		margin-bottom: var(--sp-3);
 	}
 
 	.summary-card {
@@ -116,80 +108,85 @@
 		border-radius: var(--r-lg) var(--r-lg) 0 0;
 	}
 
-	.summary-header {
+	.summary-name {
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--ink-secondary);
 		margin-bottom: var(--sp-2);
+		letter-spacing: -0.01em;
 	}
 
-	.summary-badge {
-		font-size: 9px;
+	.summary-verdict {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
+		margin-bottom: var(--sp-3);
+	}
+
+	.verdict-mark {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border-radius: var(--r-sm);
+		font-size: 13px;
 		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		padding: 2px 6px;
-		border-radius: 3px;
+		line-height: 1;
+		flex-shrink: 0;
 	}
 
-	.badge-qualified {
+	.verdict-pass {
 		color: var(--score-high);
 		background: var(--score-high-bg);
 	}
 
-	.badge-rejected {
+	.verdict-fail {
 		color: var(--score-low);
 		background: var(--score-low-bg);
 	}
 
-	.badge-pending {
-		color: var(--ink-muted);
+	.verdict-pending {
+		color: var(--ink-ghost);
 		background: var(--felt-active);
 	}
 
-	.summary-name {
-		font-size: 13px;
-		font-weight: 600;
-		margin-bottom: var(--sp-2);
-		letter-spacing: -0.01em;
+	.verdict-text {
+		font-size: 15px;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+
+	.verdict-pass-text {
+		color: var(--score-high);
+	}
+
+	.verdict-fail-text {
+		color: var(--score-low);
+	}
+
+	.verdict-pending-text {
+		color: var(--ink-muted);
 	}
 
 	.summary-count {
 		display: flex;
 		align-items: baseline;
-		gap: 2px;
+		gap: var(--sp-1);
 		margin-bottom: var(--sp-2);
+	}
+
+	.summary-count-num {
 		font-family: var(--font-data);
 		font-variant-numeric: tabular-nums;
-	}
-
-	.summary-count-value {
-		font-size: 22px;
-		font-weight: 700;
-		line-height: 1;
-		color: var(--ink);
-	}
-
-	.summary-qualified .summary-count-value {
-		color: var(--score-high);
-	}
-
-	.summary-rejected .summary-count-value {
-		color: var(--score-low);
-	}
-
-	.summary-count-sep {
-		font-size: 14px;
-		color: var(--ink-ghost);
-	}
-
-	.summary-count-total {
-		font-size: 14px;
-		color: var(--ink-ghost);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--ink-muted);
 	}
 
 	.summary-count-label {
 		font-size: 11px;
 		color: var(--ink-ghost);
-		margin-left: var(--sp-1);
-		font-family: var(--font-ui);
 	}
 
 	.summary-bar {

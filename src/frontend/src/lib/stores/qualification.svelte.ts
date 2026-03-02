@@ -56,7 +56,7 @@ function emptyAssessment(): QualificationAssessment {
 class QualificationStore {
 	data = $state<QualificationData>({
 		id: '2024-1847',
-		title: 'Kvalifikasjonsvurdering',
+		title: 'Kvalifisering av leverandører',
 		reference: '2024/1847-KJH',
 		status: 'Under vurdering',
 		suppliers: [
@@ -156,20 +156,24 @@ class QualificationStore {
 		]
 	});
 
-	/** Per-supplier qualification result: qualified only if all requirements are met. */
+	/** Per-supplier qualification result: met/notMet/pending counts and final verdict. */
 	supplierResults = $derived.by(() => {
-		const result: Record<string, { qualified: boolean; met: number; total: number }> = {};
+		const result: Record<string, { qualified: boolean; met: number; notMet: number; total: number; allAssessed: boolean }> = {};
 		for (const supplier of this.data.suppliers) {
 			let met = 0;
-			let total = this.data.requirements.length;
+			let notMet = 0;
+			const total = this.data.requirements.length;
 			for (const req of this.data.requirements) {
-				const assessment = req.assessments[supplier.id];
-				if (assessment?.verdict === 'met') met++;
+				const verdict = req.assessments[supplier.id]?.verdict;
+				if (verdict === 'met') met++;
+				else if (verdict === 'not_met') notMet++;
 			}
 			result[supplier.id] = {
 				qualified: met === total && total > 0,
 				met,
-				total
+				notMet,
+				total,
+				allAssessed: (met + notMet) === total && total > 0
 			};
 		}
 		return result;

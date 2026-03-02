@@ -41,9 +41,9 @@
 		{ value: 'supported', label: 'Støtter seg på annen virksomhet' }
 	];
 
-	const verdictOptions: { value: QualificationVerdict; label: string; shortLabel: string }[] = [
-		{ value: 'met', label: 'Oppfylt', shortLabel: 'Oppfylt' },
-		{ value: 'not_met', label: 'Ikke oppfylt', shortLabel: 'Ikke oppfylt' }
+	const verdictOptions: { value: QualificationVerdict; label: string }[] = [
+		{ value: 'met', label: 'Oppfylt' },
+		{ value: 'not_met', label: 'Ikke oppfylt' }
 	];
 </script>
 
@@ -57,7 +57,6 @@
 			</div>
 
 			<div class="qpanel-body">
-				<!-- Documentation status -->
 				<div class="qpanel-field">
 					<div class="qpanel-label">Dokumentasjon</div>
 					<div class="qpanel-options">
@@ -75,7 +74,6 @@
 					</div>
 				</div>
 
-				<!-- Basis -->
 				<div class="qpanel-field">
 					<div class="qpanel-label">Grunnlag</div>
 					<div class="qpanel-options">
@@ -104,7 +102,6 @@
 					{/if}
 				</div>
 
-				<!-- Verdict -->
 				<div class="qpanel-field">
 					<div class="qpanel-label">Vurdering</div>
 					<div class="qpanel-options">
@@ -116,26 +113,23 @@
 								class:option-not-met={verdict === opt.value && opt.value === 'not_met'}
 								onclick={() => qualification.setVerdict(reqId, supplierId, opt.value)}
 							>
-								{opt.shortLabel}
+								{opt.label}
 							</button>
 						{/each}
 					</div>
 				</div>
 			</div>
 
-			<!-- Notes -->
-			<div class="qpanel-notes">
-				<div class="qpanel-label">Begrunnelse</div>
-				<textarea
-					class="qpanel-textarea"
-					value={noteText}
-					oninput={(e) => qualification.setNote(reqId, supplierId, e.currentTarget.value)}
-					placeholder="Skriv begrunnelse for vurderingen..."
-				></textarea>
-				{#if noteText.length > 0}
-					<div class="qpanel-charcount">{noteText.length} tegn</div>
-				{/if}
-			</div>
+			<div class="qpanel-label">Begrunnelse</div>
+			<textarea
+				class="qpanel-textarea"
+				value={noteText}
+				oninput={(e) => qualification.setNote(reqId, supplierId, e.currentTarget.value)}
+				placeholder="Skriv begrunnelse for vurderingen..."
+			></textarea>
+			{#if noteText.length > 0}
+				<div class="qpanel-charcount">{noteText.length} tegn</div>
+			{/if}
 		</div>
 	</td>
 </tr>
@@ -150,7 +144,6 @@
 	.qpanel {
 		padding: var(--sp-4) var(--sp-5);
 		border-left: 3px solid var(--wire-strong);
-		margin: 0 var(--sp-3);
 	}
 
 	.qpanel-context {
@@ -184,6 +177,7 @@
 
 	.qpanel-field {
 		flex-shrink: 0;
+		min-width: 160px;
 	}
 
 	.qpanel-label {
@@ -197,7 +191,7 @@
 
 	.qpanel-options {
 		display: flex;
-		gap: 2px;
+		gap: var(--sp-1);
 	}
 
 	.qpanel-option {
@@ -210,7 +204,7 @@
 		border: 1px solid var(--wire);
 		border-radius: var(--r-sm);
 		cursor: pointer;
-		transition: all 0.1s;
+		transition: background 0.12s, border-color 0.12s, color 0.12s;
 		white-space: nowrap;
 	}
 
@@ -229,25 +223,25 @@
 
 	.option-submitted {
 		background: var(--score-high-bg);
-		border-color: var(--score-high-bg);
+		border-color: rgba(61, 154, 110, 0.18);
 		color: var(--score-high);
 	}
 
 	.option-not-submitted {
 		background: var(--score-low-bg);
-		border-color: var(--score-low-bg);
+		border-color: rgba(196, 88, 88, 0.18);
 		color: var(--score-low);
 	}
 
 	.option-met {
 		background: var(--score-high-bg);
-		border-color: var(--score-high-bg);
+		border-color: rgba(61, 154, 110, 0.18);
 		color: var(--score-high);
 	}
 
 	.option-not-met {
 		background: var(--score-low-bg);
-		border-color: var(--score-low-bg);
+		border-color: rgba(196, 88, 88, 0.18);
 		color: var(--score-low);
 	}
 
@@ -264,7 +258,8 @@
 	}
 
 	.qpanel-input {
-		width: 260px;
+		width: 100%;
+		max-width: 280px;
 		padding: var(--sp-2) var(--sp-3);
 		background: var(--canvas);
 		border: 1px solid var(--wire);
@@ -282,10 +277,6 @@
 
 	.qpanel-input::placeholder {
 		color: var(--ink-ghost);
-	}
-
-	.qpanel-notes {
-		/* full width below the options row */
 	}
 
 	.qpanel-textarea {

@@ -9,14 +9,6 @@
 		const key = `${reqId}:${supplierId}`;
 		expandedPanel = expandedPanel === key ? null : key;
 	}
-
-	function countNotMet(supplierId: string): number {
-		let count = 0;
-		for (const req of qualification.data.requirements) {
-			if (req.assessments[supplierId]?.verdict === 'not_met') count++;
-		}
-		return count;
-	}
 </script>
 
 <div class="section-label">Kvalifikasjonsmatrise</div>
@@ -30,7 +22,7 @@
 		</colgroup>
 		<thead>
 			<tr>
-				<th>Kvalifikasjonskrav</th>
+				<th class="th-req">Kvalifikasjonskrav</th>
 				{#each qualification.data.suppliers as supplier}
 					<th class="th-supplier">{supplier.name}</th>
 				{/each}
@@ -62,7 +54,6 @@
 					{/each}
 				</tr>
 
-				<!-- Expansion panels -->
 				{#each qualification.data.suppliers as supplier}
 					{#if expandedPanel === `${req.id}:${supplier.id}`}
 						<QualificationPanel
@@ -79,16 +70,15 @@
 			<tr class="row-result">
 				<td class="cell-req cell-result-label">Kvalifisert</td>
 				{#each qualification.data.suppliers as supplier}
-					{@const result = qualification.supplierResults[supplier.id]}
-					{@const allAssessed = result ? (result.met + countNotMet(supplier.id)) === result.total : false}
+					{@const r = qualification.supplierResults[supplier.id]}
 					<td
 						class="cell-result"
-						class:result-qualified={result?.qualified}
-						class:result-rejected={allAssessed && !result?.qualified}
+						class:result-qualified={r?.qualified}
+						class:result-rejected={r?.allAssessed && !r?.qualified}
 					>
-						{#if result?.qualified}
+						{#if r?.qualified}
 							<span class="result-value result-yes">Ja</span>
-						{:else if allAssessed}
+						{:else if r?.allAssessed}
 							<span class="result-value result-no">Nei</span>
 						{:else}
 							<span class="result-value result-pending">—</span>
@@ -132,7 +122,6 @@
 		letter-spacing: 0.08em;
 		color: var(--ink-ghost);
 		margin-bottom: var(--sp-3);
-		margin-top: var(--sp-6);
 	}
 
 	.qmatrix-wrap {
@@ -162,6 +151,10 @@
 		text-align: left;
 	}
 
+	.th-req {
+		padding-left: var(--sp-4);
+	}
+
 	.th-supplier {
 		text-align: center;
 	}
@@ -169,10 +162,6 @@
 	.row-req {
 		background: var(--canvas);
 		border-bottom: 1px solid var(--wire);
-	}
-
-	.row-req:hover {
-		background: var(--felt-hover);
 	}
 
 	.row-last {
@@ -244,7 +233,7 @@
 
 	/* Progress */
 	.qual-progress {
-		margin-top: var(--sp-6);
+		margin-top: var(--sp-4);
 		display: flex;
 		align-items: center;
 		gap: var(--sp-6);

@@ -20,7 +20,7 @@
 	role="button"
 	tabindex={0}
 	{onclick}
-	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onclick(); }}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick(); } }}
 >
 	{#if verdict === 'met'}
 		<span class="verdict-icon">✓</span>
@@ -37,7 +37,7 @@
 		padding: var(--sp-2) var(--sp-3);
 		position: relative;
 		cursor: pointer;
-		transition: background 0.1s;
+		transition: background 0.12s;
 	}
 
 	.cell-verdict:hover {
@@ -56,9 +56,10 @@
 		width: 28px;
 		height: 28px;
 		border-radius: var(--r-sm);
-		font-size: 14px;
+		font-size: 15px;
 		font-weight: 700;
 		line-height: 1;
+		transition: background 0.12s, color 0.12s;
 	}
 
 	.verdict-met .verdict-icon {
@@ -73,7 +74,7 @@
 
 	.verdict-not_assessed .verdict-icon {
 		color: var(--ink-ghost);
-		background: transparent;
+		background: var(--felt-active);
 	}
 
 	/* Amber diamond marker for support entity */
@@ -99,8 +100,12 @@
 		background: var(--vekt-dim);
 	}
 
-	/* Expanded state chevron — handled by row highlight */
+	/* Expanded state */
 	.expanded {
+		background: var(--felt);
+	}
+
+	.expanded:hover {
 		background: var(--felt);
 	}
 </style>
