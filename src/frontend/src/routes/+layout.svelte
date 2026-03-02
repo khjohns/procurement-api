@@ -12,6 +12,7 @@
 	const navItems = [
 		{ href: '/', icon: '⊞', label: 'Oversikt' },
 		{ href: '/anskaffelser', icon: '◎', label: 'Anskaffelser' },
+		{ href: '/kvalifisering', icon: '☑', label: 'Kvalifisering' },
 		{ href: '/evaluering', icon: '▦', label: 'Evaluering' },
 		{ href: '/evaluering/ny', icon: '⊕', label: 'Ny evaluering' },
 		{ href: '/protokoll', icon: '☰', label: 'Protokoll' }

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Avvisning, AvvisningKategori } from '$lib/stores/protokoll.svelte';
+	import DateInput from './DateInput.svelte';
 
 	interface Supplier {
 		id: string;
@@ -32,6 +33,11 @@
 		const current = avvisninger[supplierId] ?? { kategori: 'formalfeil', begrunnelse: '' };
 		onchange(supplierId, { ...current, begrunnelse });
 	}
+
+	function handleDato(supplierId: string, datoAvvist: string) {
+		const current = avvisninger[supplierId] ?? { kategori: 'formalfeil', begrunnelse: '' };
+		onchange(supplierId, { ...current, datoAvvist });
+	}
 </script>
 
 <div class="avvisning-cards">
@@ -40,6 +46,11 @@
 		<div class="supplier-card" class:supplier-card-filled={avv?.begrunnelse?.trim()}>
 			<div class="supplier-card-header">
 				<span class="supplier-name">{supplier.name}</span>
+				<DateInput
+					value={avv?.datoAvvist ?? ''}
+					label="Avvist"
+					onchange={(v) => handleDato(supplier.id, v)}
+				/>
 			</div>
 
 			<div class="kategori-group" role="radiogroup" aria-label="Hjemmel for {supplier.name}">
@@ -105,6 +116,8 @@
 	.supplier-card-header {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-3);
 	}
 
 	.supplier-name {

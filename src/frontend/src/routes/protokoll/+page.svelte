@@ -9,6 +9,7 @@
 	import PerSupplierCards from '$lib/components/protokoll/PerSupplierCards.svelte';
 	import DataQualityTable from '$lib/components/protokoll/DataQualityTable.svelte';
 	import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
+	import DateInput from '$lib/components/protokoll/DateInput.svelte';
 	import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
 	import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
 
@@ -303,6 +304,11 @@
 					{ label: 'Meddelelsesbrev sendt', value: proc.areAwardLettersSent ? 'Sendt (dato ikke tilgjengelig i API)' : 'Nei' },
 				];
 			}
+			case 'meddelelse-klagefrist':
+			case 'meddelelse-karens':
+				return [
+					{ label: 'Meddelelse sendt', value: proc.areAwardLettersSent ? 'Ja' : 'Nei' },
+				];
 			case 'rammeavtaler': {
 				const maxPart = proc.framework_agreement_maximum_participants ?? proc.frameworkAgreementMaximumParticipants;
 				const rows: { label: string; value: any; mono?: boolean }[] = [];
@@ -462,6 +468,20 @@
 			return `${date}, kl. ${time}`;
 		} catch {
 			return String(iso);
+		}
+	}
+
+	/** Add calendar days to an ISO date string and return new ISO date. */
+	function addDays(isoDate: string, days: number): string {
+		const dt = new Date(isoDate + 'T00:00:00');
+		dt.setDate(dt.getDate() + days);
+		return dt.toISOString().slice(0, 10);
+	}
+
+	function handleKarensShortcut() {
+		const meddelelse = protokoll.manual.meddelelseDato;
+		if (meddelelse) {
+			protokoll.setManualField('karensperiodeUtlop', addDays(meddelelse, 10));
 		}
 	}
 
@@ -668,6 +688,28 @@
 											<span class="field-hint">{field.hint}</span>
 										{/if}
 									</div>
+								</div>
+
+							{:else if field.type === 'date'}
+								<div class="manual-field">
+									<DateInput
+										value={(protokoll.manual[fieldKey] as string) ?? ''}
+										label={field.label}
+										hint={field.hint}
+										onchange={(v) => protokoll.setManualField(fieldKey, v)}
+									/>
+									{#if fieldKey === 'karensperiodeUtlop'}
+										<button
+											class="shortcut-btn"
+											disabled={!protokoll.manual.meddelelseDato}
+											onclick={handleKarensShortcut}
+											title={protokoll.manual.meddelelseDato
+												? `Beregn ${addDays(protokoll.manual.meddelelseDato, 10)} (meddelelse + 10 dager)`
+												: 'Angi dato for meddelsesbrev først'}
+										>
+											+10 dager
+										</button>
+									{/if}
 								</div>
 
 							{:else if field.type === 'tipex'}
@@ -1033,6 +1075,38 @@
 		font-size: 11px;
 		color: var(--color-ink-muted);
 		text-align: right;
+	}
+
+	/* ── Shortcut button (karensperiode +10 dager) ── */
+	.shortcut-btn {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		padding: var(--spacing-1) var(--spacing-3);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-vekt);
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background-color 0.12s, border-color 0.12s;
+	}
+
+	.shortcut-btn:hover:not(:disabled) {
+		background: var(--color-vekt-bg);
+		border-color: var(--color-vekt-bg-strong);
+	}
+
+	.shortcut-btn:disabled {
+		color: var(--color-ink-ghost);
+		cursor: not-allowed;
+	}
+
+	.shortcut-btn:focus-visible {
+		outline: none;
+		border-color: var(--color-wire-focus);
 	}
 
 	/* ── Picker ── */
