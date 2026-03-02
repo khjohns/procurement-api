@@ -1,0 +1,106 @@
+<script lang="ts">
+	import type { QualificationVerdict } from '$lib/stores/qualification.svelte';
+
+	interface Props {
+		verdict: QualificationVerdict;
+		hasSupport: boolean;
+		hasNotes: boolean;
+		expanded: boolean;
+		onclick: () => void;
+	}
+
+	let { verdict, hasSupport, hasNotes, expanded, onclick }: Props = $props();
+</script>
+
+<td
+	class="cell-verdict verdict-{verdict}"
+	class:has-support={hasSupport}
+	class:has-notes={hasNotes}
+	class:expanded
+	role="button"
+	tabindex={0}
+	{onclick}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onclick(); }}
+>
+	{#if verdict === 'met'}
+		<span class="verdict-icon">✓</span>
+	{:else if verdict === 'not_met'}
+		<span class="verdict-icon">✗</span>
+	{:else}
+		<span class="verdict-icon">—</span>
+	{/if}
+</td>
+
+<style>
+	.cell-verdict {
+		text-align: center;
+		padding: var(--sp-2) var(--sp-3);
+		position: relative;
+		cursor: pointer;
+		transition: background 0.1s;
+	}
+
+	.cell-verdict:hover {
+		background: var(--felt-hover);
+	}
+
+	.cell-verdict:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--wire-focus);
+	}
+
+	.verdict-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--r-sm);
+		font-size: 14px;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.verdict-met .verdict-icon {
+		color: var(--score-high);
+		background: var(--score-high-bg);
+	}
+
+	.verdict-not_met .verdict-icon {
+		color: var(--score-low);
+		background: var(--score-low-bg);
+	}
+
+	.verdict-not_assessed .verdict-icon {
+		color: var(--ink-ghost);
+		background: transparent;
+	}
+
+	/* Amber diamond marker for support entity */
+	.has-support::before {
+		content: '◆';
+		position: absolute;
+		top: var(--sp-1);
+		right: var(--sp-1);
+		font-size: 7px;
+		color: var(--vekt);
+		line-height: 1;
+	}
+
+	/* Notes dot */
+	.has-notes::after {
+		content: '';
+		position: absolute;
+		bottom: var(--sp-1);
+		right: var(--sp-1);
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--vekt-dim);
+	}
+
+	/* Expanded state chevron — handled by row highlight */
+	.expanded {
+		background: var(--felt);
+	}
+</style>
