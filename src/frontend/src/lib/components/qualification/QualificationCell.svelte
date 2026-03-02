@@ -34,19 +34,19 @@
 <style>
 	.cell-verdict {
 		text-align: center;
-		padding: var(--sp-2) var(--sp-3);
+		padding: var(--spacing-2) var(--spacing-3);
 		position: relative;
 		cursor: pointer;
 		transition: background 0.12s;
 	}
 
 	.cell-verdict:hover {
-		background: var(--felt-hover);
+		background: var(--color-felt-hover);
 	}
 
 	.cell-verdict:focus-visible {
 		outline: none;
-		box-shadow: inset 0 0 0 1.5px var(--wire-focus);
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.verdict-icon {
@@ -55,7 +55,7 @@
 		justify-content: center;
 		width: 28px;
 		height: 28px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-sm);
 		font-size: 15px;
 		font-weight: 700;
 		line-height: 1;
@@ -63,28 +63,28 @@
 	}
 
 	.verdict-met .verdict-icon {
-		color: var(--score-high);
-		background: var(--score-high-bg);
+		color: var(--color-score-high);
+		background: var(--color-score-high-bg);
 	}
 
 	.verdict-not_met .verdict-icon {
-		color: var(--score-low);
-		background: var(--score-low-bg);
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
 	}
 
 	.verdict-not_assessed .verdict-icon {
-		color: var(--ink-ghost);
-		background: var(--felt-active);
+		color: var(--color-ink-ghost);
+		background: var(--color-felt-active);
 	}
 
 	/* Amber diamond marker for support entity */
 	.has-support::before {
 		content: '◆';
 		position: absolute;
-		top: var(--sp-1);
-		right: var(--sp-1);
+		top: var(--spacing-1);
+		right: var(--spacing-1);
 		font-size: 7px;
-		color: var(--vekt);
+		color: var(--color-vekt);
 		line-height: 1;
 	}
 
@@ -92,20 +92,20 @@
 	.has-notes::after {
 		content: '';
 		position: absolute;
-		bottom: var(--sp-1);
-		right: var(--sp-1);
+		bottom: var(--spacing-1);
+		right: var(--spacing-1);
 		width: 5px;
 		height: 5px;
 		border-radius: 50%;
-		background: var(--vekt-dim);
+		background: var(--color-vekt-dim);
 	}
 
 	/* Expanded state */
 	.expanded {
-		background: var(--felt);
+		background: var(--color-felt);
 	}
 
 	.expanded:hover {
-		background: var(--felt);
+		background: var(--color-felt);
 	}
 </style>

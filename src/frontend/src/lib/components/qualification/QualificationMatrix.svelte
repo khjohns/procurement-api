@@ -120,14 +120,14 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
-		margin-bottom: var(--sp-3);
+		color: var(--color-ink-ghost);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.qmatrix-wrap {
 		overflow-x: auto;
-		border-radius: var(--r-lg);
-		border: 1px solid var(--wire);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--color-wire);
 	}
 
 	.qmatrix {
@@ -140,19 +140,19 @@
 	.col-supplier { width: 140px; }
 
 	.qmatrix th {
-		padding: var(--sp-3);
+		padding: var(--spacing-3);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
-		background: var(--felt);
-		border-bottom: 1px solid var(--wire);
+		color: var(--color-ink-ghost);
+		background: var(--color-felt);
+		border-bottom: 1px solid var(--color-wire);
 		text-align: left;
 	}
 
 	.th-req {
-		padding-left: var(--sp-4);
+		padding-left: var(--spacing-4);
 	}
 
 	.th-supplier {
@@ -160,36 +160,36 @@
 	}
 
 	.row-req {
-		background: var(--canvas);
-		border-bottom: 1px solid var(--wire);
+		background: var(--color-canvas);
+		border-bottom: 1px solid var(--color-wire);
 	}
 
 	.row-last {
-		border-bottom: 1px solid var(--wire-strong);
+		border-bottom: 1px solid var(--color-wire-strong);
 	}
 
 	.cell-req {
-		padding: var(--sp-3) var(--sp-4);
-		border-left: 3px solid var(--wire-strong);
+		padding: var(--spacing-3) var(--spacing-4);
+		border-left: 3px solid var(--color-wire-strong);
 	}
 
 	.req-name {
 		font-weight: 600;
-		color: var(--ink);
+		color: var(--color-ink);
 		font-size: 12px;
 		margin-bottom: 2px;
 	}
 
 	.req-desc {
 		font-size: 11px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 		line-height: 1.4;
 	}
 
 	/* Result row */
 	.row-result {
-		background: var(--canvas);
-		border-top: 2px solid var(--wire-strong);
+		background: var(--color-canvas);
+		border-top: 2px solid var(--color-wire-strong);
 	}
 
 	.cell-result-label {
@@ -197,58 +197,58 @@
 		font-size: 12px;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--ink);
-		border-left: 3px solid var(--wire-strong);
+		color: var(--color-ink);
+		border-left: 3px solid var(--color-wire-strong);
 	}
 
 	.cell-result {
 		text-align: center;
-		padding: var(--sp-3);
+		padding: var(--spacing-3);
 	}
 
 	.result-value {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		padding: var(--sp-1) var(--sp-3);
-		border-radius: var(--r-sm);
+		padding: var(--spacing-1) var(--spacing-3);
+		border-radius: var(--radius-sm);
 		font-family: var(--font-data);
 		font-size: 12px;
 		font-weight: 700;
 	}
 
 	.result-yes {
-		color: var(--score-high);
-		background: var(--score-high-bg);
+		color: var(--color-score-high);
+		background: var(--color-score-high-bg);
 	}
 
 	.result-no {
-		color: var(--score-low);
-		background: var(--score-low-bg);
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
 	}
 
 	.result-pending {
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	/* Progress */
 	.qual-progress {
-		margin-top: var(--sp-4);
+		margin-top: var(--spacing-4);
 		display: flex;
 		align-items: center;
-		gap: var(--sp-6);
+		gap: var(--spacing-6);
 	}
 
 	.progress-item {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-3);
+		gap: var(--spacing-3);
 		font-size: 12px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.progress-label {
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 		font-size: 11px;
 	}
 
@@ -256,13 +256,13 @@
 		font-family: var(--font-data);
 		font-variant-numeric: tabular-nums;
 		font-size: 12px;
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 	}
 
 	.progress-bar {
 		width: 80px;
 		height: 3px;
-		background: var(--felt-raised);
+		background: var(--color-felt-raised);
 		border-radius: 2px;
 		overflow: hidden;
 	}
@@ -270,11 +270,11 @@
 	.progress-bar-fill {
 		height: 100%;
 		border-radius: 2px;
-		background: var(--score-high);
+		background: var(--color-score-high);
 		transition: width 0.3s ease-out;
 	}
 
 	.progress-bar-fill.partial {
-		background: var(--vekt-dim);
+		background: var(--color-vekt-dim);
 	}
 </style>

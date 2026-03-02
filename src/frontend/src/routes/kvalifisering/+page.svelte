@@ -29,15 +29,15 @@
 
 <style>
 	.qual-header {
-		margin-bottom: var(--sp-8);
+		margin-bottom: var(--spacing-8);
 	}
 
 	.qual-header-top {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: var(--sp-4);
-		margin-bottom: var(--sp-3);
+		gap: var(--spacing-4);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.qual-title {
@@ -50,14 +50,14 @@
 	.qual-status {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--sp-2);
-		padding: var(--sp-1) var(--sp-3);
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-3);
 		border-radius: 100px;
-		background: var(--vekt-bg);
+		background: var(--color-vekt-bg);
 		border: 1px solid rgba(232, 168, 56, 0.15);
 		font-size: 11px;
 		font-weight: 600;
-		color: var(--vekt);
+		color: var(--color-vekt);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		white-space: nowrap;
@@ -68,7 +68,7 @@
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
-		background: var(--vekt);
+		background: var(--color-vekt);
 		animation: pulse 2s ease-in-out infinite;
 	}
 
@@ -79,23 +79,23 @@
 
 	.qual-meta {
 		display: flex;
-		gap: var(--sp-6);
+		gap: var(--spacing-6);
 		font-size: 12px;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.qual-meta-item {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
+		gap: var(--spacing-2);
 	}
 
 	.qual-meta-label {
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	.qual-meta-value {
-		color: var(--ink-secondary);
+		color: var(--color-ink-secondary);
 		font-family: var(--font-data);
 		font-size: 11px;
 	}

@@ -54,28 +54,28 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ink-ghost);
-		margin-bottom: var(--sp-3);
+		color: var(--color-ink-ghost);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.summary-strip {
 		display: flex;
-		gap: var(--sp-3);
-		margin-bottom: var(--sp-3);
+		gap: var(--spacing-3);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.summary-card {
 		flex: 1;
-		padding: var(--sp-4) var(--sp-5);
-		background: var(--felt);
-		border: 1px solid var(--wire);
-		border-radius: var(--r-lg);
+		padding: var(--spacing-4) var(--spacing-5);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-lg);
 		position: relative;
 		transition: border-color 0.15s;
 	}
 
 	.summary-card:hover {
-		border-color: var(--wire-strong);
+		border-color: var(--color-wire-strong);
 	}
 
 	.summary-qualified {
@@ -89,8 +89,8 @@
 		left: 0;
 		right: 0;
 		height: 2px;
-		background: var(--score-high);
-		border-radius: var(--r-lg) var(--r-lg) 0 0;
+		background: var(--color-score-high);
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 	}
 
 	.summary-rejected {
@@ -104,23 +104,23 @@
 		left: 0;
 		right: 0;
 		height: 2px;
-		background: var(--score-low);
-		border-radius: var(--r-lg) var(--r-lg) 0 0;
+		background: var(--color-score-low);
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 	}
 
 	.summary-name {
 		font-size: 11px;
 		font-weight: 500;
-		color: var(--ink-secondary);
-		margin-bottom: var(--sp-2);
+		color: var(--color-ink-secondary);
+		margin-bottom: var(--spacing-2);
 		letter-spacing: -0.01em;
 	}
 
 	.summary-verdict {
 		display: flex;
 		align-items: center;
-		gap: var(--sp-2);
-		margin-bottom: var(--sp-3);
+		gap: var(--spacing-2);
+		margin-bottom: var(--spacing-3);
 	}
 
 	.verdict-mark {
@@ -129,7 +129,7 @@
 		justify-content: center;
 		width: 24px;
 		height: 24px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-sm);
 		font-size: 13px;
 		font-weight: 700;
 		line-height: 1;
@@ -137,18 +137,18 @@
 	}
 
 	.verdict-pass {
-		color: var(--score-high);
-		background: var(--score-high-bg);
+		color: var(--color-score-high);
+		background: var(--color-score-high-bg);
 	}
 
 	.verdict-fail {
-		color: var(--score-low);
-		background: var(--score-low-bg);
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
 	}
 
 	.verdict-pending {
-		color: var(--ink-ghost);
-		background: var(--felt-active);
+		color: var(--color-ink-ghost);
+		background: var(--color-felt-active);
 	}
 
 	.verdict-text {
@@ -158,22 +158,22 @@
 	}
 
 	.verdict-pass-text {
-		color: var(--score-high);
+		color: var(--color-score-high);
 	}
 
 	.verdict-fail-text {
-		color: var(--score-low);
+		color: var(--color-score-low);
 	}
 
 	.verdict-pending-text {
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.summary-count {
 		display: flex;
 		align-items: baseline;
-		gap: var(--sp-1);
-		margin-bottom: var(--sp-2);
+		gap: var(--spacing-1);
+		margin-bottom: var(--spacing-2);
 	}
 
 	.summary-count-num {
@@ -181,17 +181,17 @@
 		font-variant-numeric: tabular-nums;
 		font-size: 11px;
 		font-weight: 500;
-		color: var(--ink-muted);
+		color: var(--color-ink-muted);
 	}
 
 	.summary-count-label {
 		font-size: 11px;
-		color: var(--ink-ghost);
+		color: var(--color-ink-ghost);
 	}
 
 	.summary-bar {
 		height: 3px;
-		background: var(--felt-raised);
+		background: var(--color-felt-raised);
 		border-radius: 2px;
 		overflow: hidden;
 	}
@@ -199,11 +199,11 @@
 	.summary-bar-fill {
 		height: 100%;
 		border-radius: 2px;
-		background: var(--score-high);
+		background: var(--color-score-high);
 		transition: width 0.4s ease-out;
 	}
 
 	.summary-rejected .summary-bar-fill {
-		background: var(--score-low);
+		background: var(--color-score-low);
 	}
 </style>
