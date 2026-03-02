@@ -10,6 +10,7 @@ export type FieldType =
 	| 'supplier-list'
 	| 'textarea'
 	| 'tipex'
+	| 'date'
 	| 'checkbox-textarea'
 	| 'per-supplier-textarea'
 	| 'per-supplier-tipex'
@@ -238,8 +239,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 		fields: [
 			{ key: 'awardLetterInfo', type: 'info-table', label: 'Meddelelse' },
 			{
+				key: 'meddelelseDato',
+				type: 'date',
+				label: 'Dato meddelsesbrev sendt',
+				hint: 'Dato da meddelsesbrev ble sendt til leverandørene.'
+			},
+			{
 				key: 'klagefrist',
-				type: 'textarea',
+				type: 'date',
 				label: 'Klagefrist',
 				hint: 'Frist for klage på tildelingsbeslutningen.'
 			}
@@ -513,6 +520,27 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 				label: 'Tildelingsbegrunnelse',
 				hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
 				required: true
+			}
+		]
+	},
+	{
+		id: 'meddelelse-karens',
+		title: 'Meddelelse og karensperiode',
+		chapter: 'TILDELING',
+		dataSource: 'mixed',
+		fields: [
+			{ key: 'awardLetterInfo', type: 'info-table', label: 'Meddelelse' },
+			{
+				key: 'meddelelseDato',
+				type: 'date',
+				label: 'Dato meddelsesbrev sendt',
+				hint: 'Dato da meddelsesbrev ble sendt til leverandørene.'
+			},
+			{
+				key: 'karensperiodeUtlop',
+				type: 'date',
+				label: 'Karensperiodens utløp',
+				hint: 'Utløpsdato for karensperiode. Bruk +10 dager for automatisk beregning.'
 			}
 		]
 	},

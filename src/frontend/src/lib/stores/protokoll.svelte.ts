@@ -21,6 +21,7 @@ export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud';
 export interface Avvisning {
 	kategori: AvvisningKategori;
 	begrunnelse: string;
+	datoAvvist?: string;
 }
 
 export interface ManualFields {
@@ -37,6 +38,8 @@ export interface ManualFields {
 	kvalifikasjonsvurderinger?: Record<string, string>;
 	forhandlingsreferat?: string;
 	klagefrist?: string;
+	meddelelseDato?: string;
+	karensperiodeUtlop?: string;
 	markedsdialog?: string;
 	unntakElektronisk?: boolean;
 	unntakElektroniskBegrunnelse?: string;
@@ -198,6 +201,11 @@ class ProtokollStore {
 		const val = this.manual[field.key];
 
 		switch (field.type) {
+			case 'date': {
+				const dateStr = typeof val === 'string' ? val.trim() : '';
+				return { total: 1, filled: dateStr.length > 0 ? 1 : 0 };
+			}
+
 			case 'textarea':
 			case 'tipex': {
 				const text = typeof val === 'string' ? val.replace(/<[^>]*>/g, '').trim() : '';

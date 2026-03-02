@@ -23,6 +23,7 @@
   "dependencies": {
     "@friendofsvelte/tipex": "^0.1.1",
     "@tiptap/extension-character-count": "^2.27.2",
-    "@tiptap/extension-placeholder": "^2.27.2"
+    "@tiptap/extension-placeholder": "^2.27.2",
+    "bits-ui": "^2.16.2"
   }
 }
