@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
+	import Checkbox from './Checkbox.svelte';
 
 	interface Props {
 		checked: boolean;
@@ -12,8 +13,7 @@
 
 	let { checked, begrunnelse, label, foaRef = '', hint = '', onchange }: Props = $props();
 
-	function handleCheck(e: Event) {
-		const newChecked = (e.target as HTMLInputElement).checked;
+	function handleCheck(newChecked: boolean) {
 		onchange(newChecked, begrunnelse);
 	}
 
@@ -26,20 +26,7 @@
 </script>
 
 <div class="checkbox-field">
-	<label class="checkbox-label">
-		<input
-			type="checkbox"
-			class="checkbox-input"
-			{checked}
-			onchange={handleCheck}
-		/>
-		<span class="checkbox-text">
-			{label}
-			{#if foaRef}
-				<span class="foa-ref">, jf. {foaRef}</span>
-			{/if}
-		</span>
-	</label>
+	<Checkbox {checked} {label} {foaRef} onchange={handleCheck} />
 
 	{#if checked}
 		<div class="textarea-wrap" transition:slide={{ duration: 200 }}>
@@ -65,34 +52,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-2);
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--spacing-3);
-		cursor: pointer;
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--color-ink);
-	}
-
-	.checkbox-input {
-		width: 16px;
-		height: 16px;
-		margin-top: 2px;
-		flex-shrink: 0;
-		accent-color: var(--color-vekt);
-		cursor: pointer;
-	}
-
-	.checkbox-text {
-		line-height: 1.4;
-	}
-
-	.foa-ref {
-		color: var(--color-ink-muted);
-		font-weight: 400;
 	}
 
 	.textarea-wrap {
