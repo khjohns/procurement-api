@@ -43,6 +43,7 @@ ALL_DEL2_PROCEDURES = [
 
 # -- Formatting helpers -------------------------------------------------------
 
+
 def fmt_datetime(iso_str: str | None) -> str:
     """Format ISO datetime to 'DD.MM.YYYY, kl. HH:MM'."""
     if not iso_str:
@@ -124,6 +125,36 @@ def get_org_name(activity: dict, org_lookup: dict[str, str]) -> str:
     return "Ukjent leverandør"
 
 
+def filter_post_deadline_conversations(
+    procurement: dict, activities: list[dict]
+) -> tuple[list[dict], list[dict]]:
+    """Filter conversations that occurred after the submission deadline.
+
+    Returns:
+        Tuple of (post_deadline_conversations, all_conversations).
+    """
+    submission_deadline = parse_submission_deadline(procurement)
+    conversations = get_activities_by_action(
+        activities, "CONVERSATION_MARKED_COMPLETED"
+    )
+
+    post_deadline = []
+    if submission_deadline and conversations:
+        for c in conversations:
+            conv_date_str = c.get("date")
+            if conv_date_str:
+                try:
+                    conv_date = datetime.fromisoformat(
+                        conv_date_str.replace("Z", "+00:00")
+                    )
+                    if conv_date > submission_deadline:
+                        post_deadline.append(c)
+                except (ValueError, TypeError):
+                    pass
+
+    return post_deadline, conversations
+
+
 def parse_submission_deadline(procurement: dict) -> datetime | None:
     """Parse the submission deadline from timeline."""
     date_str = get_timeline_date(procurement, "submission")
@@ -133,6 +164,41 @@ def parse_submission_deadline(procurement: dict) -> datetime | None:
         return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
+
+
+def parse_announcement(activities: list[dict]) -> tuple[str, str, str]:
+    """Extract announcement date, Doffin reference, and TED reference from activities.
+
+    Returns:
+        Tuple of (announcement_date, doffin_ref, ted_ref) — all strings, empty if not found.
+    """
+    doffin_activities = get_activities_by_action(
+        activities, "DOFFIN_NOTICE_STATUS_PUBLISHED"
+    )
+    publish_activities = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    announcement_date = ""
+    doffin_ref = ""
+    ted_ref = ""
+    if publish_activities:
+        announcement_date = fmt_date(publish_activities[0].get("date"))
+    if doffin_activities:
+        desc = doffin_activities[0].get("description") or {}
+        doffin_notice = desc.get("doffinNotice") or {}
+        doffin_ref = doffin_notice.get("ngoj") or ""
+        ted_ref = doffin_notice.get("publicationId") or ""
+        if not announcement_date:
+            announcement_date = fmt_date(
+                doffin_notice.get("publicationDate") or doffin_activities[0].get("date")
+            )
+    return announcement_date, doffin_ref, ted_ref
+
+
+def safe_int(val: Any, default: int | None = None) -> int | None:
+    """Safely convert a value to int, returning default on failure."""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
 
 
 def strip_html(text: str) -> str:

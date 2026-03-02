@@ -88,7 +88,10 @@ class _Spinner:
         self._stop.set()
         if self._thread:
             self._thread.join()
-        print("\r\033[K", end="", file=sys.stderr)
+        if _COLOR:
+            print("\r\033[K", end="", file=sys.stderr)
+        else:
+            print("\r", end="", file=sys.stderr)
 
     def _spin(self) -> None:
         for frame in itertools.cycle(self._FRAMES):
@@ -117,12 +120,20 @@ def _die(msg: str) -> None:
 
 # -- GCP Secret Manager -----------------------------------------------------
 
-def _fetch_secret(name: str) -> str:
-    """Fetch a secret from GCP Secret Manager via gcloud CLI."""
+
+def _fetch_secret(name: str) -> str | None:
+    """Fetch a secret from GCP Secret Manager via gcloud CLI.
+
+    Returns None if the secret could not be fetched.
+    """
     try:
         result = subprocess.run(
             [
-                "gcloud", "secrets", "versions", "access", "latest",
+                "gcloud",
+                "secrets",
+                "versions",
+                "access",
+                "latest",
                 f"--secret={name}",
                 f"--project={GCP_PROJECT}",
             ],
@@ -132,29 +143,30 @@ def _fetch_secret(name: str) -> str:
         )
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        _die(f"Kunne ikke hente secret '{name}': {e}")
-        return ""  # unreachable
+        _warn(f"Kunne ikke hente secret '{name}': {e}")
+        return None
 
 
 def _get_client() -> ArtifikClient:
     with _Spinner("Henter secrets fra GCP"):
         api_id = _fetch_secret("vendor-api-id")
         api_key = _fetch_secret("vendor-api-key")
+    if not api_id or not api_key:
+        _die("Kunne ikke hente API-credentials fra GCP Secret Manager.")
     _ok("Secrets hentet")
     return ArtifikClient(client_id=api_id, client_secret=api_key)
 
 
 def _get_doffin_client() -> DoffinClient | None:
     """Create DoffinClient with API key from GCP. Returns None if key unavailable."""
-    try:
-        with _Spinner("Henter Doffin API-nøkkel"):
-            api_key = _fetch_secret("doffin-api-key")
-        cache_dir = str(_PROJECT_ROOT / ".cache" / "eforms")
-        _ok("Doffin API-nøkkel hentet")
-        return DoffinClient(api_key=api_key, cache_dir=cache_dir)
-    except SystemExit:
+    with _Spinner("Henter Doffin API-nøkkel"):
+        api_key = _fetch_secret("doffin-api-key")
+    if not api_key:
         _warn("Doffin API-nøkkel ikke tilgjengelig — eForms-berikelse deaktivert")
         return None
+    cache_dir = str(_PROJECT_ROOT / ".cache" / "eforms")
+    _ok("Doffin API-nøkkel hentet")
+    return DoffinClient(api_key=api_key, cache_dir=cache_dir)
 
 
 def _get_doffin_id(activities: list[dict]) -> str | None:
@@ -168,6 +180,7 @@ def _get_doffin_id(activities: list[dict]) -> str | None:
 
 
 # -- Procurement listing & selection -----------------------------------------
+
 
 def _is_mature(procurement: dict) -> bool:
     """Check if procurement is past submission deadline and not a template."""
@@ -183,7 +196,9 @@ def _is_mature(procurement: dict) -> bool:
 
 def _richness(p: dict) -> int:
     """Score how much data a procurement object contains."""
-    return sum(1 for v in p.values() if v is not None and v != "" and v != [] and v != {})
+    return sum(
+        1 for v in p.values() if v is not None and v != "" and v != [] and v != {}
+    )
 
 
 def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
@@ -204,7 +219,9 @@ def _list_procurements(client: ArtifikClient) -> list[dict]:
     mature = [p for p in all_procs if _is_mature(p)]
     mature = _dedup_by_sequence_id(mature)
     mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
-    _ok(f"{len(mature)} anskaffelser med passert tilbudsfrist (av {len(all_procs)} totalt)")
+    _ok(
+        f"{len(mature)} anskaffelser med passert tilbudsfrist (av {len(all_procs)} totalt)"
+    )
     return mature
 
 
@@ -235,19 +252,15 @@ def _color_threshold(raw: str, label: str) -> str:
 
 
 def _color_procedure(raw: str, label: str) -> str:
-    if raw in ("Competitive negotiated", "Competitive dialogue", "Innovation partnership"):
+    if raw in (
+        "Competitive negotiated",
+        "Competitive dialogue",
+        "Innovation partnership",
+    ):
         return _yellow(label)
     if raw in ("Negotiated without publication", "Direct award"):
         return _style(label, "33;2")
     return label
-
-
-def _strip_html_simple(text: str) -> str:
-    """Minimal HTML strip for display purposes."""
-    import html as html_mod
-    import re
-    text = re.sub(r"<[^>]+>", "", text)
-    return html_mod.unescape(text).strip()
 
 
 def _truncate(text: str, width: int) -> str:
@@ -327,10 +340,13 @@ def _select_procurement(procs: list[dict]) -> dict:
                 return procs[idx]
         except ValueError:
             pass
-        print(f"  {_yellow('?')} Skriv et tall mellom 1 og {len(procs)}", file=sys.stderr)
+        print(
+            f"  {_yellow('?')} Skriv et tall mellom 1 og {len(procs)}", file=sys.stderr
+        )
 
 
 # -- Summary -----------------------------------------------------------------
+
 
 def _print_summary(procurement: dict, activities: list[dict], path: str) -> None:
     """Print a summary of what was generated and what needs manual work."""
@@ -396,6 +412,7 @@ def _print_summary(procurement: dict, activities: list[dict], path: str) -> None
 
 # -- Main --------------------------------------------------------------------
 
+
 def main() -> None:
     import argparse
 
@@ -404,10 +421,26 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generer anskaffelsesprotokoll fra Artifik API.",
     )
-    parser.add_argument("--id", type=int, help="Procurement ID (skipper interaktiv velging)")
-    parser.add_argument("--list", action="store_true", dest="list_only", help="Bare list anskaffelser, ikke generer protokoll")
-    parser.add_argument("-o", "--output", help="Output-fil (default: docs/protokoller/protokoll-{sequenceId}.docx)")
-    parser.add_argument("--format", choices=["docx", "md"], default="docx", help="Output-format (default: docx)")
+    parser.add_argument(
+        "--id", type=int, help="Procurement ID (skipper interaktiv velging)"
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        dest="list_only",
+        help="Bare list anskaffelser, ikke generer protokoll",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Output-fil (default: docs/protokoller/protokoll-{sequenceId}.docx)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["docx", "md"],
+        default="docx",
+        help="Output-format (default: docx)",
+    )
 
     args = parser.parse_args()
 
@@ -426,7 +459,9 @@ def main() -> None:
     procurements = _list_procurements(client)
 
     if not procurements:
-        _die("Ingen modne anskaffelser funnet (passert tilbudsfrist, ikke kansellert/mal).")
+        _die(
+            "Ingen modne anskaffelser funnet (passert tilbudsfrist, ikke kansellert/mal)."
+        )
 
     if args.list_only:
         _print_procurement_list(procurements)
@@ -474,7 +509,9 @@ def main() -> None:
             if eforms:
                 ac = eforms.get("award_criteria") or []
                 sc = eforms.get("selection_criteria") or []
-                _ok(f"eForms: {len(ac)} tildelingskriterier, {len(sc)} kvalifikasjonskrav")
+                _ok(
+                    f"eForms: {len(ac)} tildelingskriterier, {len(sc)} kvalifikasjonskrav"
+                )
         else:
             _warn("Ingen Doffin-referanse funnet — eForms-berikelse ikke tilgjengelig")
 
@@ -491,19 +528,24 @@ def main() -> None:
         _ok(f"Del III-protokoll (terskel: {THRESHOLD_SHORT.get(threshold, threshold)})")
 
     if fmt == "md":
-        result = generate_protokoll(procurement, activities)
-        output_path = args.output or str(_PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.md")
+        result = generate_protokoll(procurement, activities, eforms=eforms)
+        output_path = args.output or str(
+            _PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.md"
+        )
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         Path(output_path).write_text(result)
     else:
         if not _HAS_DOCX:
             _die("python-docx er ikke installert. Kjør: pip install python-docx")
         from protokoll import generate_protokoll_docx, generate_protokoll_docx_del2
+
         if is_del2:
             doc = generate_protokoll_docx_del2(procurement, activities, eforms=eforms)
         else:
             doc = generate_protokoll_docx(procurement, activities, eforms=eforms)
-        output_path = args.output or str(_PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.docx")
+        output_path = args.output or str(
+            _PROJECT_ROOT / f"docs/protokoller/protokoll-{seq_id.lower()}.docx"
+        )
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         doc.save(output_path)
 

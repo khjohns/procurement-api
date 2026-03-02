@@ -107,7 +107,9 @@ def docx_add_table(doc, headers, rows):
         run.bold = True
     for r_idx, row_data in enumerate(rows):
         for c_idx, cell_data in enumerate(row_data):
-            table.rows[r_idx + 1].cells[c_idx].text = str(cell_data)
+            table.rows[r_idx + 1].cells[c_idx].text = (
+                str(cell_data) if cell_data is not None else ""
+            )
     docx_shade_header_row(table)
     return table
 

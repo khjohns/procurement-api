@@ -8,17 +8,22 @@ from datetime import datetime
 from .common import (
     ALL_PROCEDURES,
     PROCEDURE_MAP,
+    build_org_lookup,
+    filter_post_deadline_conversations,
     fmt_currency,
     fmt_date,
     fmt_datetime,
     get_activities_by_action,
+    get_org_name,
     get_timeline_date,
-    parse_submission_deadline,
+    parse_announcement,
+    safe_int,
     strip_html,
 )
 
 
 # -- Section generators ------------------------------------------------------
+
 
 def _section_general_info(procurement: dict, activities: list[dict]) -> str:
     lines = []
@@ -61,15 +66,21 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
         duration_str = "<!-- MANUELT -->"
 
     submission_date = get_timeline_date(procurement, "submission")
-    submission_str = fmt_datetime(submission_date) if submission_date else "<!-- MANUELT -->"
+    submission_str = (
+        fmt_datetime(submission_date) if submission_date else "<!-- MANUELT -->"
+    )
 
     lines.append("| Felt | Beskrivelse |")
     lines.append("| --- | --- |")
     lines.append(f"| **Konkurransens saksnummer:** | {sak_ref} |")
     lines.append(f"| **Oppdragsgiver(e):** | {procurer_str} |")
-    lines.append(f"| **Protokollfører/saksbehandler:** | {contact} <!-- MANUELT: bekreft --> |")
+    lines.append(
+        f"| **Protokollfører/saksbehandler:** | {contact} <!-- MANUELT: bekreft --> |"
+    )
     lines.append(f"| **Beskrivelse av anskaffelsen:** | {desc_str} |")
-    lines.append(f"| **Anskaffelsens anslåtte verdi på kunngjøringstidspunktet:** | {value_str} |")
+    lines.append(
+        f"| **Anskaffelsens anslåtte verdi på kunngjøringstidspunktet:** | {value_str} |"
+    )
     lines.append(f"| **Kontraktens varighet:** | {duration_str} |")
     lines.append(f"| **Frist for innlevering av tilbud:** | {submission_str} |")
     lines.append("")
@@ -96,7 +107,9 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
     lines = []
     lines.append("## Anskaffelsesprosedyre")
     lines.append("")
-    lines.append("Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:")
+    lines.append(
+        "Følgende anskaffelsesprosedyre er lagt til grunn i denne konkurransen:"
+    )
     lines.append("")
 
     procedure = procurement.get("procedure") or ""
@@ -110,49 +123,45 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
     lines.append("")
 
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
-        lines.append("**Begrunnelse for bruk av konkurransepreget dialog eller konkurranse med forhandling etter forutgående kunngjøring:**")
+        lines.append(
+            "**Begrunnelse for bruk av konkurransepreget dialog eller konkurranse med forhandling etter forutgående kunngjøring:**"
+        )
         lines.append("<!-- MANUELT: Fyll inn begrunnelse for valg av prosedyre -->")
     else:
-        lines.append("**Begrunnelse for bruk av konkurransepreget dialog eller konkurranse med forhandling etter forutgående kunngjøring:**")
+        lines.append(
+            "**Begrunnelse for bruk av konkurransepreget dialog eller konkurranse med forhandling etter forutgående kunngjøring:**"
+        )
         lines.append("Ikke relevant.")
     lines.append("")
 
     if procedure in ("Negotiated without publication", "Direct award"):
         code = procurement.get("direct_award_justification_code") or ""
-        reason = procurement.get("direct_award_justification_reason") or "<!-- MANUELT -->"
-        lines.append("**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**")
+        reason = (
+            procurement.get("direct_award_justification_reason") or "<!-- MANUELT -->"
+        )
+        lines.append(
+            "**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**"
+        )
         if code:
             lines.append(f"Hjemmel: {code}. {reason}")
         else:
             lines.append(reason)
     else:
-        lines.append("**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**")
+        lines.append(
+            "**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**"
+        )
         lines.append("Ikke relevant.")
     lines.append("")
 
-    lines.append("**Dersom anskaffelsen ikke deles opp i delkontrakter, begrunnelse for ikke å dele opp kontrakten (jf. FOA \u00a7 19-4):**")
-    lines.append("<!-- MANUELT: Fyll inn begrunnelse for hvorfor det ikke er delt opp i delkontrakter -->")
+    lines.append(
+        "**Dersom anskaffelsen ikke deles opp i delkontrakter, begrunnelse for ikke å dele opp kontrakten (jf. FOA \u00a7 19-4):**"
+    )
+    lines.append(
+        "<!-- MANUELT: Fyll inn begrunnelse for hvorfor det ikke er delt opp i delkontrakter -->"
+    )
     lines.append("")
 
-    doffin_activities = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish_activities = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
-
-    announcement_date = ""
-    doffin_ref = ""
-    ted_ref = ""
-
-    if publish_activities:
-        announcement_date = fmt_date(publish_activities[0].get("date"))
-
-    if doffin_activities:
-        desc = doffin_activities[0].get("description") or {}
-        doffin_notice = desc.get("doffinNotice") or {}
-        doffin_ref = doffin_notice.get("ngoj") or ""
-        ted_ref = doffin_notice.get("publicationId") or ""
-        if not announcement_date:
-            announcement_date = fmt_date(
-                doffin_notice.get("publicationDate") or doffin_activities[0].get("date")
-            )
+    announcement_date, doffin_ref, ted_ref = parse_announcement(activities)
 
     lines.append("**Kunngjøring:**")
     if announcement_date:
@@ -183,7 +192,9 @@ def _section_formal_rejection(activities: list[dict]) -> str:
         lines.append("\u2610 Ingen leverandører eller tilbud ble avvist")
         lines.append("<!-- MANUELT: Bekreft at ingen ble avvist på formalfeil -->")
     else:
-        lines.append("<!-- MANUELT: Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 24-1) vs. kvalifikasjon (\u00a7 24-2) -->")
+        lines.append(
+            "<!-- MANUELT: Avgjør hvilke avvisninger som gjelder formalfeil (\u00a7 24-1) vs. kvalifikasjon (\u00a7 24-2) -->"
+        )
 
     lines.append("")
     lines.append("| Leverandørens navn | Begrunnelsen for avvisningen | Dato sendt |")
@@ -216,16 +227,34 @@ def _section_preliminary_qualification(procedure: str) -> str:
     return "\n".join(lines)
 
 
-def _section_qualification() -> str:
+def _section_qualification(eforms=None) -> str:
     lines = []
     lines.append("## Kvalifikasjonsvurdering")
     lines.append("")
-    lines.append("<!-- MANUELT: Kvalifikasjonskrav og -vurdering er ikke tilgjengelig via API. Fyll inn basert på konkurransegrunnlaget. -->")
+
+    if eforms:
+        sel = eforms.get("selection_criteria") or []
+        if sel:
+            lines.append("Kvalifikasjonskrav fra kunngjøringen:")
+            lines.append("")
+            lines.append("| Type | Beskrivelse |")
+            lines.append("| --- | --- |")
+            for s in sel:
+                lines.append(
+                    f"| {s.get('type_code') or ''} | {s.get('description') or ''} |"
+                )
+            lines.append("")
+
+    lines.append(
+        "<!-- MANUELT: Kvalifikasjonskrav og -vurdering er ikke tilgjengelig via API. Fyll inn basert på konkurransegrunnlaget. -->"
+    )
     lines.append("")
     lines.append("**Leverandører som er kvalifisert:**")
     lines.append("<!-- MANUELT -->")
     lines.append("")
-    lines.append("**Hvis relevant, begrunnelse for hvorfor leverandører som har restanser i henhold til skatte- og avgiftslovgivningen har fått delta i konkurransen:**")
+    lines.append(
+        "**Hvis relevant, begrunnelse for hvorfor leverandører som har restanser i henhold til skatte- og avgiftslovgivningen har fått delta i konkurransen:**"
+    )
     lines.append("<!-- MANUELT -->")
     lines.append("")
 
@@ -267,10 +296,17 @@ def _section_supplier_selection(procedure: str, activities: list[dict]) -> str:
 
     if procedure == "Open":
         lines.append("Ikke relevant (åpen anbudskonkurranse — ingen utvelgelsesfase).")
-    elif procedure in ("Limited", "Competitive negotiated", "Innovation partnership", "Competitive dialogue"):
+    elif procedure in (
+        "Limited",
+        "Competitive negotiated",
+        "Innovation partnership",
+        "Competitive dialogue",
+    ):
         qualifying = get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
         if qualifying:
-            lines.append("<!-- MANUELT: Fyll inn begrunnelse for utvelgelse per leverandør -->")
+            lines.append(
+                "<!-- MANUELT: Fyll inn begrunnelse for utvelgelse per leverandør -->"
+            )
             lines.append("")
             lines.append("| Leverandørens navn | Begrunnelse for utvelgelse |")
             lines.append("| --- | --- |")
@@ -309,32 +345,29 @@ def _section_bid_rejection() -> str:
 
 def _section_clarification(procurement: dict, activities: list[dict]) -> str:
     lines = []
-    lines.append("## Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA \u00a7 23-5")
+    lines.append(
+        "## Ettersending og avklaring av opplysninger og dokumentasjon, jf. FOA \u00a7 23-5"
+    )
     lines.append("")
 
-    submission_deadline = parse_submission_deadline(procurement)
-    conversations = get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
-
-    post_deadline_convs = []
-    if submission_deadline and conversations:
-        for c in conversations:
-            conv_date_str = c.get("date")
-            if conv_date_str:
-                try:
-                    conv_date = datetime.fromisoformat(conv_date_str.replace("Z", "+00:00"))
-                    if conv_date > submission_deadline:
-                        post_deadline_convs.append(c)
-                except (ValueError, TypeError):
-                    pass
+    post_deadline_convs, conversations = filter_post_deadline_conversations(
+        procurement, activities
+    )
 
     if not post_deadline_convs:
         lines.append("\u2610 Det ble ikke foretatt avklaringer eller dialog")
         if not conversations:
-            lines.append("<!-- MANUELT: Bekreft. API har ingen avklaringshendelser for denne anskaffelsen. -->")
+            lines.append(
+                "<!-- MANUELT: Bekreft. API har ingen avklaringshendelser for denne anskaffelsen. -->"
+            )
         else:
-            lines.append("<!-- MANUELT: Bekreft. API har meldingshendelser, men alle er før tilbudsfrist (Q&A). -->")
+            lines.append(
+                "<!-- MANUELT: Bekreft. API har meldingshendelser, men alle er før tilbudsfrist (Q&A). -->"
+            )
     else:
-        lines.append("Følgende avklaringer/ettersendinger ble gjennomført etter tilbudsfrist:")
+        lines.append(
+            "Følgende avklaringer/ettersendinger ble gjennomført etter tilbudsfrist:"
+        )
 
     lines.append("")
     lines.append("| Leverandørens navn | Dato | Hvordan? |")
@@ -366,11 +399,17 @@ def _section_negotiations(procedure: str) -> str:
         lines.append("")
         lines.append("\u2610 Det ble ikke gjennomført forhandlinger")
         lines.append("")
-        lines.append("| Leverandørens navn | Dato for forhandling | Mottatt revidert tilbud |")
+        lines.append(
+            "| Leverandørens navn | Dato for forhandling | Mottatt revidert tilbud |"
+        )
         lines.append("| --- | --- | --- |")
         lines.append("| <!-- MANUELT --> | <!-- MANUELT --> | <!-- MANUELT --> |")
     else:
-        lines.append(f"Ikke relevant ({PROCEDURE_MAP.get(procedure, procedure)})." if procedure != "Open" else "Ikke relevant (åpen anbudskonkurranse).")
+        lines.append(
+            f"Ikke relevant ({PROCEDURE_MAP.get(procedure, procedure)})."
+            if procedure != "Open"
+            else "Ikke relevant (åpen anbudskonkurranse)."
+        )
     lines.append("")
 
     return "\n".join(lines)
@@ -390,13 +429,63 @@ def _section_dialog(procedure: str) -> str:
         lines.append("| --- | --- |")
         lines.append("| <!-- MANUELT --> | <!-- MANUELT --> |")
     else:
-        lines.append(f"Ikke relevant ({PROCEDURE_MAP.get(procedure, procedure)})." if procedure != "Open" else "Ikke relevant (åpen anbudskonkurranse).")
+        lines.append(
+            f"Ikke relevant ({PROCEDURE_MAP.get(procedure, procedure)})."
+            if procedure != "Open"
+            else "Ikke relevant (åpen anbudskonkurranse)."
+        )
     lines.append("")
 
     return "\n".join(lines)
 
 
-def _section_bids_in_evaluation(activities: list[dict]) -> str:
+def _section_award_criteria(eforms=None) -> str:
+    lines = []
+    lines.append("## Tildelingskriterier")
+    lines.append("")
+
+    if not eforms:
+        lines.append(
+            "<!-- MANUELT: Fyll inn tildelingskriterier fra konkurransegrunnlaget -->"
+        )
+        lines.append("")
+        return "\n".join(lines)
+
+    criteria = eforms.get("award_criteria") or []
+    if not criteria:
+        lines.append(
+            "<!-- MANUELT: Ingen tildelingskriterier funnet i kunngjøringen — fyll inn manuelt -->"
+        )
+        lines.append("")
+        return "\n".join(lines)
+
+    lines.append("| Kriterium | Type | Vekt |")
+    lines.append("| --- | --- | --- |")
+    for c in criteria:
+        name = c.get("name") or "Ukjent"
+        ctype = c.get("type") or ""
+        weight = c.get("weight_percent")
+        weight_str = f"{weight:.0f} %" if weight is not None else "<!-- MANUELT -->"
+        lines.append(f"| {name} | {ctype} | {weight_str} |")
+    lines.append("")
+
+    env = eforms.get("env_criterion_code")
+    if env:
+        env_labels = {
+            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (§ 7-9 (2)–(3))",
+            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (§ 7-9 (4))",
+            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (§ 7-9 (5))",
+        }
+        label = env_labels.get(env, env)
+        lines.append(f"**Miljøkrav FOA § 7-9:** {label}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _section_bids_in_evaluation(
+    activities: list[dict], org_lookup: dict[str, str]
+) -> str:
     lines = []
     lines.append("## Tilbud som er med i tildelingsvurderingen")
     lines.append("")
@@ -405,22 +494,26 @@ def _section_bids_in_evaluation(activities: list[dict]) -> str:
     rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
     withdrawals = get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
 
-    rejected_names = {
-        (r.get("organization") or {}).get("name", "").lower()
-        for r in rejections
+    rejected_ids = {(r.get("organization") or {}).get("id") for r in rejections} - {
+        None
     }
-    withdrawn_names = {
-        (w.get("organization") or {}).get("name", "").lower()
-        for w in withdrawals
+    withdrawn_ids = {(w.get("organization") or {}).get("id") for w in withdrawals} - {
+        None
     }
-    excluded = rejected_names | withdrawn_names
+    excluded_ids = rejected_ids | withdrawn_ids
+    excluded_names = {
+        get_org_name(r, org_lookup).lower() for r in [*rejections, *withdrawals]
+    }
 
     evaluated = []
     for s in submissions:
-        org = s.get("organization") or {}
-        name = org.get("name") or "Ukjent"
-        if name.lower() not in excluded:
-            evaluated.append(name)
+        org_id = (s.get("organization") or {}).get("id")
+        if org_id and org_id in excluded_ids:
+            continue
+        name = get_org_name(s, org_lookup)
+        if name.lower() in excluded_names:
+            continue
+        evaluated.append(name)
 
     lines.append("| Tilbuds-/løpenummer | Leverandørenes navn |")
     lines.append("| --- | --- |")
@@ -438,7 +531,9 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     lines = []
     lines.append("## Det (de) valgte tilbud med begrunnelse og kontraktsverdi")
     lines.append("")
-    lines.append("<!-- MANUELT: Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. API gir kun tenderIds, ikke leverandørnavn eller begrunnelse. -->")
+    lines.append(
+        "<!-- MANUELT: Fyll inn navn på valgt leverandør, tildelingsbegrunnelse og kontraktsverdi. API gir kun tenderIds, ikke leverandørnavn eller begrunnelse. -->"
+    )
     lines.append("")
 
     total_value = procurement.get("contracts_total_value_amount")
@@ -447,7 +542,9 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     if total_value:
         lines.append(f"**Kontraktsverdi:** {fmt_currency(total_value, currency)}")
     elif estimated:
-        lines.append(f"**Kontraktsverdi:** {fmt_currency(estimated, currency)} (estimert verdi)")
+        lines.append(
+            f"**Kontraktsverdi:** {fmt_currency(estimated, currency)} (estimert verdi)"
+        )
     else:
         lines.append("**Kontraktsverdi:** <!-- MANUELT -->")
     lines.append("")
@@ -457,7 +554,9 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     lines.append("| Felt | Beskrivelse |")
     lines.append("| --- | --- |")
     if award_letters:
-        lines.append("| **Meddelelsesbrev sendt:** | <!-- MANUELT: areAwardLettersSent=True, men dato ikke i API --> |")
+        lines.append(
+            "| **Meddelelsesbrev sendt:** | <!-- MANUELT: areAwardLettersSent=True, men dato ikke i API --> |"
+        )
     else:
         lines.append("| **Meddelelsesbrev sendt:** | <!-- MANUELT --> |")
     lines.append("| **Karensperiodens utløp:** | <!-- MANUELT --> |")
@@ -471,7 +570,9 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     else:
         award_activities = get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
         if award_activities:
-            lines.append(f"**Tildelingsbeslutning:** {fmt_date(award_activities[0].get('date'))}")
+            lines.append(
+                f"**Tildelingsbeslutning:** {fmt_date(award_activities[0].get('date'))}"
+            )
         else:
             lines.append("**Tildelingsbeslutning:** <!-- MANUELT -->")
     lines.append("")
@@ -488,15 +589,23 @@ def _section_framework_agreement(procurement: dict) -> str:
     if not is_framework:
         lines.append("Ikke relevant (dette er ikke en rammeavtale).")
     else:
-        max_participants = procurement.get("framework_agreement_maximum_participants")
-        if max_participants and int(max_participants) == 1:
+        max_participants = safe_int(
+            procurement.get("framework_agreement_maximum_participants")
+        )
+        if max_participants is not None and max_participants == 1:
             lines.append("- **Rammeavtale med en leverandør?** Ja")
             lines.append("- **Rammeavtale med flere leverandører?** Nei")
-        elif max_participants and int(max_participants) > 1:
+        elif max_participants is not None and max_participants > 1:
             lines.append("- **Rammeavtale med en leverandør?** Nei")
-            lines.append(f"- **Rammeavtale med flere leverandører?** Ja (maks {max_participants} deltakere)")
-            lines.append("- Ved rammeavtale med flere leverandører; Hvilken fordelingsmekanisme skal benyttes? <!-- MANUELT -->")
-            lines.append("- Ved minikonkurranse som fordelingsmekanisme; Hvilke kriterier skal brukes? <!-- MANUELT -->")
+            lines.append(
+                f"- **Rammeavtale med flere leverandører?** Ja (maks {max_participants} deltakere)"
+            )
+            lines.append(
+                "- Ved rammeavtale med flere leverandører; Hvilken fordelingsmekanisme skal benyttes? <!-- MANUELT -->"
+            )
+            lines.append(
+                "- Ved minikonkurranse som fordelingsmekanisme; Hvilke kriterier skal brukes? <!-- MANUELT -->"
+            )
         else:
             lines.append("- **Rammeavtale med en leverandør?** <!-- MANUELT -->")
             lines.append("- **Rammeavtale med flere leverandører?** <!-- MANUELT -->")
@@ -509,25 +618,38 @@ def _section_other(procurement: dict) -> str:
     lines = []
     lines.append("## Andre opplysninger og avslutning")
     lines.append("")
-    lines.append("**Hvis relevant, hvilke deler av kontrakten valgte leverandør planlegger at underleverandører skal utføre, og underleverandørens navn, forutsatt at opplysningene er kjent:**")
+    lines.append(
+        "**Hvis relevant, hvilke deler av kontrakten valgte leverandør planlegger at underleverandører skal utføre, og underleverandørens navn, forutsatt at opplysningene er kjent:**"
+    )
     lines.append("<!-- MANUELT -->")
     lines.append("")
 
     is_cancelled = procurement.get("isCancelled")
     if is_cancelled:
-        reason = procurement.get("cancelingReason") or "<!-- MANUELT: begrunnelse mangler -->"
-        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**")
+        reason = (
+            procurement.get("cancelingReason")
+            or "<!-- MANUELT: begrunnelse mangler -->"
+        )
+        lines.append(
+            "**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**"
+        )
         lines.append(reason)
     else:
-        lines.append("**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**")
+        lines.append(
+            "**Hvis relevant, begrunnelse for hvorfor konkurransen avlyses, jf. FOA \u00a7 25-4:**"
+        )
         lines.append("Ikke relevant (konkurransen ble ikke avlyst).")
     lines.append("")
 
-    lines.append("**Hvis relevant, opplysninger om tilfeller av inhabilitet eller konkurransevridning som følge av dialog med leverandørene, og eventuelle avhjelpende tiltak som er gjennomført:**")
+    lines.append(
+        "**Hvis relevant, opplysninger om tilfeller av inhabilitet eller konkurransevridning som følge av dialog med leverandørene, og eventuelle avhjelpende tiltak som er gjennomført:**"
+    )
     lines.append("<!-- MANUELT -->")
     lines.append("")
 
-    lines.append("**Andre opplysninger, vesentlige forhold eller viktige beslutninger som er av betydning for konkurransen:**")
+    lines.append(
+        "**Andre opplysninger, vesentlige forhold eller viktige beslutninger som er av betydning for konkurransen:**"
+    )
     lines.append("<!-- MANUELT -->")
     lines.append("")
 
@@ -544,46 +666,58 @@ def _section_data_quality(procurement: dict, activities: list[dict]) -> str:
     doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
     publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
 
-    submission_deadline = parse_submission_deadline(procurement)
-    conversations = get_activities_by_action(activities, "CONVERSATION_MARKED_COMPLETED")
-    post_deadline = []
-    if submission_deadline:
-        for c in conversations:
-            try:
-                dt = datetime.fromisoformat((c.get("date") or "").replace("Z", "+00:00"))
-                if dt > submission_deadline:
-                    post_deadline.append(c)
-            except (ValueError, TypeError):
-                pass
+    post_deadline, _ = filter_post_deadline_conversations(procurement, activities)
 
     lines.append("| Seksjon | Kilde | Merknad |")
     lines.append("| --- | --- | --- |")
     lines.append("| Generell informasjon | API | Komplett |")
-    lines.append(f"| Tidspunkt for mottak | API (SUBMIT_BID) | {'Komplett' if submissions else 'Ingen tilbud registrert'} |")
+    lines.append(
+        f"| Tidspunkt for mottak | API (SUBMIT_BID) | {'Komplett' if submissions else 'Ingen tilbud registrert'} |"
+    )
     lines.append("| Prosedyretype | API (procedure) | Komplett |")
-    lines.append(f"| Kunngjøring | API {'(DOFFIN_NOTICE)' if doffin or publish else ''} | {'Komplett' if doffin or publish else 'Trenger bekreftelse'} |")
+    lines.append(
+        f"| Kunngjøring | API {'(DOFFIN_NOTICE)' if doffin or publish else ''} | {'Komplett' if doffin or publish else 'Trenger bekreftelse'} |"
+    )
 
     if rejections:
-        lines.append(f"| Avvisning (formalfeil) | API ({len(rejections)} hendelser) | Trenger manuell klassifisering |")
+        lines.append(
+            f"| Avvisning (formalfeil) | API ({len(rejections)} hendelser) | Trenger manuell klassifisering |"
+        )
     else:
-        lines.append("| Avvisning (formalfeil) | API (ingen hendelser) | Trenger bekreftelse |")
+        lines.append(
+            "| Avvisning (formalfeil) | API (ingen hendelser) | Trenger bekreftelse |"
+        )
 
     lines.append("| Kvalifikasjonsvurdering | **Manuelt** | Ikke i API |")
 
     if rejections:
-        lines.append(f"| Avvisning av leverandører | API ({len(rejections)} hendelser) | Begrunnelse mangler |")
+        lines.append(
+            f"| Avvisning av leverandører | API ({len(rejections)} hendelser) | Begrunnelse mangler |"
+        )
     else:
-        lines.append("| Avvisning av leverandører | API (ingen hendelser) | Trenger bekreftelse |")
+        lines.append(
+            "| Avvisning av leverandører | API (ingen hendelser) | Trenger bekreftelse |"
+        )
 
-    lines.append("| Avvisning av tilbud | API (ingen hendelser) | Trenger bekreftelse |")
+    lines.append(
+        "| Avvisning av tilbud | API (ingen hendelser) | Trenger bekreftelse |"
+    )
 
     if post_deadline:
-        lines.append(f"| Ettersending/avklaring | API ({len(post_deadline)} meldinger etter frist) | Innhold mangler |")
+        lines.append(
+            f"| Ettersending/avklaring | API ({len(post_deadline)} meldinger etter frist) | Innhold mangler |"
+        )
     else:
-        lines.append("| Ettersending/avklaring | API (ingen hendelser) | Trenger bekreftelse |")
+        lines.append(
+            "| Ettersending/avklaring | API (ingen hendelser) | Trenger bekreftelse |"
+        )
 
-    lines.append(f"| Tilbud i vurdering | API (SUBMIT_BID) | {'Komplett' if submissions else 'Ingen'} |")
-    lines.append("| Valgte tilbud + begrunnelse | **Manuelt** | API har kun tenderIds |")
+    lines.append(
+        f"| Tilbud i vurdering | API (SUBMIT_BID) | {'Komplett' if submissions else 'Ingen'} |"
+    )
+    lines.append(
+        "| Valgte tilbud + begrunnelse | **Manuelt** | API har kun tenderIds |"
+    )
     lines.append("| Meddelelsesbrev/karens | **Manuelt** | Kun flag, ikke datoer |")
     lines.append("| Delkontrakter (begrunnelse) | **Manuelt** | Ikke i API |")
     lines.append("| Underleverandører | **Manuelt** | Ikke i API |")
@@ -594,12 +728,14 @@ def _section_data_quality(procurement: dict, activities: list[dict]) -> str:
 
 # -- Main generator ----------------------------------------------------------
 
-def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
+
+def generate_protokoll(procurement: dict, activities: list[dict], eforms=None) -> str:
     """Generate a complete anskaffelsesprotokoll in markdown.
 
     Args:
         procurement: Full procurement object from Artifik API.
         activities: List of activity objects from get_procurement_activities.
+        eforms: Optional eForms data from Doffin for enrichment.
 
     Returns:
         Markdown string with the protocol.
@@ -607,12 +743,15 @@ def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
     procedure = procurement.get("procedure") or ""
     seq_id = procurement.get("sequenceId") or procurement.get("name") or "Ukjent"
     today = datetime.now().strftime("%Y-%m-%d")
+    org_lookup = build_org_lookup(activities)
 
     sections = []
 
     sections.append(f"# ANSKAFFELSESPROTOKOLL — {seq_id}")
     sections.append("")
-    sections.append(f"> **Generert fra API-data {today}.** Felter markert med `<!-- MANUELT -->` krever manuell utfylling.")
+    sections.append(
+        f"> **Generert fra API-data {today}.** Felter markert med `<!-- MANUELT -->` krever manuell utfylling."
+    )
     sections.append("")
 
     sections.append(_section_general_info(procurement, activities))
@@ -623,7 +762,7 @@ def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
     sections.append("---\n")
     sections.append(_section_preliminary_qualification(procedure))
     sections.append("---\n")
-    sections.append(_section_qualification())
+    sections.append(_section_qualification(eforms))
     sections.append("---\n")
     sections.append(_section_supplier_rejection(activities))
     sections.append("---\n")
@@ -637,7 +776,9 @@ def generate_protokoll(procurement: dict, activities: list[dict]) -> str:
     sections.append("---\n")
     sections.append(_section_dialog(procedure))
     sections.append("---\n")
-    sections.append(_section_bids_in_evaluation(activities))
+    sections.append(_section_award_criteria(eforms))
+    sections.append("---\n")
+    sections.append(_section_bids_in_evaluation(activities, org_lookup))
     sections.append("---\n")
     sections.append(_section_award(procurement, activities))
     sections.append("---\n")
