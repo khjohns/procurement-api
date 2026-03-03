@@ -205,6 +205,118 @@ Linje 2 viser TEs mulige handlinger direkte i kortet.
 
 ---
 
+## Hendelseslogg — revisjonshistorikk i sporkort
+
+Spor med 3+ hendelser får en **hendelsesteller** i headeren og en **ekspanderbar hendelseslogg** som åpnes in-place. Designbeslutningen: historikk er viktig men sekundært — den skal ikke forstyrre den tette 2–3-linjers scanning, men være tilgjengelig med ett klikk.
+
+### Hendelsesteller
+
+I sporkort-headeren, mellom spacer og handlingsknapp:
+
+```
+... ⚠ Varslet sent ───── 5▸ ─── → Svar ──┐
+```
+
+- **Plassering:** Header-linje, etter spacer, før handlingsknapp
+- **Format:** tall + chevron (▸), --font-data, 10px
+- **Farge:** --ink-ghost normalt, --ink-muted ved hover
+- **Bakgrunn:** transparent normalt, --wire ved hover og expanded
+- **Padding:** 1px 6px, --r-sm radius
+- **Chevron:** roterer 90° ved expand (▸ → ▾)
+
+### Hendelseslogg (ekspandert)
+
+Klikk hendelsesteller → kortet ekspanderer med full hendelsesliste i en innfelt area:
+
+```
+┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ── 5▾ ── → Svar ──┐
+│ 45d krevd · Rev. 2 · Ny dato 15.08.26 · Frist 13d                          │
+│ i går spesifisert · 15.02 revidert · 15.01 varslet                         │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │  ↻  02.03  Spesifiserte krav (45d) Rev. 2                          TE  │ │
+│ │  →  25.02  La til dokumentasjon for forsinkelse                    TE  │ │
+│ │  ↻  15.02  Reviderte forespørsel (30d → 45d) Rev. 1               TE  │ │
+│ │  →  20.01  Forespurte fristforlengelse (30d)                      TE  │ │
+│ │  ⚑  15.01  Varslet mulig fristforlengelse                         TE  │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Ekspandert korttilstand:**
+- Bakgrunn: --felt-raised (subtilt løft)
+- Border: --wire-strong
+
+**Hendelseslogg-area:**
+- Bakgrunn: --canvas (innfelt, dybde gjennom overflate)
+- Border-top: 1px solid --wire (separator fra kortinnhold)
+- Margin: sp-2 negativ sp-3 (strekker til kortkant)
+- Radius: 0 0 r-md r-md (avrundet bunn)
+
+**Hendelseslinje-anatomi:**
+
+```
+[ikon 14px] [dato 38px mono] [tekst flex] [rev 9px ghost] [part 20px mono]
+```
+
+| Kolonne | Font | Størrelse | Farge |
+|---|---|---|---|
+| Ikon | — | 11px | --ink-muted (→ ⚑), --vekt-dim (↻), --score-high (◇), --score-low (✕) |
+| Dato | --font-data | 10px | --ink-muted |
+| Tekst | --font-ui | 11px | --ink-secondary |
+| Rev. | --font-data | 9px | --ink-ghost |
+| Part | --font-data | 10px | --ink-ghost |
+
+**Hendelsesikoner:**
+
+| Ikon | Betydning | Farge |
+|---|---|---|
+| → | Sendt/krevd (initial handling) | --ink-muted |
+| ⚑ | Varslet | --ink-muted |
+| ↻ | Revidert | --vekt-dim |
+| ◇ | Svar fra motpart | --score-high |
+| ✓ | Godkjent/oppdatert | --score-high |
+| ✕ | Trukket/avslått | --score-low |
+
+### Revisjonsinformasjon i data-linjen
+
+Spor med revisjoner viser `Rev. N` i data-linjen:
+
+```
+45d krevd · Rev. 2 · Ny dato 15.08.26 · Frist 13d
+```
+
+Og i mini-historikken:
+```
+i går spesifisert · 15.02 revidert · 15.01 varslet
+```
+
+"Revidert" erstatter den fulle hendelsesteksten i mini-historikken — kortere, tettere.
+
+### Interaksjon
+
+- **Klikk hendelsesteller:** Ekspanderer/kollapser hendelseslogg (stopPropagation)
+- **Klikk kortoverflate:** Navigerer til spordetalj (uendret)
+- **Accordion:** Kun ett kort ekspandert om gangen
+- **Escape:** Kollapser åpen hendelseslogg før tilbake-navigasjon
+- **Animasjon:** max-height 200ms ease-out
+- **Terskel:** Spor med <3 hendelser viser ingen hendelsesteller (mini-historikken dekker alt)
+
+### Spordetalj: Krav-tidslinje med revisjoner
+
+I spordetalj-visningen vises full historikk i `krav-tidslinje` under det read-only kravet:
+
+```
+  02.03   TE spesifiserte krav (45d) · Rev. 2
+  25.02   TE la til dokumentasjon
+  15.02   TE reviderte forespørsel (30d → 45d) · Rev. 1
+  20.01   TE forespurte fristforlengelse (30d)
+  15.01   TE varslet mulig fristforlengelse
+```
+
+Krav-headeren viser revisjonsmerke: `Krav fra TE — Veidekke · Rev. 2`
+
+---
+
 ## Tidslinjespinen
 
 Vertikal linje som binder sporkortene kronologisk:
@@ -500,13 +612,25 @@ Header-linje:
 
 Data-linje:
   --font-data, 12px, --ink · prikk-separert
+  Revisjonsmerke: "Rev. N" i vanlig tekst
 
 Historikk-linje:
-  --font-ui, 11px, --ink-muted · prikk-separert
+  --font-ui, 10px, --ink-muted · prikk-separert · tracking 0.01em
+
+Hendelsesteller:
+  --font-data, 10px, --ink-ghost → --ink-muted ved hover
+  padding: 1px 6px, --r-sm, chevron roterer 90° ved expand
+
+Hendelseslogg:
+  bakgrunn: --canvas (innfelt)
+  border-top: 1px solid --wire
+  linje: [ikon 14px] [dato 38px mono] [tekst flex] [rev 9px] [part 20px]
+  ikoner: → ⚑ (muted), ↻ (vekt-dim), ◇ ✓ (high), ✕ (low)
 
 Tidslinjespine:
-  linje: 1px solid --wire
+  linje: 1px solid --wire-strong
   dato-merke: --ink-muted, 11px, uppercase, tracking 0.06em
+  dato-punkt: 6px, --ink-muted
 ```
 
 ---
@@ -523,5 +647,8 @@ Tidslinjespine:
 | Rose bakgrunn på hele kortet ved passivitet | Overvinner romlig posisjon — kritisk synlig uansett |
 | Sidebar: FRISTER + VARSLING, ikke SPOR | SPOR ville duplisert tidslinjen |
 | Handlingsknapp bare på "din tur" | Ingen støy fra motpartens handlinger |
+| Hendelseslogg i sporkort, ikke separat visning | Revisjonshistorikk tilgjengelig in-place uten kontekstbytte |
+| Hendelsesteller som terskel (3+ hendelser) | Mini-historikk dekker 1–2 hendelser; mer krever ekspandering |
+| Rev. N i data-linje | Revisjonsstatus synlig ved scanning uten å åpne logg |
 | "Ingen handlinger" null-tilstand | Rask avfeiing for saker som ikke krever oppmerksomhet |
 | "Du" i stedet for rollenavn | Personlig perspektiv |
