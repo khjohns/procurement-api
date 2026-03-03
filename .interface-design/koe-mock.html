@@ -589,66 +589,70 @@
 
     /* ================================================================
        HENDELSESLOGG — expandable event history in sporkort
+       Visible for 4+ events. Toggle bar is always shown in the
+       inset area; events expand below it on click.
        ================================================================ */
 
-    /* Hendelsesteller: event count + chevron toggle */
-    .hendelsesteller {
-      font-family: var(--font-data);
-      font-size: 10px;
-      color: var(--ink-ghost);
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 6px;
-      border-radius: var(--r-sm);
-      cursor: pointer;
-      transition: color 100ms ease-out, background 100ms ease-out;
-      user-select: none;
-    }
-    .hendelsesteller:hover {
-      color: var(--ink-muted);
-      background: var(--wire);
-    }
-    .hendelsesteller .chevron {
-      font-size: 8px;
-      transition: transform 150ms ease-out;
-      display: inline-block;
-    }
-    .sporkort.expanded .hendelsesteller {
-      color: var(--ink-muted);
-      background: var(--wire);
-    }
-    .sporkort.expanded .hendelsesteller .chevron {
-      transform: rotate(90deg);
-    }
-
-    /* Hendelseslogg: collapsible event list */
-    .hendelseslogg {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 200ms ease-out;
-    }
-    .sporkort.expanded .hendelseslogg {
-      max-height: 280px;
-    }
-
-    .hendelseslogg-inner {
+    /* Inset area: always visible when present */
+    .hendelseslogg-area {
       background: var(--canvas);
       border-top: 1px solid var(--wire);
       margin: var(--sp-2) calc(-1 * var(--sp-3));
       margin-bottom: calc(-1 * var(--sp-2));
-      padding: var(--sp-2) var(--sp-3);
       border-radius: 0 0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px);
+      cursor: default;
     }
-    .sporkort.handling .hendelseslogg-inner {
+    .sporkort.handling .hendelseslogg-area {
       margin-left: calc(-1 * var(--sp-3) + 2px);
     }
 
+    /* Toggle bar: always visible */
+    .hendelseslogg-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-1) var(--sp-3);
+      cursor: pointer;
+      transition: background 100ms ease-out;
+      user-select: none;
+    }
+    .hendelseslogg-bar:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .hlb-tekst {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--ink-muted);
+    }
+    .hlb-chevron {
+      font-size: 8px;
+      color: var(--ink-ghost);
+      transition: transform 150ms ease-out;
+      display: inline-block;
+    }
+    .sporkort.expanded .hlb-chevron {
+      transform: rotate(90deg);
+    }
+    .sporkort.expanded .hendelseslogg-bar {
+      border-bottom: 1px solid var(--wire);
+    }
+
+    /* Event list: collapsed by default */
+    .hendelseslogg-events {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 200ms ease-out;
+    }
+    .sporkort.expanded .hendelseslogg-events {
+      max-height: 280px;
+    }
+
+    /* Individual event lines */
     .hl-hendelse {
       display: flex;
       align-items: baseline;
       gap: var(--sp-2);
-      padding: 2px 0;
+      padding: 2px var(--sp-3);
       font-size: 11px;
     }
     .hl-hendelse + .hl-hendelse {
@@ -1305,12 +1309,11 @@
           <div class="tl-segment">
             <div class="tl-dato">i dag</div>
             <div class="tl-innhold">
-              <div class="sporkort handling" data-spor="vederlag" id="kort-vederlag" onclick="navigerTilSpor('vederlag')">
+              <div class="sporkort handling" data-spor="vederlag" onclick="navigerTilSpor('vederlag')">
                 <div class="sporkort-header">
                   <span class="spor-navn">VEDERLAG</span>
                   <span class="status-badge nytt">Nytt krav</span>
                   <span class="sporkort-spacer"></span>
-                  <span class="hendelsesteller" onclick="event.stopPropagation(); toggleLogg('vederlag')">3<span class="chevron">▸</span></span>
                   <button class="handling-btn" onclick="event.stopPropagation(); navigerTilSpor('vederlag')">Svar →</button>
                 </div>
                 <div class="sporkort-data">
@@ -1318,28 +1321,6 @@
                 </div>
                 <div class="sporkort-historikk">
                   i dag revidert<span class="separator">·</span>01.03 krevd<span class="separator">·</span>28.02 varslet
-                </div>
-                <div class="hendelseslogg" id="logg-vederlag">
-                  <div class="hendelseslogg-inner">
-                    <div class="hl-hendelse">
-                      <span class="hl-ikon revisjon">↻</span>
-                      <span class="hl-dato">03.03</span>
-                      <span class="hl-tekst">Reviderte krav (1,8M → 2,4M)<span class="hl-rev">Rev. 1</span></span>
-                      <span class="hl-part">TE</span>
-                    </div>
-                    <div class="hl-hendelse">
-                      <span class="hl-ikon">→</span>
-                      <span class="hl-dato">01.03</span>
-                      <span class="hl-tekst">Sendte vederlagskrav (1 800 000 kr)</span>
-                      <span class="hl-part">TE</span>
-                    </div>
-                    <div class="hl-hendelse">
-                      <span class="hl-ikon">⚑</span>
-                      <span class="hl-dato">28.02</span>
-                      <span class="hl-tekst">Varslet vederlagskrav</span>
-                      <span class="hl-part">TE</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1357,7 +1338,6 @@
                     <span class="v-ikon warn">⚠</span> Varslet sent
                   </span>
                   <span class="sporkort-spacer"></span>
-                  <span class="hendelsesteller" onclick="event.stopPropagation(); toggleLogg('frist')">5<span class="chevron">▸</span></span>
                   <button class="handling-btn" onclick="event.stopPropagation(); navigerTilSpor('frist')">Svar →</button>
                 </div>
                 <div class="sporkort-data">
@@ -1366,8 +1346,13 @@
                 <div class="sporkort-historikk">
                   i går spesifisert<span class="separator">·</span>15.02 revidert<span class="separator">·</span>15.01 varslet
                 </div>
-                <div class="hendelseslogg" id="logg-frist">
-                  <div class="hendelseslogg-inner">
+                <!-- Hendelseslogg: inset area with visible toggle bar -->
+                <div class="hendelseslogg-area" onclick="event.stopPropagation();">
+                  <div class="hendelseslogg-bar" onclick="toggleLogg('frist')">
+                    <span class="hlb-tekst">5 hendelser</span>
+                    <span class="hlb-chevron">▸</span>
+                  </div>
+                  <div class="hendelseslogg-events">
                     <div class="hl-hendelse">
                       <span class="hl-ikon revisjon">↻</span>
                       <span class="hl-dato">02.03</span>
