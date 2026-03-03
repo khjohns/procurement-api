@@ -207,50 +207,58 @@ Linje 2 viser TEs mulige handlinger direkte i kortet.
 
 ## Hendelseslogg — revisjonshistorikk i sporkort
 
-Spor med 3+ hendelser får en **hendelsesteller** i headeren og en **ekspanderbar hendelseslogg** som åpnes in-place. Designbeslutningen: historikk er viktig men sekundært — den skal ikke forstyrre den tette 2–3-linjers scanning, men være tilgjengelig med ett klikk.
+### Terskelregel
 
-### Hendelsesteller
+- **≤3 hendelser:** Mini-historikk-linjen dekker alt. Ingen ekspandering nødvendig. Eksempel: "i dag revidert · 01.03 krevd · 28.02 varslet" — tre hendelser, fullt synlige.
+- **4+ hendelser:** Mini-historikk viser 2–3 nøkkelhendelser. En innfelt **toggle-bar** med "N hendelser" vises under historikk-linjen. Klikk ekspanderer full hendelseslogg.
 
-I sporkort-headeren, mellom spacer og handlingsknapp:
+Designbeslutningen: historikk er viktig men sekundært. ≤3 hendelser er allerede kompakt. 4+ krever et nivå til — men det nivået skal være synlig og tilgjengelig, ikke gjemt i headeren.
+
+### Toggle-bar (innfelt)
+
+Under mini-historikk-linjen, som del av en innfelt --canvas area:
 
 ```
-... ⚠ Varslet sent ───── 5▸ ─── → Svar ──┐
+┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ────── → Svar ──┐
+│ 45d krevd · Rev. 2 · Ny dato 15.08.26 · Frist 13d                       │
+│ i går spesifisert · 15.02 revidert · 15.01 varslet                      │
+│ ┌──── 5 hendelser                                                  ▸ ┐  │
+│ └────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Plassering:** Header-linje, etter spacer, før handlingsknapp
-- **Format:** tall + chevron (▸), --font-data, 10px
-- **Farge:** --ink-ghost normalt, --ink-muted ved hover
-- **Bakgrunn:** transparent normalt, --wire ved hover og expanded
-- **Padding:** 1px 6px, --r-sm radius
+- **Plassering:** Under historikk-linjen, i innfelt area (--canvas bakgrunn)
+- **Format:** "N hendelser" (--font-data, 10px, --ink-muted) + chevron (▸) høyrejustert
+- **Bakgrunn:** --canvas (innfelt) — del av samme overflate som eventlisten
+- **Border-top:** 1px solid --wire (separator fra kortinnhold)
+- **Margin:** sp-2 negativ sp-3 (strekker til kortkant), negativ sp-2 bunn
+- **Radius:** 0 0 r-md r-md (avrundet bunn)
+- **Hover:** rgba(255,255,255,0.03) bakgrunn
 - **Chevron:** roterer 90° ved expand (▸ → ▾)
 
 ### Hendelseslogg (ekspandert)
 
-Klikk hendelsesteller → kortet ekspanderer med full hendelsesliste i en innfelt area:
+Klikk toggle-bar → hendelseslisten åpnes under baren i samme innfelte area:
 
 ```
-┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ── 5▾ ── → Svar ──┐
-│ 45d krevd · Rev. 2 · Ny dato 15.08.26 · Frist 13d                          │
-│ i går spesifisert · 15.02 revidert · 15.01 varslet                         │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │  ↻  02.03  Spesifiserte krav (45d) Rev. 2                          TE  │ │
-│ │  →  25.02  La til dokumentasjon for forsinkelse                    TE  │ │
-│ │  ↻  15.02  Reviderte forespørsel (30d → 45d) Rev. 1               TE  │ │
-│ │  →  20.01  Forespurte fristforlengelse (30d)                      TE  │ │
-│ │  ⚑  15.01  Varslet mulig fristforlengelse                         TE  │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ────── → Svar ──┐
+│ 45d krevd · Rev. 2 · Ny dato 15.08.26 · Frist 13d                       │
+│ i går spesifisert · 15.02 revidert · 15.01 varslet                      │
+│ ┌──── 5 hendelser                                                  ▾ ┐  │
+│ │ ─────────────────────────────────────────────────────────────────── │  │
+│ │  ↻  02.03  Spesifiserte krav (45d) Rev. 2                     TE  │  │
+│ │  →  25.02  La til dokumentasjon for forsinkelse                TE  │  │
+│ │  ↻  15.02  Reviderte forespørsel (30d → 45d) Rev. 1           TE  │  │
+│ │  →  20.01  Forespurte fristforlengelse (30d)                  TE  │  │
+│ │  ⚑  15.01  Varslet mulig fristforlengelse                     TE  │  │
+│ └────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Ekspandert korttilstand:**
 - Bakgrunn: --felt-raised (subtilt løft)
 - Border: --wire-strong
-
-**Hendelseslogg-area:**
-- Bakgrunn: --canvas (innfelt, dybde gjennom overflate)
-- Border-top: 1px solid --wire (separator fra kortinnhold)
-- Margin: sp-2 negativ sp-3 (strekker til kortkant)
-- Radius: 0 0 r-md r-md (avrundet bunn)
+- Toggle-bar: border-bottom 1px --wire (separator mot hendelsene)
 
 **Hendelseslinje-anatomi:**
 
@@ -294,12 +302,12 @@ i går spesifisert · 15.02 revidert · 15.01 varslet
 
 ### Interaksjon
 
-- **Klikk hendelsesteller:** Ekspanderer/kollapser hendelseslogg (stopPropagation)
+- **Klikk toggle-bar:** Ekspanderer/kollapser hendelseslisten (stopPropagation på hele area)
 - **Klikk kortoverflate:** Navigerer til spordetalj (uendret)
 - **Accordion:** Kun ett kort ekspandert om gangen
 - **Escape:** Kollapser åpen hendelseslogg før tilbake-navigasjon
 - **Animasjon:** max-height 200ms ease-out
-- **Terskel:** Spor med <3 hendelser viser ingen hendelsesteller (mini-historikken dekker alt)
+- **Terskel:** ≤3 hendelser → ingen toggle-bar. 4+ → toggle-bar + ekspanderbar logg
 
 ### Spordetalj: Krav-tidslinje med revisjoner
 
@@ -617,14 +625,13 @@ Data-linje:
 Historikk-linje:
   --font-ui, 10px, --ink-muted · prikk-separert · tracking 0.01em
 
-Hendelsesteller:
-  --font-data, 10px, --ink-ghost → --ink-muted ved hover
-  padding: 1px 6px, --r-sm, chevron roterer 90° ved expand
-
-Hendelseslogg:
+Hendelseslogg (innfelt area, 4+ hendelser):
   bakgrunn: --canvas (innfelt)
   border-top: 1px solid --wire
-  linje: [ikon 14px] [dato 38px mono] [tekst flex] [rev 9px] [part 20px]
+  toggle-bar: "N hendelser" --font-data 10px --ink-muted, chevron 8px --ink-ghost
+  toggle-bar hover: rgba(255,255,255,0.03)
+  expanded: border-bottom 1px --wire mellom bar og events
+  events: [ikon 14px] [dato 38px mono] [tekst flex] [rev 9px] [part 20px]
   ikoner: → ⚑ (muted), ↻ (vekt-dim), ◇ ✓ (high), ✕ (low)
 
 Tidslinjespine:
@@ -648,7 +655,7 @@ Tidslinjespine:
 | Sidebar: FRISTER + VARSLING, ikke SPOR | SPOR ville duplisert tidslinjen |
 | Handlingsknapp bare på "din tur" | Ingen støy fra motpartens handlinger |
 | Hendelseslogg i sporkort, ikke separat visning | Revisjonshistorikk tilgjengelig in-place uten kontekstbytte |
-| Hendelsesteller som terskel (3+ hendelser) | Mini-historikk dekker 1–2 hendelser; mer krever ekspandering |
+| ≤3 hendelser alltid synlig, 4+ med toggle-bar | Mini-historikk dekker ≤3; toggle-bar synlig i innfelt area for 4+ |
 | Rev. N i data-linje | Revisjonsstatus synlig ved scanning uten å åpne logg |
 | "Ingen handlinger" null-tilstand | Rask avfeiing for saker som ikke krever oppmerksomhet |
 | "Du" i stedet for rollenavn | Personlig perspektiv |
