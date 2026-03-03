@@ -76,7 +76,7 @@
     }
     .separator {
       color: var(--ink-ghost);
-      margin: 0 var(--sp-1);
+      margin: 0 6px;
       user-select: none;
     }
     .seksjon-label {
@@ -137,17 +137,14 @@
       to { opacity: 1; }
     }
 
-    /* === ROLE INDICATOR === */
+    /* === ROLE INDICATOR (anchored in sidebar) === */
     .rolle-indikator {
-      position: fixed;
-      top: var(--sp-3);
-      right: var(--sp-4);
       font-size: 10px;
       font-weight: 500;
       letter-spacing: 0.04em;
       color: var(--ink-muted);
-      z-index: 200;
       user-select: none;
+      margin-bottom: var(--sp-4);
     }
     .rolle-indikator span {
       color: var(--ink-secondary);
@@ -308,12 +305,12 @@
     }
     .handlingsbanner.kritisk {
       color: var(--score-low);
-      background: linear-gradient(to right, rgba(196, 88, 88, 0.08), var(--canvas) 70%);
+      background: rgba(196, 88, 88, 0.06);
       border-left: 2px solid var(--score-low);
     }
     .handlingsbanner.advarsel {
       color: var(--vekt);
-      background: linear-gradient(to right, var(--vekt-bg), var(--canvas) 70%);
+      background: var(--vekt-bg);
       border-left: 2px solid var(--vekt);
     }
     .handlingsbanner.ingen {
@@ -335,7 +332,7 @@
       top: 6px;
       bottom: 0;
       width: 1px;
-      background: var(--wire);
+      background: var(--wire-strong);
     }
 
     /* Tidslinje segments */
@@ -367,10 +364,10 @@
       left: -40px;
       top: 50%;
       transform: translateY(-50%);
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: var(--ink-ghost);
+      background: var(--ink-muted);
     }
 
     /* Spine-event (small events without cards) */
@@ -396,7 +393,7 @@
       background: var(--felt);
       border: 1px solid var(--wire);
       border-radius: var(--r-md);
-      padding: var(--sp-3) var(--sp-4);
+      padding: var(--sp-2) var(--sp-3);
       cursor: pointer;
       transition: background 120ms ease-out, border-color 120ms ease-out;
       position: relative;
@@ -419,12 +416,13 @@
        Stronger border + background to ensure visibility at bottom of timeline. */
     .sporkort.kritisk {
       background: rgba(196, 88, 88, 0.11);
-      border: 1px solid rgba(196, 88, 88, 0.14);
+      border-color: rgba(196, 88, 88, 0.14);
       border-left: 3px solid var(--score-low);
     }
     .sporkort.kritisk:hover {
       background: rgba(196, 88, 88, 0.16);
       border-color: rgba(196, 88, 88, 0.20);
+      border-left-color: var(--score-low);
     }
 
     /* Sporkort: venter (neutral) */
@@ -545,11 +543,12 @@
       color: var(--ink);
     }
 
-    /* Sporkort history line */
+    /* Sporkort history line — quieter than data for sharper hierarchy */
     .sporkort-historikk {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--ink-muted);
       line-height: 1.5;
+      letter-spacing: 0.01em;
     }
 
     /* Sporkort consequence line (passivitet) */
@@ -577,6 +576,122 @@
     .sporkort.clicking {
       transform: scale(0.995);
       transition: transform 80ms ease-out;
+    }
+
+    /* Expanded sporkort state */
+    .sporkort.expanded {
+      background: var(--felt-raised);
+      border-color: var(--wire-strong);
+    }
+    .sporkort.handling.expanded {
+      border-left-color: var(--vekt);
+    }
+
+    /* ================================================================
+       HENDELSESLOGG — expandable event history in sporkort
+       ================================================================ */
+
+    /* Hendelsesteller: event count + chevron toggle */
+    .hendelsesteller {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--ink-ghost);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 6px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: color 100ms ease-out, background 100ms ease-out;
+      user-select: none;
+    }
+    .hendelsesteller:hover {
+      color: var(--ink-muted);
+      background: var(--wire);
+    }
+    .hendelsesteller .chevron {
+      font-size: 8px;
+      transition: transform 150ms ease-out;
+      display: inline-block;
+    }
+    .sporkort.expanded .hendelsesteller {
+      color: var(--ink-muted);
+      background: var(--wire);
+    }
+    .sporkort.expanded .hendelsesteller .chevron {
+      transform: rotate(90deg);
+    }
+
+    /* Hendelseslogg: collapsible event list */
+    .hendelseslogg {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 200ms ease-out;
+    }
+    .sporkort.expanded .hendelseslogg {
+      max-height: 280px;
+    }
+
+    .hendelseslogg-inner {
+      background: var(--canvas);
+      border-top: 1px solid var(--wire);
+      margin: var(--sp-2) calc(-1 * var(--sp-3));
+      margin-bottom: calc(-1 * var(--sp-2));
+      padding: var(--sp-2) var(--sp-3);
+      border-radius: 0 0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px);
+    }
+    .sporkort.handling .hendelseslogg-inner {
+      margin-left: calc(-1 * var(--sp-3) + 2px);
+    }
+
+    .hl-hendelse {
+      display: flex;
+      align-items: baseline;
+      gap: var(--sp-2);
+      padding: 2px 0;
+      font-size: 11px;
+    }
+    .hl-hendelse + .hl-hendelse {
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .hl-ikon {
+      width: 14px;
+      text-align: center;
+      flex-shrink: 0;
+      color: var(--ink-muted);
+      font-size: 11px;
+    }
+    .hl-ikon.revisjon { color: var(--vekt-dim); }
+    .hl-ikon.svar { color: var(--score-high); }
+    .hl-ikon.trukket { color: var(--score-low); }
+
+    .hl-dato {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--ink-muted);
+      width: 38px;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .hl-tekst {
+      color: var(--ink-secondary);
+      flex: 1;
+      min-width: 0;
+    }
+    .hl-rev {
+      font-family: var(--font-data);
+      font-size: 9px;
+      color: var(--ink-ghost);
+      margin-left: 2px;
+    }
+    .hl-part {
+      font-family: var(--font-data);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink-ghost);
+      width: 20px;
+      text-align: right;
+      flex-shrink: 0;
     }
 
     /* ================================================================
@@ -1103,9 +1218,6 @@
 </head>
 <body>
 
-  <!-- Role indicator -->
-  <div class="rolle-indikator">Du er <span>BH</span> (Oslobygg)</div>
-
   <!-- ================================================================
        VIEW: FORHANDLINGSBORDET (2-column overview)
        ================================================================ -->
@@ -1114,6 +1226,7 @@
 
       <!-- LEFT: Sakskontekst -->
       <aside class="sakskontekst">
+        <div class="rolle-indikator">Du er <span>BH</span> (Oslobygg)</div>
         <div class="sak-id mono">KOE-2024-047</div>
         <div class="sak-tittel">Forsinket leveranse stålkonstruksjon</div>
 
@@ -1192,18 +1305,41 @@
           <div class="tl-segment">
             <div class="tl-dato">i dag</div>
             <div class="tl-innhold">
-              <div class="sporkort handling" data-spor="vederlag" onclick="navigerTilSpor('vederlag')">
+              <div class="sporkort handling" data-spor="vederlag" id="kort-vederlag" onclick="navigerTilSpor('vederlag')">
                 <div class="sporkort-header">
                   <span class="spor-navn">VEDERLAG</span>
                   <span class="status-badge nytt">Nytt krav</span>
                   <span class="sporkort-spacer"></span>
+                  <span class="hendelsesteller" onclick="event.stopPropagation(); toggleLogg('vederlag')">3<span class="chevron">▸</span></span>
                   <button class="handling-btn" onclick="event.stopPropagation(); navigerTilSpor('vederlag')">Svar →</button>
                 </div>
                 <div class="sporkort-data">
-                  Regningsarbeid<span class="separator">·</span><span class="mono">2,4M</span><span class="separator">·</span>Rigg <span class="mono">340k</span><span class="separator">·</span>Prod.tap <span class="mono">180k</span>
+                  Regningsarbeid<span class="separator">·</span><span class="mono">2,4M</span><span class="separator">·</span>Rev. 1<span class="separator">·</span>Frist <span class="mono">14d</span>
                 </div>
                 <div class="sporkort-historikk">
-                  i dag TE sendte krav<span class="separator">·</span>Frist <span class="mono">14d</span> (17.03)
+                  i dag revidert<span class="separator">·</span>01.03 krevd<span class="separator">·</span>28.02 varslet
+                </div>
+                <div class="hendelseslogg" id="logg-vederlag">
+                  <div class="hendelseslogg-inner">
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon revisjon">↻</span>
+                      <span class="hl-dato">03.03</span>
+                      <span class="hl-tekst">Reviderte krav (1,8M → 2,4M)<span class="hl-rev">Rev. 1</span></span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon">→</span>
+                      <span class="hl-dato">01.03</span>
+                      <span class="hl-tekst">Sendte vederlagskrav (1 800 000 kr)</span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon">⚑</span>
+                      <span class="hl-dato">28.02</span>
+                      <span class="hl-tekst">Varslet vederlagskrav</span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1213,7 +1349,7 @@
           <div class="tl-segment">
             <div class="tl-dato">i går</div>
             <div class="tl-innhold">
-              <div class="sporkort handling" data-spor="frist" onclick="navigerTilSpor('frist')">
+              <div class="sporkort handling" data-spor="frist" id="kort-frist" onclick="navigerTilSpor('frist')">
                 <div class="sporkort-header">
                   <span class="spor-navn">FRISTFORLENGELSE</span>
                   <span class="status-badge spesifisert">Spesifisert krav</span>
@@ -1221,13 +1357,48 @@
                     <span class="v-ikon warn">⚠</span> Varslet sent
                   </span>
                   <span class="sporkort-spacer"></span>
+                  <span class="hendelsesteller" onclick="event.stopPropagation(); toggleLogg('frist')">5<span class="chevron">▸</span></span>
                   <button class="handling-btn" onclick="event.stopPropagation(); navigerTilSpor('frist')">Svar →</button>
                 </div>
                 <div class="sporkort-data">
-                  <span class="mono">45d</span> krevd<span class="separator">·</span>Ny dato <span class="mono">15.08.26</span><span class="separator">·</span>Frist <span class="mono">13d</span> (16.03)
+                  <span class="mono">45d</span> krevd<span class="separator">·</span>Rev. 2<span class="separator">·</span>Ny dato <span class="mono">15.08.26</span><span class="separator">·</span>Frist <span class="mono">13d</span>
                 </div>
                 <div class="sporkort-historikk">
-                  i går TE spesifiserte<span class="separator">·</span>20.01 forespurt<span class="separator">·</span>15.01 varslet
+                  i går spesifisert<span class="separator">·</span>15.02 revidert<span class="separator">·</span>15.01 varslet
+                </div>
+                <div class="hendelseslogg" id="logg-frist">
+                  <div class="hendelseslogg-inner">
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon revisjon">↻</span>
+                      <span class="hl-dato">02.03</span>
+                      <span class="hl-tekst">Spesifiserte krav (45d)<span class="hl-rev">Rev. 2</span></span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon">→</span>
+                      <span class="hl-dato">25.02</span>
+                      <span class="hl-tekst">La til dokumentasjon for forsinkelse</span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon revisjon">↻</span>
+                      <span class="hl-dato">15.02</span>
+                      <span class="hl-tekst">Reviderte forespørsel (30d → 45d)<span class="hl-rev">Rev. 1</span></span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon">→</span>
+                      <span class="hl-dato">20.01</span>
+                      <span class="hl-tekst">Forespurte fristforlengelse (30d)</span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                    <div class="hl-hendelse">
+                      <span class="hl-ikon">⚑</span>
+                      <span class="hl-dato">15.01</span>
+                      <span class="hl-tekst">Varslet mulig fristforlengelse</span>
+                      <span class="hl-part">TE</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1297,7 +1468,7 @@
           </div>
           <div class="spor-nav-item aktiv">
             <span class="sni-navn">Vederlag</span>
-            <span class="sni-data">Nytt krav · 2,4M</span>
+            <span class="sni-data">Rev. 1 · 2,4M</span>
           </div>
           <div class="spor-nav-item" onclick="navigerTilSpor('frist')">
             <span class="sni-navn">Fristforlengelse</span>
@@ -1336,8 +1507,8 @@
         <!-- TE's claim (read-only) -->
         <div class="krav-seksjon">
           <div class="krav-header">
-            <span class="krav-label">Krav fra TE — Veidekke</span>
-            <span class="krav-dato">Mottatt 03.03.2026</span>
+            <span class="krav-label">Krav fra TE — Veidekke · Rev. 1</span>
+            <span class="krav-dato">Revidert 03.03.2026</span>
           </div>
 
           <div class="detalj-felt">
@@ -1372,7 +1543,15 @@
           <div class="krav-tidslinje">
             <div class="krav-tl-item">
               <span class="krav-tl-dato">03.03</span>
-              <span class="krav-tl-tekst">TE sendte spesifisert vederlagskrav</span>
+              <span class="krav-tl-tekst">TE reviderte krav (1,8M → 2,4M) · Rev. 1</span>
+            </div>
+            <div class="krav-tl-item">
+              <span class="krav-tl-dato">01.03</span>
+              <span class="krav-tl-tekst">TE sendte vederlagskrav (1 800 000 kr)</span>
+            </div>
+            <div class="krav-tl-item">
+              <span class="krav-tl-dato">28.02</span>
+              <span class="krav-tl-tekst">TE varslet vederlagskrav</span>
             </div>
           </div>
         </div>
@@ -1483,11 +1662,11 @@
           </div>
           <div class="spor-nav-item" onclick="navigerTilSpor('vederlag')">
             <span class="sni-navn">Vederlag</span>
-            <span class="sni-data">Nytt krav · 2,4M</span>
+            <span class="sni-data">Rev. 1 · 2,4M</span>
           </div>
           <div class="spor-nav-item aktiv">
             <span class="sni-navn">Fristforlengelse</span>
-            <span class="sni-data">45d krevd</span>
+            <span class="sni-data">Rev. 2 · 45d krevd</span>
           </div>
         </div>
 
@@ -1525,7 +1704,7 @@
         <!-- TE's claim (read-only) -->
         <div class="krav-seksjon">
           <div class="krav-header">
-            <span class="krav-label">Krav fra TE — Veidekke</span>
+            <span class="krav-label">Krav fra TE — Veidekke · Rev. 2</span>
             <span class="krav-dato">Spesifisert 02.03.2026</span>
           </div>
 
@@ -1547,11 +1726,19 @@
           <div class="krav-tidslinje">
             <div class="krav-tl-item">
               <span class="krav-tl-dato">02.03</span>
-              <span class="krav-tl-tekst">TE spesifiserte krav (45 dager)</span>
+              <span class="krav-tl-tekst">TE spesifiserte krav (45d) · Rev. 2</span>
+            </div>
+            <div class="krav-tl-item">
+              <span class="krav-tl-dato">25.02</span>
+              <span class="krav-tl-tekst">TE la til dokumentasjon</span>
+            </div>
+            <div class="krav-tl-item">
+              <span class="krav-tl-dato">15.02</span>
+              <span class="krav-tl-tekst">TE reviderte forespørsel (30d → 45d) · Rev. 1</span>
             </div>
             <div class="krav-tl-item">
               <span class="krav-tl-dato">20.01</span>
-              <span class="krav-tl-tekst">TE forespurte fristforlengelse</span>
+              <span class="krav-tl-tekst">TE forespurte fristforlengelse (30d)</span>
             </div>
             <div class="krav-tl-item">
               <span class="krav-tl-dato">15.01</span>
@@ -1666,11 +1853,11 @@
           </div>
           <div class="spor-nav-item" onclick="navigerTilSpor('vederlag')">
             <span class="sni-navn">Vederlag</span>
-            <span class="sni-data">Nytt krav · 2,4M</span>
+            <span class="sni-data">Rev. 1 · 2,4M</span>
           </div>
           <div class="spor-nav-item" onclick="navigerTilSpor('frist')">
             <span class="sni-navn">Fristforlengelse</span>
-            <span class="sni-data">45d krevd</span>
+            <span class="sni-data">Rev. 2 · 45d krevd</span>
           </div>
         </div>
 
@@ -1837,7 +2024,6 @@
         'frist': 'view-frist',
         'grunnlag': 'view-grunnlag'
       };
-      // Brief click feedback on the card
       const card = document.querySelector('.sporkort[data-spor="' + spor + '"]');
       if (card) {
         card.classList.add('clicking');
@@ -1854,6 +2040,19 @@
       setActiveView('view-oversikt');
     }
 
+    // Hendelseslogg: expand/collapse event history
+    function toggleLogg(sporId) {
+      const kort = document.getElementById('kort-' + sporId);
+      if (!kort) return;
+
+      // Accordion: collapse others
+      document.querySelectorAll('.sporkort.expanded').forEach(k => {
+        if (k !== kort) k.classList.remove('expanded');
+      });
+
+      kort.classList.toggle('expanded');
+    }
+
     // Radio buttons
     function velgRadio(el) {
       const gruppe = el.parentElement;
@@ -1866,9 +2065,16 @@
       el.classList.toggle('checked');
     }
 
-    // Keyboard navigation: Escape goes back to overview
+    // Keyboard navigation
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        // Collapse any open hendelseslogg first
+        const expanded = document.querySelector('.sporkort.expanded');
+        if (expanded) {
+          expanded.classList.remove('expanded');
+          return;
+        }
+        // Then go back to overview
         const oversikt = document.getElementById('view-oversikt');
         if (!oversikt.classList.contains('active')) {
           tilbakeTilOversikt();
