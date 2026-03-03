@@ -64,15 +64,17 @@ FRISTER
 
 ─────────────────
 VARSLING
-✓ §32.2   ⚠ §33.4
-– §33.6   – §34.1.2
+✓ Endring varslet
+⚠ Frist: varslet sent
+– Frist: ikke spesifisert
+– Vederlag: ikke varslet
 ```
 
 To seksjoner utover saksidentitet:
 
 **FRISTER** — urgency-sortert. Mest presserende øverst. Fargekodet: normal (--ink-secondary), advarsel (--vekt), kritisk (--score-low). "Passivitet" er et juridisk vendepunkt — sterkere enn en vanlig frist.
 
-**VARSLING** — kompakt paragrafstatus. ✓ overholdt, ⚠ mulig brudd, ✕ brudd, – ikke relevant ennå. Hover avslører full tekst.
+**VARSLING** — kontraktuell status i menneskelig språk. ✓ overholdt, ⚠ mulig brudd, ✕ brudd, – ikke relevant ennå. Hover avslører §-referanse for juristen.
 
 Ikke SPOR-seksjon her — den ville duplisert sporkortene i tidslinjen.
 
@@ -92,17 +94,36 @@ Effekten: øynene faller naturlig på det nyeste (posisjon), men trekkes mot det
 
 ---
 
-## Signaturelement: Paragrafstatus
+## Signaturelement: Varslingsstatus
 
-Unik for dette produktet. Kompakte juridiske statusflagg vevd inn i hvert nivå av grensesnittet:
+Unik for dette produktet. Kompakte kontraktuelle statusflagg vevd inn i hvert nivå av grensesnittet:
 
-**I sidebar** (aggregert): `✓ §32.2  ⚠ §33.4  – §33.6  – §34.1.2`
+**I sidebar** (aggregert):
+```
+✓ Endring varslet
+⚠ Frist: varslet sent
+– Frist: ikke spesifisert
+– Vederlag: ikke varslet
+```
 
-**I sporkort** (inline): `FRIST §33 · Spesifisert krav · ⚠§33.4 ✓§33.6`
+**I sporkort** (inline): `FRISTFORLENGELSE · Spesifisert krav · ⚠ Varslet sent`
 
-**I spordetalj** (utvidet): Full forklaring med dato, begrunnelse, konsekvens.
+**I spordetalj** (utvidet): Full forklaring med dato, begrunnelse, konsekvens — og §-referanse for juristen.
 
-En trading-terminal har tickers. En code editor har lint-markører. Et KOE-verktøy har paragrafstatus — kontraktuelle compliance-signaler i hvert lag av grensesnittet. Ingenting annet ser slik ut.
+### To lag: prosjektleder-først, jurist-sekundært
+
+En prosjektleder vet ikke hva "⚠§33.4" betyr. Bare en jurist leser paragrafnumre. Grensesnittet bruker **menneskelig språk** som primærtekst:
+
+| Primært (alltid synlig) | Sekundært (hover / drill-down) |
+|---|---|
+| Varslet sent | §33.4 — foreløpig varsel sendt etter rimelig tid |
+| Spesifisert i tide | §33.6 — spesifisert krav innen fristen |
+| Passivitet | §32.3 — manglende svar medfører rettighetsforfall |
+| Vilkår ikke oppfylt | §33.1 — årsakssammenheng ikke påvist |
+
+§-referansene finnes i systemet — de vises som sekundærtekst, i tooltips, og i spordetaljen der juristen jobber. Men oversikten snakker prosjektlederens språk.
+
+En trading-terminal har tickers. En code editor har lint-markører. Et KOE-verktøy har varslingsstatus — kontraktuelle compliance-signaler i hvert lag, i menneskelig språk. Ingenting annet ser slik ut.
 
 ---
 
@@ -113,61 +134,61 @@ Hvert spor som et tett kort: 2–3 linjer. Nøkkeldata, ikke prosa.
 ### Anatomi
 
 ```
-┌─ SPORNAVN §X ─ Status ─ §-flagg ──────── → Handling ─┐
+┌─ SPORNAVN ─ Status ─ varslingsflagg ───── → Handling ─┐
 │ [Nøkkeldata: tall, beløp, dager, metode · Frist Xd]   │
 │ [Mini-historikk: dato hendelse · dato hendelse · ...]  │
 └────────────────────────────────────────────────────────┘
 ```
 
-- **Linje 0 (header):** Spornavn, paragraf, statusbadge, varslingsflagg, handlingsknapp
+- **Linje 0 (header):** Spornavn (menneskelig), statusbadge, varslingsflagg (menneskelig), handlingsknapp
 - **Linje 1:** Nøkkeldata med prikk-separatorer. Tall i --font-data.
 - **Linje 2 (valgfri):** Mini-historikk — siste 2–3 hendelser kronologisk, --ink-muted
 
-Kun 2 linjer når sporet har én hendelse. 3 linjer når det er historikk.
+Kun 2 linjer når sporet har én hendelse. 3 linjer når det er historikk. §-referanser vises på hover/i spordetalj.
 
 ### Eksempler per tilstand
 
 **Handling kreves (din tur):**
 ```
-┌─ FRIST §33 ─ Spesifisert krav ─ ⚠§33.4 ────── → Svar ──┐
-│ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02)         │
-│ i går TE spesifiserte · 20.01 forespurt · 15.01 varslet  │
-└───────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ─── → Svar ──┐
+│ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02)                     │
+│ i går TE spesifiserte · 20.01 forespurt · 15.01 varslet              │
+└───────────────────────────────────────────────────────────────────────┘
 ```
-Amber venstre-kant (3px). Handlingsknapp synlig.
+Amber venstre-kant (3px). "⚠ Varslet sent" forteller prosjektlederen at det er et tidsproblem. Hover → "§33.4 — foreløpig varsel sendt etter rimelig tid."
 
 **Handling kreves — kritisk (passivitet):**
 ```
-┌─ ⚠ GRUNNLAG §25.2 ─ Ubesvart ──────────── → Svar nå ───┐
-│ TE varslet irregulær endring · Stålmontasje AS · §25.2    │
-│ ⚠ 19d uten svar — passivitet: risiko for rettighetsforfall│
-└───────────────────────────────────────────────────────────┘
+┌─ ⚠ ANSVARSGRUNNLAG ─ Ubesvart ─────────────────── → Svar nå ───┐
+│ TE varslet irregulær endring · Stålmontasje AS                    │
+│ ⚠ 19d uten svar — du kan miste retten til å protestere           │
+└───────────────────────────────────────────────────────────────────┘
 ```
-Rose-tonet bakgrunn (--score-low-bg) på HELE kortet. Rose venstre-kant. Konsekvenstekst på siste linje. "Svar nå" i stedet for bare "Svar."
+Rose-tonet bakgrunn (--score-low-bg) på HELE kortet. Konsekvenstekst i klartekst — "du kan miste retten til å protestere" er umiddelbart forståelig. Hover → "§32.3 passivitet."
 
 **Venter på motpart:**
 ```
-┌─ FRIST §33 ─ Delvis godkjent ─ Venter på TE ────────────┐
-│ 30 av 45d godkjent (67%) · Innsigelse §33.6.1 · 12.02   │
-│ 28.01 TE spesifiserte · 20.01 forespurt · 15.01 varslet  │
-└───────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Delvis godkjent ─ Venter på TE ─────────────┐
+│ 30 av 45d godkjent (67%) · Innsigelse: spesifisert for sent      │
+│ 28.01 TE spesifiserte · 20.01 forespurt · 15.01 varslet          │
+└───────────────────────────────────────────────────────────────────┘
 ```
-Nøytral kant (--wire-strong, 1px). Ingen handlingsknapp. "Venter på [rolle]" i headeren.
+Nøytral kant (--wire-strong, 1px). "Spesifisert for sent" i stedet for "§33.6.1."
 
 **Godkjent / løst:**
 ```
-┌─ GRUNNLAG §25.2 ─ Godkjent ✓ ───────────────────────────┐
+┌─ ANSVARSGRUNNLAG ─ Godkjent ✓ ───────────────────────────┐
 │ Irregulær endring · Godkjent 03.02                        │
 └───────────────────────────────────────────────────────────┘
 ```
-Dempet kontrast (--ink-secondary). Grønn venstre-kant (2px). To linjer. Kollapset.
+Dempet kontrast (--ink-secondary). Grønn venstre-kant (2px). To linjer.
 
 **TE etter delvis godkjenning — valg:**
 ```
-┌─ FRIST §33 ─ Delvis godkjent ──────────────── → Velg ───┐
-│ 30 av 45d (67%) · Innsigelse §33.6.1                     │
-│ Godta · Revidere · Trekke                                 │
-└───────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Delvis godkjent ──────────── → Velg ───┐
+│ 30 av 45d (67%) · Innsigelse: spesifisert for sent          │
+│ Godta · Revidere · Trekke                                    │
+└──────────────────────────────────────────────────────────────┘
 ```
 Linje 2 viser TEs mulige handlinger direkte i kortet.
 
@@ -230,43 +251,45 @@ Fargekodet etter mest urgent handling. Forsvinner når alt er besvart.
 Alle tre spor har mottatte krav. Grunnlag er kritisk (passivitet).
 
 ```
-┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
-│                      │                                                                  │
-│ KOE-2024-047         │  ⚠ 3 handlinger venter på deg                                   │
-│ Forsinket leveranse  │                                                                  │
-│ stålkonstruksjon     │  │                                                               │
-│                      │  ├── i dag ──────────────────────────────────────────────         │
-│ ─────────────────    │  │                                                               │
-│ Veidekke (TE)        │  │  ┌─ VEDERLAG §34 ─ Nytt krav ──────────── → Svar ───┐        │
-│ Oslobygg (BH)        │  │  │ Regningsarbeid · 2,4M · Rigg 340k · Prod.tap 180k│        │
-│                      │  │  │ i dag TE sendte krav · Frist 14d (17.02)          │        │
-│ ─────────────────    │  │  └───────────────────────────────────────────────────┘        │
-│ FRISTER              │  │                                                               │
-│ ⚠ Grunnlag           │  ├── i går ──────────────────────────────────────────────         │
-│   passivitet!        │  │                                                               │
-│   Frist  13d         │  │  ┌─ FRIST §33 ─ Spesifisert krav ─ ⚠§33.4 ── → Svar┐        │
-│   Vederlag  14d      │  │  │ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02) │        │
-│                      │  │  │ i går spesifisert · 20.01 forespurt · 15.01 varslet│       │
-│ ─────────────────    │  │  └───────────────────────────────────────────────────┘        │
-│ VARSLING             │  │                                                               │
-│ ✓ §32.2  ⚠ §33.4    │  ├── 15. januar ─────────────────────────────────────────         │
-│ – §33.6  – §34.1.2  │  │                                                               │
-│                      │  │  ┌─ ⚠ GRUNNLAG §25.2 ─ Ubesvart ──────── → Svar nå ┐        │
-│                      │  │  │ TE varslet irregulær endring · Stålmontasje AS    │        │
-│                      │  │  │ ⚠ 19d uten svar — passivitet: rettighetsforfall   │        │
-│                      │  │  └───────────────────────────────────────────────────┘        │
-│                      │  │                    ░░░░░░ rose-tonet bakgrunn ░░░░░░░         │
-│                      │  ├── 10. januar ─────────────────────────────────────────         │
-│                      │  │  ○ Sak opprettet av TE                                        │
-│                      │  │                                                               │
-└──────────────────────┴──────────────────────────────────────────────────────────────────┘
+┌──────────────────────┬──────────────────────────────────────────────────────────────────────────┐
+│                      │                                                                          │
+│ KOE-2024-047         │  ⚠ 3 handlinger venter på deg                                           │
+│ Forsinket leveranse  │                                                                          │
+│ stålkonstruksjon     │  │                                                                       │
+│                      │  ├── i dag ──────────────────────────────────────────────────────         │
+│ ─────────────────    │  │                                                                       │
+│ Veidekke (TE)        │  │  ┌─ VEDERLAG ─ Nytt krav ────────────────────────── → Svar ──┐        │
+│ Oslobygg (BH)        │  │  │ Regningsarbeid · 2,4M · Rigg 340k · Prod.tap 180k         │        │
+│                      │  │  │ i dag TE sendte krav · Frist 14d (17.02)                   │        │
+│ ─────────────────    │  │  └────────────────────────────────────────────────────────────┘        │
+│ FRISTER              │  │                                                                       │
+│ ⚠ Grunnlag           │  ├── i går ──────────────────────────────────────────────────────         │
+│   passivitet!        │  │                                                                       │
+│   Frist  13d         │  │  ┌─ FRISTFORLENGELSE ─ Spesifisert krav ─ ⚠ Varslet sent ── → Svar ─┐│
+│   Vederlag  14d      │  │  │ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02)                  ││
+│                      │  │  │ i går spesifisert · 20.01 forespurt · 15.01 varslet                ││
+│ ─────────────────    │  │  └────────────────────────────────────────────────────────────────────┘│
+│ VARSLING             │  │                                                                       │
+│ ✓ Endring varslet    │  ├── 15. januar ─────────────────────────────────────────────────         │
+│ ⚠ Frist: varslet sent│  │                                                                       │
+│ – Frist: ikke spesif.│  │  ┌─ ⚠ ANSVARSGRUNNLAG ─ Ubesvart ──────────────── → Svar nå ┐        │
+│ – Vederlag: ikke vars│  │  │ TE varslet irregulær endring · Stålmontasje AS              │        │
+│                      │  │  │ ⚠ 19d uten svar — du kan miste retten til å protestere     │        │
+│                      │  │  └─────────────────────────────────────────────────────────────┘        │
+│                      │  │                       ░░░░░░ rose-tonet bakgrunn ░░░░░░░               │
+│                      │  ├── 10. januar ─────────────────────────────────────────────────         │
+│                      │  │  ○ Sak opprettet av TE                                                │
+│                      │  │                                                                       │
+└──────────────────────┴──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Leseretning:** Øverste kort (Vederlag) = sist mottatt. Nederste kort (Grunnlag) = eldst, men *visuelt sterkest*: rose bakgrunn, ⚠-prefiks, konsekvenstekst. Rose overvinner posisjon.
+**Leseretning:** Øverste kort (Vederlag) = sist mottatt. Nederste kort (Ansvarsgrunnlag) = eldst, men *visuelt sterkest*: rose bakgrunn, ⚠-prefiks, konsekvenstekst. Rose overvinner posisjon.
+
+**Språket:** "Varslet sent" og "du kan miste retten til å protestere" — prosjektlederen forstår umiddelbart. Ingen §-nummer i oversikten. Hover/drill-down gir den juridiske referansen for juristen.
 
 **Tetthet:** Tre sporkort = ~9 linjer. Alt over folden. BH ser umiddelbart: "tre handlinger, grunnlaget er mest presserende."
 
-**Sidebar vs. tidslinje:** FRISTER sorterer etter urgency ("passivitet!" øverst). Tidslinjen sorterer kronologisk. To perspektiver som supplerer — urgency i periferien, kontekst i sentrum.
+**Sidebar:** FRISTER sorterer etter urgency ("passivitet!" øverst). VARSLING bruker klartekst — prosjektlederen leser "Frist: varslet sent" og vet det er et problem uten å kjenne §33.4.
 
 ---
 
@@ -275,38 +298,38 @@ Alle tre spor har mottatte krav. Grunnlag er kritisk (passivitet).
 BH har godkjent grunnlaget (nettopp). Frist delvis godkjent (venter TE). Vederlag nytt.
 
 ```
-┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
-│                      │                                                                  │
-│ KOE-2024-047         │  ⚠ 1 handling venter på deg                                     │
-│ Forsinket leveranse  │                                                                  │
-│ stålkonstruksjon     │  │                                                               │
-│                      │  ├── i dag ──────────────────────────────────────────────         │
-│ ─────────────────    │  │                                                               │
-│ FRISTER              │  │  ┌─ GRUNNLAG §25.2 ─ Godkjent ✓ ──────────────────┐          │
-│   Vederlag  14d      │  │  │ Irregulær endring · Godkjent 03.03              │          │
-│   (Ingen urgente)    │  │  └─────────────────────────────────────────────────┘          │
-│                      │  │                                                               │
-│ ─────────────────    │  │  ┌─ VEDERLAG §34 ─ Nytt krav ──────────── → Svar ──┐         │
-│ VARSLING             │  │  │ Regningsarbeid · 2,4M · Frist 14d (17.03)        │         │
-│ ✓ §32.2  ⚠ §33.4    │  │  │ i dag TE sendte krav                             │         │
-│ ✓ §33.6  – §34.1.2  │  │  └──────────────────────────────────────────────────┘         │
-│                      │  │                                                               │
-│                      │  ├── 12. februar ────────────────────────────────────────         │
-│                      │  │                                                               │
-│                      │  │  ┌─ FRIST §33 ─ Delvis godkjent ─ Venter på TE ────┐         │
-│                      │  │  │ 30 av 45d godkjent (67%) · Innsigelse §33.6.1    │         │
-│                      │  │  │ 28.01 spesifisert · 20.01 forespurt · 15.01 varsl│         │
-│                      │  │  └──────────────────────────────────────────────────┘         │
-│                      │  │                                                               │
-│                      │  ├── 10. januar ─────────────────────────────────────────         │
-│                      │  │  ○ Sak opprettet av TE                                        │
-│                      │  │                                                               │
-└──────────────────────┴──────────────────────────────────────────────────────────────────┘
+┌──────────────────────┬──────────────────────────────────────────────────────────────────────┐
+│                      │                                                                      │
+│ KOE-2024-047         │  ⚠ 1 handling venter på deg                                         │
+│ Forsinket leveranse  │                                                                      │
+│ stålkonstruksjon     │  │                                                                   │
+│                      │  ├── i dag ──────────────────────────────────────────────────         │
+│ ─────────────────    │  │                                                                   │
+│ FRISTER              │  │  ┌─ ANSVARSGRUNNLAG ─ Godkjent ✓ ──────────────────────┐          │
+│   Vederlag  14d      │  │  │ Irregulær endring · Godkjent 03.03                  │          │
+│   (Ingen urgente)    │  │  └──────────────────────────────────────────────────────┘          │
+│                      │  │                                                                   │
+│ ─────────────────    │  │  ┌─ VEDERLAG ─ Nytt krav ──────────────────── → Svar ──┐          │
+│ VARSLING             │  │  │ Regningsarbeid · 2,4M · Frist 14d (17.03)            │          │
+│ ✓ Endring varslet    │  │  │ i dag TE sendte krav                                 │          │
+│ ⚠ Frist: varslet sent│  │  └─────────────────────────────────────────────────────┘          │
+│ ✓ Frist: spesifisert │  │                                                                   │
+│ – Vederlag: ikke vars│  ├── 12. februar ────────────────────────────────────────────         │
+│                      │  │                                                                   │
+│                      │  │  ┌─ FRISTFORLENGELSE ─ Delvis godkjent ─ Venter på TE ─┐          │
+│                      │  │  │ 30 av 45d godkjent (67%) · Innsigelse: spesif. sent  │          │
+│                      │  │  │ 28.01 spesifisert · 20.01 forespurt · 15.01 varslet  │          │
+│                      │  │  └──────────────────────────────────────────────────────┘          │
+│                      │  │                                                                   │
+│                      │  ├── 10. januar ─────────────────────────────────────────────         │
+│                      │  │  ○ Sak opprettet av TE                                            │
+│                      │  │                                                                   │
+└──────────────────────┴──────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Grunnlag** godkjent → dempet, 2 linjer, grønn kant, ingen handling
+- **Ansvarsgrunnlag** godkjent → dempet, 2 linjer, grønn kant, ingen handling
 - **Vederlag** nytt → amber kant, handlingsknapp, 3 linjer
-- **Frist** venter TE → nøytral kant, ingen knapp, 3 linjer
+- **Fristforlengelse** venter TE → nøytral kant, "Innsigelse: spesif. sent" (ikke §33.6.1)
 - **Banner** sier "1 handling" — bare Vederlag er BHs tur
 
 ---
@@ -320,10 +343,10 @@ TE og BH ser samme hendelser, men handling og ordlyd er forskjellig.
 
 TE etter BH delvis godkjente:
 ```
-┌─ FRIST §33 ─ Delvis godkjent ──────────────── → Velg ───┐
-│ 30 av 45d (67%) · Innsigelse §33.6.1                     │
-│ Godta · Revidere · Trekke                                 │
-└───────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Delvis godkjent ─────────── → Velg ───┐
+│ 30 av 45d (67%) · Innsigelse: spesifisert for sent         │
+│ Godta · Revidere · Trekke                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 "Du" brukes i stedet for rollenavn: "Du sendte spesifisert krav" (ikke "TE sendte").
@@ -335,7 +358,7 @@ TE etter BH delvis godkjente:
 Klikk sporkort (eller handlingsknapp) → tre-kolonne spordetaljvisning.
 
 ```
-Forhandlingsbordet                    Spordetalj (Vederlag §34)
+Forhandlingsbordet                    Spordetalj (Vederlag)
 ┌───────┬──────────┐                  ┌─────────┬──────────────┬──────────┐
 │ Sak   │ Tidslinje│  ───→            │ Nav     │ Skjema       │ Begr.    │
 │ info  │ [kort]   │                  │ + spor  │ BHs respons  │ editor   │
@@ -366,15 +389,12 @@ NESTE HANDLING
 ─────────────────
 
 ● ANSVARSGRUNNLAG
-  §25.2
   Godkjent ✓
 
 █ VEDERLAG
-▌  §34
-  Nytt krav · 2,4M
+▌ Nytt krav · 2,4M
 
 ● FRISTFORLENGELSE
-  §33
   Delvis godkjent
 
 ─────────────────
@@ -389,13 +409,13 @@ FRISTER
 Grunnlag styrer om frist og vederlag er gyldige. Avslått grunnlag → avhengige spor vises som "bortfalt":
 
 ```
-┌─ GRUNNLAG §25.2 ─ Avslått ✕ ────────────────────────────┐
-│ §25.2 vilkår ikke oppfylt · ⚠ Påvirker: Frist, Vederlag │
-└──────────────────────────────────────────────────────────┘
+┌─ ANSVARSGRUNNLAG ─ Avslått ✕ ────────────────────────────────┐
+│ Vilkår ikke oppfylt · ⚠ Påvirker: Fristforlengelse, Vederlag │
+└──────────────────────────────────────────────────────────────┘
 
-┌─ FRIST §33 ─ Bortfalt ───────────────────────── → Se sak┐
-│ Bortfalt — grunnlag §25.2 avslått                        │
-└──────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Bortfalt ────────────────── → Se sak ───┐
+│ Bortfalt — ansvarsgrunnlag avslått                            │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 Bortfalte kort: dempet, stiplet venstre-kant (--ink-ghost), lenke tilbake til grunnlaget.
@@ -408,9 +428,9 @@ Bortfalte kort: dempet, stiplet venstre-kant (--ink-ghost), lenke tilbake til gr
 
 BH avslår fristkrav → TE kan forsere:
 ```
-┌─ FRIST §33 ─ Avslått ──────────────── → Krev forsering ─┐
-│ BH avviste fristkrav · 15.02 · TE kan forsere §33.8      │
-└───────────────────────────────────────────────────────────┘
+┌─ FRISTFORLENGELSE ─ Avslått ─────────── → Krev forsering ─┐
+│ BH avviste fristkrav · 15.02 · TE kan kreve forsering       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Endringsordre
@@ -474,7 +494,8 @@ Sporkort:
 Header-linje:
   spornavn: --font-ui, 12px, weight 600
   statusbadge: 10px, uppercase, weight 600, tracking 0.06em
-  §-flagg: 10px, --ink-muted (✓ = --score-high, ⚠ = --vekt, ✕ = --score-low)
+  varslingsflagg: --font-ui, 10px, --ink-muted (✓ = --score-high, ⚠ = --vekt, ✕ = --score-low)
+  varslingsflagg-tekst: menneskelig label, §-referanse på hover (title-attr)
   handlingsknapp: --vekt tekst, --vekt-bg bakgrunn, --r-sm
 
 Data-linje:
@@ -497,7 +518,8 @@ Tidslinjespine:
 | Tidslinjen er oversiktssiden | Dynamisk, prioriterbar oversikt over hele saken |
 | 2–3 linjers sporkort | Analysebordet-tetthet: alt over folden, <3s scanning |
 | Kronologisk sort + visuell urgency-vekt | Posisjon gir kontekst, visuell vekt gir prioritet |
-| Paragrafstatus som signatur (§-flagg) | Inline juridiske statusflagg — unikt for dette domenet |
+| Varslingsstatus som signatur | Kontraktuelle compliance-signaler i menneskelig språk — unikt for domenet |
+| Prosjektleder-først, jurist-sekundært | §-referanser på hover/drill-down, aldri som primærtekst |
 | Rose bakgrunn på hele kortet ved passivitet | Overvinner romlig posisjon — kritisk synlig uansett |
 | Sidebar: FRISTER + VARSLING, ikke SPOR | SPOR ville duplisert tidslinjen |
 | Handlingsknapp bare på "din tur" | Ingen støy fra motpartens handlinger |
