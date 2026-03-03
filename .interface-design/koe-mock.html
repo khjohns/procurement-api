@@ -285,7 +285,134 @@
     .tidslinje-area {
       padding: var(--sp-6) var(--sp-8);
       padding-bottom: var(--sp-12);
-      max-width: 820px;
+    }
+
+    /* --- Forhåndsvisningspanel (appears when hendelseslogg expanded) --- */
+    .forhandlingsbord.har-panel {
+      grid-template-columns: 260px 1fr 360px;
+    }
+    .forhåndsvisning {
+      border-left: 1px solid var(--wire);
+      padding: var(--sp-5);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: none;
+      animation: panelIn 200ms ease-out;
+    }
+    .forhandlingsbord.har-panel .forhåndsvisning {
+      display: block;
+    }
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateX(12px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .fv-tom {
+      font-size: 11px;
+      color: var(--ink-ghost);
+      padding-top: var(--sp-8);
+      text-align: center;
+    }
+    .fv-header {
+      margin-bottom: var(--sp-4);
+    }
+    .fv-ikon-linje {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      margin-bottom: 2px;
+    }
+    .fv-ikon {
+      font-size: 14px;
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .fv-ikon.revisjon { color: var(--vekt-dim); }
+    .fv-ikon.sendt { color: var(--ink-muted); }
+    .fv-ikon.varslet { color: var(--ink-muted); }
+    .fv-handling {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .fv-meta {
+      font-family: var(--font-data);
+      font-size: 11px;
+      color: var(--ink-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .fv-separator {
+      height: 1px;
+      background: var(--wire);
+      margin: var(--sp-4) 0;
+    }
+    .fv-seksjon-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-ghost);
+      margin-bottom: var(--sp-2);
+    }
+    .fv-tekst {
+      font-size: 12px;
+      color: var(--ink-secondary);
+      line-height: 1.5;
+    }
+    .fv-vedlegg {
+      background: var(--canvas);
+      border: 1px solid var(--wire);
+      border-radius: var(--r-sm);
+      padding: var(--sp-2) var(--sp-3);
+      font-size: 11px;
+      color: var(--ink-secondary);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      cursor: pointer;
+      transition: background 100ms ease-out;
+    }
+    .fv-vedlegg:hover { background: var(--felt-hover); }
+    .fv-vedlegg-ikon { color: var(--ink-muted); font-size: 12px; }
+    .fv-bestemmelse {
+      background: var(--canvas);
+      border: 1px solid var(--wire);
+      border-left: 2px solid var(--ink-ghost);
+      border-radius: var(--r-sm);
+      padding: var(--sp-2) var(--sp-3);
+    }
+    .fv-paragraf {
+      font-family: var(--font-data);
+      font-size: 10px;
+      color: var(--ink-muted);
+      margin-bottom: 2px;
+    }
+    .fv-bestemmelse-tekst {
+      font-size: 11px;
+      color: var(--ink-secondary);
+      line-height: 1.4;
+    }
+    .fv-spordetalj-lenke {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      cursor: pointer;
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--wire);
+      transition: color 100ms ease-out;
+    }
+    .fv-spordetalj-lenke:hover { color: var(--vekt); }
+
+    /* Focused event in hendelseslogg */
+    .hl-hendelse.fokusert {
+      background: var(--felt-hover);
+      border-left: 2px solid var(--vekt);
+      padding-left: calc(var(--sp-3) - 2px);
     }
 
     /* Handlingsbanner */
@@ -1423,6 +1550,52 @@
 
         </div><!-- /tidslinje -->
       </main>
+
+      <!-- RIGHT: Forhåndsvisningspanel (hendelsesdetalj) -->
+      <aside class="forhåndsvisning" id="fv-panel">
+        <!-- Default: tom state -->
+        <div class="fv-tom" id="fv-tom">Hover over en hendelse<br>for å se detaljer</div>
+
+        <!-- Filled state (hidden by default, shown when event focused) -->
+        <div id="fv-innhold" style="display: none;">
+          <div class="fv-header">
+            <div class="fv-ikon-linje">
+              <span class="fv-ikon" id="fv-h-ikon">↻</span>
+              <span class="fv-handling" id="fv-h-handling">Reviderte forespørsel</span>
+            </div>
+            <div class="fv-meta" id="fv-h-meta">15.02.2026 · TE</div>
+          </div>
+
+          <div class="fv-separator"></div>
+
+          <div class="fv-seksjon-label">Endring</div>
+          <div class="fv-tekst" id="fv-endring">
+            Krevd forlengelse økt fra 30 til 45 dager. Begrunnelse: ytterligere forsinkelse fra underleverandør bekreftet av Stålmontasje AS.
+          </div>
+
+          <div class="fv-separator"></div>
+
+          <div class="fv-seksjon-label">Vedlegg</div>
+          <div class="fv-vedlegg">
+            <span class="fv-vedlegg-ikon">📎</span>
+            Forsinkelsesbekreftelse_rev1.pdf
+          </div>
+
+          <div class="fv-separator"></div>
+
+          <div class="fv-seksjon-label">Bestemmelse</div>
+          <div class="fv-bestemmelse">
+            <div class="fv-paragraf">NS 8407 §33.6</div>
+            <div class="fv-bestemmelse-tekst">Spesifisering av fristkrav: Krav skal spesifiseres innen rimelig tid etter varsling, med dokumentasjon for kravets omfang.</div>
+          </div>
+
+          <div class="fv-separator"></div>
+
+          <div class="fv-spordetalj-lenke" id="fv-lenke" onclick="navigerTilSpor('frist')">
+            Åpne i spordetalj →
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
@@ -2036,7 +2209,137 @@
       });
 
       kort.classList.toggle('expanded');
+
+      // Show/hide forhåndsvisningspanel
+      const bord = document.querySelector('.forhandlingsbord');
+      if (kort.classList.contains('expanded')) {
+        bord.classList.add('har-panel');
+        // Focus first event
+        const events = kort.querySelectorAll('.hl-hendelse');
+        if (events.length > 0) fokuserHendelse(events[0]);
+      } else {
+        bord.classList.remove('har-panel');
+        clearFokus();
+      }
     }
+
+    // Event detail data for the preview panel
+    const hendelsesData = {
+      'frist-0': {
+        ikon: '↻', ikonClass: 'revisjon',
+        handling: 'Spesifiserte krav',
+        meta: '02.03.2026 · TE',
+        endring: 'Spesifisert krav med 45 dagers forlengelse (Rev. 2). Detaljert fremdriftsplan vedlagt med dokumentasjon for kritisk sti-påvirkning.',
+        vedlegg: 'Spesifisert_fristkrav_rev2.pdf',
+        paragraf: 'NS 8407 §33.6',
+        bestemmelse: 'Spesifisering av fristkrav: Totalentreprenøren skal spesifisere sitt krav innen rimelig tid etter varsling.',
+        spor: 'frist'
+      },
+      'frist-1': {
+        ikon: '→', ikonClass: 'sendt',
+        handling: 'La til dokumentasjon',
+        meta: '25.02.2026 · TE',
+        endring: 'Underleverandør Stålmontasje AS bekreftet forsinkelse i leveranse av stålkonstruksjon. Dokumentasjon for materialmangler vedlagt.',
+        vedlegg: 'Forsinkelsesbekreftelse_stål.pdf',
+        paragraf: 'NS 8407 §33.4',
+        bestemmelse: 'Varsling av fristkrav: Totalentreprenøren skal varsle uten ugrunnet opphold dersom det oppstår forhold som kan gi grunnlag for fristforlengelse.',
+        spor: 'frist'
+      },
+      'frist-2': {
+        ikon: '↻', ikonClass: 'revisjon',
+        handling: 'Reviderte forespørsel',
+        meta: '15.02.2026 · TE',
+        endring: 'Krevd forlengelse økt fra 30 til 45 dager. Begrunnelse: ytterligere forsinkelse fra underleverandør bekreftet av Stålmontasje AS.',
+        vedlegg: 'Forsinkelsesbekreftelse_rev1.pdf',
+        paragraf: 'NS 8407 §33.6',
+        bestemmelse: 'Spesifisering av fristkrav: Krav skal spesifiseres innen rimelig tid etter varsling, med dokumentasjon for kravets omfang.',
+        spor: 'frist'
+      },
+      'frist-3': {
+        ikon: '→', ikonClass: 'sendt',
+        handling: 'Forespurte fristforlengelse',
+        meta: '20.01.2026 · TE',
+        endring: 'Foreløpig krav om 30 dagers fristforlengelse. Årsak: forsinket leveranse av stålkonstruksjon fra underleverandør.',
+        vedlegg: 'Forelopig_fristkrav.pdf',
+        paragraf: 'NS 8407 §33.1',
+        bestemmelse: 'Fristforlengelse: Totalentreprenøren har krav på fristforlengelse dersom fremdriften hindres av forhold byggherren har risikoen for.',
+        spor: 'frist'
+      },
+      'frist-4': {
+        ikon: '⚑', ikonClass: 'varslet',
+        handling: 'Varslet mulig fristforlengelse',
+        meta: '15.01.2026 · TE',
+        endring: 'Tidlig varsel om mulig forsinkelse grunnet materialmangler hos stålleverandør. Omfang uavklart.',
+        vedlegg: null,
+        paragraf: 'NS 8407 §33.4',
+        bestemmelse: 'Varsling av fristkrav: Totalentreprenøren skal varsle uten ugrunnet opphold.',
+        spor: 'frist'
+      }
+    };
+
+    let fokusertIndex = -1;
+    let fokusertSpor = null;
+
+    function fokuserHendelse(el) {
+      // Clear previous focus
+      document.querySelectorAll('.hl-hendelse.fokusert').forEach(h => h.classList.remove('fokusert'));
+      el.classList.add('fokusert');
+
+      // Find index
+      const events = el.closest('.hendelseslogg-events').querySelectorAll('.hl-hendelse');
+      fokusertSpor = el.closest('.sporkort').dataset.spor;
+      events.forEach((ev, i) => { if (ev === el) fokusertIndex = i; });
+
+      // Update panel
+      const key = fokusertSpor + '-' + fokusertIndex;
+      const data = hendelsesData[key];
+      if (data) visDetalj(data);
+    }
+
+    function visDetalj(data) {
+      document.getElementById('fv-tom').style.display = 'none';
+      const innhold = document.getElementById('fv-innhold');
+      innhold.style.display = 'block';
+
+      const ikon = document.getElementById('fv-h-ikon');
+      ikon.textContent = data.ikon;
+      ikon.className = 'fv-ikon ' + data.ikonClass;
+      document.getElementById('fv-h-handling').textContent = data.handling;
+      document.getElementById('fv-h-meta').textContent = data.meta;
+      document.getElementById('fv-endring').textContent = data.endring;
+      document.getElementById('fv-lenke').onclick = function() { navigerTilSpor(data.spor); };
+
+      // Update paragraf and bestemmelse
+      innhold.querySelector('.fv-paragraf').textContent = data.paragraf;
+      innhold.querySelector('.fv-bestemmelse-tekst').textContent = data.bestemmelse;
+
+      // Update vedlegg
+      const vedleggEl = innhold.querySelector('.fv-vedlegg');
+      if (data.vedlegg) {
+        vedleggEl.style.display = 'flex';
+        vedleggEl.lastChild.textContent = data.vedlegg;
+      } else {
+        vedleggEl.style.display = 'none';
+      }
+    }
+
+    function clearFokus() {
+      document.querySelectorAll('.hl-hendelse.fokusert').forEach(h => h.classList.remove('fokusert'));
+      fokusertIndex = -1;
+      fokusertSpor = null;
+      const tom = document.getElementById('fv-tom');
+      if (tom) tom.style.display = 'block';
+      const innhold = document.getElementById('fv-innhold');
+      if (innhold) innhold.style.display = 'none';
+    }
+
+    // Hover on events → show detail
+    document.addEventListener('mouseover', function(e) {
+      const hendelse = e.target.closest('.hl-hendelse');
+      if (hendelse && hendelse.closest('.hendelseslogg-events')) {
+        fokuserHendelse(hendelse);
+      }
+    });
 
     // Radio buttons
     function velgRadio(el) {
@@ -2053,17 +2356,38 @@
     // Keyboard navigation
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        // Collapse any open hendelseslogg first
         const expanded = document.querySelector('.sporkort.expanded');
         if (expanded) {
           expanded.classList.remove('expanded');
+          document.querySelector('.forhandlingsbord').classList.remove('har-panel');
+          clearFokus();
           return;
         }
-        // Then go back to overview
         const oversikt = document.getElementById('view-oversikt');
         if (!oversikt.classList.contains('active')) {
           tilbakeTilOversikt();
         }
+      }
+
+      // Arrow keys: navigate events in open hendelseslogg
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const expanded = document.querySelector('.sporkort.expanded');
+        if (!expanded) return;
+        const events = expanded.querySelectorAll('.hl-hendelse');
+        if (events.length === 0) return;
+
+        e.preventDefault();
+        let newIndex = fokusertIndex;
+        if (e.key === 'ArrowDown') newIndex = Math.min(fokusertIndex + 1, events.length - 1);
+        if (e.key === 'ArrowUp') newIndex = Math.max(fokusertIndex - 1, 0);
+        if (newIndex !== fokusertIndex) {
+          fokuserHendelse(events[newIndex]);
+        }
+      }
+
+      // Enter: navigate to spordetalj for focused event
+      if (e.key === 'Enter' && fokusertSpor) {
+        navigerTilSpor(fokusertSpor);
       }
     });
   </script>
