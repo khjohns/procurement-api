@@ -1,5 +1,15 @@
 # Forhandlingsbordet — Oversiktsside for KOE-sak
 
+## Intent
+
+**Hvem:** En kontraktsansvarlig (BH eller TE) med 15–25 aktive KOE-saker. Skjerm 24–27". Klikket inn fra sakslisten. Spørsmålet: «Trenger denne saken meg nå?»
+
+**Oppgave:** Scanning, ikke arbeid. Tre beslutninger per sak: (1) kreves det handling? (2) fra hvem? (3) hva haster mest? Alt innen 3 sekunder, uten å klikke inn i et spor.
+
+**Følelse:** Kontrollrom. Tett, nøkternt, ingenting dekorativt. Data-panelet på en trading desk — ikke dashboardet i en SaaS-app. Rose-tonet urgency som bryter monotonien.
+
+---
+
 ## Konsept
 
 Forhandlingsbordet er landingssiden for en KOE-sak. Når du åpner KOE-2024-047, lander du ikke på et spesifikt spor — du lander *her*.
@@ -528,6 +538,50 @@ Fargekodet etter mest urgent handling. Forsvinner når alt er besvart.
 
 ---
 
+## Tastatur og tilgjengelighet
+
+| Tast | Kontekst | Handling |
+|------|----------|---------|
+| Tab | Tidslinje | Mellom sporkort (fokuserer hele kortet) |
+| Enter | Sporkort fokusert | Navigerer til spordetalj |
+| Space | Sporkort fokusert | Ekspanderer hendelseslogg (hvis 4+) |
+| ↑↓ | Hendelseslogg åpen | Mellom hendelser |
+| Enter | Hendelse fokusert | Navigerer til spordetalj |
+| Escape | Hendelseslogg åpen | Lukker hendelseslogg + forhåndsvisning |
+| Tab | Hendelseslogg åpen | Flytter fokus til forhåndsvisningspanel |
+
+Fokusert sporkort: 2px solid --wire-focus, offset -2px. Fokusert hendelse: --felt-hover bakgrunn + 2px --vekt venstrekant.
+
+---
+
+## Layout-constraints
+
+**Sidebar:** sticky, top 0, height 100vh, overflow-y auto. FRISTER og VARSLING er alltid synlige — sidebar scroller uavhengig av tidslinjen.
+
+**Responsive:**
+
+| Bredde | Tilpasning |
+|--------|-----------|
+| ≥1440px | Full layout. Forhåndsvisningspanel ved hendelseslogg. |
+| 1280–1439px | Forhåndsvisningspanel skjules. Hendelseslogg ekspanderer uten panel. |
+| 1024–1279px | Sidebar kollapser til 48px ikon-modus (saks-ID + urgency-ikon). Klikk ekspanderer. |
+| <1024px | Ikke støttet (desktop-verktøy). |
+
+Tidslinje har ingen max-width — fyller tilgjengelig plass. Sporkort har max-width 820px og sentreres i tidslinjekolonnen.
+
+---
+
+## Konsistens med Arbeidsflaten
+
+Spordetaljvisningen er spesifisert i DESIGN_WORKSPACE_PANELS.md. Delte beslutninger:
+
+- **Tokensystem:** Analysebordet-tokens (system.md). Se DESIGN_WORKSPACE_PANELS §Konsistens.
+- **Radius:** 2/4/6px (skarpere enn Analysebordet). Gjelder begge visninger.
+- **Aksentfarge:** --vekt (amber) for handlinger og fokus.
+- **Venstepanel i spordetalj:** Definert her (§Venstre panel i spordetalj). Arbeidsflaten eier midtpanel + høyrepanel.
+
+---
+
 ## Mockup: BH med tre aktive spor
 
 Alle tre spor har mottatte krav. Grunnlag er kritisk (passivitet).
@@ -768,21 +822,33 @@ Overflater, typografi, dybde: identisk med Analysebordet. --canvas, --felt, --wi
 ```
 Sporkort:
   bakgrunn: --felt (normal), --score-low-bg (kritisk)
-  kant: --wire
+  kant: 1px solid --wire
   kant-venstre: se differensieringstabell
   hover: --felt-hover
   radius: --r-md
+  padding: sp-3 (12px) sp-4 (16px)
+  gap mellom linjer: sp-1 (4px)
+  cursor: pointer (hele kortet er klikkbart)
+  focus-visible: 2px solid --wire-focus, offset -2px
+  transition: background 150ms ease
 
 Header-linje:
-  spornavn: --font-ui, 12px, weight 600
-  statusbadge: 10px, uppercase, weight 600, tracking 0.06em
+  display: flex, align-items center, gap sp-2 (8px)
+  spornavn: --font-ui, 12px, weight 600, --ink
+  statusbadge: 10px, uppercase, weight 600, tracking 0.06em, --ink-secondary
+    pill: padding 1px 6px, radius --r-sm, bg --felt-active
   varslingsflagg: --font-ui, 10px, --ink-muted (✓ = --score-high, ⚠ = --vekt, ✕ = --score-low)
   varslingsflagg-tekst: menneskelig label, §-referanse på hover (title-attr)
-  handlingsknapp: --vekt tekst, --vekt-bg bakgrunn, --r-sm
+  handlingsknapp (høyrestilt, ml auto):
+    --font-ui, 11px, weight 600, --vekt tekst
+    bg --vekt-bg, radius --r-sm, padding sp-1 (4px) sp-3 (12px)
+    hover: --vekt-bg-strong
+    kritisk variant: --score-low tekst, --score-low-bg bakgrunn
 
 Data-linje:
-  --font-data, 12px, --ink · prikk-separert
+  --font-data, 12px, --ink · prikk-separert (· med sp-1 mellomrom)
   Revisjonsmerke: "Rev. N" i vanlig tekst
+  frist: --ink-muted, "(DD.MM)" etter dager
 
 Historikk-linje:
   --font-ui, 10px, --ink-muted · prikk-separert · tracking 0.01em
