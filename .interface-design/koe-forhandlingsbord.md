@@ -2,12 +2,16 @@
 
 ## Konsept
 
-Forhandlingsbordet er landingssiden for en KOE-sak. Når du åpner KOE-2024-047, lander du ikke på et spesifikt spor — du lander *her*. Oversikten er en **vertikal tidslinje** der hendelser fra alle spor er plassert kronologisk, gruppert i sporkort.
+Forhandlingsbordet er landingssiden for en KOE-sak. Når du åpner KOE-2024-047, lander du ikke på et spesifikt spor — du lander *her*.
 
 Tre funksjoner:
-1. **Oversikt** — hele forhandlingslandskapet i ett blikk (alle spor, alle statuser)
-2. **Fokus** — hva som krever din oppmerksomhet *nå* (det kan være flere samtidige handlinger)
-3. **Inngang** — klikk for å grave dypere i ett spor via tre-kolonne spordetaljvisningen
+1. **Oversikt** — hele forhandlingslandskapet i ett blikk
+2. **Fokus** — hva som krever din oppmerksomhet *nå* (det kan være flere)
+3. **Inngang** — klikk for å grave dypere via spordetaljvisningen
+
+### Tetthetsfilosofi
+
+Analysebordet er "dense, number-forward." Forhandlingsbordet arver dette. En kontraktsansvarlig med 20 saker trenger <3 sekunder per sak. Hvert sporkort er 2–3 linjer — nøkkeldata, frist, handling. Alle spor synlige uten scrolling.
 
 ---
 
@@ -24,9 +28,7 @@ Saksliste          Forhandlingsbordet         Spordetalj
                    2 kolonner = scanning        3 kolonner = arbeid
 ```
 
-Mellomnivået. Du scanner, prioriterer, velger hva du jobber med.
-
-Layoutskiftet — fra to til tre kolonner — kommuniserer modusbytte: oversikt → arbeid. Høyrepanelet (begrunnelse-editoren) eksisterer *bare* i spordetalj, der du faktisk skriver.
+Layoutskiftet kommuniserer modusbytte: oversikt → arbeid. Høyrepanelet (begrunnelse-editoren) eksisterer bare i spordetalj.
 
 ---
 
@@ -36,17 +38,14 @@ Layoutskiftet — fra to til tre kolonner — kommuniserer modusbytte: oversikt 
 ┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
 │ Sakskontekst (260px) │ Tidslinje (flex)                                                 │
 │                      │                                                                  │
-│ Fast: partene,       │ Dynamisk: sporkort langs vertikal kronologisk spine.             │
-│ status, frister,     │ Sist oppdaterte spor øverst. Handlinger fremhevet.               │
-│ varsling             │                                                                  │
+│ Fast: partene,       │ Kompakte sporkort langs vertikal kronologisk spine.               │
+│ frister, varsling    │ Sist oppdaterte spor øverst. Handlinger fremhevet.               │
 └──────────────────────┴──────────────────────────────────────────────────────────────────┘
 ```
 
 Ingen høyrepanel. Det reserveres for spordetalj.
 
 ### Venstre panel — Sakskontekst
-
-Vedvarende informasjon som gjelder hele saken, uavhengig av aktivt spor:
 
 ```
 KOE-2024-047
@@ -56,16 +55,6 @@ stålkonstruksjon
 ─────────────────
 Veidekke (TE)
 Oslobygg (BH)
-
-─────────────────
-Opprettet  10.01.26
-Oppdatert  i dag
-
-─────────────────
-SPOR
-● Grunnlag   ⚠ 19d
-● Frist      Svar kreves
-● Vederlag   Nytt
 
 ─────────────────
 FRISTER
@@ -79,204 +68,166 @@ VARSLING
 – §33.6   – §34.1.2
 ```
 
-**SPOR-seksjonen** gir mikro-navigasjon. Klikk på et spor → scroll tidslinjen til det kortet. Status-teksten er den kompakte oppsummeringen. ⚠-flagg synlige i periferien selv når du leser tidslinjen.
+To seksjoner utover saksidentitet:
 
-**FRISTER-seksjonen** samler alle aktive tidsfrister. Sortert etter urgency. Fargekodet: normal (--ink-secondary), advarsel (--vekt), kritisk (--score-low). Passivitetsregelen (§32.3) får egen behandling — "passivitet" er et sterkere signal enn "X dager igjen" fordi konsekvensen er automatisk rettighetsforfall.
+**FRISTER** — urgency-sortert. Mest presserende øverst. Fargekodet: normal (--ink-secondary), advarsel (--vekt), kritisk (--score-low). "Passivitet" er et juridisk vendepunkt — sterkere enn en vanlig frist.
 
-**VARSLING-seksjonen** viser kompakt paragrafstatus. ✓ = overholdt, ⚠ = mulig brudd, ✕ = brudd, – = ikke relevant ennå. Hover avslører full paragraftekst og dato.
+**VARSLING** — kompakt paragrafstatus. ✓ overholdt, ⚠ mulig brudd, ✕ brudd, – ikke relevant ennå. Hover avslører full tekst.
+
+Ikke SPOR-seksjon her — den ville duplisert sporkortene i tidslinjen.
+
+---
+
+## Urgency vs. kronologi
+
+**Spenningen:** Kronologisk sortering (sist redigerte øverst) kan begrave det mest urgente. Grunnlag varslet for 19 dager siden havner nederst, men passiviteten gjør det mest presserende.
+
+**Løsningen — to komplementære virkemidler:**
+
+1. **Tidslinjen sorterer kronologisk** — sist redigerte spor øverst. Arbeidsstøtte: det du nettopp jobbet med er lett å finne.
+
+2. **Visuell vekt overvinner romlig posisjon** — kritiske kort (passivitet, preklusion) har rose-tonet bakgrunn, sterkere kant, konsekvenstekst. De *roper* uavhengig av posisjon. Sidepanelet viser FRISTER urgency-sortert.
+
+Effekten: øynene faller naturlig på det nyeste (posisjon), men trekkes mot det mest urgente (visuell vekt). To signaler som samvirker.
+
+---
+
+## Signaturelement: Paragrafstatus
+
+Unik for dette produktet. Kompakte juridiske statusflagg vevd inn i hvert nivå av grensesnittet:
+
+**I sidebar** (aggregert): `✓ §32.2  ⚠ §33.4  – §33.6  – §34.1.2`
+
+**I sporkort** (inline): `FRIST §33 · Spesifisert krav · ⚠§33.4 ✓§33.6`
+
+**I spordetalj** (utvidet): Full forklaring med dato, begrunnelse, konsekvens.
+
+En trading-terminal har tickers. En code editor har lint-markører. Et KOE-verktøy har paragrafstatus — kontraktuelle compliance-signaler i hvert lag av grensesnittet. Ingenting annet ser slik ut.
+
+---
+
+## Sporkort — kompakt format
+
+Hvert spor som et tett kort: 2–3 linjer. Nøkkeldata, ikke prosa.
+
+### Anatomi
+
+```
+┌─ SPORNAVN §X ─ Status ─ §-flagg ──────── → Handling ─┐
+│ [Nøkkeldata: tall, beløp, dager, metode · Frist Xd]   │
+│ [Mini-historikk: dato hendelse · dato hendelse · ...]  │
+└────────────────────────────────────────────────────────┘
+```
+
+- **Linje 0 (header):** Spornavn, paragraf, statusbadge, varslingsflagg, handlingsknapp
+- **Linje 1:** Nøkkeldata med prikk-separatorer. Tall i --font-data.
+- **Linje 2 (valgfri):** Mini-historikk — siste 2–3 hendelser kronologisk, --ink-muted
+
+Kun 2 linjer når sporet har én hendelse. 3 linjer når det er historikk.
+
+### Eksempler per tilstand
+
+**Handling kreves (din tur):**
+```
+┌─ FRIST §33 ─ Spesifisert krav ─ ⚠§33.4 ────── → Svar ──┐
+│ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02)         │
+│ i går TE spesifiserte · 20.01 forespurt · 15.01 varslet  │
+└───────────────────────────────────────────────────────────┘
+```
+Amber venstre-kant (3px). Handlingsknapp synlig.
+
+**Handling kreves — kritisk (passivitet):**
+```
+┌─ ⚠ GRUNNLAG §25.2 ─ Ubesvart ──────────── → Svar nå ───┐
+│ TE varslet irregulær endring · Stålmontasje AS · §25.2    │
+│ ⚠ 19d uten svar — passivitet: risiko for rettighetsforfall│
+└───────────────────────────────────────────────────────────┘
+```
+Rose-tonet bakgrunn (--score-low-bg) på HELE kortet. Rose venstre-kant. Konsekvenstekst på siste linje. "Svar nå" i stedet for bare "Svar."
+
+**Venter på motpart:**
+```
+┌─ FRIST §33 ─ Delvis godkjent ─ Venter på TE ────────────┐
+│ 30 av 45d godkjent (67%) · Innsigelse §33.6.1 · 12.02   │
+│ 28.01 TE spesifiserte · 20.01 forespurt · 15.01 varslet  │
+└───────────────────────────────────────────────────────────┘
+```
+Nøytral kant (--wire-strong, 1px). Ingen handlingsknapp. "Venter på [rolle]" i headeren.
+
+**Godkjent / løst:**
+```
+┌─ GRUNNLAG §25.2 ─ Godkjent ✓ ───────────────────────────┐
+│ Irregulær endring · Godkjent 03.02                        │
+└───────────────────────────────────────────────────────────┘
+```
+Dempet kontrast (--ink-secondary). Grønn venstre-kant (2px). To linjer. Kollapset.
+
+**TE etter delvis godkjenning — valg:**
+```
+┌─ FRIST §33 ─ Delvis godkjent ──────────────── → Velg ───┐
+│ 30 av 45d (67%) · Innsigelse §33.6.1                     │
+│ Godta · Revidere · Trekke                                 │
+└───────────────────────────────────────────────────────────┘
+```
+Linje 2 viser TEs mulige handlinger direkte i kortet.
+
+### Visuell differensiering
+
+| Tilstand | Bakgrunn | Venstre kant | Handling |
+|---|---|---|---|
+| Handling — normal | --felt | 3px --vekt | → Svar |
+| Handling — kritisk | --score-low-bg | 3px --score-low | → Svar nå |
+| Venter | --felt | 1px --wire-strong | Ingen |
+| Godkjent | --felt | 2px --score-high | Ingen, ✓ badge |
+| Avslått | --felt | 2px --score-low | → Forsering? |
+| Bortfalt | --felt | 1px stiplet --ink-ghost | → Se sak |
 
 ---
 
 ## Tidslinjespinen
 
-Vertikal linje som binder alle sporkort kronologisk. Datomerker grupperer hendelser.
+Vertikal linje som binder sporkortene kronologisk:
 
 ```
 │
-├── i dag ──────────────────────────────────────
+├── i dag ──────────────────────────────────
 │
-│   [Sporkort]
+│  [Sporkort]
 │
-├── i går ──────────────────────────────────────
+├── i går ──────────────────────────────────
 │
-│   [Sporkort]
+│  [Sporkort]
 │
-├── 15. januar ─────────────────────────────────
+├── 15. januar ─────────────────────────────
 │
-│   [Sporkort]
+│  [Sporkort]
 │
-├── 10. januar ─────────────────────────────────
-│
-├──── ○ Sak opprettet av TE
+├── 10. januar ─────────────────────────────
+│  ○ Sak opprettet av TE
 │
 ```
 
-### Hva "sist redigerte spor øverst" betyr
+Hvert sporkort plasseres ved sin **siste hendelse**. Sporet med siste aktivitet havner naturlig øverst. BH svarer på grunnlag i dag → grunnlagskortet flytter til "i dag."
 
-Hvert sporkort plasseres ved datoen for sin **siste hendelse**. Sporet med siste aktivitet havner naturlig øverst.
-
-- BH svarer på grunnlag i dag → grunnlagskortet flytter til "i dag"-gruppen, over frist/vederlag
-- TE reviderer fristkrav i morgen → fristkortet flytter til "i morgen"-gruppen, øverst
-
-Ingen manuell sortering — kronologien gjør jobben. Effekten er "working memory": det du nettopp jobbet med er lett å finne igjen.
-
-### Enkelthendelser uten sporkort
-
-Noen hendelser tilhører saken, ikke et spor: "Sak opprettet", "Dokument lastet opp", "Notat lagt til". Disse vises som enkle punkter på spinen, uten kort:
-
-```
-├──── ○ Sak opprettet av TE
-├──── ○ TE la til dokument: Fremdriftsplan_rev3.pdf
-```
+Enkelthendelser uten spor (sakopprettelse, dokumentopplasting) vises som punkter på spinen.
 
 ---
 
-## Sporkort
-
-Hvert spor i saken representeres som et kort festet til tidslinjespinen.
-
-### Struktur
-
-```
-SPORNAVN §X.Y ·································· Statusbadge
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  ● [Siste hendelse — full beskrivelse]                [tid] │
-│    [Nøkkeldata — beløp, dager, metode]                       │
-│                                                              │
-│  ○ [dato]  [Eldre hendelse — kompakt]                        │
-│  ○ [dato]  [Eldre hendelse — kompakt]                        │
-│                                                              │
-│  [Frist / urgency-indikator]               → [Handlingsknapp]│
-└──────────────────────────────────────────────────────────────┘
-```
-
-- **Siste hendelse** (●, --ink): full beskrivelse, primær kontrast
-- **Eldre hendelser** (○, --ink-muted): kompakt, sekundær — gir temporal kontekst uten å dominere
-- **Handlingsknapp** (→): bare synlig når det er *din tur* å handle. Klikk → navigerer direkte til skjema i spordetaljvisningen
-- **Statusbadge** til høyre for spornavnet: "Nytt", "Sendt", "Delvis godkjent", "Ubesvart ⚠"
-
-### Visuell differensiering
-
-| Tilstand | Overflate | Venstre kant | Handling |
-|---|---|---|---|
-| Handling kreves — normal | --felt | --vekt (3px) | → Svar / → Vurder |
-| Handling kreves — haster | --felt + svak rose tint | --score-low (3px) | → Svar nå |
-| Venter på motpart | --felt | --wire-strong (1px) | Ingen knapp, "Venter på [rolle]" |
-| Godkjent / løst | --felt, --ink-secondary | --score-high (2px) | Ingen, ✓ badge |
-| Avslått | --felt, normal | --score-low (2px) | → Subsidiær? / → Forsering? |
-
-Venstre-kanten er det sterkeste signalet. Den mapper til vektlinjen fra Analysebordet — amber trekker oppmerksomhet. Rose eskalerer.
-
-### Kollapset vs. utvidet historikk
-
-Sporkort med >3 hendelser viser de 2 siste, med "▾ 4 tidligere" for å utvide:
-
-```
-│  ● BH godkjente 30 av 45 dager                        12.02  │
-│    Innsigelse: §33.6.1                                        │
-│                                                              │
-│  ○ i går  TE spesifiserte fristkrav                          │
-│  ▾ 2 tidligere                                               │
-```
-
-Klikk utvider og viser alle hendelsene kronologisk. Kollapset er default — tidslinjen skal gi oversikt, ikke detaljert logg.
-
----
-
-## Handlingsindikatorer
-
-### Handlingsbanner
+## Handlingsbanner
 
 Øverst i tidslinjen. Sticky ved scrolling. Én linje:
 
 ```
-⚠ 2 handlinger venter på deg
+⚠ 3 handlinger venter på deg
 ```
 
-Fargekodet etter den *mest urgente* handlingen. Forsvinner når ingen handlinger venter. Kompakt — tar ikke plass fra sporkortene.
-
-### Urgency-nivåer
-
-| Nivå | Visuelt | Eksempel |
-|---|---|---|
-| Informativt | Normal kort, --vekt kant | "Nytt krav mottatt" (14d frist) |
-| Advarsel | Amber fristindikator, --vekt kant med sterkere opacity | "7 dager igjen" |
-| Kritisk | Rose kant, ⚠ badge, svak rose bakgrunn | "Passivitet — 19d uten svar" |
-
-Fargekodingen følger eksisterende tokens: --vekt for oppmerksomhet, --score-low for fare, --score-high for løst.
-
-### Passivitetsregelen — spesialbehandling
-
-§32.3 passivitet (gjelder IRREG og VALGRETT) er fundamentalt forskjellig fra vanlige tidsfrister. Det er ikke "du bør svare snart" — det er "du *mister rettigheter* om du ikke svarer." Konsekvensen er automatisk: BH kan ikke senere protestere.
-
-Visuelt skilles dette fra vanlige frister:
-
-```
-⚠ 19 dager uten svar
-Passivitet §32.3 — BH kan miste retten til å protestere
-```
-
-Rose kant + rose badge + eksplisitt konsekvens-tekst. Passivitet er ikke bare en frist — det er et juridisk vendepunkt.
-
----
-
-## Rolleperspektiv
-
-Forhandlingsbordet er rollebevisst. TE og BH ser de samme hendelsene, men handling og fremheving er forskjellig.
-
-### BH ser:
-
-```
-  FRISTFORLENGELSE §33 ····················· Spesifisert krav
-  ┌──────────────────────────────────────────────────────┐
-  │                                                      │
-  │  ● TE spesifiserte fristkrav                  14:22  │
-  │    45 kalenderdager · Ny sluttdato 15.08.2026        │
-  │                                                      │
-  │  Frist for svar: 13 dager               → Svar på krav│
-  └──────────────────────────────────────────────────────┘
-```
-
-BH har handling: "Svar på krav". Amber kant. Frist synlig.
-
-### TE ser (samme hendelse):
-
-```
-  FRISTFORLENGELSE §33 ····················· Sendt
-  ┌──────────────────────────────────────────────────────┐
-  │                                                      │
-  │  ● Du sendte spesifisert krav                 14:22  │
-  │    45 kalenderdager · Ny sluttdato 15.08.2026        │
-  │                                                      │
-  │  Sendt i går · Venter på BHs svar                    │
-  └──────────────────────────────────────────────────────┘
-```
-
-TE venter. Ingen handlingsknapp. Nøytral kant. "Du" i stedet for "TE" — personlig perspektiv.
-
-### TE etter BH delvis godkjente:
-
-```
-  FRISTFORLENGELSE §33 ················· Delvis godkjent
-  ┌──────────────────────────────────────────────────────┐
-  │                                                      │
-  │  ● BH godkjente 30 av 45 dager               12.02  │
-  │    67% · Innsigelse: §33.6.1 spesifisert for sent   │
-  │                                                      │
-  │  ○ 28.01  Du sendte spesifisert krav                 │
-  │                                                      │
-  │  Godta · Revidere · Trekke                    → Velg │
-  └──────────────────────────────────────────────────────┘
-```
-
-TE har handling igjen — velge mellom å godta, revidere eller trekke kravet. Nøkkeldata (67%, innsigelsen) er synlig i oversikten slik at TE kan vurdere uten å drille ned.
+Fargekodet etter mest urgent handling. Forsvinner når alt er besvart.
 
 ---
 
 ## Mockup: BH med tre aktive spor
 
-BH åpner KOE-2024-047. Alle tre spor har mottatte krav. Grunnlag er kritisk (passivitet).
+Alle tre spor har mottatte krav. Grunnlag er kritisk (passivitet).
 
 ```
 ┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
@@ -286,61 +237,42 @@ BH åpner KOE-2024-047. Alle tre spor har mottatte krav. Grunnlag er kritisk (pa
 │ stålkonstruksjon     │  │                                                               │
 │                      │  ├── i dag ──────────────────────────────────────────────         │
 │ ─────────────────    │  │                                                               │
-│ Veidekke (TE)        │  │   VEDERLAG §34 ··························· Nytt krav           │
-│ Oslobygg (BH)        │  │   ┌──────────────────────────────────────────────────┐        │
-│                      │  │   │                                                  │        │
-│ ─────────────────    │  │   │  ● TE sendte vederlagskrav                10:34  │        │
-│ Opprettet  10.01     │  │   │    Regningsarbeid · 2,4 MNOK                     │        │
-│ Oppdatert  i dag     │  │   │    Rigg 340k · Produktivitetstap 180k            │        │
-│                      │  │   │                                                  │        │
-│ ─────────────────    │  │   │  Frist: 14 dager (17.02)         → Svar på krav  │        │
-│ SPOR                 │  │   └──────────────────────────────────────────────────┘        │
-│ ● Grunnlag  ⚠ 19d   │  │                                                               │
-│ ● Frist     Svar     │  ├── i går ──────────────────────────────────────────────         │
-│ ● Vederlag  Nytt     │  │                                                               │
-│                      │  │   FRISTFORLENGELSE §33 ··········· Spesifisert krav           │
-│ ─────────────────    │  │   ┌──────────────────────────────────────────────────┐        │
-│ FRISTER              │  │   │                                                  │        │
-│ ⚠ Grunnlag           │  │   │  ● TE spesifiserte fristkrav              14:22  │        │
-│   passivitet!        │  │   │    45 kalenderdager · Ny dato 15.08.2026         │        │
-│   Frist  13d         │  │   │                                                  │        │
-│   Vederlag  14d      │  │   │  ○ 20.01  BH forespurte spesifisering            │        │
-│                      │  │   │  ○ 15.01  TE varslet fristforlengelse            │        │
-│ ─────────────────    │  │   │                                                  │        │
-│ VARSLING             │  │   │  Frist: 13 dager (16.02)         → Svar på krav  │        │
-│ ✓ §32.2  ⚠ §33.4    │  │   └──────────────────────────────────────────────────┘        │
+│ Veidekke (TE)        │  │  ┌─ VEDERLAG §34 ─ Nytt krav ──────────── → Svar ───┐        │
+│ Oslobygg (BH)        │  │  │ Regningsarbeid · 2,4M · Rigg 340k · Prod.tap 180k│        │
+│                      │  │  │ i dag TE sendte krav · Frist 14d (17.02)          │        │
+│ ─────────────────    │  │  └───────────────────────────────────────────────────┘        │
+│ FRISTER              │  │                                                               │
+│ ⚠ Grunnlag           │  ├── i går ──────────────────────────────────────────────         │
+│   passivitet!        │  │                                                               │
+│   Frist  13d         │  │  ┌─ FRIST §33 ─ Spesifisert krav ─ ⚠§33.4 ── → Svar┐        │
+│   Vederlag  14d      │  │  │ 45d krevd · Ny dato 15.08.26 · Frist 13d (16.02) │        │
+│                      │  │  │ i går spesifisert · 20.01 forespurt · 15.01 varslet│       │
+│ ─────────────────    │  │  └───────────────────────────────────────────────────┘        │
+│ VARSLING             │  │                                                               │
+│ ✓ §32.2  ⚠ §33.4    │  ├── 15. januar ─────────────────────────────────────────         │
 │ – §33.6  – §34.1.2  │  │                                                               │
-│                      │  ├── 15. januar ─────────────────────────────────────────         │
-│                      │  │                                                               │
-│                      │  │   ⚠ ANSVARSGRUNNLAG §25.2 ············· Ubesvart ⚠           │
-│                      │  │   ┌──────────────────────────────────────────────────┐        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  ● TE varslet irregulær endring           11:42  │        │
-│                      │  │   │    Underleverandør Stålmontasje AS               │        │
-│                      │  │   │    §25.2 første ledd                             │        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  ⚠ 19d uten svar — passivitet    → Svar nå      │        │
-│                      │  │   └──────────────────────────────────────────────────┘        │
-│                      │  │                                                               │
+│                      │  │  ┌─ ⚠ GRUNNLAG §25.2 ─ Ubesvart ──────── → Svar nå ┐        │
+│                      │  │  │ TE varslet irregulær endring · Stålmontasje AS    │        │
+│                      │  │  │ ⚠ 19d uten svar — passivitet: rettighetsforfall   │        │
+│                      │  │  └───────────────────────────────────────────────────┘        │
+│                      │  │                    ░░░░░░ rose-tonet bakgrunn ░░░░░░░         │
 │                      │  ├── 10. januar ─────────────────────────────────────────         │
+│                      │  │  ○ Sak opprettet av TE                                        │
 │                      │  │                                                               │
-│                      │  ├──── ○ Sak opprettet av TE                                     │
-│                      │  │                                                               │
-│                      │                                                                  │
 └──────────────────────┴──────────────────────────────────────────────────────────────────┘
 ```
 
-**Leseretning:**
-BH scanner ovenfra og ned. Øverste kort (Vederlag) er sist mottatt. Nederste kort (Grunnlag) er eldst — men har den sterkeste visuelle vekten (⚠, rose kant) fordi passiviteten er kritisk. BH ser umiddelbart: "tre ting venter, men grunnlaget er mest urgent."
+**Leseretning:** Øverste kort (Vederlag) = sist mottatt. Nederste kort (Grunnlag) = eldst, men *visuelt sterkest*: rose bakgrunn, ⚠-prefiks, konsekvenstekst. Rose overvinner posisjon.
 
-**Handlingsprioritet:**
-Handlingsbanneret sier "3 handlinger." FRISTER-seksjonen i venstre panel sorterer etter urgency — "passivitet!" øverst, ikke kronologisk. Tidslinjen sorterer kronologisk (nyeste øverst). Venstre panel gir urgency-rekkefølge. Høyre panel gir temporal rekkefølge. To komplementære perspektiver.
+**Tetthet:** Tre sporkort = ~9 linjer. Alt over folden. BH ser umiddelbart: "tre handlinger, grunnlaget er mest presserende."
+
+**Sidebar vs. tidslinje:** FRISTER sorterer etter urgency ("passivitet!" øverst). Tidslinjen sorterer kronologisk. To perspektiver som supplerer — urgency i periferien, kontekst i sentrum.
 
 ---
 
-## Mockup: Blandet tilstand — noe løst, noe aktivt
+## Mockup: Blandet tilstand
 
-BH har godkjent grunnlaget. Frist er delvis godkjent (TE vurderer). Vederlag venter.
+BH har godkjent grunnlaget (nettopp). Frist delvis godkjent (venter TE). Vederlag nytt.
 
 ```
 ┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
@@ -350,62 +282,57 @@ BH har godkjent grunnlaget. Frist er delvis godkjent (TE vurderer). Vederlag ven
 │ stålkonstruksjon     │  │                                                               │
 │                      │  ├── i dag ──────────────────────────────────────────────         │
 │ ─────────────────    │  │                                                               │
-│ SPOR                 │  │   ANSVARSGRUNNLAG §25.2 ················· Godkjent ✓           │
-│ ✓ Grunnlag           │  │   ┌──────────────────────────────────────────────────┐        │
-│ ◐ Frist   Venter TE │  │   │                                                  │        │
-│ ● Vederlag Svar      │  │   │  ● BH (du) godkjente grunnlaget           09:15  │        │
-│                      │  │   │    Irregulær endring §25.2 — akseptert           │        │
-│ ─────────────────    │  │   │                                                  │        │
-│ FRISTER              │  │   │  ○ 15.01  TE varslet irregulær endring           │        │
-│   Vederlag  14d      │  │   │                                                  │        │
-│   (Ingen urgente)    │  │   │  Avsluttet                                       │        │
-│                      │  │   └──────────────────────────────────────────────────┘        │
+│ FRISTER              │  │  ┌─ GRUNNLAG §25.2 ─ Godkjent ✓ ──────────────────┐          │
+│   Vederlag  14d      │  │  │ Irregulær endring · Godkjent 03.03              │          │
+│   (Ingen urgente)    │  │  └─────────────────────────────────────────────────┘          │
 │                      │  │                                                               │
-│                      │  │   VEDERLAG §34 ··························· Nytt krav           │
-│                      │  │   ┌──────────────────────────────────────────────────┐        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  ● TE sendte vederlagskrav                10:34  │        │
-│                      │  │   │    Regningsarbeid · 2,4 MNOK                     │        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  Frist: 14 dager (17.02)         → Svar på krav  │        │
-│                      │  │   └──────────────────────────────────────────────────┘        │
+│ ─────────────────    │  │  ┌─ VEDERLAG §34 ─ Nytt krav ──────────── → Svar ──┐         │
+│ VARSLING             │  │  │ Regningsarbeid · 2,4M · Frist 14d (17.03)        │         │
+│ ✓ §32.2  ⚠ §33.4    │  │  │ i dag TE sendte krav                             │         │
+│ ✓ §33.6  – §34.1.2  │  │  └──────────────────────────────────────────────────┘         │
 │                      │  │                                                               │
 │                      │  ├── 12. februar ────────────────────────────────────────         │
 │                      │  │                                                               │
-│                      │  │   FRISTFORLENGELSE §33 ··········· Delvis godkjent            │
-│                      │  │   ┌──────────────────────────────────────────────────┐        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  ● BH (du) godkjente 30 av 45 dager      12.02  │        │
-│                      │  │   │    Innsigelse: §33.6.1 spesifisert for sent     │        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  ○ 28.01  TE spesifiserte krav                   │        │
-│                      │  │   │  ▾ 2 tidligere                                   │        │
-│                      │  │   │                                                  │        │
-│                      │  │   │  Venter på TEs svar                              │        │
-│                      │  │   └──────────────────────────────────────────────────┘        │
+│                      │  │  ┌─ FRIST §33 ─ Delvis godkjent ─ Venter på TE ────┐         │
+│                      │  │  │ 30 av 45d godkjent (67%) · Innsigelse §33.6.1    │         │
+│                      │  │  │ 28.01 spesifisert · 20.01 forespurt · 15.01 varsl│         │
+│                      │  │  └──────────────────────────────────────────────────┘         │
 │                      │  │                                                               │
 │                      │  ├── 10. januar ─────────────────────────────────────────         │
-│                      │  ├──── ○ Sak opprettet av TE                                     │
+│                      │  │  ○ Sak opprettet av TE                                        │
 │                      │  │                                                               │
-│                      │                                                                  │
 └──────────────────────┴──────────────────────────────────────────────────────────────────┘
 ```
 
-**Observasjoner:**
+- **Grunnlag** godkjent → dempet, 2 linjer, grønn kant, ingen handling
+- **Vederlag** nytt → amber kant, handlingsknapp, 3 linjer
+- **Frist** venter TE → nøytral kant, ingen knapp, 3 linjer
+- **Banner** sier "1 handling" — bare Vederlag er BHs tur
 
-- **Grunnlagskortet** er "i dag" (BH godkjente nettopp) — øverst pga. siste aktivitet. Dempet kontrast + ✓ badge + grønn venstre-kant. Visuelt "ferdig."
-- **Vederlagskortet** er også "i dag" — men har handling (→ Svar). Amber venstre-kant. Visuelt "aktivt."
-- **Fristkortet** har sunket til 12. februar (siste hendelse). "Venter på TEs svar" — ingen handlingsknapp for BH. Nøytral kant.
-- **Banneret** sier "1 handling" — bare Vederlag krever BHs handling nå.
-- **SPOR i venstre** bruker ✓ (løst), ◐ (halvveis, venter), ● (aktiv) — tre distinkte tilstander i mikro-navigasjonen.
+---
+
+## Rolleperspektiv
+
+TE og BH ser samme hendelser, men handling og ordlyd er forskjellig.
+
+**BH ser:** `→ Svar på krav` (amber knapp, frist synlig)
+**TE ser:** `Sendt i går · Venter på BHs svar` (ingen knapp, nøytral kant)
+
+TE etter BH delvis godkjente:
+```
+┌─ FRIST §33 ─ Delvis godkjent ──────────────── → Velg ───┐
+│ 30 av 45d (67%) · Innsigelse §33.6.1                     │
+│ Godta · Revidere · Trekke                                 │
+└───────────────────────────────────────────────────────────┘
+```
+
+"Du" brukes i stedet for rollenavn: "Du sendte spesifisert krav" (ikke "TE sendte").
 
 ---
 
 ## Overgang: Forhandlingsbordet → Spordetalj
 
-Klikk på et sporkort (eller handlingsknappen) navigerer til tre-kolonne spordetaljvisningen.
-
-### Klikk "→ Svar på krav" (Vederlag)
+Klikk sporkort (eller handlingsknapp) → tre-kolonne spordetaljvisning.
 
 ```
 Forhandlingsbordet                    Spordetalj (Vederlag §34)
@@ -413,21 +340,18 @@ Forhandlingsbordet                    Spordetalj (Vederlag §34)
 │ Sak   │ Tidslinje│  ───→            │ Nav     │ Skjema       │ Begr.    │
 │ info  │ [kort]   │                  │ + spor  │ BHs respons  │ editor   │
 │       │ [kort]   │                  │ status  │ på TEs krav  │          │
-│       │ [kort]   │                  │         │              │          │
 └───────┴──────────┘                  └─────────┴──────────────┴──────────┘
-2 kolonner                            3 kolonner
 ```
 
-**Hva endrer seg:**
-- Tidslinjen forsvinner → midtpanelet blir sporarbeidsflate
-- Høyrepanelet dukker opp → begrunnelse-editor
-- Venstre panel transformerer: sakskontekst → spor-navigasjon med mini-status for andre spor
+- Tidslinjen → midtpanelet (sporarbeidsflate)
+- Høyrepanelet dukker opp (begrunnelse-editor)
+- Venstre panel transformerer til spor-navigasjon med mini-status
 
-**← Tilbake** i spordetaljvisningen → tilbake til Forhandlingsbordet. Tidslinjen er uendret (med mindre du sendte et svar — da har kortet oppdatert seg).
+**← Tilbake** → tilbake til Forhandlingsbordet.
 
-### Hva venstre panel viser i spordetalj
+### Venstre panel i spordetalj
 
-Venstre panel i spordetalj er en *kondensert versjon* av Forhandlingsbordet:
+Kondensert versjon av oversikten — spor-navigasjon med amber accent på aktivt spor:
 
 ```
 ← Forhandlingsbordet
@@ -447,53 +371,34 @@ NESTE HANDLING
 
 █ VEDERLAG
 ▌  §34
-  Nytt krav
-  2,4 MNOK
+  Nytt krav · 2,4M
 
 ● FRISTFORLENGELSE
   §33
   Delvis godkjent
-  Venter på TE
 
 ─────────────────
 FRISTER
   Vederlag  14d
-─────────────────
-VARSLING
-✓ §32.2  ⚠ §33.4
-✓ §33.6  – §34.1.2
 ```
-
-Spor-navigasjonen i venstre panel lar deg bytte mellom spor uten å gå tilbake til oversikten. Aktivt spor har amber accent-bar (█▌). De andre viser kompakt status.
 
 ---
 
 ## Avhengigheter mellom spor
 
-Grunnlag-sporet styrer om frist og vederlag er gyldige. Hvis grunnlag avslås, mister TE rett til fristforlengelse og vederlag under den paragrafen.
-
-Avhengigheten vises subtilt i oversikten:
+Grunnlag styrer om frist og vederlag er gyldige. Avslått grunnlag → avhengige spor vises som "bortfalt":
 
 ```
-  ANSVARSGRUNNLAG §25.2 ··················· Avslått ✕
-  ┌──────────────────────────────────────────────────────┐
-  │  ● BH avviste grunnlaget                      09:15  │
-  │    §25.2 — vilkår ikke oppfylt                        │
-  │                                                      │
-  │  ⚠ Påvirker: Frist §33, Vederlag §34                │
-  └──────────────────────────────────────────────────────┘
+┌─ GRUNNLAG §25.2 ─ Avslått ✕ ────────────────────────────┐
+│ §25.2 vilkår ikke oppfylt · ⚠ Påvirker: Frist, Vederlag │
+└──────────────────────────────────────────────────────────┘
 
-  FRISTFORLENGELSE §33 ··················· Bortfalt
-  ┌──────────────────────────────────────────────────────┐
-  │  Bortfalt — grunnlag §25.2 avslått                   │
-  │                                                      │
-  │  ○ 28.01  TE spesifiserte krav (45d)                 │
-  │                                                      │
-  │  TE kan utfordre grunnlagsavslaget          → Se sak │
-  └──────────────────────────────────────────────────────┘
+┌─ FRIST §33 ─ Bortfalt ───────────────────────── → Se sak┐
+│ Bortfalt — grunnlag §25.2 avslått                        │
+└──────────────────────────────────────────────────────────┘
 ```
 
-Avslått grunnlag viser eksplisitt "Påvirker: Frist, Vederlag." De avhengige sporkortene viser "Bortfalt" med forklaring og lenke tilbake til grunnlaget. Visuelt dempet (--ink-muted) med stiplet venstre-kant.
+Bortfalte kort: dempet, stiplet venstre-kant (--ink-ghost), lenke tilbake til grunnlaget.
 
 ---
 
@@ -501,117 +406,100 @@ Avslått grunnlag viser eksplisitt "Påvirker: Frist, Vederlag." De avhengige sp
 
 ### Forsering
 
-Når BH avslår fristkrav, kan TE forsere (utføre arbeid raskere, kreve merkostnader). Forsering er ikke et eget spor i utgangspunktet — det er en *konsekvens* av avslått fristkrav.
-
-I tidslinjen:
-
+BH avslår fristkrav → TE kan forsere:
 ```
-  FRISTFORLENGELSE §33 ····················· Avslått
-  ┌──────────────────────────────────────────────────────┐
-  │  ● BH avviste fristkrav                       15.02  │
-  │                                                      │
-  │  TE kan kreve forsering §33.8                        │
-  │                                                      │
-  │  → Krev forsering                                    │
-  └──────────────────────────────────────────────────────┘
+┌─ FRIST §33 ─ Avslått ──────────────── → Krev forsering ─┐
+│ BH avviste fristkrav · 15.02 · TE kan forsere §33.8      │
+└───────────────────────────────────────────────────────────┘
 ```
-
-Handlingsknappen "Krev forsering" initierer forseringsflyten — en ny hendelsesrekke som visuelt lenkes til det avslåtte fristkravet.
 
 ### Endringsordre
 
-Endringsordre samler flere KOE-saker. I oversikten for én sak vises en referanse:
-
 ```
-  Del av endringsordre EO-2024-012
-  3 av 5 saker behandlet
+Del av endringsordre EO-2024-012 · 3 av 5 saker behandlet
 ```
 
-Kompakt. Klikk navigerer til endringsordre-visningen (utenfor scope for dette dokumentet).
-
-### Tom sak — nettopp opprettet
-
-TE har opprettet saken men ikke sendt noe ennå:
+### Tom sak
 
 ```
-  │
-  ├── i dag ──────────────────────────────────────────────
-  │
-  │   Ingen spor startet ennå.
-  │   Start med å varsle ansvarsgrunnlag.
-  │
-  │                                    → Opprett varsel
-  │
-  ├──── ○ Sak opprettet av TE                     08:00
-  │
+│
+├── i dag ──────────────────────────────────────
+│
+│   Ingen spor startet ennå.
+│   Start med å varsle ansvarsgrunnlag.
+│
+│                              → Opprett varsel
+│
+├── ○ Sak opprettet av TE                08:00
+│
 ```
 
-Veiledet start — systemet foreslår første handling (varsle ansvarsgrunnlag, som typisk er det naturlige utgangspunktet).
+### Ingen handlinger (BH scanner raskt)
+
+```
+┌──────────────────────┬─────────────────────────────────────────┐
+│ KOE-2024-047         │  Ingen handlinger. Venter på TE.        │
+│ Forsinket leveranse  │                                         │
+│ ...                  │  [kompakte sporkort i ventemodus]        │
+└──────────────────────┴─────────────────────────────────────────┘
+```
+
+Null-tilstand for saker der ingenting krever BHs handling. <3 sekunder å vurdere og gå videre.
 
 ---
 
-## Visuell språk — mapping til Analysebordet-tokens
+## Visuell språk
 
-Forhandlingsbordet deler Analysebordets visuelle fundament men tilpasser aksentene:
+### Mapping til Analysebordet
 
-| Analysebordet | Forhandlingsbordet | Konsept |
+| Analysebordet | Forhandlingsbordet | Prinsipp |
 |---|---|---|
-| --vekt (amber) = vekting | --vekt (amber) = handling kreves | Amber = "dette er viktig" |
-| --score-high (grønn) = god score | --score-high = godkjent/løst | Grønn = "dette er bra" |
-| --score-low (rose) = dårlig score | --score-low = avslått/kritisk | Rose = "dette er problematisk" |
-| Vektlinjen (amber venstre-kant) | Handlingskant (amber venstre-kant) | Kant-accent = visuelt anker |
+| --vekt = vekting | --vekt = handling kreves | Amber = "viktig" |
+| --score-high = god score | --score-high = godkjent | Grønn = "bra" |
+| --score-low = dårlig score | --score-low = kritisk | Rose = "problem" |
+| Vektlinjen | Handlingskant | Kant-accent = anker |
 
-Overflatene er identiske: --canvas bakgrunn, --felt kort, --wire kanter. Typografien er identisk: --font-data for tall/datoer, --font-ui for tekst. Dybdestrategien er identisk: borders-only, ingen skygger.
+Overflater, typografi, dybde: identisk med Analysebordet. --canvas, --felt, --wire, borders-only.
 
-Sporkortene bruker same overflate som evalueringsmatrisen sine rader — --felt med --wire kant. Hover → --felt-hover. Klikk → navigasjon (ikke utvidelse).
-
-### Sporkort-tokens spesifikt
+### Sporkort-tokens
 
 ```
 Sporkort:
-  bakgrunn: --felt
+  bakgrunn: --felt (normal), --score-low-bg (kritisk)
   kant: --wire
-  kant-venstre (handling): 3px solid --vekt
-  kant-venstre (kritisk): 3px solid --score-low
-  kant-venstre (venter): 1px solid --wire-strong
-  kant-venstre (løst): 2px solid --score-high
-  hover: --felt-hover bakgrunn
-  radius: --r-md (6px)
+  kant-venstre: se differensieringstabell
+  hover: --felt-hover
+  radius: --r-md
+
+Header-linje:
+  spornavn: --font-ui, 12px, weight 600
+  statusbadge: 10px, uppercase, weight 600, tracking 0.06em
+  §-flagg: 10px, --ink-muted (✓ = --score-high, ⚠ = --vekt, ✕ = --score-low)
+  handlingsknapp: --vekt tekst, --vekt-bg bakgrunn, --r-sm
+
+Data-linje:
+  --font-data, 12px, --ink · prikk-separert
+
+Historikk-linje:
+  --font-ui, 11px, --ink-muted · prikk-separert
 
 Tidslinjespine:
   linje: 1px solid --wire
   dato-merke: --ink-muted, 11px, uppercase, tracking 0.06em
-  hendelsespunkt (●): --ink, 8px
-  eldre punkt (○): --ink-muted, 6px
-
-Handlingsknapp (→):
-  bakgrunn: --vekt-bg
-  tekst: --vekt
-  hover: --vekt-bg-strong
-  radius: --r-sm
-
-Statusbadge:
-  skrift: 10px, uppercase, weight 600, tracking 0.06em
-  Nytt: --vekt tekst, --vekt-bg bakgrunn
-  Sendt: --ink-secondary, --felt-active
-  Godkjent: --score-high, --score-high-bg
-  Avslått: --score-low, --score-low-bg
-  Ubesvart: --score-low, --score-low-bg (med ⚠)
 ```
 
 ---
 
-## Oppsummering — Beslutninger tatt
+## Oppsummering
 
 | Beslutning | Begrunnelse |
 |---|---|
-| Tidslinjen er oversiktssiden, ikke en fane | Gir dynamisk, prioriterbar oversikt over hele saken |
-| To kolonner på oversikt, tre i detalj | Layoutskifte kommuniserer modusbytte: scanning → arbeid |
-| Sist oppdaterte spor øverst | Naturlig kronologisk — ingen manuell sortering nødvendig |
-| Sporkort langs vertikal spine | Temporal kontekst + sporstruktur i ett grep |
-| Venstre panel viser urgency-sorterte frister | Komplementerer tidslinjens kronologiske rekkefølge |
-| Handlingsknapp bare synlig på "din tur" | Ingen støy fra handlinger som tilhører motparten |
-| Passivitet ≠ vanlig frist | Sterkere visuell vekt fordi konsekvensen er automatisk rettighetsforfall |
-| Kollapset historikk (>3 hendelser) | Oversikt > detalj — drill ned for mer |
-| Godkjente spor dempet men synlige | Forhandlingslandskapet er komplett — ingenting skjules |
-| "Du" i stedet for rollenavn | Personlig perspektiv reduserer kognitiv avstand |
+| Tidslinjen er oversiktssiden | Dynamisk, prioriterbar oversikt over hele saken |
+| 2–3 linjers sporkort | Analysebordet-tetthet: alt over folden, <3s scanning |
+| Kronologisk sort + visuell urgency-vekt | Posisjon gir kontekst, visuell vekt gir prioritet |
+| Paragrafstatus som signatur (§-flagg) | Inline juridiske statusflagg — unikt for dette domenet |
+| Rose bakgrunn på hele kortet ved passivitet | Overvinner romlig posisjon — kritisk synlig uansett |
+| Sidebar: FRISTER + VARSLING, ikke SPOR | SPOR ville duplisert tidslinjen |
+| Handlingsknapp bare på "din tur" | Ingen støy fra motpartens handlinger |
+| "Ingen handlinger" null-tilstand | Rask avfeiing for saker som ikke krever oppmerksomhet |
+| "Du" i stedet for rollenavn | Personlig perspektiv |
