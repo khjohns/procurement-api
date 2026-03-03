@@ -325,6 +325,168 @@ Krav-headeren viser revisjonsmerke: `Krav fra TE — Veidekke · Rev. 2`
 
 ---
 
+## Forhåndsvisningspanel — hendelsesdetalj på høyresiden
+
+### Problemet
+
+Forhandlingsbordet har `260px sidebar | 1fr tidslinje (max-width 820px)`. På en 1440px skjerm etterlater dette ~400px død plass til høyre. Sporkortene er riktig tette, men plassen rundt dem er ubrukt.
+
+### Løsningen: tre-trinns progressiv avsløring
+
+| Nivå | Hva | Bredde | Formål |
+|---|---|---|---|
+| 1. Sporkort | 2–3 linjer, scanning | flex | <3s per sak: "trenger jeg å gjøre noe?" |
+| 2. Hendelseslogg + forhåndsvisning | Event-by-event detalj | tidslinje + 360px panel | "Hva skjedde, og hva betyr det?" |
+| 3. Spordetalj | Full arbeidsflate | 3-kolonne | "Nå svarer jeg" |
+
+Nivå 2 er nytt. Det fyller gapet mellom scanning og arbeid — BH kan utforske historikken uten å forlate oversikten.
+
+### Layoutskifte
+
+**Default (ingen hendelseslogg åpen):**
+```
+┌──────────────────────┬──────────────────────────────────────────────────────┐
+│ Sakskontekst (260px) │ Tidslinje (1fr)                                      │
+└──────────────────────┴──────────────────────────────────────────────────────┘
+```
+Tidslinjen fyller tilgjengelig plass. `max-width` fjernes.
+
+**Hendelseslogg ekspandert:**
+```
+┌──────────────────────┬──────────────────────────────┬───────────────────────┐
+│ Sakskontekst (260px) │ Tidslinje (1fr)               │ Forhåndsvisning      │
+│                      │                               │ (360px)              │
+│                      │  [kort med åpen logg]         │ ┌─────────────────┐  │
+│                      │    ↻ 02.03 ← fokusert         │ │ Hendelsesdetalj │  │
+│                      │    → 25.02                     │ │ for fokusert    │  │
+│                      │    ...                         │ │ hendelse        │  │
+│                      │                               │ └─────────────────┘  │
+└──────────────────────┴──────────────────────────────┴───────────────────────┘
+```
+
+Grid endres dynamisk: `260px 1fr` → `260px 1fr 360px` når hendelseslogg er ekspandert. Panelet glir inn fra høyre (slide-in, 200ms ease-out).
+
+### Forhåndsvisningspanel-anatomi
+
+Panelet viser detalj for den **fokuserte hendelsen** i den åpne hendelsesloggen.
+
+```
+┌─────────────────────────────────────┐
+│ HENDELSESDETALJ                      │
+│                                     │
+│ ↻ Reviderte forespørsel             │
+│ 15.02.2026 · TE                     │
+│                                     │
+│ ───────────────────────────         │
+│                                     │
+│ Endring                             │
+│ Krevd forlengelse økt fra           │
+│ 30 til 45 dager. Begrunnelse:       │
+│ ytterligere forsinkelse fra         │
+│ underleverandør bekreftet.          │
+│                                     │
+│ ───────────────────────────         │
+│                                     │
+│ VEDLEGG                             │
+│ ┌─ Forsinkelsesbekreftelse.pdf ───┐ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ───────────────────────────         │
+│                                     │
+│ BESTEMMELSE                         │
+│ ┌─ NS 8407 §33.6 ────────────────┐ │
+│ │ Spesifisering av fristkrav:     │ │
+│ │ Krav skal spesifiseres innen    │ │
+│ │ rimelig tid etter varsling.     │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ ──────────────── Åpne i spordetalj →│
+└─────────────────────────────────────┘
+```
+
+### Panelet: seksjoner
+
+**Header:**
+- Ikon (hendelsestype) + handling i klartekst
+- Dato (full dato, --font-data) + part (TE/BH)
+- Bakgrunn: --felt, border-left 1px --wire
+
+**Endring (hva skjedde):**
+- Fritekstbeskrivelse av hendelsen
+- For revisjoner: hva ble endret og hvorfor
+- For krav: oppsummering av beløp/dager
+- Font: --font-ui, 12px, --ink-secondary, line-height 1.5
+
+**Vedlegg:**
+- Liste over tilknyttede dokumenter
+- Kort-format: filnavn + ikon (pdf/xlsx)
+- Klikk åpner dokument (i reell app)
+
+**Bestemmelse (§-referanse):**
+- Relevant kontraktsbestemmelse
+- Kort-format: paragrafnummer + utdrag
+- Dypere enn tooltip — full kontekst for juristen
+
+**Bunnen:**
+- "Åpne i spordetalj →" lenke
+- Navigerer til spordetalj for det aktuelle sporet
+
+### Fokus og navigasjon
+
+- **Hover:** Hendelse i loggen highlightes, panelet oppdateres (150ms debounce)
+- **Piltaster (↑↓):** Navigerer mellom hendelser i åpen hendelseslogg
+- **Enter:** Navigerer til spordetalj for hendelsens spor
+- **Escape:** Lukker hendelseslogg + panel (tilbake til 2-kolonne)
+- **Tab:** Flytter fokus til panelet (for tastaturbrukere)
+
+Fokusert hendelse i loggen markeres med:
+- Bakgrunn: --felt-hover (subtilt highlight)
+- Venstre kant: 2px solid --vekt (amber accent)
+
+### Tokens
+
+```
+Forhåndsvisningspanel:
+  bakgrunn: --felt
+  border-left: 1px solid --wire
+  padding: sp-5
+  bredde: 360px
+  posisjon: sticky, top 0, height 100vh
+  overgang: slide-in 200ms ease-out
+
+Panelheader:
+  ikon-farge: per hendelsestype (se hendelsesikoner)
+  handling: --font-ui, 14px, weight 600, --ink
+  dato: --font-data, 11px, --ink-muted
+  part: --font-data, 10px, weight 600, --ink-ghost
+
+Innholdsseksjoner:
+  label: seksjon-label-mønster (11px, uppercase, --ink-ghost)
+  tekst: --font-ui, 12px, --ink-secondary
+  separator: 1px solid --wire
+
+Vedlegg-kort:
+  bakgrunn: --canvas (innfelt)
+  border: 1px solid --wire
+  radius: --r-sm
+  padding: sp-2 sp-3
+  hover: --felt-hover
+
+Bestemmelse-kort:
+  bakgrunn: --canvas (innfelt)
+  border: 1px solid --wire
+  border-left: 2px solid --ink-ghost
+  radius: --r-sm
+  paragraf: --font-data, 10px, --ink-muted
+  tekst: 11px, --ink-secondary
+
+Fokusert hendelse i loggen:
+  bakgrunn: --felt-hover
+  border-left: 2px solid --vekt
+```
+
+---
+
 ## Tidslinjespinen
 
 Vertikal linje som binder sporkortene kronologisk:
