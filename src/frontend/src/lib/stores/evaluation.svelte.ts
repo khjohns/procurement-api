@@ -21,6 +21,7 @@ export interface EvaluationItem {
 	label?: string; // role, type, category
 	scores: Record<string, number>; // itemCriterionId → 0–10
 	notes: Record<string, string>; // itemCriterionId → text
+	note?: string; // holistic resource note
 }
 
 export type AggregationMethod = 'average' | 'minimum';
@@ -47,6 +48,7 @@ export interface Criterion {
 	type: 'quality' | 'price';
 	weight: number;
 	subcriteria: SubCriterion[];
+	notes?: Record<string, string>; // supplierId → overordnet vurdering
 }
 
 export interface Supplier {
@@ -128,6 +130,12 @@ class EvaluationStore {
 	data = $state<EvaluationData>(structuredClone(demoData));
 
 	activeMethod = $state<ActiveMethod>('poeng');
+
+	/** Current matrix view: 'overview' or a criterion ID. */
+	activeView = $state<string>('overview');
+
+	/** Selected supplier in the justification panel. */
+	selectedSupplierId = $state<string | null>(null);
 
 	/** Pure $derived: computed scores for item-evaluated subcriteria. */
 	itemScores = $derived.by(() => {
@@ -434,10 +442,50 @@ class EvaluationStore {
 		if (sub) sub.aggregation = method;
 	}
 
+	/** Set the active view (overview or criterion detail). */
+	setActiveView(view: string) {
+		this.activeView = view;
+		if (view === 'overview') {
+			this.selectedSupplierId = null;
+		} else if (!this.selectedSupplierId && this.data.suppliers.length > 0) {
+			this.selectedSupplierId = this.data.suppliers[0].id;
+		}
+	}
+
+	/** Select a supplier for the justification panel. */
+	selectSupplier(supplierId: string) {
+		this.selectedSupplierId = supplierId;
+	}
+
+	/** Set a criterion-level note (overordnet vurdering) for a supplier. */
+	setCriterionNote(criterionId: string, supplierId: string, text: string) {
+		const criterion = this.data.criteria.find((c) => c.id === criterionId);
+		if (!criterion) return;
+		if (!criterion.notes) criterion.notes = {};
+		criterion.notes[supplierId] = text;
+	}
+
+	/** Set a holistic resource note (covering all dimensions). */
+	setItemResourceNote(
+		subCriterionId: string,
+		supplierId: string,
+		itemId: string,
+		text: string
+	) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub?.items) return;
+		const items = sub.items[supplierId];
+		if (!items) return;
+		const item = items.find((i) => i.id === itemId);
+		if (item) item.note = text;
+	}
+
 	/** Initialize or reset the evaluation with new data. */
 	initialize(newData: EvaluationData) {
 		this.data = newData;
 		this.activeMethod = 'poeng';
+		this.activeView = 'overview';
+		this.selectedSupplierId = null;
 	}
 
 	/** Check if store has been initialized with real data. */

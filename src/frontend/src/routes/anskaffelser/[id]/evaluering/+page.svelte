@@ -2,9 +2,21 @@
 	import { evaluation } from '$lib/stores/evaluation.svelte';
 	import MethodToggle from '$lib/components/evaluation/MethodToggle.svelte';
 	import RankingStrip from '$lib/components/evaluation/RankingStrip.svelte';
-	import EvaluationMatrix from '$lib/components/evaluation/EvaluationMatrix.svelte';
+	import OverviewMatrix from '$lib/components/evaluation/OverviewMatrix.svelte';
+	import CriterionView from '$lib/components/evaluation/CriterionView.svelte';
 	import PriceMatrix from '$lib/components/evaluation/PriceMatrix.svelte';
+	import JustificationPanel from '$lib/components/evaluation/JustificationPanel.svelte';
 	import InsightsPanel from '$lib/components/insights/InsightsPanel.svelte';
+
+	let isOverview = $derived(evaluation.activeView === 'overview');
+	let activeCriterion = $derived(
+		!isOverview ? evaluation.data.criteria.find((c) => c.id === evaluation.activeView) : null
+	);
+
+	/** Show justification panel when viewing a quality criterion. */
+	let showPanel = $derived(
+		!isOverview && activeCriterion?.type === 'quality'
+	);
 </script>
 
 <header class="eval-header">
@@ -31,7 +43,25 @@
 
 {#if evaluation.activeMethod === 'poeng'}
 	<RankingStrip />
-	<EvaluationMatrix />
+
+	<div class="workspace" class:workspace-with-panel={showPanel}>
+		<div class="workspace-main">
+			{#if isOverview}
+				<OverviewMatrix />
+			{:else if activeCriterion}
+				<CriterionView criterionId={activeCriterion.id} />
+			{/if}
+		</div>
+
+		{#if showPanel}
+			<aside class="workspace-panel">
+				<div class="panel-header">
+					<span class="panel-title">Begrunnelse</span>
+				</div>
+				<JustificationPanel />
+			</aside>
+		{/if}
+	</div>
 {:else}
 	<RankingStrip />
 	<PriceMatrix />
@@ -110,5 +140,49 @@
 		color: var(--color-ink-secondary);
 		font-family: var(--font-data);
 		font-size: 11px;
+	}
+
+	/* ── Two-panel workspace ── */
+	.workspace {
+		display: flex;
+		gap: 0;
+		min-height: 400px;
+	}
+
+	.workspace-main {
+		flex: 1;
+		min-width: 0;
+		overflow-x: auto;
+	}
+
+	.workspace-with-panel .workspace-main {
+		margin-right: var(--spacing-3);
+	}
+
+	.workspace-panel {
+		width: 380px;
+		flex-shrink: 0;
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-lg);
+		display: flex;
+		flex-direction: column;
+		max-height: calc(100vh - 200px);
+		position: sticky;
+		top: var(--spacing-4);
+	}
+
+	.panel-header {
+		padding: var(--spacing-3);
+		border-bottom: 1px solid var(--color-wire);
+		flex-shrink: 0;
+	}
+
+	.panel-title {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
 	}
 </style>
