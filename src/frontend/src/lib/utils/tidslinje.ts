@@ -6,6 +6,7 @@ export interface TidslinjeNode {
 	label: string;
 	pos: number;
 	besvart: boolean;
+	avvist?: boolean;
 }
 
 export interface TidslinjeKlynge {
@@ -40,6 +41,7 @@ export function beregnTidslinje(
 			label: h.label,
 			pos: ((new Date(h.dato).getTime() - minDato.getTime()) / spenn) * 100,
 			besvart: h.besvart ?? false,
+			avvist: h.avvist,
 		}))
 		.sort((a, b) => a.pos - b.pos);
 

@@ -154,9 +154,7 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
         notice.contract_nature = _text(proj, "cbc:ProcurementTypeCode")
         # CPV codes (MainCommodityClassification and AdditionalCommodityClassification)
         for tag in ("MainCommodityClassification", "AdditionalCommodityClassification"):
-            for cls in proj.findall(
-                f".//cac:{tag}/cbc:ItemClassificationCode", _NS
-            ):
+            for cls in proj.findall(f".//cac:{tag}/cbc:ItemClassificationCode", _NS):
                 if cls.text and cls.text not in notice.cpv_codes:
                     notice.cpv_codes.append(cls.text)
         # Value
@@ -169,9 +167,7 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
         if val_el is not None:
             notice.currency = val_el.get("currencyID")
         # Duration
-        notice.duration_months = _int(
-            proj, "cac:PlannedPeriod/cbc:DurationMeasure"
-        )
+        notice.duration_months = _int(proj, "cac:PlannedPeriod/cbc:DurationMeasure")
 
     # Procedure
     process = root.find(".//cac:TenderingProcess", _NS)
@@ -248,8 +244,10 @@ def _parse_lots(root: ET.Element, notice: EFormsNotice) -> None:
             # Skip exclusion grounds (handled below) and meta entries
             code_el = sel.find(".//cbc:TendererRequirementTypeCode", _NS)
             if code_el is not None and code_el.get("listName") in (
-                "exclusion-ground", "exclusion-grounds-source",
-                "reserved-procurement", "selection-criteria-source",
+                "exclusion-ground",
+                "exclusion-grounds-source",
+                "reserved-procurement",
+                "selection-criteria-source",
             ):
                 continue
             sc = SelectionCriterion()
@@ -301,9 +299,7 @@ def _parse_procedure_exclusions(root: ET.Element, notice: EFormsNotice) -> None:
 def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
     """Parse framework agreement details."""
     # Framework type from ContractingSystem (e.g. fa-wo-rc, fa-w-rc)
-    for cs in root.findall(
-        ".//cac:TenderingProcess/cac:ContractingSystem", _NS
-    ):
+    for cs in root.findall(".//cac:TenderingProcess/cac:ContractingSystem", _NS):
         code_el = cs.find("cbc:ContractingSystemTypeCode", _NS)
         if code_el is not None and code_el.get("listName") == "framework-agreement":
             notice.framework_type = code_el.text
@@ -311,13 +307,9 @@ def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
     # Framework agreement element for max participants
     fa = root.find(".//cac:FrameworkAgreement", _NS)
     if fa is None:
-        fa = root.find(
-            ".//cac:TenderingProcess/cac:FrameworkAgreement", _NS
-        )
+        fa = root.find(".//cac:TenderingProcess/cac:FrameworkAgreement", _NS)
     if fa is not None:
-        notice.framework_max_participants = _int(
-            fa, "cbc:MaximumOperatorQuantity"
-        )
+        notice.framework_max_participants = _int(fa, "cbc:MaximumOperatorQuantity")
 
     # Framework max value — eForms extension (efbc:FrameworkMaximumAmount)
     fma = root.find(".//efbc:FrameworkMaximumAmount", _NS)

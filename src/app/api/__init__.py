@@ -2,23 +2,38 @@
 
 from __future__ import annotations
 
+import atexit
 import io
 import logging
 import time
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
-from protokoll.common import get_timeline_date, parse_submission_deadline, strip_html
+from protokoll.common import (
+    build_org_lookup,
+    dedup_by_sequence_id,
+    fmt_date,
+    get_activities_by_action,
+    get_org_name,
+    get_timeline_date,
+    is_mature,
+    parse_announcement,
+    strip_html,
+)
 
 bp = Blueprint("api", __name__)
 log = logging.getLogger(__name__)
 
-# ── In-memory cache for procurement list (shared across endpoints) ──
+# ── In-memory caches ──
 
 _CACHE_TTL = 120  # seconds
 _proc_cache: dict[str, tuple[float, list[dict]]] = {}
+_activity_cache: dict[int, tuple[float, list[dict]]] = {}
+
+_executor = ThreadPoolExecutor(max_workers=10)
+atexit.register(_executor.shutdown, wait=False)
 
 
 def _cached_list_procurements(org_id: str | None = None) -> list[dict]:
@@ -31,6 +46,172 @@ def _cached_list_procurements(org_id: str | None = None) -> list[dict]:
     data = _client().list_procurements(organization_id=org_id)
     _proc_cache[key] = (now, data)
     return data
+
+
+def _cached_activities(client, procurement_id: int) -> list[dict]:
+    """Return activities for a procurement with a TTL cache.
+
+    Takes ``client`` explicitly because this runs in executor threads
+    outside Flask's application context (``_client()`` would fail).
+    """
+    now = time.monotonic()
+    cached = _activity_cache.get(procurement_id)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
+    data = client.get_procurement_activities(procurement_id)
+    _activity_cache[procurement_id] = (now, data)
+    return data
+
+
+def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
+    """Build timeline events from procurement data and activities."""
+    hendelser: list[dict] = []
+    org_lookup = build_org_lookup(activities)
+
+    # K — Kunngjort
+    ann_date, doffin_ref, ted_ref = parse_announcement(activities)
+    if ann_date:
+        label = "Kunngjort"
+        if doffin_ref:
+            label += f" ({doffin_ref})"
+        hendelser.append(
+            {"type": "K", "dato": ann_date, "label": label, "besvart": True}
+        )
+
+    # F — Forespørsel om deltakelse (klynge per leverandør)
+    for a in get_activities_by_action(activities, "ASK_TO_QUALIFY"):
+        name = get_org_name(a, org_lookup)
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {
+                "type": "F",
+                "dato": dato,
+                "label": f"Forespørsel: {name}",
+                "besvart": True,
+            }
+        )
+
+    # S — Kvalifisering
+    for a in get_activities_by_action(activities, "OPEN_QUALIFICATIONS"):
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {
+                "type": "S",
+                "dato": dato,
+                "label": "Kvalifikasjoner åpnet",
+                "besvart": True,
+            }
+        )
+
+    for a in get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS"):
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {
+                "type": "S",
+                "dato": dato,
+                "label": "Kvalifiserte leverandører",
+                "besvart": True,
+            }
+        )
+
+    for a in get_activities_by_action(activities, "REJECT_PARTICIPATION"):
+        name = get_org_name(a, org_lookup)
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {
+                "type": "S",
+                "dato": dato,
+                "label": f"Avvist: {name}",
+                "besvart": True,
+                "avvist": True,
+            }
+        )
+
+    # T — Tilbud
+    for a in get_activities_by_action(activities, "SUBMIT_BID"):
+        name = get_org_name(a, org_lookup)
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {"type": "T", "dato": dato, "label": f"Tilbud: {name}", "besvart": True}
+        )
+
+    for a in get_activities_by_action(activities, "OPEN_BIDS"):
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {"type": "T", "dato": dato, "label": "Tilbudsåpning", "besvart": True}
+        )
+
+    # E — Evaluert
+    for a in get_activities_by_action(activities, "AWARDING_PARTICIPANTS"):
+        dato = fmt_date(a.get("date"))
+        hendelser.append(
+            {"type": "E", "dato": dato, "label": "Tildeling utført", "besvart": True}
+        )
+
+    # P — Protokoll (from procurement field, not activity)
+    if procurement.get("areAwardLettersSent"):
+        hendelser.append(
+            {"type": "P", "dato": "", "label": "Tildelingsbrev sendt", "besvart": True}
+        )
+
+    # U — Utkast (if no K-node exists)
+    if not any(h["type"] == "K" for h in hendelser):
+        hendelser.append({"type": "U", "dato": "", "label": "Utkast", "besvart": True})
+
+    return hendelser
+
+
+def _fallback_hendelser(procurement: dict) -> list[dict]:
+    """Minimal hendelser from procurement data alone (graceful degradation)."""
+    hendelser: list[dict] = []
+    deadline_str = get_timeline_date(procurement, "submission") or ""
+    if deadline_str:
+        hendelser.append(
+            {
+                "type": "K",
+                "dato": fmt_date(deadline_str),
+                "label": "Kunngjort",
+                "besvart": True,
+            }
+        )
+        hendelser.append(
+            {
+                "type": "T",
+                "dato": fmt_date(deadline_str),
+                "label": f"Tilbudsfrist {deadline_str[:10]}",
+                "besvart": False,
+            }
+        )
+    else:
+        hendelser.append({"type": "U", "dato": "", "label": "Utkast", "besvart": True})
+    return hendelser
+
+
+def _fetch_hendelser_parallel(
+    client, procurements: list[dict]
+) -> dict[int, list[dict]]:
+    """Fetch activities and build hendelser for all procurements in parallel."""
+    result: dict[int, list[dict]] = {}
+    futures = {}
+    for p in procurements:
+        pid = p.get("id")
+        if pid is None:
+            continue
+        future = _executor.submit(_cached_activities, client, pid)
+        futures[future] = (pid, p)
+
+    for future in as_completed(futures):
+        pid, proc = futures[future]
+        try:
+            activities = future.result(timeout=10)
+            result[pid] = _build_hendelser(proc, activities)
+        except Exception:
+            log.warning(
+                "Failed to fetch activities for procurement %s", pid, exc_info=True
+            )
+            result[pid] = _fallback_hendelser(proc)
+
+    return result
 
 
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
@@ -51,31 +232,6 @@ PROCEDURE_SHORT = {
     "Negotiated without publication": "Uten kunngj.",
     "Direct award": "Direkte",
 }
-
-
-def _is_mature(procurement: dict) -> bool:
-    """Procurement has passed submission deadline and is not template/cancelled."""
-    if procurement.get("isTemplate") or procurement.get("isCancelled"):
-        return False
-    deadline = parse_submission_deadline(procurement)
-    if not deadline:
-        return False
-    return datetime.now(deadline.tzinfo) > deadline
-
-
-def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
-    """Keep the richest record per sequenceId."""
-    best: dict[str, dict] = {}
-    for p in procs:
-        seq = p.get("sequenceId") or str(p.get("id"))
-        existing = best.get(seq)
-        richness = sum(1 for v in p.values() if v not in (None, "", [], {}))
-        if existing is None or richness > existing["_richness"]:
-            p["_richness"] = richness
-            best[seq] = p
-    for p in best.values():
-        p.pop("_richness", None)
-    return list(best.values())
 
 
 def _client():
@@ -108,9 +264,12 @@ def list_procurements():
 def list_mature_procurements():
     """Filtered list: past deadline, no templates/cancelled, deduplicated."""
     all_procs = _cached_list_procurements()
-    mature = [p for p in all_procs if _is_mature(p)]
-    mature = _dedup_by_sequence_id(mature)
+    mature = [p for p in all_procs if is_mature(p)]
+    mature = dedup_by_sequence_id(mature)
     mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
+
+    # Fetch activities in parallel for all mature procurements
+    hendelser_map = _fetch_hendelser_parallel(_client(), mature)
 
     results = []
     for p in mature:
@@ -120,18 +279,22 @@ def list_mature_procurements():
         raw_thresh = p.get("threshold") or ""
         deadline_str = get_timeline_date(p, "submission") or ""
         procurer = p.get("about_procurer") or {}
+        pid = p.get("id")
 
-        results.append({
-            "id": p.get("id"),
-            "sequenceId": p.get("sequenceId"),
-            "name": name or f"Anskaffelse {p.get('id')}",
-            "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
-            "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
-            "deadline": deadline_str[:10] if deadline_str else "",
-            "contactPerson": procurer.get("contact_person") or "",
-            "awarded": bool(p.get("areAwardLettersSent")),
-            "framework": bool(p.get("framework_agreement_involved")),
-        })
+        results.append(
+            {
+                "id": pid,
+                "sequenceId": p.get("sequenceId"),
+                "name": name or f"Anskaffelse {pid}",
+                "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
+                "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
+                "deadline": deadline_str[:10] if deadline_str else "",
+                "contactPerson": procurer.get("contact_person") or "",
+                "awarded": bool(p.get("areAwardLettersSent")),
+                "framework": bool(p.get("framework_agreement_involved")),
+                "hendelser": hendelser_map.get(pid, _fallback_hendelser(p)),
+            }
+        )
 
     return jsonify(results)
 

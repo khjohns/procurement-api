@@ -68,7 +68,10 @@ def _register_mcp_routes(app, server, auth_check):
     def mcp_head():
         return Response(
             status=200,
-            headers={"MCP-Protocol-Version": "2025-06-18", "Content-Type": "application/json"},
+            headers={
+                "MCP-Protocol-Version": "2025-06-18",
+                "Content-Type": "application/json",
+            },
         )
 
     @app.route("/mcp", methods=["POST"])
@@ -80,7 +83,11 @@ def _register_mcp_routes(app, server, auth_check):
         body = request.get_json()
         if not body:
             return jsonify(
-                {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Empty body"}}
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32700, "message": "Empty body"},
+                }
             ), 400
 
         response = server.handle_request(body)

@@ -14,7 +14,6 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,10 +25,11 @@ sys.path.insert(0, str(_SRC_DIR))
 from app.client import ArtifikClient  # noqa: E402
 from app.doffin import DoffinClient  # noqa: E402
 from protokoll.common import (  # noqa: E402
+    dedup_by_sequence_id,
     fmt_date,
     get_activities_by_action,
     get_timeline_date,
-    parse_submission_deadline,
+    is_mature,
 )
 
 GCP_PROJECT = "procurement-mcp"
@@ -182,42 +182,12 @@ def _get_doffin_id(activities: list[dict]) -> str | None:
 # -- Procurement listing & selection -----------------------------------------
 
 
-def _is_mature(procurement: dict) -> bool:
-    """Check if procurement is past submission deadline and not a template."""
-    if procurement.get("isTemplate"):
-        return False
-    if procurement.get("isCancelled"):
-        return False
-    deadline = parse_submission_deadline(procurement)
-    if not deadline:
-        return False
-    return datetime.now(deadline.tzinfo) > deadline
-
-
-def _richness(p: dict) -> int:
-    """Score how much data a procurement object contains."""
-    return sum(
-        1 for v in p.values() if v is not None and v != "" and v != [] and v != {}
-    )
-
-
-def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
-    """Deduplicate procurements by sequenceId, keeping the richest one."""
-    best: dict[str, dict] = {}
-    for p in procs:
-        seq = p.get("sequenceId") or str(p.get("id"))
-        existing = best.get(seq)
-        if existing is None or _richness(p) > _richness(existing):
-            best[seq] = p
-    return list(best.values())
-
-
 def _list_procurements(client: ArtifikClient) -> list[dict]:
     """Fetch and filter mature procurements."""
     with _Spinner("Henter anskaffelser fra Artifik"):
         all_procs = client.list_procurements()
-    mature = [p for p in all_procs if _is_mature(p)]
-    mature = _dedup_by_sequence_id(mature)
+    mature = [p for p in all_procs if is_mature(p)]
+    mature = dedup_by_sequence_id(mature)
     mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
     _ok(
         f"{len(mature)} anskaffelser med passert tilbudsfrist (av {len(all_procs)} totalt)"

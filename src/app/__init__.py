@@ -16,7 +16,9 @@ _BUILD_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__, static_folder=None)
 
-    app.config.from_mapping(SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-fallback"))
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-fallback")
+    )
 
     if test_config:
         app.config.update(test_config)
