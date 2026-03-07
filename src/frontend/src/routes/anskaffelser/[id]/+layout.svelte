@@ -10,7 +10,6 @@
 	const subRoute = $derived.by(() => {
 		const path = page.url.pathname;
 		if (path.endsWith('/kvalifisering')) return 'Kvalifisering';
-		if (path.endsWith('/ny')) return 'Ny evaluering';
 		if (path.includes('/evaluering')) return 'Evaluering';
 		if (path.endsWith('/protokoll')) return 'Protokoll';
 		return null;

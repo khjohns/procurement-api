@@ -6,6 +6,8 @@
 	import PriceMatrix from '$lib/components/evaluation/PriceMatrix.svelte';
 	import JustificationPanel from '$lib/components/evaluation/JustificationPanel.svelte';
 	import InsightsPanel from '$lib/components/insights/InsightsPanel.svelte';
+	import SetupPanel from '$lib/components/evaluation/SetupPanel.svelte';
+	import SetupEmptyState from '$lib/components/evaluation/SetupEmptyState.svelte';
 
 	let isOverview = $derived(evaluation.activeView === 'overview');
 	let activeCriterion = $derived(
@@ -14,13 +16,19 @@
 
 	let isPriceMode = $derived(evaluation.activeMethod === 'pris');
 
+	/** Setup mode: not enough data to show the matrix. */
+	let isSetupMode = $derived(!evaluation.isReady);
+
 	/** Show justification panel when viewing a quality criterion. */
 	let showJustification = $derived(
-		!isOverview && activeCriterion?.type === 'quality'
+		!isSetupMode && !isOverview && activeCriterion?.type === 'quality'
 	);
 
 	/** Right panel shows ranking in overview/price mode, justification in criterion mode. */
-	let showRankingPanel = $derived(isOverview || isPriceMode);
+	let showRankingPanel = $derived(!isSetupMode && (isOverview || isPriceMode));
+
+	/** Setup toggle in work mode (allows adjusting setup without losing scores). */
+	let setupToggleOpen = $state(false);
 
 	/** Compact ranking data. */
 	let rankingItems = $derived(
@@ -48,124 +56,160 @@
 
 	/** Mobile panel state. */
 	let mobilePanelOpen = $state(false);
+
+	/** Sync quality/price weights from criteria when entering work mode. */
+	$effect(() => {
+		if (!isSetupMode && evaluation.data.status === 'Oppsett') {
+			evaluation.data.status = 'Under evaluering';
+			evaluation.setQualityPriceWeights(
+				evaluation.qualityWeightDerived,
+				evaluation.priceWeightDerived
+			);
+		}
+	});
 </script>
 
 <div class="eval-workspace">
 	<!-- Main content area -->
 	<div class="eval-main">
-		<!-- Subtle context line -->
-		<div class="eval-context">
-			<span class="context-name">{evaluation.data.procurementName}</span>
-			<span class="context-sep">·</span>
-			<span class="context-ref">{evaluation.data.reference}</span>
-		</div>
-
-		<div class="eval-main-content">
-			{#if isPriceMode}
-				<PriceMatrix />
-			{:else if isOverview}
-				<OverviewMatrix />
-			{:else if activeCriterion}
-				<CriterionView criterionId={activeCriterion.id} />
-			{/if}
-		</div>
-
-		<!-- Bottom drawer for full insights -->
-		{#if drawerOpen}
-			<div class="insights-drawer">
-				<div class="drawer-handle">
-					<button class="drawer-close" onclick={() => (drawerOpen = false)}>
-						<span class="drawer-close-icon">&#9662;</span>
-						Lukk analyse
-					</button>
-				</div>
-				<div class="drawer-content">
-					<InsightsPanel />
-				</div>
+		{#if isSetupMode}
+			<!-- Setup mode: show criteria editor -->
+			<div class="eval-main-content">
+				<SetupEmptyState />
 			</div>
+		{:else}
+			<!-- Work mode: context line + matrix -->
+			<div class="eval-context">
+				<span class="context-name">{evaluation.data.procurementName || 'Evaluering'}</span>
+				{#if evaluation.data.reference}
+					<span class="context-sep">·</span>
+					<span class="context-ref">{evaluation.data.reference}</span>
+				{/if}
+			</div>
+
+			<div class="eval-main-content">
+				{#if isPriceMode}
+					<PriceMatrix />
+				{:else if isOverview}
+					<OverviewMatrix />
+				{:else if activeCriterion}
+					<CriterionView criterionId={activeCriterion.id} />
+				{/if}
+			</div>
+
+			<!-- Bottom drawer for full insights -->
+			{#if drawerOpen}
+				<div class="insights-drawer">
+					<div class="drawer-handle">
+						<button class="drawer-close" onclick={() => (drawerOpen = false)}>
+							<span class="drawer-close-icon">&#9662;</span>
+							Lukk analyse
+						</button>
+					</div>
+					<div class="drawer-content">
+						<InsightsPanel />
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</div>
 
 	<!-- Right panel (desktop) -->
 	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
-		<MethodToggle />
+		{#if isSetupMode}
+			<!-- Setup panel -->
+			<SetupPanel />
+		{:else}
+			<MethodToggle />
 
-		{#if showRankingPanel}
-			<!-- Compact ranking -->
-			<div class="panel-section">
-				<div class="panel-label">Rangering</div>
-				<div class="ranking-list">
-					{#each rankingItems as item}
-						<div class="rank-item" class:rank-leader={item.rank === 1}>
-							<span class="rank-pos">#{item.rank}</span>
-							<span class="rank-name">{item.name}</span>
-							<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
-						</div>
-						<div class="rank-bar-track">
-							<div
-								class="rank-bar-fill"
-								class:rank-bar-leader={item.rank === 1}
-								style="width: {item.barWidth}%"
-							></div>
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<!-- Key insights (compact) -->
-			<div class="panel-section">
-				<div class="panel-label">Nøkkeltall</div>
-				<div class="key-metrics">
-					<div class="metric">
-						<span class="metric-label">Margin #1 → #2</span>
-						<span class="metric-value">
-							<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
-							<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
-								{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
-							</span>
-						</span>
-					</div>
-					<div class="metric">
-						<span class="metric-label">Metodekontroll</span>
-						<span class="metric-value">
-							<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
-							<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
-						</span>
-					</div>
-					<div class="metric">
-						<span class="metric-label">Kvalitetsbudsjett</span>
-						<span class="metric-value">
-							<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
-							<span class="metric-unit">kr</span>
-						</span>
-					</div>
-					<div class="metric">
-						<span class="metric-label">Kvalitet / pris</span>
-						<span class="metric-value">
-							<span class="metric-num">{evaluation.data.qualityWeight}</span>
-							<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
-						</span>
-					</div>
-				</div>
-				<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
-					{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
-					<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
+			{#if setupToggleOpen}
+				<!-- Inline setup in work mode -->
+				<SetupPanel />
+				<button class="setup-toggle-close" onclick={() => (setupToggleOpen = false)}>
+					Lukk oppsett
 				</button>
-			</div>
+			{:else if showRankingPanel}
+				<!-- Setup toggle button -->
+				<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
+					&#9881; Oppsett
+				</button>
 
-			<!-- Status (subtle) -->
-			<div class="panel-status">
-				<span class="status-label">{evaluation.data.status}</span>
-				<span class="status-progress">
-					{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
-				</span>
-			</div>
+				<!-- Compact ranking -->
+				<div class="panel-section">
+					<div class="panel-label">Rangering</div>
+					<div class="ranking-list">
+						{#each rankingItems as item}
+							<div class="rank-item" class:rank-leader={item.rank === 1}>
+								<span class="rank-pos">#{item.rank}</span>
+								<span class="rank-name">{item.name}</span>
+								<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
+							</div>
+							<div class="rank-bar-track">
+								<div
+									class="rank-bar-fill"
+									class:rank-bar-leader={item.rank === 1}
+									style="width: {item.barWidth}%"
+								></div>
+							</div>
+						{/each}
+					</div>
+				</div>
 
-		{:else if showJustification}
-			<div class="panel-section panel-section-justification">
-				<div class="panel-label">Begrunnelse</div>
-				<JustificationPanel />
-			</div>
+				<!-- Key insights (compact) -->
+				<div class="panel-section">
+					<div class="panel-label">Nøkkeltall</div>
+					<div class="key-metrics">
+						<div class="metric">
+							<span class="metric-label">Margin #1 → #2</span>
+							<span class="metric-value">
+								<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+								<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
+									{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
+								</span>
+							</span>
+						</div>
+						<div class="metric">
+							<span class="metric-label">Metodekontroll</span>
+							<span class="metric-value">
+								<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
+								<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+							</span>
+						</div>
+						<div class="metric">
+							<span class="metric-label">Kvalitetsbudsjett</span>
+							<span class="metric-value">
+								<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
+								<span class="metric-unit">kr</span>
+							</span>
+						</div>
+						<div class="metric">
+							<span class="metric-label">Kvalitet / pris</span>
+							<span class="metric-value">
+								<span class="metric-num">{evaluation.data.qualityWeight}</span>
+								<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+							</span>
+						</div>
+					</div>
+					<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
+						{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
+						<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
+					</button>
+				</div>
+
+				<!-- Status (subtle) -->
+				<div class="panel-status">
+					<span class="status-label">{evaluation.data.status}</span>
+					<span class="status-progress">
+						{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
+					</span>
+				</div>
+
+			{:else if showJustification}
+				<div class="panel-section panel-section-justification">
+					<div class="panel-label">Begrunnelse</div>
+					<JustificationPanel />
+				</div>
+			{/if}
 		{/if}
 	</aside>
 
@@ -177,6 +221,8 @@
 	>
 		{#if mobilePanelOpen}
 			✕
+		{:else if isSetupMode}
+			&#9881;
 		{:else if showJustification}
 			✎
 		{:else}
@@ -542,6 +588,47 @@
 		font-size: 10px;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-ink-ghost);
+	}
+
+	/* ── Setup toggle (in work mode) ── */
+	.setup-toggle-btn {
+		padding: var(--spacing-2) var(--spacing-3);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+		text-align: left;
+	}
+
+	.setup-toggle-btn:hover {
+		color: var(--color-vekt-dim);
+		border-color: var(--color-vekt-bg-strong);
+		background: var(--color-vekt-bg);
+	}
+
+	.setup-toggle-close {
+		padding: var(--spacing-2) var(--spacing-3);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-ink-muted);
+		background: none;
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+	}
+
+	.setup-toggle-close:hover {
+		color: var(--color-ink);
+		border-color: var(--color-wire-strong);
 	}
 
 	/* ── Mobile panel toggle ── */
