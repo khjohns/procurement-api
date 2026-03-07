@@ -2,12 +2,6 @@
 	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
 	import SensitivityPane from './SensitivityPane.svelte';
 
-	interface Props {
-		embedded?: boolean;
-	}
-
-	let { embedded = false }: Props = $props();
-
 	let collapsed = $state(false);
 	let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll' | 'sensitivitet'>('betalingsvilje');
 
@@ -69,7 +63,7 @@
 	});
 </script>
 
-<div class="innsikt" class:collapsed class:embedded>
+<div class="innsikt" class:collapsed>
 	<button class="innsikt-toggle" onclick={() => (collapsed = !collapsed)}>
 		<span class="innsikt-toggle-icon">&#9662;</span>
 		Innsikt
@@ -237,33 +231,6 @@
 <style>
 	.innsikt {
 		margin-top: var(--spacing-8);
-	}
-
-	.innsikt.embedded {
-		margin-top: 0;
-	}
-
-	.innsikt.embedded .innsikt-body {
-		border: none;
-		border-radius: 0;
-		background: transparent;
-	}
-
-	.innsikt.embedded .innsikt-tabs {
-		border-bottom: 1px solid var(--color-wire);
-	}
-
-	.innsikt.embedded .innsikt-tab {
-		padding: var(--spacing-2) var(--spacing-2);
-		font-size: 11px;
-	}
-
-	.innsikt.embedded .innsikt-pane {
-		padding: var(--spacing-3);
-	}
-
-	.innsikt.embedded .mk-comparison {
-		grid-template-columns: 1fr;
 	}
 
 	.innsikt-toggle {

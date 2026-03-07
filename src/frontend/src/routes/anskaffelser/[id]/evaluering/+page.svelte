@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, scoreTier, formatNOK } from '$lib/stores/evaluation.svelte';
+	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
 	import MethodToggle from '$lib/components/evaluation/MethodToggle.svelte';
 	import OverviewMatrix from '$lib/components/evaluation/OverviewMatrix.svelte';
 	import CriterionView from '$lib/components/evaluation/CriterionView.svelte';
@@ -19,7 +19,7 @@
 		!isOverview && activeCriterion?.type === 'quality'
 	);
 
-	/** Right panel shows ranking+insights in overview/price mode, justification in criterion mode. */
+	/** Right panel shows ranking in overview/price mode, justification in criterion mode. */
 	let showRankingPanel = $derived(isOverview || isPriceMode);
 
 	/** Compact ranking data. */
@@ -42,6 +42,27 @@
 					barWidth: r.score * 10
 				}))
 	);
+
+	/** Key insight metrics for right panel. */
+	let margin = $derived(
+		evaluation.ranking.length >= 2
+			? evaluation.ranking[0].score - evaluation.ranking[1].score
+			: 0
+	);
+
+	let sameWinner = $derived(
+		evaluation.ranking[0]?.supplier.id === evaluation.priceRanking[0]?.supplier.id
+	);
+
+	let qualityBudget = $derived(
+		evaluation.data.contractValue * (evaluation.data.qualityWeight / 100)
+	);
+
+	/** Bottom drawer state. */
+	let drawerOpen = $state(false);
+
+	/** Mobile panel state. */
+	let mobilePanelOpen = $state(false);
 </script>
 
 <div class="eval-workspace">
@@ -54,17 +75,34 @@
 			<span class="context-ref">{evaluation.data.reference}</span>
 		</div>
 
-		{#if isPriceMode}
-			<PriceMatrix />
-		{:else if isOverview}
-			<OverviewMatrix />
-		{:else if activeCriterion}
-			<CriterionView criterionId={activeCriterion.id} />
+		<div class="eval-main-content" class:drawer-open={drawerOpen}>
+			{#if isPriceMode}
+				<PriceMatrix />
+			{:else if isOverview}
+				<OverviewMatrix />
+			{:else if activeCriterion}
+				<CriterionView criterionId={activeCriterion.id} />
+			{/if}
+		</div>
+
+		<!-- Bottom drawer for full insights -->
+		{#if drawerOpen}
+			<div class="insights-drawer">
+				<div class="drawer-handle">
+					<button class="drawer-close" onclick={() => (drawerOpen = false)}>
+						<span class="drawer-close-icon">&#9662;</span>
+						Lukk analyse
+					</button>
+				</div>
+				<div class="drawer-content">
+					<InsightsPanel />
+				</div>
+			</div>
 		{/if}
 	</div>
 
-	<!-- Right panel -->
-	<aside class="eval-panel">
+	<!-- Right panel (desktop) -->
+	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
 		<MethodToggle />
 
 		{#if showRankingPanel}
@@ -89,6 +127,47 @@
 				</div>
 			</div>
 
+			<!-- Key insights (compact) -->
+			<div class="panel-section">
+				<div class="panel-label">Nøkkeltall</div>
+				<div class="key-metrics">
+					<div class="metric">
+						<span class="metric-label">Margin #1 → #2</span>
+						<span class="metric-value">
+							<span class="metric-num">{margin.toFixed(1)}</span>
+							<span class="metric-verdict" class:metric-robust={margin >= 0.5} class:metric-vulnerable={margin < 0.2}>
+								{margin >= 0.5 ? 'robust' : margin >= 0.2 ? 'moderat' : 'sårbart'}
+							</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Metodekontroll</span>
+						<span class="metric-value">
+							<span class="metric-icon" class:metric-match={sameWinner}>{sameWinner ? '✓' : '⚠'}</span>
+							<span class="metric-text">{sameWinner ? 'Samsvar' : 'Avvik'}</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitetsbudsjett</span>
+						<span class="metric-value">
+							<span class="metric-num">{formatNOK(qualityBudget)}</span>
+							<span class="metric-unit">kr</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitet / pris</span>
+						<span class="metric-value">
+							<span class="metric-num">{evaluation.data.qualityWeight}</span>
+							<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+						</span>
+					</div>
+				</div>
+				<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
+					{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
+					<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
+				</button>
+			</div>
+
 			<!-- Status (subtle) -->
 			<div class="panel-status">
 				<span class="status-label">{evaluation.data.status}</span>
@@ -97,9 +176,6 @@
 				</span>
 			</div>
 
-			<!-- Insights embedded -->
-			<InsightsPanel embedded={true} />
-
 		{:else if showJustification}
 			<div class="panel-section panel-section-justification">
 				<div class="panel-label">Begrunnelse</div>
@@ -107,6 +183,30 @@
 			</div>
 		{/if}
 	</aside>
+
+	<!-- Mobile panel toggle -->
+	<button
+		class="mobile-panel-toggle"
+		onclick={() => (mobilePanelOpen = !mobilePanelOpen)}
+		aria-label={mobilePanelOpen ? 'Lukk panel' : 'Åpne panel'}
+	>
+		{#if mobilePanelOpen}
+			✕
+		{:else if showJustification}
+			✎
+		{:else}
+			☰
+		{/if}
+	</button>
+
+	<!-- Mobile backdrop -->
+	{#if mobilePanelOpen}
+		<button
+			class="mobile-backdrop"
+			onclick={() => (mobilePanelOpen = false)}
+			aria-label="Lukk panel"
+		></button>
+	{/if}
 </div>
 
 <style>
@@ -114,6 +214,7 @@
 		display: flex;
 		height: 100%;
 		overflow: hidden;
+		position: relative;
 	}
 
 	/* ── Main content ── */
@@ -123,6 +224,18 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		padding: var(--spacing-5) var(--spacing-6);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.eval-main-content {
+		flex: 1;
+		min-height: 0;
+	}
+
+	.eval-main-content.drawer-open {
+		flex: 1;
+		overflow-y: auto;
 	}
 
 	/* ── Context line ── */
@@ -133,6 +246,7 @@
 		margin-bottom: var(--spacing-5);
 		font-size: 11px;
 		color: var(--color-ink-muted);
+		flex-shrink: 0;
 	}
 
 	.context-name {
@@ -149,9 +263,54 @@
 		color: var(--color-ink-ghost);
 	}
 
+	/* ── Bottom drawer ── */
+	.insights-drawer {
+		flex-shrink: 0;
+		border-top: 1px solid var(--color-wire-strong);
+		max-height: 50%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.drawer-handle {
+		padding: var(--spacing-2) var(--spacing-3);
+		flex-shrink: 0;
+	}
+
+	.drawer-close {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: var(--spacing-1) 0;
+		transition: color 0.12s;
+	}
+
+	.drawer-close:hover {
+		color: var(--color-ink);
+	}
+
+	.drawer-close-icon {
+		font-size: 10px;
+	}
+
+	.drawer-content {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
 	/* ── Right panel ── */
 	.eval-panel {
-		width: 340px;
+		width: 300px;
 		flex-shrink: 0;
 		overflow-y: auto;
 		border-left: 1px solid var(--color-wire);
@@ -260,6 +419,112 @@
 		background: var(--color-vekt);
 	}
 
+	/* ── Key metrics ── */
+	.key-metrics {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2);
+	}
+
+	.metric {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-1) 0;
+	}
+
+	.metric-label {
+		font-size: 11px;
+		color: var(--color-ink-muted);
+	}
+
+	.metric-value {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-1);
+	}
+
+	.metric-num {
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
+	}
+
+	.metric-unit {
+		font-family: var(--font-data);
+		font-size: 10px;
+		color: var(--color-ink-ghost);
+	}
+
+	.metric-verdict {
+		font-size: 10px;
+		font-weight: 600;
+		padding: 1px var(--spacing-2);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink-muted);
+		background: var(--color-felt-active);
+	}
+
+	.metric-robust {
+		color: var(--color-score-high);
+		background: var(--color-score-high-bg);
+	}
+
+	.metric-vulnerable {
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
+	}
+
+	.metric-icon {
+		font-size: 12px;
+		color: var(--color-ink-muted);
+	}
+
+	.metric-match {
+		color: var(--color-score-high);
+	}
+
+	.metric-text {
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-secondary);
+	}
+
+	/* ── Insights button ── */
+	.insights-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--spacing-2);
+		width: 100%;
+		padding: var(--spacing-2) var(--spacing-3);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		cursor: pointer;
+		transition: all 0.12s;
+	}
+
+	.insights-btn:hover {
+		color: var(--color-ink);
+		border-color: var(--color-wire-strong);
+	}
+
+	.insights-btn-arrow {
+		font-size: 10px;
+		transition: transform 0.2s;
+	}
+
+	.insights-btn-open {
+		transform: rotate(180deg);
+	}
+
 	/* ── Status (subtle) ── */
 	.panel-status {
 		display: flex;
@@ -284,5 +549,73 @@
 		font-size: 10px;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-ink-ghost);
+	}
+
+	/* ── Mobile panel toggle ── */
+	.mobile-panel-toggle {
+		display: none;
+	}
+
+	.mobile-backdrop {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		.eval-panel {
+			position: fixed;
+			top: 48px;
+			right: 0;
+			bottom: 0;
+			width: 320px;
+			background: var(--color-canvas);
+			z-index: 100;
+			transform: translateX(100%);
+			transition: transform 0.2s ease-out;
+		}
+
+		.eval-panel.panel-open {
+			transform: translateX(0);
+		}
+
+		.mobile-panel-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: fixed;
+			bottom: var(--spacing-5);
+			right: var(--spacing-5);
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			background: var(--color-felt-raised);
+			border: 1px solid var(--color-wire-strong);
+			color: var(--color-ink);
+			font-size: 16px;
+			cursor: pointer;
+			z-index: 101;
+			transition: background 0.12s;
+		}
+
+		.mobile-panel-toggle:hover {
+			background: var(--color-felt-active);
+		}
+
+		.mobile-backdrop {
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.4);
+			z-index: 99;
+			border: none;
+			cursor: default;
+		}
+
+		.eval-panel.panel-open ~ .mobile-backdrop {
+			display: block;
+		}
+
+		.eval-main {
+			padding: var(--spacing-3) var(--spacing-4);
+		}
 	}
 </style>
