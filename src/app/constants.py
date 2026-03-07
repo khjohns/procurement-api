@@ -18,6 +18,9 @@ ACTION_REJECT_PARTICIPATION = "REJECT_PARTICIPATION"
 ACTION_SUBMIT_BID = "SUBMIT_BID"
 ACTION_WITHDRAW_PARTICIPATION = "WITHDRAW_PARTICIPATION"
 
+# Synthetic action (not from Artifik API, derived from procurement field)
+ACTION_AWARD_LETTERS_SENT = "AWARD_LETTERS_SENT"
+
 # -- Timeline type constants --------------------------------------------------
 
 TIMELINE_SUBMISSION = "submission"
@@ -42,4 +45,5 @@ ACTION_LABELS: dict[str, str] = {
     ACTION_REJECT_PARTICIPATION: "Avvist",
     ACTION_SUBMIT_BID: "Tilbud mottatt",
     ACTION_WITHDRAW_PARTICIPATION: "Tilbaketrekking",
+    ACTION_AWARD_LETTERS_SENT: "Tildelingsbrev sendt",
 }

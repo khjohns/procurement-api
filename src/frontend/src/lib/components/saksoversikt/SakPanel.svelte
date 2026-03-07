@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AnskaffelsesHendelse, AnskaffelsesOversiktItem, HendelseType } from '$lib/types/anskaffelse';
+	import type { AnskaffelsesOversiktItem } from '$lib/types/anskaffelse';
 
 	interface Props {
 		sak: AnskaffelsesOversiktItem | null;
@@ -20,7 +20,7 @@
 		erLang && !beskrivelseFull ? beskrivelse.slice(0, BESKRIVELSE_MAKS) + '…' : beskrivelse
 	);
 
-	// Reset expansion when switching sak
+	// Reset expansion state when switching sak (true side effect per ADR-003)
 	$effect(() => {
 		if (sak) beskrivelseFull = false;
 	});

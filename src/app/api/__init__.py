@@ -6,6 +6,7 @@ import atexit
 import io
 import logging
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from flask import Blueprint, current_app, jsonify, request, send_file
@@ -13,6 +14,7 @@ from flask import Blueprint, current_app, jsonify, request, send_file
 from app.client import ArtifikAPIError
 from app.constants import (
     ACTION_ASK_TO_QUALIFY,
+    ACTION_AWARD_LETTERS_SENT,
     ACTION_AWARDING_PARTICIPANTS,
     ACTION_CONVERSATION_MARKED_COMPLETED,
     ACTION_CONVERSATION_REOPENED,
@@ -111,6 +113,13 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     hendelser: list[dict] = []
     org_lookup = build_org_lookup(activities)
 
+    # Pre-group activities by action in a single pass
+    by_action: dict[str, list[dict]] = defaultdict(list)
+    for a in activities:
+        by_action[a.get("action", "")].append(a)
+    for v in by_action.values():
+        v.sort(key=lambda a: a.get("date") or "")
+
     def _h(
         typ: str,
         action: str,
@@ -135,43 +144,43 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         hendelser.append(_h("K", ACTION_PUBLISH_TO_DOFFIN, ann_date, label))
 
     # F — Forespørsel om deltakelse (klynge per leverandør)
-    for a in get_activities_by_action(activities, ACTION_ASK_TO_QUALIFY):
+    for a in by_action[ACTION_ASK_TO_QUALIFY]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("F", ACTION_ASK_TO_QUALIFY, _iso_date(a), f"Forespørsel: {name}")
         )
 
     # S — Kvalifisering
-    for a in get_activities_by_action(activities, ACTION_OPEN_QUALIFICATIONS):
+    for a in by_action[ACTION_OPEN_QUALIFICATIONS]:
         hendelser.append(
             _h("S", ACTION_OPEN_QUALIFICATIONS, _iso_date(a), "Kvalifikasjoner åpnet")
         )
 
-    for a in get_activities_by_action(activities, ACTION_QUALIFYING_PARTICIPANTS):
+    for a in by_action[ACTION_QUALIFYING_PARTICIPANTS]:
         hendelser.append(
             _h("S", ACTION_QUALIFYING_PARTICIPANTS, _iso_date(a), "Kvalifiserte leverandører")
         )
 
-    for a in get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION):
+    for a in by_action[ACTION_REJECT_PARTICIPATION]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("S", ACTION_REJECT_PARTICIPATION, _iso_date(a), f"Avvist: {name}", avvist=True)
         )
 
     # T — Tilbud
-    for a in get_activities_by_action(activities, ACTION_SUBMIT_BID):
+    for a in by_action[ACTION_SUBMIT_BID]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("T", ACTION_SUBMIT_BID, _iso_date(a), f"Tilbud: {name}")
         )
 
-    for a in get_activities_by_action(activities, ACTION_OPEN_BIDS):
+    for a in by_action[ACTION_OPEN_BIDS]:
         hendelser.append(
             _h("T", ACTION_OPEN_BIDS, _iso_date(a), "Tilbudsåpning")
         )
 
     # E — Evaluert
-    for a in get_activities_by_action(activities, ACTION_AWARDING_PARTICIPANTS):
+    for a in by_action[ACTION_AWARDING_PARTICIPANTS]:
         hendelser.append(
             _h("E", ACTION_AWARDING_PARTICIPANTS, _iso_date(a), "Tildeling utført")
         )
@@ -179,17 +188,17 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     # P — Protokoll (from procurement field, not activity)
     if procurement.get("areAwardLettersSent"):
         hendelser.append(
-            _h("P", "AWARD_LETTERS_SENT", "", "Tildelingsbrev sendt")
+            _h("P", ACTION_AWARD_LETTERS_SENT, "", "Tildelingsbrev sendt")
         )
 
     # ── Non-node activities (shown only in hendelseslogg, not in timeline) ──
 
-    for a in get_activities_by_action(activities, ACTION_PUBLISH_Q8A):
+    for a in by_action[ACTION_PUBLISH_Q8A]:
         hendelser.append(
             _h("", ACTION_PUBLISH_Q8A, _iso_date(a), "Spørsmål og svar publisert")
         )
 
-    for a in get_activities_by_action(activities, ACTION_PUBLISH_ADDITIONAL_INFORMATION):
+    for a in by_action[ACTION_PUBLISH_ADDITIONAL_INFORMATION]:
         desc = a.get("description") or {}
         info_text = desc.get("text") or ""
         label = "Tilleggsinformasjon"
@@ -199,18 +208,18 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             _h("", ACTION_PUBLISH_ADDITIONAL_INFORMATION, _iso_date(a), label)
         )
 
-    for a in get_activities_by_action(activities, ACTION_PUBLISH_CHANGE_PROCUREMENT):
+    for a in by_action[ACTION_PUBLISH_CHANGE_PROCUREMENT]:
         hendelser.append(
             _h("", ACTION_PUBLISH_CHANGE_PROCUREMENT, _iso_date(a), "Endring i konkurransen")
         )
 
-    for a in get_activities_by_action(activities, ACTION_WITHDRAW_PARTICIPATION):
+    for a in by_action[ACTION_WITHDRAW_PARTICIPATION]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("", ACTION_WITHDRAW_PARTICIPATION, _iso_date(a), f"Tilbaketrekking: {name}")
         )
 
-    for a in get_activities_by_action(activities, ACTION_CONVERSATION_MARKED_COMPLETED):
+    for a in by_action[ACTION_CONVERSATION_MARKED_COMPLETED]:
         desc = a.get("description") or {}
         title = desc.get("title") or ""
         name = get_org_name(a, org_lookup)
@@ -221,7 +230,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             _h("", ACTION_CONVERSATION_MARKED_COMPLETED, _iso_date(a), label)
         )
 
-    for a in get_activities_by_action(activities, ACTION_CONVERSATION_REOPENED):
+    for a in by_action[ACTION_CONVERSATION_REOPENED]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("", ACTION_CONVERSATION_REOPENED, _iso_date(a), f"Dialog gjenåpnet: {name}")
@@ -361,6 +370,8 @@ def list_mature_procurements():
         name = strip_html(raw_name).split("\n")[0]  # first line only
         raw_desc = p.get("description") or ""
         description = strip_html(raw_desc).strip()
+        if len(description) > 400:
+            description = description[:399] + "\u2026"
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
         deadline_str = get_timeline_date(p, TIMELINE_SUBMISSION) or ""
