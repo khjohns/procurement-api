@@ -8,6 +8,7 @@ gcloud run deploy procurement-web \
   --region europe-north1 \
   --project=procurement-mcp \
   --set-secrets=VENDOR_API_ID=vendor-api-id:latest,VENDOR_API_KEY=vendor-api-key:latest,DOFFIN_API_KEY=doffin-api-key:latest \
+  --set-env-vars=CACHE_BUCKET=procurement-eforms-cache \
   --min-instances=0 \
   --max-instances=1 \
   --memory=256Mi \
