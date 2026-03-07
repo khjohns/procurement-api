@@ -4,6 +4,10 @@
 	let totalWeight = $derived(
 		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
 	);
+
+	let bestTotal = $derived(
+		Math.max(...Object.values(evaluation.totals), 0)
+	);
 </script>
 
 <div class="section-label">Oversikt — alle tildelingskriterier</div>
@@ -81,7 +85,6 @@
 				</td>
 				{#each evaluation.data.suppliers as supplier}
 					{@const score = evaluation.totals[supplier.id] ?? 0}
-					{@const bestTotal = Math.max(...Object.values(evaluation.totals))}
 					{@const isBest = score === bestTotal && score > 0}
 					{@const tier = scoreTier(score)}
 					<td class="cell-score cell-total score-{tier}" class:score-best={isBest}>

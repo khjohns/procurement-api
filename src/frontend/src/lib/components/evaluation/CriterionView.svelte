@@ -41,16 +41,6 @@
 		criterion.subcriteria.filter((s) => s.evaluationType !== 'item')
 	);
 
-	/** Best scores for simple sub-criteria. */
-	let simpleBests = $derived.by(() => {
-		const result: Record<string, number> = {};
-		for (const sub of simpleSubs) {
-			const vals = Object.values(sub.scores);
-			result[sub.id] = vals.length > 0 ? Math.max(...vals) : 0;
-		}
-		return result;
-	});
-
 	/** Inline weight editing state. */
 	let editingWeight = $state<string | null>(null);
 	let editValue = $state('');
@@ -380,7 +370,7 @@
 							{#each evaluation.data.suppliers as supplier}
 								{@const score = sub.scores[supplier.id] ?? 0}
 								{@const tier = scoreTier(score)}
-								{@const isBest = score === simpleBests[sub.id] && score > 0}
+								{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
 								{@const hasNotes = !!sub.notes[supplier.id]}
 								{@const scoreKey = `${sub.id}:${supplier.id}`}
 								<td
