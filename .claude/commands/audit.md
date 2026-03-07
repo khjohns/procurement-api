@@ -1,6 +1,7 @@
 ---
 name: interface-design:audit
 description: Check existing code against your design system for spacing, depth, color, and pattern violations.
+disable-model-invocation: true
 ---
 
 # interface-design audit

@@ -1,6 +1,7 @@
 ---
 name: interface-design:status
 description: Show current design system state including direction, tokens, and patterns.
+disable-model-invocation: true
 ---
 
 # interface-design status

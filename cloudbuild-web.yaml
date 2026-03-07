@@ -1,4 +1,32 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile', '-t', '$_IMAGE', '.']
-images: ['$_IMAGE']
+    args:
+      - build
+      - -t
+      - europe-north1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/procurement-web:$COMMIT_SHA
+      - .
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - europe-north1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/procurement-web:$COMMIT_SHA
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - procurement-web
+      - --image=europe-north1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/procurement-web:$COMMIT_SHA
+      - --region=europe-north1
+      - --set-secrets=VENDOR_API_ID=vendor-api-id:latest,VENDOR_API_KEY=vendor-api-key:latest,DOFFIN_API_KEY=doffin-api-key:latest
+      - --min-instances=0
+      - --max-instances=1
+      - --memory=256Mi
+      - --allow-unauthenticated
+
+images:
+  - europe-north1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/procurement-web:$COMMIT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY

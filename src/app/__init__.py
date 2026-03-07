@@ -23,7 +23,11 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     # Shared API clients
     app.artifik = ArtifikClient()  # type: ignore[attr-defined]
-    app.doffin = DoffinClient(cache_dir=".cache/eforms")  # type: ignore[attr-defined]
+    cache_bucket = os.environ.get("CACHE_BUCKET")
+    app.doffin = DoffinClient(  # type: ignore[attr-defined]
+        cache_bucket=cache_bucket,
+        cache_dir=None if cache_bucket else ".cache/eforms",
+    )
 
     # Health check
     @app.route("/health")
