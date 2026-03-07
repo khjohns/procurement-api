@@ -140,6 +140,20 @@ The following subsections show the **dark theme** token values. For light theme 
 --color-score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
 ```
 
+### Overlay
+
+```
+--color-overlay: rgba(0, 0, 0, 0.6)              /* modal/drawer backdrop */
+```
+
+Light theme: `rgba(0, 0, 0, 0.4)`. Dark theme: `rgba(0, 0, 0, 0.6)`.
+
+### Layout
+
+```
+--header-height: 48px                             /* top nav bar height */
+```
+
 ---
 
 ## Themes
@@ -178,6 +192,8 @@ All tokens are defined in `@theme` (light values) in `app.css` and overridden in
 | `--color-score-mid` | `#555b6e` | `#8890a4` |
 | `--color-score-low` | `#b04040` | `#c45858` |
 | `--color-score-low-bg` | `rgba(176,64,64,0.08)` | `rgba(196,88,88,0.10)` |
+| **Overlay** | | |
+| `--color-overlay` | `rgba(0,0,0,0.4)` | `rgba(0,0,0,0.6)` |
 
 The subsections below document the **dark theme** token values in CSS custom property format.
 
@@ -323,11 +339,35 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 - Edit popover: positioned below, `--color-felt-raised`, `--color-wire-strong` border, shadow
 - Popover segments: 22×26px, same filled/active states as AnnotationPanel segments
 
-### Ranking Cards
+### Evaluation Workspace Layout
 
-- Flex row, equal width cards
-- Shows: rank position, supplier name, total score (28px monospace), score bar
-- #1 card: amber-tinted border + gradient background, "Anbefalt" badge
+Two-panel workspace: matrix left, panel right.
+
+- `.eval-workspace`: flex, full height, overflow hidden
+- `.eval-main`: flex 1, scrollable, `--spacing-5`/`--spacing-6` padding
+- `.eval-panel`: 300px fixed width, `--color-wire` left border, `--spacing-4` padding, flex column with `--spacing-5` gap
+- Context line at top of main: procurement name (12px, weight 600, `--color-ink-secondary`) · reference (`--font-data`, 10px, `--color-ink-ghost`)
+
+**Mobile (≤1023px):**
+- Right panel becomes fixed slide-in from right (320px, `--color-canvas`, z-index 100)
+- Opens via floating toggle button (bottom-right, `--spacing-10` size, 50% radius, `--color-felt-raised`)
+- Backdrop: `--color-overlay`, z-index 99
+- Toggle icon: ☰ (overview), ✎ (justification), ✕ (close)
+
+### Compact Ranking (right panel)
+
+- Rank items: flex row with position, name, value, hover → `--color-felt-hover`
+- Position: `--font-data`, 10px, weight 600, `--color-ink-ghost` (leader: `--color-vekt-dim`)
+- Name: 12px, weight 500, `--color-ink-secondary` (leader: `--color-ink`, weight 600)
+- Value: `--font-data`, 13px, weight 700, tabular-nums (leader: `--color-vekt`)
+- Bar track: 2px height, `--color-felt-active`, `--radius-sm`
+- Bar fill: `--color-ink-ghost` (leader: `--color-vekt`), transition 0.25s ease-out
+
+### Status Strip (right panel)
+
+- Pushed to bottom with `margin-top: auto`
+- Flex row: status label (uppercase, 10px) + progress fraction (monospace, 10px, `--color-ink-ghost`)
+- No background or border — minimal presence
 
 ### Total Row
 
@@ -345,18 +385,17 @@ The weight spine makes the abstract concept of "weighted evaluation" physically 
 
 ## Navigation
 
-Sidebar (228px) with same canvas background, border-separated:
-- Brand icon + text at top
-- Nav items: 13px, weight 500, subtle hover
-- Active item: amber background tint + amber text
-- User footer: avatar circle + name + organization
+Top nav bar (`--header-height: 48px`), `--color-canvas` background, `--color-wire-strong` bottom border:
+- Breadcrumbs: `Anskaffelser / {id} / {subRoute}`, 12px, `--color-ink-secondary`
+- Right side: theme toggle, organization name, avatar circle (24px)
+- Mobile: breadcrumb text truncated (max-width 120px), org/avatar hidden
 
 ### Method Toggle
 
 - Segmented control: `--color-felt` background, `--color-wire` border, `--radius-md` radius
-- Buttons: 12px, weight 500, `--color-ink-secondary`
+- Buttons: 11px, weight 500, `--color-ink-muted`
 - Active: `--color-vekt-bg-strong` background, `--color-vekt` text, weight 600
-- Placed between header and ranking strip
+- Placed at top of right panel
 
 ### Config Strip (Prismodell)
 
@@ -375,9 +414,21 @@ Sidebar (228px) with same canvas background, border-separated:
 - Bottom rows: Tilbudt pris → Sum kvalitetsfradrag → Evaluert pris
 - Result row: 16px, weight 700, best = amber
 
-### Innsikt Panel
+### Innsikt (hybrid approach)
 
-- Collapsible section below matrix, toggle arrow rotates on collapse
+Key metrics shown in right panel. Full analysis opens in bottom drawer.
+
+**Right panel — Nøkkeltall:**
+- Compact metric rows: label left, value right, hover → `--color-felt-hover`
+- Margin #1→#2: monospace value + verdict pill (robust/moderat/sårbart with semantic color)
+- Metodekontroll: ✓/⚠ icon + Samsvar/Avvik text
+- Kvalitetsbudsjett: formatted NOK value
+- Kvalitet/pris: weight split percentage
+- "Åpne analyse" button: `--color-vekt-bg` background, `--color-wire-strong` border, `--color-vekt-dim` text, hover → `--color-vekt-bg-strong`
+
+**Bottom drawer — full InsightsPanel:**
+- Opens below matrix content, max-height 50%, `--color-wire-strong` top border
+- Close button: uppercase section label style with ▾ icon
 - Three tabs: Betalingsvilje, Robusthet, Metodekontroll
 - Tabs: flex row, `--color-wire` bottom border, active = `--color-vekt` text + amber bottom border (2px)
 - Content panes: `--spacing-5` padding
@@ -468,9 +519,9 @@ the evaluation matrix: no weighting, no scoring, binary verdicts.
 
 ## View Switching
 
-- `.view-poeng` and `.view-pris` containers toggle via `.active` class
-- Both share the same matrix CSS patterns, different data columns
-- Method toggle drives visibility of views and config strip
+- Svelte `{#if}` blocks toggle between OverviewMatrix, CriterionView, and PriceMatrix
+- Method toggle in right panel drives which matrix is shown
+- Right panel content is context-dependent: ranking panel (overview/price) or justification panel (criterion)
 
 ---
 
@@ -478,9 +529,10 @@ the evaluation matrix: no weighting, no scoring, binary verdicts.
 
 - **Hover (rows):** `var(--color-felt-hover)` background
 - **Hover (score cells):** same + cursor pointer
+- **Hover (rank items / metrics):** `var(--color-felt-hover)` background, `--radius-sm`
 - **Focus (inputs):** `border-color: var(--color-wire-focus)` (amber)
 - **Active (score segment):** solid green background
 - **Active (method btn):** amber background tint + amber text
 - **Active (innsikt tab):** amber text + amber bottom border
-- **Collapsed (innsikt):** toggle icon rotates -90deg, body hidden
-- **Status badge:** pill with pulsing dot, amber background
+- **Drawer open:** insights button arrow rotates 180deg
+- **Mobile panel open:** slide-in from right with backdrop overlay
