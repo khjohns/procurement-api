@@ -60,7 +60,7 @@
 			<span class="context-ref">{evaluation.data.reference}</span>
 		</div>
 
-		<div class="eval-main-content" class:drawer-open={drawerOpen}>
+		<div class="eval-main-content">
 			{#if isPriceMode}
 				<PriceMatrix />
 			{:else if isOverview}
@@ -219,23 +219,19 @@
 		min-height: 0;
 	}
 
-	.eval-main-content.drawer-open {
-		overflow-y: auto;
-	}
-
 	/* ── Context line ── */
 	.eval-context {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-2);
+		gap: var(--spacing-3);
 		margin-bottom: var(--spacing-5);
-		font-size: 11px;
-		color: var(--color-ink-muted);
+		font-size: 12px;
+		color: var(--color-ink-secondary);
 		flex-shrink: 0;
 	}
 
 	.context-name {
-		font-weight: 500;
+		font-weight: 600;
 	}
 
 	.context-sep {
@@ -275,7 +271,7 @@
 		background: none;
 		border: none;
 		cursor: pointer;
-		padding: var(--spacing-1) 0;
+		padding: var(--spacing-1);
 		transition: color 0.12s;
 	}
 
@@ -337,7 +333,14 @@
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-2);
-		padding: var(--spacing-1) 0;
+		padding: var(--spacing-1) var(--spacing-2);
+		margin: 0 calc(-1 * var(--spacing-2));
+		border-radius: var(--radius-sm);
+		transition: background 0.12s;
+	}
+
+	.rank-item:hover {
+		background: var(--color-felt-hover);
 	}
 
 	.rank-pos {
@@ -415,7 +418,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: var(--spacing-1) 0;
+		padding: var(--spacing-1) var(--spacing-2);
+		margin: 0 calc(-1 * var(--spacing-2));
+		border-radius: var(--radius-sm);
+		transition: background 0.12s;
+	}
+
+	.metric:hover {
+		background: var(--color-felt-hover);
 	}
 
 	.metric-label {
@@ -485,20 +495,20 @@
 		gap: var(--spacing-2);
 		width: 100%;
 		padding: var(--spacing-2) var(--spacing-3);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
+		background: var(--color-vekt-bg);
+		border: 1px solid var(--color-wire-strong);
 		border-radius: var(--radius-sm);
 		font-family: var(--font-ui);
 		font-size: 11px;
-		font-weight: 500;
-		color: var(--color-ink-muted);
+		font-weight: 600;
+		color: var(--color-vekt-dim);
 		cursor: pointer;
 		transition: all 0.12s;
 	}
 
 	.insights-btn:hover {
-		color: var(--color-ink);
-		border-color: var(--color-wire-strong);
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg-strong);
 	}
 
 	.insights-btn-arrow {
@@ -516,9 +526,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--spacing-2) var(--spacing-3);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
+		margin-top: auto;
 	}
 
 	.status-label {
