@@ -183,8 +183,19 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             {"type": "P", "dato": "", "label": "Tildelingsbrev sendt", "besvart": True}
         )
 
-    # U — Utkast (if no K-node exists)
-    if not any(h["type"] == "K" for h in hendelser):
+    # U — Opprettet (earliest activity date as proxy for creation)
+    dated = [a for a in activities if a.get("date")]
+    if dated:
+        dated.sort(key=lambda a: a["date"])
+        hendelser.append(
+            {
+                "type": "U",
+                "dato": dated[0]["date"],
+                "label": "Opprettet",
+                "besvart": True,
+            }
+        )
+    elif not any(h["type"] == "K" for h in hendelser):
         hendelser.append({"type": "U", "dato": "", "label": "Utkast", "besvart": True})
 
     return hendelser
