@@ -35,7 +35,7 @@ export function beregnTidslinje(
 	if (spenn <= 0) return [];
 
 	const noder: TidslinjeNode[] = hendelser
-		.filter((h) => h.dato !== '')
+		.filter((h): h is AnskaffelsesHendelse & { type: HendelseType } => h.dato !== '' && h.type !== '')
 		.map((h) => ({
 			type: h.type,
 			dato: h.dato,
@@ -98,7 +98,7 @@ export function finnDatospenn(alleSaker: { hendelser: AnskaffelsesHendelse[] }[]
 
 	for (const sak of alleSaker) {
 		for (const h of sak.hendelser) {
-			if (!h.dato) continue;
+			if (!h.dato || !h.type) continue;
 			const t = new Date(h.dato).getTime();
 			if (isNaN(t)) continue;
 			if (t < min) min = t;

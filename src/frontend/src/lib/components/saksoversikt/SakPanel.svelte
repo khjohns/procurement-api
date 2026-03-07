@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AnskaffelsesOversiktItem } from '$lib/types/anskaffelse';
+	import type { AnskaffelsesHendelse, AnskaffelsesOversiktItem, HendelseType } from '$lib/types/anskaffelse';
 
 	interface Props {
 		sak: AnskaffelsesOversiktItem | null;
@@ -9,13 +9,50 @@
 
 	let { sak, erAapen, onclose }: Props = $props();
 
+	/** Max characters for description before truncation */
+	const BESKRIVELSE_MAKS = 300;
+
+	let beskrivelseFull = $state(false);
+
+	const beskrivelse = $derived(sak?.description ?? '');
+	const erLang = $derived(beskrivelse.length > BESKRIVELSE_MAKS);
+	const beskrivelseTekst = $derived(
+		erLang && !beskrivelseFull ? beskrivelse.slice(0, BESKRIVELSE_MAKS) + '…' : beskrivelse
+	);
+
+	// Reset expansion when switching sak
+	$effect(() => {
+		if (sak) beskrivelseFull = false;
+	});
+
 	const hendelser = $derived(
 		[...(sak?.hendelser ?? [])].sort(
 			(a, b) => new Date(a.dato).getTime() - new Date(b.dato).getTime()
 		)
 	);
 
+	/** Node-hendelser: those with a lifecycle type (shown in timeline) */
+	const nodeHendelser = $derived(hendelser.filter((h) => h.type !== ''));
+
+	/** Non-node hendelser: activities without a lifecycle phase */
+	const ovrigeHendelser = $derived(hendelser.filter((h) => h.type === ''));
+
+	/** Action icon mapping for non-node activities */
+	const ACTION_IKON: Record<string, string> = {
+		PUBLISH_Q8A: '?',
+		PUBLISH_ADDITIONAL_INFORMATION: '+',
+		PUBLISH_CHANGE_PROCUREMENT: '△',
+		WITHDRAW_PARTICIPATION: '←',
+		CONVERSATION_MARKED_COMPLETED: '✓',
+		CONVERSATION_REOPENED: '↺',
+	};
+
+	function ikonForAction(action: string): string {
+		return ACTION_IKON[action] ?? '·';
+	}
+
 	function formatDato(iso: string): string {
+		if (!iso) return '';
 		const d = new Date(iso);
 		const dag = String(d.getDate()).padStart(2, '0');
 		const mnd = String(d.getMonth() + 1).padStart(2, '0');
@@ -56,6 +93,22 @@
 			</div>
 
 			<div class="panel-body">
+				<!-- Beskrivelse -->
+				{#if beskrivelse}
+					<div class="seksjon">
+						<div class="section-label">Beskrivelse</div>
+						<p class="beskrivelse">{beskrivelseTekst}</p>
+						{#if erLang}
+							<button
+								class="beskrivelse-toggle"
+								onclick={() => (beskrivelseFull = !beskrivelseFull)}
+							>
+								{beskrivelseFull ? 'Vis mindre' : 'Vis mer'}
+							</button>
+						{/if}
+					</div>
+				{/if}
+
 				<!-- Nøkkelinfo -->
 				<div class="seksjon">
 					<div class="section-label">Nøkkelinfo</div>
@@ -73,13 +126,13 @@
 					</div>
 				</div>
 
-				<!-- Hendelsesforløp -->
-				{#if hendelser.length > 0}
+				<!-- Hendelsesforløp (node-hendelser) -->
+				{#if nodeHendelser.length > 0}
 					<div class="seksjon">
 						<div class="section-label">Hendelsesforløp</div>
 						<div class="forloep">
-							{#each hendelser as h, i (i)}
-								{@const erSiste = i === hendelser.length - 1}
+							{#each nodeHendelser as h, i (i)}
+								{@const erSiste = i === nodeHendelser.length - 1}
 								<div
 									class="forloep-linje"
 									class:forloep-besvart={h.besvart}
@@ -93,6 +146,22 @@
 										class:forloep-node-avvist={h.avvist}
 									>{h.type}</span>
 									<span class="forloep-tekst">{h.label}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Øvrige aktiviteter (non-node) -->
+				{#if ovrigeHendelser.length > 0}
+					<div class="seksjon">
+						<div class="section-label">Øvrige aktiviteter</div>
+						<div class="ovrige">
+							{#each ovrigeHendelser as h, i (i)}
+								<div class="ovrig-linje">
+									<span class="ovrig-dato">{formatDato(h.dato)}</span>
+									<span class="ovrig-ikon">{ikonForAction(h.action)}</span>
+									<span class="ovrig-tekst">{h.label}</span>
 								</div>
 							{/each}
 						</div>
@@ -223,6 +292,41 @@
 		flex-direction: column;
 	}
 
+	.section-label {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+		margin-bottom: 8px;
+	}
+
+	/* Beskrivelse */
+	.beskrivelse {
+		font-size: 12px;
+		line-height: 1.5;
+		color: var(--color-ink-secondary);
+		margin: 0;
+		white-space: pre-line;
+	}
+
+	.beskrivelse-toggle {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-top: 4px;
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-ghost);
+		cursor: pointer;
+		text-align: left;
+		transition: color 150ms;
+	}
+
+	.beskrivelse-toggle:hover {
+		color: var(--color-ink-secondary);
+	}
+
 	/* Info grid */
 	.info-grid {
 		display: flex;
@@ -349,6 +453,49 @@
 	.forloep-siste:not(.forloep-besvart) .forloep-tekst {
 		color: var(--color-ink);
 		font-weight: 500;
+	}
+
+	/* Øvrige aktiviteter */
+	.ovrige {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.ovrig-linje {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 0;
+	}
+
+	.ovrig-dato {
+		font-family: var(--font-data);
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-ghost);
+		width: 48px;
+		flex-shrink: 0;
+		text-align: right;
+	}
+
+	.ovrig-ikon {
+		width: 16px;
+		height: 16px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: var(--font-data);
+		font-size: 9px;
+		color: var(--color-ink-ghost);
+		flex-shrink: 0;
+	}
+
+	.ovrig-tekst {
+		font-size: 11px;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* Lenke */
