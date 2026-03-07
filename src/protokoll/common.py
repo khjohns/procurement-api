@@ -8,6 +8,25 @@ from datetime import datetime
 from typing import Any
 
 
+# -- Activity action constants ------------------------------------------------
+
+ACTION_ASK_TO_QUALIFY = "ASK_TO_QUALIFY"
+ACTION_AWARDING_PARTICIPANTS = "AWARDING_PARTICIPANTS"
+ACTION_CONVERSATION_MARKED_COMPLETED = "CONVERSATION_MARKED_COMPLETED"
+ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED = "DOFFIN_NOTICE_STATUS_PUBLISHED"
+ACTION_OPEN_BIDS = "OPEN_BIDS"
+ACTION_OPEN_QUALIFICATIONS = "OPEN_QUALIFICATIONS"
+ACTION_PUBLISH_TO_DOFFIN = "PUBLISH_TO_DOFFIN"
+ACTION_QUALIFYING_PARTICIPANTS = "QUALIFYING_PARTICIPANTS"
+ACTION_REJECT_PARTICIPATION = "REJECT_PARTICIPATION"
+ACTION_SUBMIT_BID = "SUBMIT_BID"
+ACTION_WITHDRAW_PARTICIPATION = "WITHDRAW_PARTICIPATION"
+
+# -- Timeline type constants --------------------------------------------------
+
+TIMELINE_SUBMISSION = "submission"
+TIMELINE_AWARD_DECISION = "award decision"
+
 # -- Procedure mappings -------------------------------------------------------
 
 PROCEDURE_MAP = {
@@ -135,7 +154,7 @@ def filter_post_deadline_conversations(
     """
     submission_deadline = parse_submission_deadline(procurement)
     conversations = get_activities_by_action(
-        activities, "CONVERSATION_MARKED_COMPLETED"
+        activities, ACTION_CONVERSATION_MARKED_COMPLETED
     )
 
     post_deadline = []
@@ -157,7 +176,7 @@ def filter_post_deadline_conversations(
 
 def parse_submission_deadline(procurement: dict) -> datetime | None:
     """Parse the submission deadline from timeline."""
-    date_str = get_timeline_date(procurement, "submission")
+    date_str = get_timeline_date(procurement, TIMELINE_SUBMISSION)
     if not date_str:
         return None
     try:
@@ -173,9 +192,9 @@ def parse_announcement(activities: list[dict]) -> tuple[str, str, str]:
         Tuple of (announcement_date, doffin_ref, ted_ref) — all strings, empty if not found.
     """
     doffin_activities = get_activities_by_action(
-        activities, "DOFFIN_NOTICE_STATUS_PUBLISHED"
+        activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED
     )
-    publish_activities = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    publish_activities = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
     announcement_date = ""
     doffin_ref = ""
     ted_ref = ""

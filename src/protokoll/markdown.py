@@ -6,8 +6,17 @@ import re
 from datetime import datetime
 
 from .common import (
+    ACTION_AWARDING_PARTICIPANTS,
+    ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
+    ACTION_PUBLISH_TO_DOFFIN,
+    ACTION_QUALIFYING_PARTICIPANTS,
+    ACTION_REJECT_PARTICIPATION,
+    ACTION_SUBMIT_BID,
+    ACTION_WITHDRAW_PARTICIPATION,
     ALL_PROCEDURES,
     PROCEDURE_MAP,
+    TIMELINE_AWARD_DECISION,
+    TIMELINE_SUBMISSION,
     build_org_lookup,
     filter_post_deadline_conversations,
     fmt_currency,
@@ -65,7 +74,7 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
     else:
         duration_str = "<!-- MANUELT -->"
 
-    submission_date = get_timeline_date(procurement, "submission")
+    submission_date = get_timeline_date(procurement, TIMELINE_SUBMISSION)
     submission_str = (
         fmt_datetime(submission_date) if submission_date else "<!-- MANUELT -->"
     )
@@ -85,7 +94,7 @@ def _section_general_info(procurement: dict, activities: list[dict]) -> str:
     lines.append(f"| **Frist for innlevering av tilbud:** | {submission_str} |")
     lines.append("")
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
     lines.append("**Tidspunkt for mottak av tilbud:**")
     lines.append("")
     lines.append("| Leverandørens navn | Tidspunkt for mottak |")
@@ -187,7 +196,7 @@ def _section_formal_rejection(activities: list[dict]) -> str:
     lines.append("## Avvisning på grunn av formalfeil, jf. FOA \u00a7 24-1")
     lines.append("")
 
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
     if not rejections:
         lines.append("\u2610 Ingen leverandører eller tilbud ble avvist")
         lines.append("<!-- MANUELT: Bekreft at ingen ble avvist på formalfeil -->")
@@ -266,7 +275,7 @@ def _section_supplier_rejection(activities: list[dict]) -> str:
     lines.append("## Leverandører som er avvist, jf. FOA \u00a7 24-2")
     lines.append("")
 
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
     if not rejections:
         lines.append("\u2610 Ingen leverandører ble avvist")
         lines.append("<!-- MANUELT: Bekreft. API viser ingen avvisningshendelser. -->")
@@ -302,7 +311,9 @@ def _section_supplier_selection(procedure: str, activities: list[dict]) -> str:
         "Innovation partnership",
         "Competitive dialogue",
     ):
-        qualifying = get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
+        qualifying = get_activities_by_action(
+            activities, ACTION_QUALIFYING_PARTICIPANTS
+        )
         if qualifying:
             lines.append(
                 "<!-- MANUELT: Fyll inn begrunnelse for utvelgelse per leverandør -->"
@@ -490,9 +501,9 @@ def _section_bids_in_evaluation(
     lines.append("## Tilbud som er med i tildelingsvurderingen")
     lines.append("")
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    withdrawals = get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
+    withdrawals = get_activities_by_action(activities, ACTION_WITHDRAW_PARTICIPATION)
 
     rejected_ids = {(r.get("organization") or {}).get("id") for r in rejections} - {
         None
@@ -564,11 +575,13 @@ def _section_award(procurement: dict, activities: list[dict]) -> str:
     lines.append("| **Resultat av klage:** | <!-- MANUELT --> |")
     lines.append("")
 
-    award_date = get_timeline_date(procurement, "award decision")
+    award_date = get_timeline_date(procurement, TIMELINE_AWARD_DECISION)
     if award_date:
         lines.append(f"**Tildelingsbeslutning:** {fmt_date(award_date)}")
     else:
-        award_activities = get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
+        award_activities = get_activities_by_action(
+            activities, ACTION_AWARDING_PARTICIPANTS
+        )
         if award_activities:
             lines.append(
                 f"**Tildelingsbeslutning:** {fmt_date(award_activities[0].get('date'))}"
@@ -661,10 +674,10 @@ def _section_data_quality(procurement: dict, activities: list[dict]) -> str:
     lines.append("## Datakvalitet — API vs. manuelt")
     lines.append("")
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
+    doffin = get_activities_by_action(activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED)
+    publish = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
 
     post_deadline, _ = filter_post_deadline_conversations(procurement, activities)
 

@@ -12,6 +12,16 @@ from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
 from protokoll.common import (
+    ACTION_ASK_TO_QUALIFY,
+    ACTION_AWARDING_PARTICIPANTS,
+    ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
+    ACTION_OPEN_BIDS,
+    ACTION_OPEN_QUALIFICATIONS,
+    ACTION_PUBLISH_TO_DOFFIN,
+    ACTION_QUALIFYING_PARTICIPANTS,
+    ACTION_REJECT_PARTICIPATION,
+    ACTION_SUBMIT_BID,
+    TIMELINE_SUBMISSION,
     build_org_lookup,
     dedup_by_sequence_id,
     get_activities_by_action,
@@ -69,10 +79,10 @@ def _iso_date(activity: dict) -> str:
 
 def _announcement_iso_date(activities: list[dict]) -> str:
     """Get announcement date as ISO string (not formatted for display)."""
-    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    publish = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
     if publish:
         return publish[0].get("date") or ""
-    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    doffin = get_activities_by_action(activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED)
     if doffin:
         desc = doffin[0].get("description") or {}
         doffin_notice = desc.get("doffinNotice") or {}
@@ -100,7 +110,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         )
 
     # F — Forespørsel om deltakelse (klynge per leverandør)
-    for a in get_activities_by_action(activities, "ASK_TO_QUALIFY"):
+    for a in get_activities_by_action(activities, ACTION_ASK_TO_QUALIFY):
         name = get_org_name(a, org_lookup)
         hendelser.append(
             {
@@ -112,7 +122,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         )
 
     # S — Kvalifisering
-    for a in get_activities_by_action(activities, "OPEN_QUALIFICATIONS"):
+    for a in get_activities_by_action(activities, ACTION_OPEN_QUALIFICATIONS):
         hendelser.append(
             {
                 "type": "S",
@@ -122,7 +132,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             }
         )
 
-    for a in get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS"):
+    for a in get_activities_by_action(activities, ACTION_QUALIFYING_PARTICIPANTS):
         hendelser.append(
             {
                 "type": "S",
@@ -132,7 +142,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             }
         )
 
-    for a in get_activities_by_action(activities, "REJECT_PARTICIPATION"):
+    for a in get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION):
         name = get_org_name(a, org_lookup)
         hendelser.append(
             {
@@ -145,7 +155,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         )
 
     # T — Tilbud
-    for a in get_activities_by_action(activities, "SUBMIT_BID"):
+    for a in get_activities_by_action(activities, ACTION_SUBMIT_BID):
         name = get_org_name(a, org_lookup)
         hendelser.append(
             {
@@ -156,7 +166,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             }
         )
 
-    for a in get_activities_by_action(activities, "OPEN_BIDS"):
+    for a in get_activities_by_action(activities, ACTION_OPEN_BIDS):
         hendelser.append(
             {
                 "type": "T",
@@ -167,7 +177,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         )
 
     # E — Evaluert
-    for a in get_activities_by_action(activities, "AWARDING_PARTICIPANTS"):
+    for a in get_activities_by_action(activities, ACTION_AWARDING_PARTICIPANTS):
         hendelser.append(
             {
                 "type": "E",
@@ -204,7 +214,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 def _fallback_hendelser(procurement: dict) -> list[dict]:
     """Minimal hendelser from procurement data alone (graceful degradation)."""
     hendelser: list[dict] = []
-    deadline_str = get_timeline_date(procurement, "submission") or ""
+    deadline_str = get_timeline_date(procurement, TIMELINE_SUBMISSION) or ""
     if deadline_str:
         hendelser.append(
             {
@@ -306,7 +316,9 @@ def list_mature_procurements():
     all_procs = _cached_list_procurements()
     mature = [p for p in all_procs if is_mature(p)]
     mature = dedup_by_sequence_id(mature)
-    mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
+    mature.sort(
+        key=lambda p: get_timeline_date(p, TIMELINE_SUBMISSION) or "", reverse=True
+    )
 
     # Fetch activities in parallel for all mature procurements
     hendelser_map = _fetch_hendelser_parallel(_client(), mature)
@@ -317,7 +329,7 @@ def list_mature_procurements():
         name = strip_html(raw_name).split("\n")[0]  # first line only
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
-        deadline_str = get_timeline_date(p, "submission") or ""
+        deadline_str = get_timeline_date(p, TIMELINE_SUBMISSION) or ""
         procurer = p.get("about_procurer") or {}
         pid = p.get("id")
 
