@@ -114,7 +114,7 @@
 								onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
 								title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
 							>
-								{sub.evaluationType === 'item' ? '⊞' : '⊡'}
+								{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
 							</button>
 							<div class="criterion-move">
 								<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
@@ -638,20 +638,23 @@
 
 	/* ── Eval type toggle ── */
 	.eval-type-toggle {
-		width: 22px;
-		height: 22px;
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 14px;
+		padding: 2px var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 		color: var(--color-ink-ghost);
 		background: none;
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition: all 0.12s;
-		padding: 0;
+		line-height: 1.4;
 	}
 
 	.eval-type-toggle:hover {
@@ -673,7 +676,7 @@
 
 	/* ── Item config panel ── */
 	.item-config {
-		border-left: 3px solid var(--color-vekt-bg-strong);
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
 		background: var(--color-felt);
 		padding: var(--spacing-3) var(--spacing-4);
 		padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
@@ -771,6 +774,7 @@
 		font-size: 12px;
 		font-weight: 600;
 		outline: none;
+		transition: border-color 0.12s;
 	}
 
 	.item-dimension-weight:focus {
@@ -823,7 +827,12 @@
 		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
+		opacity: 0;
 		transition: all 0.1s;
+	}
+
+	.item-dimension-row:hover > .item-dimension-remove {
+		opacity: 1;
 	}
 
 	.item-dimension-remove:hover {
