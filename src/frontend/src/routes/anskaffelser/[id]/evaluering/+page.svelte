@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { evaluation } from '$lib/stores/evaluation.svelte';
+	import { evaluation, scoreTier, formatNOK } from '$lib/stores/evaluation.svelte';
 	import MethodToggle from '$lib/components/evaluation/MethodToggle.svelte';
-	import RankingStrip from '$lib/components/evaluation/RankingStrip.svelte';
 	import OverviewMatrix from '$lib/components/evaluation/OverviewMatrix.svelte';
 	import CriterionView from '$lib/components/evaluation/CriterionView.svelte';
 	import PriceMatrix from '$lib/components/evaluation/PriceMatrix.svelte';
@@ -13,176 +12,277 @@
 		!isOverview ? evaluation.data.criteria.find((c) => c.id === evaluation.activeView) : null
 	);
 
+	let isPriceMode = $derived(evaluation.activeMethod === 'pris');
+
 	/** Show justification panel when viewing a quality criterion. */
-	let showPanel = $derived(
+	let showJustification = $derived(
 		!isOverview && activeCriterion?.type === 'quality'
+	);
+
+	/** Right panel shows ranking+insights in overview/price mode, justification in criterion mode. */
+	let showRankingPanel = $derived(isOverview || isPriceMode);
+
+	/** Compact ranking data. */
+	let rankingItems = $derived(
+		isPriceMode
+			? evaluation.priceRanking.map((r) => ({
+					rank: r.rank,
+					name: r.supplier.name,
+					value: formatNOK(r.evaluatedPrice),
+					unit: 'kr',
+					barWidth: r.rank === 1
+						? 92
+						: Math.min(100, (r.evaluatedPrice / evaluation.priceRanking[evaluation.priceRanking.length - 1].evaluatedPrice) * 100)
+				}))
+			: evaluation.ranking.map((r) => ({
+					rank: r.rank,
+					name: r.supplier.name,
+					value: r.score.toFixed(2),
+					unit: '/ 10',
+					barWidth: r.score * 10
+				}))
 	);
 </script>
 
-<header class="eval-header">
-	<div class="eval-header-top">
-		<h1 class="eval-title">{evaluation.data.title}</h1>
-		<div class="eval-status">
-			<span class="eval-status-dot"></span>
-			{evaluation.data.status}
-		</div>
-	</div>
-	<div class="eval-meta">
-		<div class="eval-meta-item">
-			<span class="eval-meta-label">Anskaffelse</span>
-			<span class="eval-meta-value">Rammeavtale IKT-konsulenttjenester 2024–2028</span>
-		</div>
-		<div class="eval-meta-item">
-			<span class="eval-meta-label">Ref</span>
-			<span class="eval-meta-value">{evaluation.data.reference}</span>
-		</div>
-	</div>
-</header>
-
-<MethodToggle />
-
-{#if evaluation.activeMethod === 'poeng'}
-	<RankingStrip />
-
-	<div class="workspace" class:workspace-with-panel={showPanel}>
-		<div class="workspace-main">
-			{#if isOverview}
-				<OverviewMatrix />
-			{:else if activeCriterion}
-				<CriterionView criterionId={activeCriterion.id} />
-			{/if}
+<div class="eval-workspace">
+	<!-- Main content area -->
+	<div class="eval-main">
+		<!-- Subtle context line -->
+		<div class="eval-context">
+			<span class="context-name">{evaluation.data.procurementName}</span>
+			<span class="context-sep">·</span>
+			<span class="context-ref">{evaluation.data.reference}</span>
 		</div>
 
-		{#if showPanel}
-			<aside class="workspace-panel">
-				<div class="panel-header">
-					<span class="panel-title">Begrunnelse</span>
-				</div>
-				<JustificationPanel />
-			</aside>
+		{#if isPriceMode}
+			<PriceMatrix />
+		{:else if isOverview}
+			<OverviewMatrix />
+		{:else if activeCriterion}
+			<CriterionView criterionId={activeCriterion.id} />
 		{/if}
 	</div>
-{:else}
-	<RankingStrip />
-	<PriceMatrix />
-{/if}
 
-<InsightsPanel />
+	<!-- Right panel -->
+	<aside class="eval-panel">
+		<MethodToggle />
+
+		{#if showRankingPanel}
+			<!-- Compact ranking -->
+			<div class="panel-section">
+				<div class="panel-label">Rangering</div>
+				<div class="ranking-list">
+					{#each rankingItems as item}
+						<div class="rank-item" class:rank-leader={item.rank === 1}>
+							<span class="rank-pos">#{item.rank}</span>
+							<span class="rank-name">{item.name}</span>
+							<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
+						</div>
+						<div class="rank-bar-track">
+							<div
+								class="rank-bar-fill"
+								class:rank-bar-leader={item.rank === 1}
+								style="width: {item.barWidth}%"
+							></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Status (subtle) -->
+			<div class="panel-status">
+				<span class="status-label">{evaluation.data.status}</span>
+				<span class="status-progress">
+					{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
+				</span>
+			</div>
+
+			<!-- Insights embedded -->
+			<InsightsPanel embedded={true} />
+
+		{:else if showJustification}
+			<div class="panel-section panel-section-justification">
+				<div class="panel-label">Begrunnelse</div>
+				<JustificationPanel />
+			</div>
+		{/if}
+	</aside>
+</div>
 
 <style>
-	.eval-header {
-		margin-bottom: var(--spacing-8);
-	}
-
-	.eval-header-top {
+	.eval-workspace {
 		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--spacing-4);
-		margin-bottom: var(--spacing-3);
+		height: 100%;
+		overflow: hidden;
 	}
 
-	.eval-title {
-		font-size: 20px;
-		font-weight: 700;
-		letter-spacing: -0.025em;
-		line-height: 1.2;
-	}
-
-	.eval-status {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		padding: var(--spacing-1) var(--spacing-3);
-		border-radius: 100px;
-		background: var(--color-vekt-bg);
-		border: 1px solid var(--color-vekt-bg-strong);
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--color-vekt);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-
-	.eval-status-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--color-vekt);
-		animation: pulse 2s ease-in-out infinite;
-	}
-
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
-	}
-
-	.eval-meta {
-		display: flex;
-		gap: var(--spacing-6);
-		font-size: 12px;
-		color: var(--color-ink-muted);
-	}
-
-	.eval-meta-item {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-2);
-	}
-
-	.eval-meta-label {
-		color: var(--color-ink-muted);
-	}
-
-	.eval-meta-value {
-		color: var(--color-ink-secondary);
-		font-family: var(--font-data);
-		font-size: 11px;
-	}
-
-	/* ── Two-panel workspace ── */
-	.workspace {
-		display: flex;
-		gap: 0;
-		min-height: 400px;
-	}
-
-	.workspace-main {
+	/* ── Main content ── */
+	.eval-main {
 		flex: 1;
 		min-width: 0;
-		overflow-x: auto;
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding: var(--spacing-5) var(--spacing-6);
 	}
 
-	.workspace-with-panel .workspace-main {
-		margin-right: var(--spacing-3);
+	/* ── Context line ── */
+	.eval-context {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		margin-bottom: var(--spacing-5);
+		font-size: 11px;
+		color: var(--color-ink-muted);
 	}
 
-	.workspace-panel {
-		width: 380px;
+	.context-name {
+		font-weight: 500;
+	}
+
+	.context-sep {
+		color: var(--color-ink-ghost);
+	}
+
+	.context-ref {
+		font-family: var(--font-data);
+		font-size: 10px;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Right panel ── */
+	.eval-panel {
+		width: 340px;
 		flex-shrink: 0;
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-lg);
+		overflow-y: auto;
+		border-left: 1px solid var(--color-wire);
+		padding: var(--spacing-4);
 		display: flex;
 		flex-direction: column;
-		max-height: calc(100vh - 200px);
-		position: sticky;
-		top: var(--spacing-4);
+		gap: var(--spacing-5);
 	}
 
-	.panel-header {
-		padding: var(--spacing-3);
-		border-bottom: 1px solid var(--color-wire);
-		flex-shrink: 0;
+	/* ── Panel sections ── */
+	.panel-section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-3);
 	}
 
-	.panel-title {
+	.panel-section-justification {
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.panel-label {
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Compact ranking ── */
+	.ranking-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-1);
+	}
+
+	.rank-item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) 0;
+	}
+
+	.rank-pos {
+		font-family: var(--font-data);
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--color-ink-ghost);
+		width: 20px;
+		flex-shrink: 0;
+	}
+
+	.rank-leader .rank-pos {
+		color: var(--color-vekt-dim);
+	}
+
+	.rank-name {
+		flex: 1;
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--color-ink-secondary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.rank-leader .rank-name {
+		color: var(--color-ink);
+		font-weight: 600;
+	}
+
+	.rank-val {
+		font-family: var(--font-data);
+		font-size: 13px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
+		flex-shrink: 0;
+	}
+
+	.rank-val-price {
+		font-size: 11px;
+	}
+
+	.rank-leader .rank-val {
+		color: var(--color-vekt);
+	}
+
+	.rank-bar-track {
+		height: 2px;
+		background: var(--color-felt-active);
+		border-radius: 1px;
+		overflow: hidden;
+		margin-bottom: var(--spacing-2);
+	}
+
+	.rank-bar-fill {
+		height: 100%;
+		background: var(--color-ink-ghost);
+		border-radius: 1px;
+		transition: width 0.4s ease-out;
+	}
+
+	.rank-bar-leader {
+		background: var(--color-vekt);
+	}
+
+	/* ── Status (subtle) ── */
+	.panel-status {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-2) var(--spacing-3);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+	}
+
+	.status-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 		color: var(--color-ink-muted);
+	}
+
+	.status-progress {
+		font-family: var(--font-data);
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-ghost);
 	}
 </style>

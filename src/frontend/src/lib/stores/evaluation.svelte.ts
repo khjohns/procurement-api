@@ -60,6 +60,7 @@ export interface Supplier {
 export interface EvaluationData {
 	id: string;
 	title: string;
+	procurementName: string;
 	reference: string;
 	status: string;
 	qualityWeight: number;

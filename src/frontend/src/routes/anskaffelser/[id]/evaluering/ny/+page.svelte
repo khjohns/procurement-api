@@ -319,6 +319,7 @@
 		const data: EvaluationData = {
 			id: reference || uid('eval'),
 			title: title.trim(),
+			procurementName: title.trim(),
 			reference: reference.trim(),
 			status: 'Under evaluering',
 			qualityWeight,

@@ -7,51 +7,40 @@
 	];
 </script>
 
-<div class="method-section">
-	<div class="method-toggle">
-		{#each methods as method}
-			<button
-				class="method-btn"
-				class:active={evaluation.activeMethod === method.id}
-				onclick={() => (evaluation.activeMethod = method.id)}
-			>
-				{method.label}
-			</button>
-		{/each}
-	</div>
-	<span class="method-info">
-		Vekt kvalitet {evaluation.data.qualityWeight} % / pris {evaluation.data.priceWeight} %
-	</span>
+<div class="method-toggle">
+	{#each methods as method}
+		<button
+			class="method-btn"
+			class:active={evaluation.activeMethod === method.id}
+			onclick={() => (evaluation.activeMethod = method.id)}
+		>
+			{method.label}
+		</button>
+	{/each}
 </div>
 
 <style>
-	.method-section {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: var(--spacing-6);
-	}
-
 	.method-toggle {
-		display: inline-flex;
+		display: flex;
 		background: var(--color-felt);
 		border: 1px solid var(--color-wire);
 		border-radius: var(--radius-md);
-		padding: 3px;
+		padding: 2px;
 	}
 
 	.method-btn {
-		padding: var(--spacing-2) var(--spacing-4);
+		flex: 1;
+		padding: var(--spacing-1) var(--spacing-3);
 		font-family: var(--font-ui);
-		font-size: 12px;
+		font-size: 11px;
 		font-weight: 500;
-		color: var(--color-ink-secondary);
+		color: var(--color-ink-muted);
 		background: transparent;
 		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition: all 0.15s;
-		letter-spacing: -0.005em;
+		text-align: center;
 	}
 
 	.method-btn:hover {
@@ -62,10 +51,5 @@
 		background: var(--color-vekt-bg-strong);
 		color: var(--color-vekt);
 		font-weight: 600;
-	}
-
-	.method-info {
-		font-size: 11px;
-		color: var(--color-ink-muted);
 	}
 </style>
