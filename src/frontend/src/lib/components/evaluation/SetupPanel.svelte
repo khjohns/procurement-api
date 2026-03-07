@@ -95,8 +95,34 @@
 		searchQuery = '';
 		searchOpen = false;
 
-		// Reset to empty, then use granular store methods
-		const cv = evaluation.data.contractValue;
+		// Fetch activities (suppliers) and eForms (criteria, contract value) in parallel
+		const [activitiesResult, eformsResult] = await Promise.allSettled([
+			fetch(`/api/procurements/${proc.id}/activities`).then((r) => r.ok ? r.json() : []),
+			proc.doffinId ? fetch(`/api/eforms/${proc.doffinId}`).then((r) => r.ok ? r.json() : null) : Promise.resolve(null)
+		]);
+
+		const activities: any[] = activitiesResult.status === 'fulfilled' ? activitiesResult.value : [];
+		const eforms: any | null = eformsResult.status === 'fulfilled' ? eformsResult.value : null;
+
+		// Extract suppliers from SUBMIT_BID activities
+		const supplierMap = new Map<string, string>();
+		for (const a of activities) {
+			if (a.action === 'SUBMIT_BID') {
+				const org = a.organization ?? a.supplier;
+				if (!org) continue;
+				const key = String(org.id ?? org.name);
+				if (!supplierMap.has(key)) {
+					supplierMap.set(key, org.name ?? `Leverandør ${key}`);
+				}
+			}
+		}
+
+		// Determine contract value from eForms or procurement
+		const contractValue = eforms?.estimated_value ?? evaluation.data.contractValue;
+
+		// Build suppliers array
+		const suppliers = [...supplierMap.entries()].map(([id, name]) => ({ id, name }));
+
 		evaluation.initialize({
 			id: String(proc.id),
 			title: proc.name,
@@ -105,33 +131,23 @@
 			status: 'Oppsett',
 			qualityWeight: 0,
 			priceWeight: 0,
-			contractValue: cv,
-			suppliers: [],
+			contractValue: contractValue ?? 0,
+			suppliers,
 			criteria: []
 		});
 
-		// Try to fetch eForms data for award criteria
-		if (proc.doffinId) {
-			try {
-				const resp = await fetch(`/api/eforms/${proc.doffinId}`);
-				if (resp.ok) {
-					const eforms = await resp.json();
-					if (eforms.award_criteria?.length) {
-						for (const ac of eforms.award_criteria) {
-							const type = ac.type === 'price' ? 'price' as const : 'quality' as const;
-							const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
-							const criterionId = evaluation.addCriterion(name, type);
-							if (ac.weight_percent) {
-								const criterion = evaluation.data.criteria.find((cr) => cr.id === criterionId);
-								if (criterion?.subcriteria[0]) {
-									evaluation.setSubCriterionWeight(criterion.subcriteria[0].id, Math.round(ac.weight_percent));
-								}
-							}
-						}
+		// Populate criteria from eForms award_criteria
+		if (eforms?.award_criteria?.length) {
+			for (const ac of eforms.award_criteria) {
+				const type = ac.type === 'price' ? 'price' as const : 'quality' as const;
+				const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
+				const criterionId = evaluation.addCriterion(name, type);
+				if (ac.weight_percent) {
+					const criterion = evaluation.data.criteria.find((cr) => cr.id === criterionId);
+					if (criterion?.subcriteria[0]) {
+						evaluation.setSubCriterionWeight(criterion.subcriteria[0].id, Math.round(ac.weight_percent));
 					}
 				}
-			} catch {
-				// eForms fetch failed — continue without criteria
 			}
 		}
 
