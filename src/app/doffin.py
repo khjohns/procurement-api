@@ -32,6 +32,7 @@ class DoffinClient:
     base_url: str = "https://api.doffin.no/public"
     api_key: str | None = field(default=None, repr=False)
     cache_dir: str | None = field(default=None, repr=False)
+    cache_bucket: str | None = field(default=None, repr=False)
     _ssl_ctx: ssl.SSLContext = field(default_factory=lambda: ssl.create_default_context(cafile=certifi.where()), repr=False)
 
     def _get_api_key(self) -> str:
@@ -117,16 +118,47 @@ class DoffinClient:
         return Path(self.cache_dir) / f"{doffin_id}.json"
 
     def _cache_read(self, doffin_id: str) -> dict | None:
+        if self.cache_bucket:
+            return self._gcs_read(doffin_id)
         path = self._cache_path(doffin_id)
         if path and path.exists():
             return json.loads(path.read_text())
         return None
 
     def _cache_write(self, doffin_id: str, data: dict) -> None:
+        if self.cache_bucket:
+            self._gcs_write(doffin_id, data)
+            return
         path = self._cache_path(doffin_id)
         if path:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+    def _gcs_blob(self, doffin_id: str):
+        from google.cloud import storage  # type: ignore[import-untyped]
+        client = storage.Client()
+        bucket = client.bucket(self.cache_bucket)
+        return bucket.blob(f"eforms/{doffin_id}.json")
+
+    def _gcs_read(self, doffin_id: str) -> dict | None:
+        try:
+            blob = self._gcs_blob(doffin_id)
+            if not blob.exists():
+                return None
+            return json.loads(blob.download_as_text())
+        except Exception:
+            log.warning("GCS cache-lesing feilet for %s", doffin_id, exc_info=True)
+            return None
+
+    def _gcs_write(self, doffin_id: str, data: dict) -> None:
+        try:
+            blob = self._gcs_blob(doffin_id)
+            blob.upload_from_string(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                content_type="application/json",
+            )
+        except Exception:
+            log.warning("GCS cache-skriving feilet for %s", doffin_id, exc_info=True)
 
     @mcp_tool(description="Download and parse a Doffin eForms notice. Returns structured JSON with award criteria, qualification requirements, procedure type, and more.")
     def get_notice(self, doffin_id: str) -> dict:
