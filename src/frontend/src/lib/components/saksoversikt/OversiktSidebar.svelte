@@ -367,16 +367,6 @@
 		color: var(--color-ink);
 	}
 
-	.section-label {
-		font-family: var(--font-data);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-ink-muted);
-		margin-bottom: 12px;
-	}
-
 	/* Visning toggle */
 	.visning-toggle {
 		display: flex;
@@ -504,21 +494,17 @@
 		flex-shrink: 0;
 	}
 
-	.spor-ikon-u { border: 1px solid var(--color-ink-ghost); color: var(--color-ink-muted); }
-	.spor-ikon-k { border: 1px solid var(--color-ink-secondary); color: var(--color-ink-secondary); }
-	.spor-ikon-f { border: 1px solid var(--color-vekt); color: var(--color-vekt); }
-	.spor-ikon-s { border: 1px solid var(--color-score-high); color: var(--color-score-high); }
-	.spor-ikon-t { border: 1px solid var(--color-vekt); color: var(--color-vekt); }
-	.spor-ikon-e { border: 1px solid var(--color-score-high); color: var(--color-score-high); }
-	.spor-ikon-p { border: 1px solid var(--color-ink); color: var(--color-ink); }
+	/* Per-type color via CSS custom properties from app.css */
+	.spor-ikon-u { --nc: var(--node-u); }
+	.spor-ikon-k { --nc: var(--node-k); }
+	.spor-ikon-f { --nc: var(--node-f); }
+	.spor-ikon-s { --nc: var(--node-s); }
+	.spor-ikon-t { --nc: var(--node-t); }
+	.spor-ikon-e { --nc: var(--node-e); }
+	.spor-ikon-p { --nc: var(--node-p); }
 
-	.spor-aktiv .spor-ikon-u { background: var(--color-ink-ghost); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-k { background: var(--color-ink-secondary); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-f { background: var(--color-vekt); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-s { background: var(--color-score-high); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-t { background: var(--color-vekt); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-e { background: var(--color-score-high); color: var(--color-canvas); }
-	.spor-aktiv .spor-ikon-p { background: var(--color-ink); color: var(--color-canvas); }
+	.spor-ikon { border: 1px solid var(--nc); color: var(--nc); }
+	.spor-aktiv .spor-ikon { background: var(--nc); color: var(--color-canvas); }
 
 	.spor-tekst {
 		flex: 1;

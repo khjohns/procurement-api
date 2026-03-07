@@ -17,7 +17,10 @@
 
 	function formatDato(iso: string): string {
 		const d = new Date(iso);
-		return `${d.getDate()}.${d.getMonth() + 1}`;
+		const dag = String(d.getDate()).padStart(2, '0');
+		const mnd = String(d.getMonth() + 1).padStart(2, '0');
+		const aar = String(d.getFullYear()).slice(2);
+		return `${dag}.${mnd}.${aar}`;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -61,14 +64,12 @@
 							<span class="info-label">Frist</span>
 							<span class="info-verdi">{sak.deadline}</span>
 						</div>
-						<div class="info-rad">
-							<span class="info-label">Prosedyre</span>
-							<span class="info-verdi">{sak.procedure}</span>
-						</div>
-						<div class="info-rad">
-							<span class="info-label">Terskel</span>
-							<span class="info-verdi">{sak.threshold}</span>
-						</div>
+						{#if sak.contactPerson}
+							<div class="info-rad">
+								<span class="info-label">Saksbehandler</span>
+								<span class="info-verdi">{sak.contactPerson}</span>
+							</div>
+						{/if}
 					</div>
 				</div>
 
@@ -77,7 +78,7 @@
 					<div class="seksjon">
 						<div class="section-label">Hendelsesforløp</div>
 						<div class="forloep">
-							{#each hendelser as h, i (h.dato + h.label)}
+							{#each hendelser as h, i (i)}
 								{@const erSiste = i === hendelser.length - 1}
 								<div
 									class="forloep-linje"
@@ -221,16 +222,6 @@
 		flex-direction: column;
 	}
 
-	.section-label {
-		font-family: var(--font-data);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-ink-muted);
-		margin-bottom: 12px;
-	}
-
 	/* Info grid */
 	.info-grid {
 		display: flex;
@@ -325,24 +316,19 @@
 		flex-shrink: 0;
 	}
 
-	/* Ubesvart nodes */
-	.forloep-node-u { background: var(--color-ink-ghost); border: 1px solid var(--color-ink-ghost); color: var(--color-canvas); }
-	.forloep-node-k { background: var(--color-ink-secondary); border: 1px solid var(--color-ink-secondary); color: var(--color-canvas); }
-	.forloep-node-f { background: var(--color-vekt); border: 1px solid var(--color-vekt); color: var(--color-canvas); }
-	.forloep-node-s { background: var(--color-score-high); border: 1px solid var(--color-score-high); color: var(--color-canvas); }
-	.forloep-node-t { background: var(--color-vekt); border: 1px solid var(--color-vekt); color: var(--color-canvas); }
-	.forloep-node-e { background: var(--color-score-high); border: 1px solid var(--color-score-high); color: var(--color-canvas); }
-	.forloep-node-p { background: var(--color-ink); border: 1px solid var(--color-ink); color: var(--color-canvas); }
+	/* Per-type color via CSS custom properties from app.css */
+	.forloep-node-u { --nc: var(--node-u); }
+	.forloep-node-k { --nc: var(--node-k); }
+	.forloep-node-f { --nc: var(--node-f); }
+	.forloep-node-s { --nc: var(--node-s); }
+	.forloep-node-t { --nc: var(--node-t); }
+	.forloep-node-e { --nc: var(--node-e); }
+	.forloep-node-p { --nc: var(--node-p); }
+
+	.forloep-node { background: var(--nc); border: 1px solid var(--nc); color: var(--color-canvas); }
 
 	/* Besvart nodes */
-	.forloep-node-besvart { background: transparent; opacity: 0.6; }
-	.forloep-node-besvart.forloep-node-u { color: var(--color-ink-muted); }
-	.forloep-node-besvart.forloep-node-k { color: var(--color-ink-muted); }
-	.forloep-node-besvart.forloep-node-f { color: var(--color-vekt-dim); }
-	.forloep-node-besvart.forloep-node-s { color: var(--color-score-high); }
-	.forloep-node-besvart.forloep-node-t { color: var(--color-vekt-dim); }
-	.forloep-node-besvart.forloep-node-e { color: var(--color-score-high); }
-	.forloep-node-besvart.forloep-node-p { color: var(--color-ink); }
+	.forloep-node-besvart { background: transparent; border-color: var(--nc); color: var(--nc); opacity: 0.6; }
 
 	.forloep-tekst {
 		font-size: 12px;

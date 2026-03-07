@@ -72,84 +72,27 @@
 		position: absolute;
 	}
 
-	/* ── Ubesvart: filled — krever oppmerksomhet ── */
-	.node-ubesvart.node-u {
-		background: var(--color-ink-ghost);
-		border-color: var(--color-ink-ghost);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-k {
-		background: var(--color-ink-secondary);
-		border-color: var(--color-ink-secondary);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-f {
-		background: var(--color-vekt);
-		border-color: var(--color-vekt);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-s {
-		background: var(--color-score-high);
-		border-color: var(--color-score-high);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-t {
-		background: var(--color-vekt);
-		border-color: var(--color-vekt);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-e {
-		background: var(--color-score-high);
-		border-color: var(--color-score-high);
-		color: var(--color-canvas);
-	}
-	.node-ubesvart.node-p {
-		background: var(--color-ink);
-		border-color: var(--color-ink);
+	/* Per-type color via CSS custom properties from app.css */
+	.node-u { --nc: var(--node-u); }
+	.node-k { --nc: var(--node-k); }
+	.node-f { --nc: var(--node-f); }
+	.node-s { --nc: var(--node-s); }
+	.node-t { --nc: var(--node-t); }
+	.node-e { --nc: var(--node-e); }
+	.node-p { --nc: var(--node-p); }
+
+	/* Ubesvart: filled */
+	.node-ubesvart {
+		background: var(--nc);
+		border-color: var(--nc);
 		color: var(--color-canvas);
 	}
 
-	/* ── Besvart: outline, dimmed — ferdig ── */
-	.node-besvart.node-u {
+	/* Besvart: outline, dimmed */
+	.node-besvart {
 		background: var(--color-canvas);
-		border-color: var(--color-ink-ghost);
-		color: var(--color-ink-muted);
-		opacity: 0.6;
-	}
-	.node-besvart.node-k {
-		background: var(--color-canvas);
-		border-color: var(--color-ink-secondary);
-		color: var(--color-ink-muted);
-		opacity: 0.6;
-	}
-	.node-besvart.node-f {
-		background: var(--color-canvas);
-		border-color: var(--color-vekt-dim);
-		color: var(--color-vekt-dim);
-		opacity: 0.6;
-	}
-	.node-besvart.node-s {
-		background: var(--color-canvas);
-		border-color: var(--color-score-high);
-		color: var(--color-score-high);
-		opacity: 0.6;
-	}
-	.node-besvart.node-t {
-		background: var(--color-canvas);
-		border-color: var(--color-vekt-dim);
-		color: var(--color-vekt-dim);
-		opacity: 0.6;
-	}
-	.node-besvart.node-e {
-		background: var(--color-canvas);
-		border-color: var(--color-score-high);
-		color: var(--color-score-high);
-		opacity: 0.6;
-	}
-	.node-besvart.node-p {
-		background: var(--color-canvas);
-		border-color: var(--color-ink);
-		color: var(--color-ink);
+		border-color: var(--nc);
+		color: var(--nc);
 		opacity: 0.6;
 	}
 
@@ -191,11 +134,11 @@
 		transform: translate(25%, -25%);
 	}
 
-	.tag-u { background: var(--color-ink-ghost); }
-	.tag-k { background: var(--color-ink-secondary); }
-	.tag-f { background: var(--color-vekt); }
-	.tag-s { background: var(--color-score-high); }
-	.tag-t { background: var(--color-vekt); }
-	.tag-e { background: var(--color-score-high); }
-	.tag-p { background: var(--color-ink); }
+	.tag-u { background: var(--node-u); }
+	.tag-k { background: var(--node-k); }
+	.tag-f { background: var(--node-f); }
+	.tag-s { background: var(--node-s); }
+	.tag-t { background: var(--node-t); }
+	.tag-e { background: var(--node-e); }
+	.tag-p { background: var(--node-p); }
 </style>

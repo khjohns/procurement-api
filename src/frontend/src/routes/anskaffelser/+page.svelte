@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import Saksoversikt from '$lib/components/saksoversikt/Saksoversikt.svelte';
 	import OversiktSidebar from '$lib/components/saksoversikt/OversiktSidebar.svelte';
 	import CaseListTable from '$lib/components/case-list/CaseListTable.svelte';
@@ -13,22 +14,10 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	interface MatureApiItem {
-		id: number;
-		sequenceId: string;
-		name: string;
-		procedure: string;
-		threshold: string;
-		deadline: string;
-		contactPerson: string;
-		awarded: boolean;
-		framework: boolean;
-	}
-
-	$effect(() => {
+	onMount(() => {
 		fetch('/api/procurements/mature')
 			.then((r) => (r.ok ? r.json() : Promise.reject('Feil ved henting')))
-			.then((data: MatureApiItem[]) => {
+			.then((data: Omit<AnskaffelsesOversiktItem, 'hendelser'>[]) => {
 				alleMature = data.map((p) => ({
 					...p,
 					hendelser: [
