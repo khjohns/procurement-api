@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
-from protokoll.common import (
+from app.constants import (
     ACTION_ASK_TO_QUALIFY,
     ACTION_AWARDING_PARTICIPANTS,
     ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
@@ -22,6 +22,8 @@ from protokoll.common import (
     ACTION_REJECT_PARTICIPATION,
     ACTION_SUBMIT_BID,
     TIMELINE_SUBMISSION,
+)
+from protokoll.common import (
     build_org_lookup,
     dedup_by_sequence_id,
     get_activities_by_action,
