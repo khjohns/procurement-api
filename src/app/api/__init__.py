@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+import time
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request, send_file
@@ -13,6 +14,23 @@ from protokoll.common import get_timeline_date, parse_submission_deadline, strip
 
 bp = Blueprint("api", __name__)
 log = logging.getLogger(__name__)
+
+# ── In-memory cache for procurement list (shared across endpoints) ──
+
+_CACHE_TTL = 120  # seconds
+_proc_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
+def _cached_list_procurements(org_id: str | None = None) -> list[dict]:
+    """Return list_procurements() with a TTL cache to avoid repeated API calls."""
+    key = org_id or "__all__"
+    now = time.monotonic()
+    cached = _proc_cache.get(key)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
+    data = _client().list_procurements(organization_id=org_id)
+    _proc_cache[key] = (now, data)
+    return data
 
 
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
@@ -83,14 +101,13 @@ def handle_unexpected_error(e: Exception):
 @bp.route("/procurements")
 def list_procurements():
     org_id = request.args.get("organizationId")
-    data = _client().list_procurements(organization_id=org_id)
-    return jsonify(data)
+    return jsonify(_cached_list_procurements(org_id))
 
 
 @bp.route("/procurements/mature")
 def list_mature_procurements():
     """Filtered list: past deadline, no templates/cancelled, deduplicated."""
-    all_procs = _client().list_procurements()
+    all_procs = _cached_list_procurements()
     mature = [p for p in all_procs if _is_mature(p)]
     mature = _dedup_by_sequence_id(mature)
     mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
@@ -102,6 +119,7 @@ def list_mature_procurements():
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
         deadline_str = get_timeline_date(p, "submission") or ""
+        procurer = p.get("about_procurer") or {}
 
         results.append({
             "id": p.get("id"),
@@ -110,6 +128,9 @@ def list_mature_procurements():
             "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
             "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
             "deadline": deadline_str[:10] if deadline_str else "",
+            "contactPerson": procurer.get("contact_person") or "",
+            "awarded": bool(p.get("areAwardLettersSent")),
+            "framework": bool(p.get("framework_agreement_involved")),
         })
 
     return jsonify(results)
@@ -118,7 +139,7 @@ def list_mature_procurements():
 @bp.route("/procurements/<int:procurement_id>")
 def get_procurement(procurement_id: int):
     """Get a single procurement by ID (filtered from list endpoint)."""
-    all_procs = _client().list_procurements()
+    all_procs = _cached_list_procurements()
     for p in all_procs:
         if p.get("id") == procurement_id:
             return jsonify(p)

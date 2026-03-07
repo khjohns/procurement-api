@@ -125,3 +125,25 @@ body {
 	overflow: hidden;
 	clip: rect(0, 0, 0, 0);
 }
+
+/* ── Node colors (hendelsestyper U/K/F/S/T/E/P) ── */
+:root {
+	--node-u: var(--color-ink-ghost);
+	--node-k: var(--color-ink-secondary);
+	--node-f: var(--color-vekt);
+	--node-s: var(--color-score-high);
+	--node-t: var(--color-vekt);
+	--node-e: var(--color-score-high);
+	--node-p: var(--color-ink);
+}
+
+/* ── Section label ── */
+.section-label {
+	font-family: var(--font-data);
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-ink-muted);
+	margin-bottom: 12px;
+}
