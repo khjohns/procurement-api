@@ -125,6 +125,13 @@ export function scoreTier(score: number): 'high' | 'mid' | 'low' {
 	return 'low';
 }
 
+/** Clamp a weight value to 0–100 integer. */
+function clampWeight(value: number): number {
+	return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+export const DEFAULT_ITEM_LABEL = 'Ressurs';
+
 const emptyData: EvaluationData = {
 	id: '',
 	title: '',
@@ -483,7 +490,7 @@ class EvaluationStore {
 	/** Update a criterion's weight. */
 	setCriterionWeight(criterionId: string, weight: number) {
 		const criterion = this._findCriterion(criterionId);
-		if (criterion) criterion.weight = Math.max(0, Math.min(100, Math.round(weight)));
+		if (criterion) criterion.weight = clampWeight(weight);
 	}
 
 	/** Update a sub-criterion's weight. */
@@ -491,7 +498,7 @@ class EvaluationStore {
 		for (const c of this.data.criteria) {
 			const sub = c.subcriteria.find((s) => s.id === subCriterionId);
 			if (sub) {
-				sub.weight = Math.max(0, Math.min(100, Math.round(weight)));
+				sub.weight = clampWeight(weight);
 				this._recalcCriterionWeight(c.id);
 				return;
 			}
@@ -502,6 +509,64 @@ class EvaluationStore {
 	setAggregation(subCriterionId: string, method: AggregationMethod) {
 		const sub = this._findSub(subCriterionId);
 		if (sub) sub.aggregation = method;
+	}
+
+	/** Toggle a sub-criterion between simple and item-level evaluation. */
+	setEvaluationType(subCriterionId: string, type: 'simple' | 'item') {
+		const sub = this._findSub(subCriterionId);
+		if (!sub) return;
+		sub.evaluationType = type;
+		if (type === 'item') {
+			if (!sub.itemCriteria || sub.itemCriteria.length === 0) {
+				sub.itemCriteria = [{ id: uid('ic'), name: '', weight: 100 }];
+			}
+			if (!sub.items) sub.items = {};
+			if (!sub.itemLabel) sub.itemLabel = DEFAULT_ITEM_LABEL;
+			if (!sub.aggregation) sub.aggregation = 'average';
+		}
+	}
+
+	/** Set the item label for an item-evaluated sub-criterion. */
+	setItemLabel(subCriterionId: string, label: string) {
+		const sub = this._findSub(subCriterionId);
+		if (sub) sub.itemLabel = label;
+	}
+
+	/** Add an item-criterion (dimension) to an item-evaluated sub-criterion. */
+	addItemCriterion(subCriterionId: string, name: string, weight: number): string {
+		const sub = this._findSub(subCriterionId);
+		if (!sub || !sub.itemCriteria) return '';
+		const id = uid('ic');
+		sub.itemCriteria = [...sub.itemCriteria, { id, name, weight }];
+		return id;
+	}
+
+	/** Remove an item-criterion dimension. */
+	removeItemCriterion(subCriterionId: string, itemCriterionId: string) {
+		const sub = this._findSub(subCriterionId);
+		if (!sub || !sub.itemCriteria) return;
+		sub.itemCriteria = sub.itemCriteria.filter((ic) => ic.id !== itemCriterionId);
+		// Clean up scores referencing this dimension
+		if (sub.items) {
+			for (const items of Object.values(sub.items)) {
+				for (const item of items) {
+					delete item.scores[itemCriterionId];
+					delete item.notes[itemCriterionId];
+				}
+			}
+		}
+	}
+
+	/** Rename an item-criterion dimension. */
+	renameItemCriterion(subCriterionId: string, itemCriterionId: string, name: string) {
+		const ic = this._findItemCriterion(subCriterionId, itemCriterionId);
+		if (ic) ic.name = name;
+	}
+
+	/** Set weight for an item-criterion dimension. */
+	setItemCriterionWeight(subCriterionId: string, itemCriterionId: string, weight: number) {
+		const ic = this._findItemCriterion(subCriterionId, itemCriterionId);
+		if (ic) ic.weight = clampWeight(weight);
 	}
 
 	/** Set the active view (overview or criterion detail). */
@@ -688,6 +753,12 @@ class EvaluationStore {
 	/** Find a criterion by id. */
 	private _findCriterion(criterionId: string): Criterion | undefined {
 		return this.data.criteria.find((c) => c.id === criterionId);
+	}
+
+	/** Find an item-criterion by sub-criterion and item-criterion id. */
+	private _findItemCriterion(subCriterionId: string, itemCriterionId: string): ItemCriterion | undefined {
+		const sub = this._findSub(subCriterionId);
+		return sub?.itemCriteria?.find((c) => c.id === itemCriterionId);
 	}
 
 	/** Find a sub-criterion by id. */

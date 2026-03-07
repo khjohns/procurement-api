@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation } from '$lib/stores/evaluation.svelte';
+	import { evaluation, DEFAULT_ITEM_LABEL } from '$lib/stores/evaluation.svelte';
 
 	// ── Criteria CRUD (delegates to store) ──
 
@@ -108,6 +108,14 @@
 									placeholder="Underkriterium..."
 								/>
 							</div>
+							<button
+								class="eval-type-toggle"
+								class:eval-type-item={sub.evaluationType === 'item'}
+								onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
+								title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
+							>
+								{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
+							</button>
 							<div class="criterion-move">
 								<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
 								<button class="move-btn" disabled={si === criterion.subcriteria.length - 1} onclick={() => moveSubCriterion(criterion.id, si, 'down')} title="Flytt ned">&#9660;</button>
@@ -118,6 +126,70 @@
 								title="Fjern underkriterium"
 							>×</button>
 						</div>
+
+						<!-- Item-evaluation config panel (inline) -->
+						{#if sub.evaluationType === 'item'}
+							<div class="item-config">
+								<div class="item-config-header">
+									<div class="item-config-row">
+										<label class="item-config-label">Betegnelse</label>
+										<input
+											class="item-config-input"
+											type="text"
+											value={sub.itemLabel ?? DEFAULT_ITEM_LABEL}
+											oninput={(e) => evaluation.setItemLabel(sub.id, (e.target as HTMLInputElement).value)}
+											placeholder={DEFAULT_ITEM_LABEL}
+										/>
+									</div>
+									<div class="item-config-row">
+										<label class="item-config-label">Aggregering</label>
+										<div class="agg-toggle">
+											<button
+												class="agg-option"
+												class:agg-active={!sub.aggregation || sub.aggregation === 'average'}
+												onclick={() => evaluation.setAggregation(sub.id, 'average')}
+											>Gjennomsnitt</button>
+											<button
+												class="agg-option"
+												class:agg-active={sub.aggregation === 'minimum'}
+												onclick={() => evaluation.setAggregation(sub.id, 'minimum')}
+											>Laveste</button>
+										</div>
+									</div>
+								</div>
+								<div class="item-dimensions">
+									<div class="item-dimensions-label">Dimensjoner</div>
+									{#each sub.itemCriteria ?? [] as ic (ic.id)}
+										<div class="item-dimension-row">
+											<input
+												class="item-dimension-weight"
+												type="number"
+												min="0"
+												max="100"
+												value={ic.weight}
+												oninput={(e) => evaluation.setItemCriterionWeight(sub.id, ic.id, parseInt((e.target as HTMLInputElement).value) || 0)}
+											/>
+											<span class="weight-pct-input">%</span>
+											<input
+												class="item-dimension-name"
+												type="text"
+												value={ic.name}
+												oninput={(e) => evaluation.renameItemCriterion(sub.id, ic.id, (e.target as HTMLInputElement).value)}
+												placeholder="Dimensjonsnavn..."
+											/>
+											<button
+												class="item-dimension-remove"
+												onclick={() => evaluation.removeItemCriterion(sub.id, ic.id)}
+												title="Fjern dimensjon"
+											>×</button>
+										</div>
+									{/each}
+									<button class="item-dimension-add" onclick={() => evaluation.addItemCriterion(sub.id, '', 0)}>
+										+ Dimensjon
+									</button>
+								</div>
+							</div>
+						{/if}
 					{/each}
 
 					<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
@@ -566,5 +638,245 @@
 		font-family: var(--font-data);
 		color: var(--color-score-low);
 		margin-left: auto;
+	}
+
+	/* ── Eval type toggle ── */
+	.eval-type-toggle {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 2px var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-ink-ghost);
+		background: none;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+		line-height: 1.4;
+	}
+
+	.eval-type-toggle:hover {
+		color: var(--color-ink-secondary);
+		border-color: var(--color-wire);
+		background: var(--color-felt-hover);
+	}
+
+	.eval-type-toggle.eval-type-item {
+		color: var(--color-vekt-dim);
+		border-color: var(--color-vekt-bg-strong);
+		background: var(--color-vekt-bg);
+	}
+
+	.eval-type-toggle.eval-type-item:hover {
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg-strong);
+	}
+
+	/* ── Item config panel ── */
+	.item-config {
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
+		background: var(--color-felt);
+		padding: var(--spacing-3) var(--spacing-4);
+		padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-3);
+		border-bottom: 1px solid var(--color-wire);
+	}
+
+	.item-config-header {
+		display: flex;
+		gap: var(--spacing-4);
+		flex-wrap: wrap;
+	}
+
+	.item-config-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.item-config-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-ink-muted);
+		white-space: nowrap;
+	}
+
+	.item-config-input {
+		width: 120px;
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
+		font-family: var(--font-ui);
+		font-size: 12px;
+		outline: none;
+		transition: border-color 0.12s;
+	}
+
+	.item-config-input:focus {
+		border-color: var(--color-wire-focus);
+	}
+
+	.agg-toggle {
+		display: inline-flex;
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+	}
+
+	.agg-option {
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: var(--color-canvas);
+		border: none;
+		cursor: pointer;
+		transition: all 0.12s;
+		white-space: nowrap;
+	}
+
+	.agg-option:not(:last-child) {
+		border-right: 1px solid var(--color-wire);
+	}
+
+	.agg-option:hover:not(.agg-active) {
+		color: var(--color-ink-secondary);
+		background: var(--color-felt-hover);
+	}
+
+	.agg-option.agg-active {
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg);
+		font-weight: 600;
+	}
+
+	/* ── Item dimensions ── */
+	.item-dimensions {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2);
+	}
+
+	.item-dimensions-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-ink-muted);
+	}
+
+	.item-dimension-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.item-dimension-weight {
+		width: 40px;
+		text-align: center;
+		padding: var(--spacing-1);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-vekt-dim);
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 12px;
+		font-weight: 600;
+		outline: none;
+		transition: border-color 0.12s;
+	}
+
+	.item-dimension-weight:focus {
+		border-color: var(--color-wire-focus);
+		color: var(--color-vekt);
+	}
+
+	.item-dimension-weight::-webkit-outer-spin-button,
+	.item-dimension-weight::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	.item-dimension-weight[type='number'] {
+		appearance: textfield;
+		-moz-appearance: textfield;
+	}
+
+	.item-dimension-name {
+		flex: 1;
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
+		font-family: var(--font-ui);
+		font-size: 12px;
+		outline: none;
+		transition: border-color 0.12s;
+	}
+
+	.item-dimension-name:focus {
+		border-color: var(--color-wire-focus);
+	}
+
+	.item-dimension-name::placeholder {
+		color: var(--color-ink-ghost);
+	}
+
+	.item-dimension-remove {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		color: var(--color-ink-ghost);
+		background: none;
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		opacity: 0;
+		transition: all 0.1s;
+	}
+
+	.item-dimension-row:hover > .item-dimension-remove {
+		opacity: 1;
+	}
+
+	.item-dimension-remove:hover {
+		color: var(--color-score-low);
+		background: var(--color-felt-active);
+	}
+
+	.item-dimension-add {
+		align-self: flex-start;
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: color 0.1s;
+	}
+
+	.item-dimension-add:hover {
+		color: var(--color-vekt-dim);
 	}
 </style>

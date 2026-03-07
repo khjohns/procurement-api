@@ -282,6 +282,18 @@ def _fallback_hendelser(procurement: dict) -> list[dict]:
     return hendelser
 
 
+def _extract_doffin_id(activities: list[dict]) -> str | None:
+    """Extract Doffin notice ID (NGOJ) from activities."""
+    doffin_acts = get_activities_by_action(
+        activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED
+    )
+    if not doffin_acts:
+        return None
+    desc = doffin_acts[0].get("description") or {}
+    doffin_notice = desc.get("doffinNotice") or {}
+    return doffin_notice.get("ngoj") or None
+
+
 def _fetch_hendelser_parallel(
     client, procurements: list[dict]
 ) -> dict[int, list[dict]]:
@@ -307,6 +319,37 @@ def _fetch_hendelser_parallel(
             result[pid] = _fallback_hendelser(proc)
 
     return result
+
+
+def _fetch_hendelser_and_doffin_parallel(
+    client, procurements: list[dict]
+) -> tuple[dict[int, list[dict]], dict[int, str]]:
+    """Fetch activities and build hendelser + extract doffin IDs in parallel."""
+    hendelser_result: dict[int, list[dict]] = {}
+    doffin_result: dict[int, str] = {}
+    futures = {}
+    for p in procurements:
+        pid = p.get("id")
+        if pid is None:
+            continue
+        future = _executor.submit(_cached_activities, client, pid)
+        futures[future] = (pid, p)
+
+    for future in as_completed(futures):
+        pid, proc = futures[future]
+        try:
+            activities = future.result(timeout=10)
+            hendelser_result[pid] = _build_hendelser(proc, activities)
+            doffin_id = _extract_doffin_id(activities)
+            if doffin_id:
+                doffin_result[pid] = doffin_id
+        except Exception:
+            log.warning(
+                "Failed to fetch activities for procurement %s", pid, exc_info=True
+            )
+            hendelser_result[pid] = _fallback_hendelser(proc)
+
+    return hendelser_result, doffin_result
 
 
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
@@ -366,7 +409,9 @@ def list_mature_procurements():
     )
 
     # Fetch activities in parallel for all mature procurements
-    hendelser_map = _fetch_hendelser_parallel(_client(), mature)
+    hendelser_map, doffin_map = _fetch_hendelser_and_doffin_parallel(
+        _client(), mature
+    )
 
     results = []
     for p in mature:
@@ -382,21 +427,23 @@ def list_mature_procurements():
         procurer = p.get("about_procurer") or {}
         pid = p.get("id")
 
-        results.append(
-            {
-                "id": pid,
-                "sequenceId": p.get("sequenceId"),
-                "name": name or f"Anskaffelse {pid}",
-                "description": description,
-                "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
-                "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
-                "deadline": deadline_str[:10] if deadline_str else "",
-                "contactPerson": procurer.get("contact_person") or "",
-                "awarded": bool(p.get("areAwardLettersSent")),
-                "framework": bool(p.get("framework_agreement_involved")),
-                "hendelser": hendelser_map.get(pid, _fallback_hendelser(p)),
-            }
-        )
+        entry: dict = {
+            "id": pid,
+            "sequenceId": p.get("sequenceId"),
+            "name": name or f"Anskaffelse {pid}",
+            "description": description,
+            "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
+            "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
+            "deadline": deadline_str[:10] if deadline_str else "",
+            "contactPerson": procurer.get("contact_person") or "",
+            "awarded": bool(p.get("areAwardLettersSent")),
+            "framework": bool(p.get("framework_agreement_involved")),
+            "hendelser": hendelser_map.get(pid, _fallback_hendelser(p)),
+        }
+        doffin_id = doffin_map.get(pid)
+        if doffin_id:
+            entry["doffinId"] = doffin_id
+        results.append(entry)
 
     return jsonify(results)
 
