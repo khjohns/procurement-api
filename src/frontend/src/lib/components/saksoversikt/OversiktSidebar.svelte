@@ -58,6 +58,7 @@
 		const ubesvart: Record<HendelseType, number> = { U: 0, K: 0, F: 0, S: 0, T: 0, E: 0, P: 0 };
 		for (const sak of saker) {
 			for (const h of sak.hendelser) {
+				if (!h.type) continue;
 				telling[h.type]++;
 				if (!h.besvart) ubesvart[h.type]++;
 			}

@@ -1,5 +1,15 @@
 <script lang="ts">
-	import type { AnskaffelsesOversiktItem } from '$lib/types/anskaffelse';
+	import type { AnskaffelsesOversiktItem, AnskaffelsesHendelse } from '$lib/types/anskaffelse';
+	import { formatDatoKort } from '$lib/utils/format';
+	import {
+		MessageCircleQuestion,
+		FilePlus2,
+		FilePenLine,
+		UserMinus,
+		CheckCircle2,
+		RefreshCw,
+		Circle
+	} from 'lucide-svelte';
 
 	interface Props {
 		sak: AnskaffelsesOversiktItem | null;
@@ -9,18 +19,39 @@
 
 	let { sak, erAapen, onclose }: Props = $props();
 
+	let beskrivelseFull = $state(false);
+
+	const beskrivelse = $derived(sak?.description ?? '');
+
+	// Reset expansion state when switching sak (true side effect per ADR-003)
+	$effect(() => {
+		if (sak) beskrivelseFull = false;
+	});
+
+	/** All hendelser in one chronological list */
 	const hendelser = $derived(
 		[...(sak?.hendelser ?? [])].sort(
 			(a, b) => new Date(a.dato).getTime() - new Date(b.dato).getTime()
 		)
 	);
 
-	function formatDato(iso: string): string {
-		const d = new Date(iso);
-		const dag = String(d.getDate()).padStart(2, '0');
-		const mnd = String(d.getMonth() + 1).padStart(2, '0');
-		const aar = String(d.getFullYear()).slice(2);
-		return `${dag}.${mnd}.${aar}`;
+	/** Whether a hendelse is a lifecycle node (U/K/F/S/T/E/P) */
+	function erNode(h: AnskaffelsesHendelse): boolean {
+		return h.type !== '';
+	}
+
+	/** Lucide icon component for non-node activities */
+	const ACTION_IKON: Record<string, typeof Circle> = {
+		PUBLISH_Q8A: MessageCircleQuestion,
+		PUBLISH_ADDITIONAL_INFORMATION: FilePlus2,
+		PUBLISH_CHANGE_PROCUREMENT: FilePenLine,
+		WITHDRAW_PARTICIPATION: UserMinus,
+		CONVERSATION_MARKED_COMPLETED: CheckCircle2,
+		CONVERSATION_REOPENED: RefreshCw,
+	};
+
+	function ikonForAction(action: string): typeof Circle {
+		return ACTION_IKON[action] ?? Circle;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -49,50 +80,67 @@
 					<span class="panel-prosedyre">{sak.procedure}</span>
 					<span class="panel-sep">&middot;</span>
 					<span class="panel-terskel">{sak.threshold}</span>
+					{#if sak.deadline}
+						<span class="panel-sep">&middot;</span>
+						<span class="panel-frist">Frist {sak.deadline}</span>
+					{/if}
 				</div>
+				{#if sak.contactPerson}
+					<div class="panel-saksbehandler">{sak.contactPerson}</div>
+				{/if}
 				<button class="panel-lukk" onclick={onclose} aria-label="Lukk panel">
 					<span aria-hidden="true">&#x2715;</span>
 				</button>
 			</div>
 
 			<div class="panel-body">
-				<!-- Nøkkelinfo -->
-				<div class="seksjon">
-					<div class="section-label">Nøkkelinfo</div>
-					<div class="info-grid">
-						<div class="info-rad">
-							<span class="info-label">Frist</span>
-							<span class="info-verdi">{sak.deadline}</span>
-						</div>
-						{#if sak.contactPerson}
-							<div class="info-rad">
-								<span class="info-label">Saksbehandler</span>
-								<span class="info-verdi">{sak.contactPerson}</span>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Hendelsesforløp -->
-				{#if hendelser.length > 0}
+				<!-- Beskrivelse (compact — 2 lines with fade) -->
+				{#if beskrivelse}
 					<div class="seksjon">
+						<div class="section-label">Beskrivelse</div>
+						<div class="beskrivelse-wrap" class:beskrivelse-full={beskrivelseFull}>
+							<p class="beskrivelse">{beskrivelse}</p>
+							{#if !beskrivelseFull}
+								<div class="beskrivelse-fade"></div>
+							{/if}
+						</div>
+						<button
+							class="beskrivelse-toggle"
+							onclick={() => (beskrivelseFull = !beskrivelseFull)}
+						>
+							{beskrivelseFull ? 'Vis mindre' : 'Vis mer'}
+						</button>
+					</div>
+				{/if}
+
+				<!-- Hendelsesforløp (integrert kronologi) -->
+				{#if hendelser.length > 0}
+					<div class="seksjon seksjon-forloep">
 						<div class="section-label">Hendelsesforløp</div>
 						<div class="forloep">
 							{#each hendelser as h, i (i)}
 								{@const erSiste = i === hendelser.length - 1}
+								{@const erNodeType = erNode(h)}
 								<div
 									class="forloep-linje"
-									class:forloep-besvart={h.besvart}
+									class:forloep-besvart={erNodeType && h.besvart}
 									class:forloep-siste={erSiste}
+									class:forloep-aktivitet={!erNodeType}
 								>
-									<span class="forloep-dato">{formatDato(h.dato)}</span>
+									<span class="forloep-dato">{formatDatoKort(h.dato)}</span>
 									<div class="forloep-strek" class:forloep-strek-siste={erSiste}></div>
-									<span
-										class="forloep-node forloep-node-{h.type.toLowerCase()}"
-										class:forloep-node-besvart={h.besvart}
-										class:forloep-node-avvist={h.avvist}
-									>{h.type}</span>
-									<span class="forloep-tekst">{h.label}</span>
+									{#if erNodeType}
+										<span
+											class="forloep-node forloep-node-{h.type.toLowerCase()}"
+											class:forloep-node-besvart={h.besvart}
+											class:forloep-node-avvist={h.avvist}
+										>{h.type}</span>
+									{:else}
+										<span class="forloep-ikon">
+											<svelte:component this={ikonForAction(h.action)} size={10} strokeWidth={2} />
+										</span>
+									{/if}
+									<span class="forloep-tekst" class:forloep-tekst-aktivitet={!erNodeType}>{h.label}</span>
 								</div>
 							{/each}
 						</div>
@@ -192,6 +240,18 @@
 		color: var(--color-ink-muted);
 	}
 
+	.panel-frist {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-muted);
+	}
+
+	.panel-saksbehandler {
+		margin-top: 4px;
+		font-size: 11px;
+		color: var(--color-ink-ghost);
+	}
+
 	.panel-lukk {
 		position: absolute;
 		top: 24px;
@@ -215,7 +275,7 @@
 		padding: 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
+		gap: 20px;
 	}
 
 	.seksjon {
@@ -223,32 +283,68 @@
 		flex-direction: column;
 	}
 
-	/* Info grid */
-	.info-grid {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
+	/* Hendelsesforløp fills remaining space */
+	.seksjon-forloep {
+		flex: 1;
+		min-height: 0;
 	}
 
-	.info-rad {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		font-size: 13px;
+	.section-label {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+		margin-bottom: 8px;
 	}
 
-	.info-label {
+	/* Beskrivelse — compact 2-line with fade */
+	.beskrivelse-wrap {
+		position: relative;
+		max-height: 36px; /* ~2 lines at 12px * 1.5 line-height */
+		overflow: hidden;
+	}
+
+	.beskrivelse-wrap.beskrivelse-full {
+		max-height: none;
+	}
+
+	.beskrivelse {
+		font-size: 12px;
+		line-height: 1.5;
+		color: var(--color-ink-secondary);
+		margin: 0;
+		white-space: pre-line;
+	}
+
+	.beskrivelse-fade {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 16px;
+		background: linear-gradient(to bottom, transparent, var(--color-felt));
+		pointer-events: none;
+	}
+
+	.beskrivelse-toggle {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-top: 4px;
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-ghost);
+		cursor: pointer;
+		text-align: left;
+		transition: color 150ms;
+	}
+
+	.beskrivelse-toggle:hover {
 		color: var(--color-ink-secondary);
 	}
 
-	.info-verdi {
-		font-family: var(--font-data);
-		font-variant-numeric: tabular-nums;
-		font-weight: 500;
-		color: var(--color-ink);
-	}
-
-	/* Hendelsesforløp */
+	/* Hendelsesforløp (integrert kronologi) */
 	.forloep {
 		display: flex;
 		flex-direction: column;
@@ -258,7 +354,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 6px 0;
+		padding: 4px 0;
 		position: relative;
 	}
 
@@ -287,10 +383,10 @@
 	.forloep-strek::before {
 		content: '';
 		position: absolute;
-		top: -6px;
+		top: -4px;
 		left: 0;
 		width: 1px;
-		height: calc(100% + 12px);
+		height: calc(100% + 8px);
 		background: var(--color-wire);
 	}
 
@@ -301,9 +397,10 @@
 
 	.forloep-strek-siste::before {
 		height: 50%;
-		top: -6px;
+		top: -4px;
 	}
 
+	/* Lifecycle nodes (U/K/F/S/T/E/P) */
 	.forloep-node {
 		width: 16px;
 		height: 16px;
@@ -317,7 +414,6 @@
 		flex-shrink: 0;
 	}
 
-	/* Per-type color via CSS custom properties from app.css */
 	.forloep-node-u { --nc: var(--node-u); }
 	.forloep-node-k { --nc: var(--node-k); }
 	.forloep-node-f { --nc: var(--node-f); }
@@ -327,13 +423,23 @@
 	.forloep-node-p { --nc: var(--node-p); }
 
 	.forloep-node { background: var(--nc); border: 1px solid var(--nc); color: var(--color-canvas); }
-
-	/* Besvart nodes */
 	.forloep-node-besvart { background: transparent; border-color: var(--nc); color: var(--nc); opacity: 0.6; }
-
-	/* Avvist S-nodes: rose color */
 	.forloep-node-avvist { --nc: var(--color-score-low); }
 
+	/* Non-node activity icons — contained in 16×16 box */
+	.forloep-ikon {
+		width: 16px;
+		height: 16px;
+		border-radius: 1px;
+		border: 1px solid var(--color-wire-strong);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-ink-ghost);
+		flex-shrink: 0;
+	}
+
+	/* Text styling */
 	.forloep-tekst {
 		font-size: 12px;
 		color: var(--color-ink-secondary);
@@ -342,13 +448,27 @@
 		text-overflow: ellipsis;
 	}
 
+	.forloep-tekst-aktivitet {
+		font-size: 11px;
+		color: var(--color-ink-muted);
+	}
+
 	.forloep-besvart .forloep-tekst {
 		color: var(--color-ink-muted);
 	}
 
+	/* Last item always full opacity — most relevant event */
 	.forloep-siste:not(.forloep-besvart) .forloep-tekst {
 		color: var(--color-ink);
 		font-weight: 500;
+	}
+
+	.forloep-siste .forloep-dato {
+		opacity: 1;
+	}
+
+	.forloep-siste .forloep-node-besvart {
+		opacity: 1;
 	}
 
 	/* Lenke */

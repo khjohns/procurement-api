@@ -25,6 +25,12 @@ sys.path.insert(0, str(_SRC_DIR))
 from app.client import ArtifikClient  # noqa: E402
 from app.doffin import DoffinClient  # noqa: E402
 from protokoll.common import (  # noqa: E402
+    ACTION_AWARDING_PARTICIPANTS,
+    ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
+    ACTION_PUBLISH_TO_DOFFIN,
+    ACTION_REJECT_PARTICIPATION,
+    ACTION_SUBMIT_BID,
+    TIMELINE_SUBMISSION,
     dedup_by_sequence_id,
     fmt_date,
     get_activities_by_action,
@@ -171,7 +177,9 @@ def _get_doffin_client() -> DoffinClient | None:
 
 def _get_doffin_id(activities: list[dict]) -> str | None:
     """Extract Doffin notice ID (NGOJ) from activities."""
-    doffin_acts = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    doffin_acts = get_activities_by_action(
+        activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED
+    )
     if not doffin_acts:
         return None
     desc = doffin_acts[0].get("description") or {}
@@ -188,7 +196,9 @@ def _list_procurements(client: ArtifikClient) -> list[dict]:
         all_procs = client.list_procurements()
     mature = [p for p in all_procs if is_mature(p)]
     mature = dedup_by_sequence_id(mature)
-    mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
+    mature.sort(
+        key=lambda p: get_timeline_date(p, TIMELINE_SUBMISSION) or "", reverse=True
+    )
     _ok(
         f"{len(mature)} anskaffelser med passert tilbudsfrist (av {len(all_procs)} totalt)"
     )
@@ -270,7 +280,7 @@ def _print_procurement_list(procs: list[dict]) -> None:
         proc_label = PROCEDURE_SHORT.get(proc_raw, "?")
         thresh_raw = p.get("threshold") or ""
         thresh_label = THRESHOLD_SHORT.get(thresh_raw, thresh_raw or "?")
-        deadline = fmt_date(get_timeline_date(p, "submission"))[:10]
+        deadline = fmt_date(get_timeline_date(p, TIMELINE_SUBMISSION))[:10]
         name = p.get("name") or "?"
         seq = p.get("sequenceId") or ""
         label = _truncate(name, name_w)
@@ -320,11 +330,11 @@ def _select_procurement(procs: list[dict]) -> dict:
 
 def _print_summary(procurement: dict, activities: list[dict], path: str) -> None:
     """Print a summary of what was generated and what needs manual work."""
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
-    awards = get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
+    doffin = get_activities_by_action(activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED)
+    publish = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
+    awards = get_activities_by_action(activities, ACTION_AWARDING_PARTICIPANTS)
 
     print(file=sys.stderr)
     print(f"  {_bold('Generert:')} {path}", file=sys.stderr)

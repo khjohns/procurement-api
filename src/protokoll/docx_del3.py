@@ -8,7 +8,16 @@ from datetime import datetime
 from docx import Document as DocxDocument
 
 from .common import (
+    ACTION_AWARDING_PARTICIPANTS,
+    ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
+    ACTION_PUBLISH_TO_DOFFIN,
+    ACTION_QUALIFYING_PARTICIPANTS,
+    ACTION_REJECT_PARTICIPATION,
+    ACTION_SUBMIT_BID,
+    ACTION_WITHDRAW_PARTICIPATION,
     PROCEDURE_MAP,
+    TIMELINE_AWARD_DECISION,
+    TIMELINE_SUBMISSION,
     build_org_lookup,
     filter_post_deadline_conversations,
     fmt_currency,
@@ -72,7 +81,7 @@ def _general_info(doc, procurement, activities, org_lookup):
     else:
         duration_str = None
 
-    submission_date = get_timeline_date(procurement, "submission")
+    submission_date = get_timeline_date(procurement, TIMELINE_SUBMISSION)
     submission_str = fmt_datetime(submission_date) if submission_date else None
 
     docx_info_table(
@@ -88,7 +97,7 @@ def _general_info(doc, procurement, activities, org_lookup):
         ],
     )
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
     p = doc.add_paragraph()
     p.add_run("Tidspunkt for mottak av tilbud:").bold = True
 
@@ -179,7 +188,7 @@ def _procedure(doc, procurement, activities, eforms=None):
 def _formal_rejection(doc, activities, org_lookup):
     doc.add_heading("Avvisning på grunn av formalfeil, jf. FOA \u00a7 24-1", level=3)
 
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
     if not rejections:
         p = doc.add_paragraph()
         add_checkbox(p, "Ingen leverandører eller tilbud ble avvist")
@@ -252,7 +261,7 @@ def _qualification(doc, eforms=None):
 def _supplier_rejection(doc, activities, org_lookup):
     doc.add_heading("Leverandører som er avvist, jf. FOA \u00a7 24-2", level=3)
 
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
     if not rejections:
         p = doc.add_paragraph()
         add_checkbox(p, "Ingen leverandører ble avvist")
@@ -290,7 +299,9 @@ def _supplier_selection(doc, procedure, activities):
         "Innovation partnership",
         "Competitive dialogue",
     ):
-        qualifying = get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS")
+        qualifying = get_activities_by_action(
+            activities, ACTION_QUALIFYING_PARTICIPANTS
+        )
         p = doc.add_paragraph()
         add_manual(p, "[Fyll inn begrunnelse for utvelgelse per leverandør]")
         if qualifying:
@@ -417,9 +428,9 @@ def _dialog(doc, procedure):
 def _bids_in_evaluation(doc, activities, org_lookup):
     doc.add_heading("Tilbud som er med i tildelingsvurderingen", level=3)
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    withdrawals = get_activities_by_action(activities, "WITHDRAW_PARTICIPATION")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
+    withdrawals = get_activities_by_action(activities, ACTION_WITHDRAW_PARTICIPATION)
 
     rejected_ids = {(r.get("organization") or {}).get("id") for r in rejections} - {
         None
@@ -470,9 +481,11 @@ def _award(doc, procurement, activities):
 
     award_letters = procurement.get("areAwardLettersSent")
 
-    award_date = get_timeline_date(procurement, "award decision")
+    award_date = get_timeline_date(procurement, TIMELINE_AWARD_DECISION)
     if not award_date:
-        award_activities = get_activities_by_action(activities, "AWARDING_PARTICIPANTS")
+        award_activities = get_activities_by_action(
+            activities, ACTION_AWARDING_PARTICIPANTS
+        )
         if award_activities:
             award_date = award_activities[0].get("date")
     award_str = fmt_date(award_date) if award_date else None
@@ -650,10 +663,10 @@ def _data_quality(doc, procurement, activities, eforms=None):
         "Intern oversikt \u2014 ikke del av den formelle protokollen. Viser hvilke seksjoner som er fylt ut automatisk fra API-data og hvilke som krever manuell utfylling.",
     )
 
-    submissions = get_activities_by_action(activities, "SUBMIT_BID")
-    rejections = get_activities_by_action(activities, "REJECT_PARTICIPATION")
-    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
-    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    submissions = get_activities_by_action(activities, ACTION_SUBMIT_BID)
+    rejections = get_activities_by_action(activities, ACTION_REJECT_PARTICIPATION)
+    doffin = get_activities_by_action(activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED)
+    publish = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
 
     post_deadline, _ = filter_post_deadline_conversations(procurement, activities)
 

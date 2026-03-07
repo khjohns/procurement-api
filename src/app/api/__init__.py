@@ -6,11 +6,32 @@ import atexit
 import io
 import logging
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
+from app.constants import (
+    ACTION_ASK_TO_QUALIFY,
+    ACTION_AWARD_LETTERS_SENT,
+    ACTION_AWARDING_PARTICIPANTS,
+    ACTION_CONVERSATION_MARKED_COMPLETED,
+    ACTION_CONVERSATION_REOPENED,
+    ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
+    ACTION_LABELS,
+    ACTION_OPEN_BIDS,
+    ACTION_OPEN_QUALIFICATIONS,
+    ACTION_PUBLISH_ADDITIONAL_INFORMATION,
+    ACTION_PUBLISH_CHANGE_PROCUREMENT,
+    ACTION_PUBLISH_Q8A,
+    ACTION_PUBLISH_TO_DOFFIN,
+    ACTION_QUALIFYING_PARTICIPANTS,
+    ACTION_REJECT_PARTICIPATION,
+    ACTION_SUBMIT_BID,
+    ACTION_WITHDRAW_PARTICIPATION,
+    TIMELINE_SUBMISSION,
+)
 from protokoll.common import (
     build_org_lookup,
     dedup_by_sequence_id,
@@ -69,10 +90,10 @@ def _iso_date(activity: dict) -> str:
 
 def _announcement_iso_date(activities: list[dict]) -> str:
     """Get announcement date as ISO string (not formatted for display)."""
-    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    publish = get_activities_by_action(activities, ACTION_PUBLISH_TO_DOFFIN)
     if publish:
         return publish[0].get("date") or ""
-    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    doffin = get_activities_by_action(activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED)
     if doffin:
         desc = doffin[0].get("description") or {}
         doffin_notice = desc.get("doffinNotice") or {}
@@ -83,10 +104,35 @@ def _announcement_iso_date(activities: list[dict]) -> str:
 def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     """Build timeline events from procurement data and activities.
 
+    Each hendelse carries both a ``type`` (7-letter lifecycle phase for the
+    timeline) and an ``action`` (original Artifik activity for the
+    hendelseslogg in the right panel).
+
     Dates are returned as ISO strings for frontend Date parsing.
     """
     hendelser: list[dict] = []
     org_lookup = build_org_lookup(activities)
+
+    # Pre-group activities by action in a single pass
+    by_action: dict[str, list[dict]] = defaultdict(list)
+    for a in activities:
+        by_action[a.get("action", "")].append(a)
+    for v in by_action.values():
+        v.sort(key=lambda a: a.get("date") or "")
+
+    def _h(
+        typ: str,
+        action: str,
+        dato: str,
+        label: str,
+        *,
+        besvart: bool = True,
+        avvist: bool = False,
+    ) -> dict:
+        h: dict = {"type": typ, "action": action, "dato": dato, "label": label, "besvart": besvart}
+        if avvist:
+            h["avvist"] = True
+        return h
 
     # K — Kunngjort
     _, doffin_ref, ted_ref = parse_announcement(activities)
@@ -95,108 +141,113 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         label = "Kunngjort"
         if doffin_ref:
             label += f" ({doffin_ref})"
-        hendelser.append(
-            {"type": "K", "dato": ann_date, "label": label, "besvart": True}
-        )
+        hendelser.append(_h("K", ACTION_PUBLISH_TO_DOFFIN, ann_date, label))
 
     # F — Forespørsel om deltakelse (klynge per leverandør)
-    for a in get_activities_by_action(activities, "ASK_TO_QUALIFY"):
+    for a in by_action[ACTION_ASK_TO_QUALIFY]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            {
-                "type": "F",
-                "dato": _iso_date(a),
-                "label": f"Forespørsel: {name}",
-                "besvart": True,
-            }
+            _h("F", ACTION_ASK_TO_QUALIFY, _iso_date(a), f"Forespørsel: {name}")
         )
 
     # S — Kvalifisering
-    for a in get_activities_by_action(activities, "OPEN_QUALIFICATIONS"):
+    for a in by_action[ACTION_OPEN_QUALIFICATIONS]:
         hendelser.append(
-            {
-                "type": "S",
-                "dato": _iso_date(a),
-                "label": "Kvalifikasjoner åpnet",
-                "besvart": True,
-            }
+            _h("S", ACTION_OPEN_QUALIFICATIONS, _iso_date(a), "Kvalifikasjoner åpnet")
         )
 
-    for a in get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS"):
+    for a in by_action[ACTION_QUALIFYING_PARTICIPANTS]:
         hendelser.append(
-            {
-                "type": "S",
-                "dato": _iso_date(a),
-                "label": "Kvalifiserte leverandører",
-                "besvart": True,
-            }
+            _h("S", ACTION_QUALIFYING_PARTICIPANTS, _iso_date(a), "Kvalifiserte leverandører")
         )
 
-    for a in get_activities_by_action(activities, "REJECT_PARTICIPATION"):
+    for a in by_action[ACTION_REJECT_PARTICIPATION]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            {
-                "type": "S",
-                "dato": _iso_date(a),
-                "label": f"Avvist: {name}",
-                "besvart": True,
-                "avvist": True,
-            }
+            _h("S", ACTION_REJECT_PARTICIPATION, _iso_date(a), f"Avvist: {name}", avvist=True)
         )
 
     # T — Tilbud
-    for a in get_activities_by_action(activities, "SUBMIT_BID"):
+    for a in by_action[ACTION_SUBMIT_BID]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            {
-                "type": "T",
-                "dato": _iso_date(a),
-                "label": f"Tilbud: {name}",
-                "besvart": True,
-            }
+            _h("T", ACTION_SUBMIT_BID, _iso_date(a), f"Tilbud: {name}")
         )
 
-    for a in get_activities_by_action(activities, "OPEN_BIDS"):
+    for a in by_action[ACTION_OPEN_BIDS]:
         hendelser.append(
-            {
-                "type": "T",
-                "dato": _iso_date(a),
-                "label": "Tilbudsåpning",
-                "besvart": True,
-            }
+            _h("T", ACTION_OPEN_BIDS, _iso_date(a), "Tilbudsåpning")
         )
 
     # E — Evaluert
-    for a in get_activities_by_action(activities, "AWARDING_PARTICIPANTS"):
+    for a in by_action[ACTION_AWARDING_PARTICIPANTS]:
         hendelser.append(
-            {
-                "type": "E",
-                "dato": _iso_date(a),
-                "label": "Tildeling utført",
-                "besvart": True,
-            }
+            _h("E", ACTION_AWARDING_PARTICIPANTS, _iso_date(a), "Tildeling utført")
         )
 
     # P — Protokoll (from procurement field, not activity)
     if procurement.get("areAwardLettersSent"):
         hendelser.append(
-            {"type": "P", "dato": "", "label": "Tildelingsbrev sendt", "besvart": True}
+            _h("P", ACTION_AWARD_LETTERS_SENT, "", "Tildelingsbrev sendt")
         )
 
-    # U — Opprettet (earliest activity date as proxy for creation)
+    # ── Non-node activities (shown only in hendelseslogg, not in timeline) ──
+
+    for a in by_action[ACTION_PUBLISH_Q8A]:
+        hendelser.append(
+            _h("", ACTION_PUBLISH_Q8A, _iso_date(a), "Spørsmål og svar publisert")
+        )
+
+    for a in by_action[ACTION_PUBLISH_ADDITIONAL_INFORMATION]:
+        desc = a.get("description") or {}
+        info_text = desc.get("text") or ""
+        label = "Tilleggsinformasjon"
+        if info_text:
+            label += f": {strip_html(info_text)[:80]}"
+        hendelser.append(
+            _h("", ACTION_PUBLISH_ADDITIONAL_INFORMATION, _iso_date(a), label)
+        )
+
+    for a in by_action[ACTION_PUBLISH_CHANGE_PROCUREMENT]:
+        hendelser.append(
+            _h("", ACTION_PUBLISH_CHANGE_PROCUREMENT, _iso_date(a), "Endring i konkurransen")
+        )
+
+    for a in by_action[ACTION_WITHDRAW_PARTICIPATION]:
+        name = get_org_name(a, org_lookup)
+        hendelser.append(
+            _h("", ACTION_WITHDRAW_PARTICIPATION, _iso_date(a), f"Tilbaketrekking: {name}")
+        )
+
+    for a in by_action[ACTION_CONVERSATION_MARKED_COMPLETED]:
+        desc = a.get("description") or {}
+        title = desc.get("title") or ""
+        name = get_org_name(a, org_lookup)
+        label = f"Dialog fullført: {name}"
+        if title:
+            label += f" — {title}"
+        hendelser.append(
+            _h("", ACTION_CONVERSATION_MARKED_COMPLETED, _iso_date(a), label)
+        )
+
+    for a in by_action[ACTION_CONVERSATION_REOPENED]:
+        name = get_org_name(a, org_lookup)
+        hendelser.append(
+            _h("", ACTION_CONVERSATION_REOPENED, _iso_date(a), f"Dialog gjenåpnet: {name}")
+        )
+
+    # U — Opprettet (earliest activity — show actual activity name)
     dated = [a for a in activities if a.get("date")]
     if dated:
         dated.sort(key=lambda a: a["date"])
+        earliest = dated[0]
+        earliest_action = earliest.get("action") or ""
+        earliest_label = ACTION_LABELS.get(earliest_action, earliest_action)
         hendelser.append(
-            {
-                "type": "U",
-                "dato": dated[0]["date"],
-                "label": "Opprettet",
-                "besvart": True,
-            }
+            _h("U", earliest_action, earliest["date"], f"Opprettet ({earliest_label})")
         )
     elif not any(h["type"] == "K" for h in hendelser):
-        hendelser.append({"type": "U", "dato": "", "label": "Utkast", "besvart": True})
+        hendelser.append(_h("U", "", "", "Utkast"))
 
     return hendelser
 
@@ -204,7 +255,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 def _fallback_hendelser(procurement: dict) -> list[dict]:
     """Minimal hendelser from procurement data alone (graceful degradation)."""
     hendelser: list[dict] = []
-    deadline_str = get_timeline_date(procurement, "submission") or ""
+    deadline_str = get_timeline_date(procurement, TIMELINE_SUBMISSION) or ""
     if deadline_str:
         hendelser.append(
             {
@@ -306,7 +357,9 @@ def list_mature_procurements():
     all_procs = _cached_list_procurements()
     mature = [p for p in all_procs if is_mature(p)]
     mature = dedup_by_sequence_id(mature)
-    mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
+    mature.sort(
+        key=lambda p: get_timeline_date(p, TIMELINE_SUBMISSION) or "", reverse=True
+    )
 
     # Fetch activities in parallel for all mature procurements
     hendelser_map = _fetch_hendelser_parallel(_client(), mature)
@@ -315,9 +368,13 @@ def list_mature_procurements():
     for p in mature:
         raw_name = p.get("name") or p.get("title") or p.get("description") or ""
         name = strip_html(raw_name).split("\n")[0]  # first line only
+        raw_desc = p.get("description") or ""
+        description = strip_html(raw_desc).strip()
+        if len(description) > 400:
+            description = description[:399] + "\u2026"
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
-        deadline_str = get_timeline_date(p, "submission") or ""
+        deadline_str = get_timeline_date(p, TIMELINE_SUBMISSION) or ""
         procurer = p.get("about_procurer") or {}
         pid = p.get("id")
 
@@ -326,6 +383,7 @@ def list_mature_procurements():
                 "id": pid,
                 "sequenceId": p.get("sequenceId"),
                 "name": name or f"Anskaffelse {pid}",
+                "description": description,
                 "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
                 "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
                 "deadline": deadline_str[:10] if deadline_str else "",

@@ -4,7 +4,8 @@ export type HendelseType = 'U' | 'K' | 'F' | 'S' | 'T' | 'E' | 'P';
 export type OversiktVisning = 'tidslinje' | 'tabell';
 
 export interface AnskaffelsesHendelse {
-	type: HendelseType;
+	type: HendelseType | '';
+	action: string;
 	dato: string;
 	label: string;
 	besvart?: boolean;
@@ -15,6 +16,7 @@ export interface AnskaffelsesOversiktItem {
 	id: number;
 	sequenceId: string;
 	name: string;
+	description: string;
 	procedure: string;
 	threshold: string;
 	deadline: string;
