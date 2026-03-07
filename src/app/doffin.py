@@ -33,7 +33,10 @@ class DoffinClient:
     api_key: str | None = field(default=None, repr=False)
     cache_dir: str | None = field(default=None, repr=False)
     cache_bucket: str | None = field(default=None, repr=False)
-    _ssl_ctx: ssl.SSLContext = field(default_factory=lambda: ssl.create_default_context(cafile=certifi.where()), repr=False)
+    _ssl_ctx: ssl.SSLContext = field(
+        default_factory=lambda: ssl.create_default_context(cafile=certifi.where()),
+        repr=False,
+    )
 
     def _get_api_key(self) -> str:
         if self.api_key:
@@ -46,7 +49,9 @@ class DoffinClient:
 
         api_key = self._get_api_key()
         if not api_key:
-            raise ValueError("DOFFIN_API_KEY environment variable not set and no API key provided to client.")
+            raise ValueError(
+                "DOFFIN_API_KEY environment variable not set and no API key provided to client."
+            )
 
         req.add_header("Ocp-Apim-Subscription-Key", api_key)
 
@@ -136,6 +141,7 @@ class DoffinClient:
 
     def _gcs_blob(self, doffin_id: str):
         from google.cloud import storage  # type: ignore[import-untyped]
+
         client = storage.Client()
         bucket = client.bucket(self.cache_bucket)
         return bucket.blob(f"eforms/{doffin_id}.json")
@@ -160,7 +166,9 @@ class DoffinClient:
         except Exception:
             log.warning("GCS cache-skriving feilet for %s", doffin_id, exc_info=True)
 
-    @mcp_tool(description="Download and parse a Doffin eForms notice. Returns structured JSON with award criteria, qualification requirements, procedure type, and more.")
+    @mcp_tool(
+        description="Download and parse a Doffin eForms notice. Returns structured JSON with award criteria, qualification requirements, procedure type, and more."
+    )
     def get_notice(self, doffin_id: str) -> dict:
         """Download, parse, and cache an eForms notice."""
         cached = self._cache_read(doffin_id)
@@ -172,17 +180,18 @@ class DoffinClient:
         self._cache_write(doffin_id, result)
         return result
 
-    def _search_all(
-        self, search_string: str, *, max_pages: int = 10
-    ) -> list[dict]:
+    def _search_all(self, search_string: str, *, max_pages: int = 10) -> list[dict]:
         """Search with automatic date-windowing to bypass the 1000-hit API limit.
 
         Doffin API caps at 1000 results per search. If we hit that limit,
         we split the time range and search each window separately.
         """
         return self._search_window(
-            search_string, max_pages=max_pages,
-            date_from=None, date_to=None, depth=0,
+            search_string,
+            max_pages=max_pages,
+            date_from=None,
+            date_to=None,
+            depth=0,
         )
 
     def _search_window(
@@ -223,8 +232,12 @@ class DoffinClient:
 
         # If we fetched exactly 1000, there are probably more — split the window
         if len(all_hits) >= 1000 and depth < 5:
-            log.info("Treffer 1000-grensen, deler opp tidsvindu %s → %s (dybde %d)",
-                     date_from or "start", date_to or "nå", depth)
+            log.info(
+                "Treffer 1000-grensen, deler opp tidsvindu %s → %s (dybde %d)",
+                date_from or "start",
+                date_to or "nå",
+                depth,
+            )
 
             # Determine the actual date range from results
             dates = []
@@ -237,16 +250,18 @@ class DoffinClient:
 
             earliest = min(dates)
             latest = max(dates)
-            mid_date = Date.fromisoformat(earliest) + (
-                Date.fromisoformat(latest) - Date.fromisoformat(earliest)
-            ) // 2
+            mid_date = (
+                Date.fromisoformat(earliest)
+                + (Date.fromisoformat(latest) - Date.fromisoformat(earliest)) // 2
+            )
 
             # Clear and search each half
             all_hits.clear()
             seen_ids.clear()
 
             first_half = self._search_window(
-                search_string, max_pages=max_pages,
+                search_string,
+                max_pages=max_pages,
                 date_from=date_from,
                 date_to=mid_date.isoformat(),
                 depth=depth + 1,
@@ -259,7 +274,8 @@ class DoffinClient:
 
             next_day = (mid_date + timedelta(days=1)).isoformat()
             second_half = self._search_window(
-                search_string, max_pages=max_pages,
+                search_string,
+                max_pages=max_pages,
                 date_from=next_day,
                 date_to=date_to,
                 depth=depth + 1,
@@ -274,8 +290,12 @@ class DoffinClient:
 
         return all_hits
 
-    @mcp_tool(description="Search all Doffin notices for a buyer and return structured summary. Set enrich=true to parse eForms XML for award criteria and qualification requirements.")
-    def analyze_buyer(self, search_string: str, enrich: bool = True, max_pages: int = 10) -> dict:
+    @mcp_tool(
+        description="Search all Doffin notices for a buyer and return structured summary. Set enrich=true to parse eForms XML for award criteria and qualification requirements."
+    )
+    def analyze_buyer(
+        self, search_string: str, enrich: bool = True, max_pages: int = 10
+    ) -> dict:
         """Search notices for a buyer, optionally enriching with eForms data."""
         all_hits = self._search_all(search_string, max_pages=max_pages)
 
@@ -285,14 +305,17 @@ class DoffinClient:
         for hit in all_hits:
             buyers = hit.get("buyer") or []
             buyer_match = any(
-                search_lower in (b.get("name") or "").lower()
-                for b in buyers
+                search_lower in (b.get("name") or "").lower() for b in buyers
             )
             if buyer_match:
                 filtered_hits.append(hit)
 
-        log.info("Fant %d kunngjøringer (%d filtrert bort — buyer matcher ikke '%s').",
-                 len(filtered_hits), len(all_hits) - len(filtered_hits), search_string)
+        log.info(
+            "Fant %d kunngjøringer (%d filtrert bort — buyer matcher ikke '%s').",
+            len(filtered_hits),
+            len(all_hits) - len(filtered_hits),
+            search_string,
+        )
 
         total = len(filtered_hits)
         notices = []
@@ -321,7 +344,9 @@ class DoffinClient:
                 "title": hit.get("heading"),
                 "buyer_name": buyer_names,
                 "buyer_org_id": buyer_org_ids,
-                "winner": ", ".join(wd["name"] for wd in winner_details) if winner_details else None,
+                "winner": ", ".join(wd["name"] for wd in winner_details)
+                if winner_details
+                else None,
                 "winner_details": winner_details if winner_details else None,
                 "description": hit.get("description"),
                 "type": hit.get("type"),
@@ -346,7 +371,9 @@ class DoffinClient:
                     entry["framework_max_value"] = eforms.get("framework_max_value")
                     entry["submission_deadline"] = eforms.get("submission_deadline")
                     entry["duration_months"] = eforms.get("duration_months")
-                    entry["framework_max_participants"] = eforms.get("framework_max_participants")
+                    entry["framework_max_participants"] = eforms.get(
+                        "framework_max_participants"
+                    )
                     enriched_count += 1
                     if was_cached:
                         cached_count += 1
@@ -354,7 +381,13 @@ class DoffinClient:
                     entry["enrich_error"] = True
                     error_count += 1
                 if i % 10 == 0 or i == total:
-                    log.info("  Beriket %d/%d (%d fra cache, %d feil)", i, total, cached_count, error_count)
+                    log.info(
+                        "  Beriket %d/%d (%d fra cache, %d feil)",
+                        i,
+                        total,
+                        cached_count,
+                        error_count,
+                    )
             notices.append(entry)
 
         summary = _build_summary(notices) if notices else {}
@@ -394,7 +427,8 @@ def _build_summary(notices: list[dict]) -> dict:
         "by_contract_nature": by_nature,
         "avg_award_criteria_count": (
             round(sum(criteria_counts) / len(criteria_counts), 1)
-            if criteria_counts else 0
+            if criteria_counts
+            else 0
         ),
         "env_compliance": env_codes,
     }

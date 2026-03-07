@@ -74,7 +74,10 @@ def _forward(body: dict) -> dict:
 
 
 def main():
-    print("Artifik MCP proxy (stdio → Cloud Run). Send JSON-RPC via stdin.", file=sys.stderr)
+    print(
+        "Artifik MCP proxy (stdio → Cloud Run). Send JSON-RPC via stdin.",
+        file=sys.stderr,
+    )
 
     for line in sys.stdin:
         line = line.strip()

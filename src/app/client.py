@@ -49,7 +49,10 @@ class ArtifikClient:
     client_id: str | None = field(default=None, repr=False)
     client_secret: str | None = field(default=None, repr=False)
     _token: TokenInfo | None = field(default=None, repr=False)
-    _ssl_ctx: ssl.SSLContext = field(default_factory=lambda: ssl.create_default_context(cafile=certifi.where()), repr=False)
+    _ssl_ctx: ssl.SSLContext = field(
+        default_factory=lambda: ssl.create_default_context(cafile=certifi.where()),
+        repr=False,
+    )
 
     # -- Auth --------------------------------------------------------
 
@@ -62,11 +65,13 @@ class ArtifikClient:
         """Obtain a fresh OAuth2 access token."""
         client_id, client_secret = self._get_credentials()
 
-        data = urllib.parse.urlencode({
-            "grant_type": "client_credentials",
-            "client_id": client_id,
-            "client_secret": client_secret,
-        }).encode()
+        data = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        ).encode()
 
         req = urllib.request.Request(
             f"{self.base_url}/external/token",
@@ -125,7 +130,12 @@ class ArtifikClient:
         req = urllib.request.Request(url)
         return self._do_request(req)
 
-    def _post(self, path: str, body: dict | None = None, params: dict[str, str | None] | None = None) -> Any:
+    def _post(
+        self,
+        path: str,
+        body: dict | None = None,
+        params: dict[str, str | None] | None = None,
+    ) -> Any:
         url = f"{self.base_url}{path}"
         if params:
             filtered = {k: v for k, v in params.items() if v is not None}
@@ -133,7 +143,8 @@ class ArtifikClient:
                 url += "?" + urllib.parse.urlencode(filtered)
         data = json.dumps(body or {}).encode()
         req = urllib.request.Request(
-            url, data=data,
+            url,
+            data=data,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -148,25 +159,35 @@ class ArtifikClient:
 
     # -- Procurements ------------------------------------------------
 
-    @mcp_tool(description="List all procurements. Optionally filter by organization ID.")
+    @mcp_tool(
+        description="List all procurements. Optionally filter by organization ID."
+    )
     def list_procurements(self, *, organization_id: str | None = None) -> list[dict]:
         return self._get("/external/procurements", {"organizationId": organization_id})
 
-    @mcp_tool(description="Get activity log for a procurement — submissions, openings, qualifications, awards.")
+    @mcp_tool(
+        description="Get activity log for a procurement — submissions, openings, qualifications, awards."
+    )
     def get_procurement_activities(self, procurement_id: int) -> list[dict]:
         return self._get(f"/external/{procurement_id}/activities")
 
-    @mcp_tool(description="Get structured document responses (qualification criteria, award criteria, contract terms).")
+    @mcp_tool(
+        description="Get structured document responses (qualification criteria, award criteria, contract terms)."
+    )
     def get_smart_doc_responses(self, procurement_id: int) -> Any:
         return self._get(f"/external/{procurement_id}/smartDocResponses")
 
-    @mcp_tool(description="Download all procurement documents as a ZIP archive. Returns raw bytes.")
+    @mcp_tool(
+        description="Download all procurement documents as a ZIP archive. Returns raw bytes."
+    )
     def download_archive_zip(self, procurement_id: int) -> bytes:
         return self._get(f"/external/{procurement_id}/archiveZip")
 
     # -- Contracts ---------------------------------------------------
 
-    @mcp_tool(description="List contracts. Optionally filter by organization, date, or include custom fields.")
+    @mcp_tool(
+        description="List contracts. Optionally filter by organization, date, or include custom fields."
+    )
     def list_contracts(
         self,
         *,
@@ -174,11 +195,14 @@ class ArtifikClient:
         include_custom_fields: bool = False,
         limit_date: str | None = None,
     ) -> list[dict]:
-        return self._get("/external/contracts", {
-            "organizationId": organization_id,
-            "includeCustomFields": "1" if include_custom_fields else None,
-            "limitDate": limit_date,
-        })
+        return self._get(
+            "/external/contracts",
+            {
+                "organizationId": organization_id,
+                "includeCustomFields": "1" if include_custom_fields else None,
+                "limitDate": limit_date,
+            },
+        )
 
     @mcp_tool(description="Get details for a specific contract.")
     def get_contract(self, contract_id: int) -> dict:
@@ -187,25 +211,35 @@ class ArtifikClient:
     # -- Organizations -----------------------------------------------
 
     @mcp_tool(description="List organizations. Optionally include sub-organizations.")
-    def list_organizations(self, *, include_sub_orgs: bool = False, parent_id: str | None = None) -> list[dict]:
-        return self._get("/external/organizations", {
-            "includeSubOrgs": "1" if include_sub_orgs else None,
-            "parentId": parent_id,
-        })
+    def list_organizations(
+        self, *, include_sub_orgs: bool = False, parent_id: str | None = None
+    ) -> list[dict]:
+        return self._get(
+            "/external/organizations",
+            {
+                "includeSubOrgs": "1" if include_sub_orgs else None,
+                "parentId": parent_id,
+            },
+        )
 
     # -- Activities --------------------------------------------------
 
-    @mcp_tool(description="Get organization-level activity log. Optionally filter by organization or date.")
+    @mcp_tool(
+        description="Get organization-level activity log. Optionally filter by organization or date."
+    )
     def get_organization_activities(
         self,
         *,
         organization_id: str | None = None,
         limit_date: str | None = None,
     ) -> list[dict]:
-        return self._get("/external/activities", {
-            "organizationId": organization_id,
-            "limitDate": limit_date,
-        })
+        return self._get(
+            "/external/activities",
+            {
+                "organizationId": organization_id,
+                "limitDate": limit_date,
+            },
+        )
 
     # -- Webhooks ----------------------------------------------------
 
@@ -242,12 +276,15 @@ class ArtifikClient:
         status: str | None = None,
         task_type: str | None = None,
     ) -> list[dict]:
-        return self._get("/external/tasks", {
-            "organizationId": organization_id,
-            "userId": user_id,
-            "status": status,
-            "type": task_type,
-        })
+        return self._get(
+            "/external/tasks",
+            {
+                "organizationId": organization_id,
+                "userId": user_id,
+                "status": status,
+                "type": task_type,
+            },
+        )
 
 
 class ArtifikAPIError(Exception):

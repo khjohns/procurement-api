@@ -10,9 +10,11 @@ def mcp_tool(*, description: str) -> Callable:
 
     The server reads _mcp_tool_meta at startup to auto-register tools.
     """
+
     def decorator(func: Callable) -> Callable:
         func._mcp_tool_meta = {"description": description}
         return func
+
     return decorator
 
 

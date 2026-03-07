@@ -105,9 +105,18 @@ def _normalize_org_id(raw: str) -> str:
 
 def _fetch_secret(name: str) -> str:
     result = subprocess.run(
-        ["gcloud", "secrets", "versions", "access", "latest",
-         f"--secret={name}", f"--project={GCP_PROJECT}"],
-        capture_output=True, text=True, check=True,
+        [
+            "gcloud",
+            "secrets",
+            "versions",
+            "access",
+            "latest",
+            f"--secret={name}",
+            f"--project={GCP_PROJECT}",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return result.stdout.strip()
 
@@ -116,20 +125,36 @@ def _to_csv(notices: list[dict]) -> str:
     """Convert notices to CSV string."""
     buf = StringIO()
     headers = [
-        "doffin_id", "title", "buyer_name", "buyer_org_id", "winner",
-        "type", "status", "publication_date",
-        "procedure_code", "contract_nature", "estimated_value", "currency",
+        "doffin_id",
+        "title",
+        "buyer_name",
+        "buyer_org_id",
+        "winner",
+        "type",
+        "status",
+        "publication_date",
+        "procedure_code",
+        "contract_nature",
+        "estimated_value",
+        "currency",
     ]
     for i in range(1, _MAX_CRITERIA_COLS + 1):
-        headers.extend([
-            f"award_criterion_{i}_name",
-            f"award_criterion_{i}_type",
-            f"award_criterion_{i}_weight",
-        ])
-    headers.extend([
-        "selection_criteria_count", "env_criterion_code",
-        "received_tenders", "framework_type", "framework_max_value",
-    ])
+        headers.extend(
+            [
+                f"award_criterion_{i}_name",
+                f"award_criterion_{i}_type",
+                f"award_criterion_{i}_weight",
+            ]
+        )
+    headers.extend(
+        [
+            "selection_criteria_count",
+            "env_criterion_code",
+            "received_tenders",
+            "framework_type",
+            "framework_max_value",
+        ]
+    )
 
     writer = csv.DictWriter(buf, fieldnames=headers, extrasaction="ignore")
     writer.writeheader()
@@ -151,10 +176,11 @@ def _to_csv(notices: list[dict]) -> str:
             "procedure_code": _PROCEDURE_LABELS.get(procedure, procedure),
             "contract_nature": _CONTRACT_NATURE_LABELS.get(nature, nature),
             "estimated_value": (n.get("estimated_value") or {}).get("amount")
-                if isinstance(n.get("estimated_value"), dict)
-                else n.get("estimated_value"),
+            if isinstance(n.get("estimated_value"), dict)
+            else n.get("estimated_value"),
             "currency": (n.get("estimated_value") or {}).get("currencyCode")
-                if isinstance(n.get("estimated_value"), dict) else "",
+            if isinstance(n.get("estimated_value"), dict)
+            else "",
             "selection_criteria_count": len(n.get("selection_criteria") or []),
             "env_criterion_code": n.get("env_criterion_code"),
             "received_tenders": n.get("received_tenders"),
@@ -190,7 +216,7 @@ def _normalize_title(title: str) -> str:
         "anskaffelse av ",
     ]:
         if t.startswith(prefix):
-            t = t[len(prefix):]
+            t = t[len(prefix) :]
     return t
 
 
@@ -286,8 +312,7 @@ def _print_summary(data: dict) -> None:
 
     print("\n--- Kunngjøringstyper ---")
     for t, c in Counter(
-        _NOTICE_TYPE_LABELS.get(n.get("type", ""), n.get("type", ""))
-        for n in notices
+        _NOTICE_TYPE_LABELS.get(n.get("type", ""), n.get("type", "")) for n in notices
     ).most_common():
         print(f"  {c:4d}  {t}")
 
@@ -298,15 +323,20 @@ def _print_summary(data: dict) -> None:
 
     print("\n--- Kontraktstype ---")
     for t, c in Counter(
-        _CONTRACT_NATURE_LABELS.get(n.get("contract_nature", ""), n.get("contract_nature", ""))
-        for n in notices if n.get("contract_nature")
+        _CONTRACT_NATURE_LABELS.get(
+            n.get("contract_nature", ""), n.get("contract_nature", "")
+        )
+        for n in notices
+        if n.get("contract_nature")
     ).most_common():
         print(f"  {c:4d}  {t}")
 
     # -- B. Tildelingskriterier --
     print("\n--- Tildelingskriterier ---")
     notices_with_criteria = [n for n in notices if criteria_for(n)]
-    print(f"  Kunngjøringer med kriterier: {len(notices_with_criteria)} av {len(notices)}")
+    print(
+        f"  Kunngjøringer med kriterier: {len(notices_with_criteria)} av {len(notices)}"
+    )
 
     criterion_names: Counter = Counter()
     _PLACEHOLDER = "Price is not the only award criterion"
@@ -317,20 +347,18 @@ def _print_summary(data: dict) -> None:
                 continue  # skip eForms placeholder text
             if not name:
                 # Use type as fallback label
-                name = {"price": "Pris", "quality": "Kvalitet", "cost": "Pris (LCC)"}.get(
-                    ac.get("type") or "", "Ukjent"
-                )
+                name = {
+                    "price": "Pris",
+                    "quality": "Kvalitet",
+                    "cost": "Pris (LCC)",
+                }.get(ac.get("type") or "", "Ukjent")
             criterion_names[name] += 1
 
     # Price weight per notice (not per criterion)
     notice_price_weights = []
     for n in notices_with_criteria:
         acs = criteria_for(n)
-        pw = sum(
-            ac.get("weight_percent") or 0
-            for ac in acs
-            if _is_price_type(ac)
-        )
+        pw = sum(ac.get("weight_percent") or 0 for ac in acs if _is_price_type(ac))
         has_weight = any(ac.get("weight_percent") is not None for ac in acs)
         if has_weight:
             notice_price_weights.append(pw)
@@ -344,7 +372,9 @@ def _print_summary(data: dict) -> None:
         print(f"  Pris-dominert (>50%): {price_dominant}")
         print(f"  Kvalitet-dominert (<50%): {quality_dominant}")
         print(f"  Balansert (50/50): {balanced}")
-        print(f"  Uten vekting: {len(notices_with_criteria) - len(notice_price_weights)}")
+        print(
+            f"  Uten vekting: {len(notices_with_criteria) - len(notice_price_weights)}"
+        )
 
     print("\n  Mest brukte kriterienavn:")
     for name, c in criterion_names.most_common(8):
@@ -359,7 +389,9 @@ def _print_summary(data: dict) -> None:
     for n in notices:
         acs = n.get("award_criteria") or []
         env_ac = any(
-            ac.get("name") and "miljø" in ac["name"].lower() and (ac.get("weight_percent") or 0) > 0
+            ac.get("name")
+            and "miljø" in ac["name"].lower()
+            and (ac.get("weight_percent") or 0) > 0
             for ac in acs
         )
         has_justification = bool(n.get("env_justification"))
@@ -384,11 +416,19 @@ def _print_summary(data: dict) -> None:
 
     # Separate frameworks and non-frameworks to avoid mixing value types
     frameworks = [n for n in notices if (n.get("framework_type") or "none") != "none"]
-    non_frameworks = [n for n in notices if (n.get("framework_type") or "none") == "none"]
+    non_frameworks = [
+        n for n in notices if (n.get("framework_type") or "none") == "none"
+    ]
 
     # Estimated values (non-framework contracts)
-    nf_values = [v for v in (value_for(n) for n in non_frameworks) if v is not None and v > 0]
-    nf_matched = sum(1 for n in non_frameworks if n["doffin_id"] in matched and "value" in matched[n["doffin_id"]])
+    nf_values = [
+        v for v in (value_for(n) for n in non_frameworks) if v is not None and v > 0
+    ]
+    nf_matched = sum(
+        1
+        for n in non_frameworks
+        if n["doffin_id"] in matched and "value" in matched[n["doffin_id"]]
+    )
     if nf_values:
         nf_sorted = sorted(nf_values)
         nf_median = nf_sorted[len(nf_sorted) // 2]
@@ -397,13 +437,23 @@ def _print_summary(data: dict) -> None:
         if nf_matched:
             print(f"      herav {nf_matched} koblet fra konkurransekunngjøring")
         print(f"    Total estimert verdi: {_fmt_nok(sum(nf_values))} NOK")
-        print(f"    Gjennomsnitt:         {_fmt_nok(sum(nf_values) / len(nf_values))} NOK")
+        print(
+            f"    Gjennomsnitt:         {_fmt_nok(sum(nf_values) / len(nf_values))} NOK"
+        )
         print(f"    Median:               {_fmt_nok(nf_median)} NOK")
 
     # Framework max values (separate from estimated)
-    fw_max_values = [n.get("framework_max_value") for n in frameworks if n.get("framework_max_value")]
-    fw_est_values = [v for v in (value_for(n) for n in frameworks) if v is not None and v > 0]
-    fw_matched = sum(1 for n in frameworks if n["doffin_id"] in matched and "value" in matched[n["doffin_id"]])
+    fw_max_values = [
+        n.get("framework_max_value") for n in frameworks if n.get("framework_max_value")
+    ]
+    fw_est_values = [
+        v for v in (value_for(n) for n in frameworks) if v is not None and v > 0
+    ]
+    fw_matched = sum(
+        1
+        for n in frameworks
+        if n["doffin_id"] in matched and "value" in matched[n["doffin_id"]]
+    )
     print(f"\n  Rammeavtaler: {len(frameworks)}")
     if fw_max_values:
         print(f"    Med maksverdi (tak): {len(fw_max_values)}")
@@ -421,7 +471,9 @@ def _print_summary(data: dict) -> None:
         print(f"    Samlet estimert verdi: {_fmt_nok(sum(all_values))} NOK")
 
     fw_types = Counter(
-        _FRAMEWORK_TYPE_LABELS.get(n.get("framework_type") or "", n.get("framework_type") or "")
+        _FRAMEWORK_TYPE_LABELS.get(
+            n.get("framework_type") or "", n.get("framework_type") or ""
+        )
         for n in frameworks
     )
     if fw_types:
@@ -467,15 +519,23 @@ def _print_summary(data: dict) -> None:
                 winner_data[key]["values"].append(share)
             winner_data[key]["price_weights"].extend(pw_list)
 
-    print(f"\n  {'Leverandør':<40s} {'Org.nr':<10s} {'Ant':>4s} {'Verdi':>12s} {'Prisvekt':>8s}")
+    print(
+        f"\n  {'Leverandør':<40s} {'Org.nr':<10s} {'Ant':>4s} {'Verdi':>12s} {'Prisvekt':>8s}"
+    )
     print(f"  {'-' * 40} {'-' * 10} {'-' * 4} {'-' * 12} {'-' * 8}")
     for key, d in sorted(winner_data.items(), key=lambda x: -x[1]["count"]):
         total_val = sum(d["values"]) if d["values"] else None
-        avg_pw = sum(d["price_weights"]) / len(d["price_weights"]) if d["price_weights"] else None
+        avg_pw = (
+            sum(d["price_weights"]) / len(d["price_weights"])
+            if d["price_weights"]
+            else None
+        )
         pw_str = f"{avg_pw:.0f}%" if avg_pw is not None else "?"
         name = winner_display[key]
         org_id = winner_org_ids.get(key, "")
-        print(f"  {name[:40]:<40s} {org_id:<10s} {d['count']:>4d} {_fmt_nok(total_val):>12s} {pw_str:>8s}")
+        print(
+            f"  {name[:40]:<40s} {org_id:<10s} {d['count']:>4d} {_fmt_nok(total_val):>12s} {pw_str:>8s}"
+        )
 
     # -- G. CPV-kategorier --
     print("\n--- Kategorier (CPV) ---")
@@ -507,10 +567,14 @@ def _print_summary(data: dict) -> None:
         print(f"  Median:       {median_dur:.0f} mnd")
         if len(durations_by_nature) > 1:
             print("\n  Per kontraktstype:")
-            for nature, ds in sorted(durations_by_nature.items(), key=lambda x: -len(x[1])):
+            for nature, ds in sorted(
+                durations_by_nature.items(), key=lambda x: -len(x[1])
+            ):
                 s = sorted(ds)
                 med = s[len(s) // 2]
-                print(f"    {nature:<20s}  {len(ds):3d} stk  snitt {sum(ds) / len(ds):.0f} mnd  median {med:.0f} mnd")
+                print(
+                    f"    {nature:<20s}  {len(ds):3d} stk  snitt {sum(ds) / len(ds):.0f} mnd  median {med:.0f} mnd"
+                )
 
     # -- H. Konkurranseintensitet --
     print("\n--- Konkurranseintensitet ---")
@@ -524,10 +588,14 @@ def _print_summary(data: dict) -> None:
         median_tc = sorted_tc[len(sorted_tc) // 2]
         avg_tc = sum(award_tender_counts) / len(award_tender_counts)
         solo = sum(1 for t in award_tender_counts if t == 1)
-        print(f"  Tildelinger med tilbudsdata: {len(award_tender_counts)} av {len(tildelinger)}")
+        print(
+            f"  Tildelinger med tilbudsdata: {len(award_tender_counts)} av {len(tildelinger)}"
+        )
         print(f"  Gjennomsnitt mottatte tilbud: {avg_tc:.1f}")
         print(f"  Median:                       {median_tc}")
-        print(f"  Bare 1 tilbud:                {solo} ({solo * 100 // len(award_tender_counts)}%)")
+        print(
+            f"  Bare 1 tilbud:                {solo} ({solo * 100 // len(award_tender_counts)}%)"
+        )
 
         buckets = [
             ("1 tilbud", lambda t: t == 1),
@@ -535,7 +603,9 @@ def _print_summary(data: dict) -> None:
             ("4-5", lambda t: 4 <= t <= 5),
             ("6+", lambda t: t >= 6),
         ]
-        max_count = max(sum(1 for t in award_tender_counts if fn(t)) for _, fn in buckets)
+        max_count = max(
+            sum(1 for t in award_tender_counts if fn(t)) for _, fn in buckets
+        )
         scale = max(1, max_count // 10)
         print("\n  Fordeling:")
         for label, fn in buckets:
@@ -617,7 +687,8 @@ def _print_summary(data: dict) -> None:
 
     # -- J. Avlyste --
     cancelled = [
-        n for n in notices
+        n
+        for n in notices
         if n.get("type") == "CANCELLED_OR_MISSING_CONCLUSION_OF_CONTRACT"
     ]
     if cancelled:
@@ -629,7 +700,8 @@ def _print_summary(data: dict) -> None:
 
     # -- K. Planlegging → konkurranse --
     planning = [
-        n for n in notices
+        n
+        for n in notices
         if n.get("type") in ("ADVISORY_NOTICE", "PRE_ANNOUNCEMENT", "PLANNING")
     ]
     if planning:
@@ -650,7 +722,9 @@ def _print_summary(data: dict) -> None:
         val = value_for(n)
         acs = criteria_for(n)
         pw = next((ac["weight_percent"] for ac in acs if _is_price_type(ac)), None)
-        qw = sum(ac.get("weight_percent") or 0 for ac in acs if ac.get("type") == "quality")
+        qw = sum(
+            ac.get("weight_percent") or 0 for ac in acs if ac.get("type") == "quality"
+        )
         total_weight = sum(ac.get("weight_percent") or 0 for ac in acs)
         low_pw = total_weight > 0 and total_weight < 10
         if low_pw:
@@ -658,14 +732,22 @@ def _print_summary(data: dict) -> None:
         winners = [w.strip() for w in n["winner"].split(",") if w.strip()]
         share = val / len(winners) if val and len(winners) > 1 else val
         for w in winners:
-            award_rows.append({
-                "winner": w, "value": share, "pw": pw, "qw": qw,
-                "title": n["title"], "n_winners": len(winners),
-                "low_pw": low_pw,
-            })
+            award_rows.append(
+                {
+                    "winner": w,
+                    "value": share,
+                    "pw": pw,
+                    "qw": qw,
+                    "title": n["title"],
+                    "n_winners": len(winners),
+                    "low_pw": low_pw,
+                }
+            )
 
     print("\n--- Prisvekt vs kontraktsverdi (topp 15) ---")
-    print(f"\n  {'Verdi':>14s}  {'Pris':>5s}  {'Kval':>5s}  {'Vinner':<30s}  {'Tittel'}")
+    print(
+        f"\n  {'Verdi':>14s}  {'Pris':>5s}  {'Kval':>5s}  {'Vinner':<30s}  {'Tittel'}"
+    )
     print(f"  {'-' * 14}  {'-' * 5}  {'-' * 5}  {'-' * 30}  {'-' * 30}")
 
     ranked = sorted(award_rows, key=lambda r: r["value"] or 0, reverse=True)[:15]
@@ -674,18 +756,30 @@ def _print_summary(data: dict) -> None:
         pw_str = f"{r['pw']:.0f}%{mark}" if r["pw"] is not None else "?"
         qw_str = f"{r['qw']:.0f}%" if r["qw"] else "?"
         val_str = f"{_fmt_nok(r['value']):>14s}" if r["value"] else f"{'ukjent':>14s}"
-        print(f"  {val_str}  {pw_str:>5s}  {qw_str:>5s}  {r['winner'][:30]:<30s}  {r['title'][:40]}")
+        print(
+            f"  {val_str}  {pw_str:>5s}  {qw_str:>5s}  {r['winner'][:30]:<30s}  {r['title'][:40]}"
+        )
 
     if has_low_pw:
-        print("\n  * Prisvekt under 10% — mulig samspill/BVP eller datakvalitetsproblem")
+        print(
+            "\n  * Prisvekt under 10% — mulig samspill/BVP eller datakvalitetsproblem"
+        )
 
     print()
 
 
 _EFORMS_FIELDS = [
-    "award_criteria", "selection_criteria", "procedure_code", "contract_nature",
-    "env_criterion_code", "env_justification", "framework_type", "framework_max_value",
-    "submission_deadline", "duration_months", "framework_max_participants",
+    "award_criteria",
+    "selection_criteria",
+    "procedure_code",
+    "contract_nature",
+    "env_criterion_code",
+    "env_justification",
+    "framework_type",
+    "framework_max_value",
+    "submission_deadline",
+    "duration_months",
+    "framework_max_participants",
 ]
 
 
@@ -740,14 +834,28 @@ def _reprocess(args: argparse.Namespace) -> None:
 def main() -> None:
     import logging
 
-    parser = argparse.ArgumentParser(description="Porteføljeanalyse av Doffin-kunngjøringer.")
+    parser = argparse.ArgumentParser(
+        description="Porteføljeanalyse av Doffin-kunngjøringer."
+    )
     parser.add_argument("--buyer", help="Søkestreng for oppdragsgiver")
     parser.add_argument("--format", choices=["json", "csv"], default="json")
     parser.add_argument("-o", "--output", help="Output-fil (default: stdout)")
-    parser.add_argument("--no-enrich", action="store_true", help="Skip eForms XML-parsing")
-    parser.add_argument("--max-pages", type=int, default=10, help="Maks antall søkesider")
-    parser.add_argument("--summary", metavar="JSON_FILE", help="Porteføljeanalyse fra eksisterende JSON-fil")
-    parser.add_argument("--reprocess", metavar="JSON_FILE", help="Re-berik eksisterende JSON fra eForms-cache (ingen API-kall)")
+    parser.add_argument(
+        "--no-enrich", action="store_true", help="Skip eForms XML-parsing"
+    )
+    parser.add_argument(
+        "--max-pages", type=int, default=10, help="Maks antall søkesider"
+    )
+    parser.add_argument(
+        "--summary",
+        metavar="JSON_FILE",
+        help="Porteføljeanalyse fra eksisterende JSON-fil",
+    )
+    parser.add_argument(
+        "--reprocess",
+        metavar="JSON_FILE",
+        help="Re-berik eksisterende JSON fra eForms-cache (ingen API-kall)",
+    )
 
     args = parser.parse_args()
 
@@ -763,7 +871,9 @@ def main() -> None:
         return
 
     if not args.buyer:
-        parser.error("--buyer er påkrevd (bruk --summary for analyse av eksisterende fil)")
+        parser.error(
+            "--buyer er påkrevd (bruk --summary for analyse av eksisterende fil)"
+        )
 
     from app.doffin import DoffinClient
 

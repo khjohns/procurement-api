@@ -37,11 +37,13 @@ class MCPServer:
         for client in self._clients:
             for name, method, meta in get_mcp_tools(client):
                 schema = self._build_input_schema(method)
-                defs.append({
-                    "name": name,
-                    "description": meta["description"],
-                    "inputSchema": schema,
-                })
+                defs.append(
+                    {
+                        "name": name,
+                        "description": meta["description"],
+                        "inputSchema": schema,
+                    }
+                )
         return defs
 
     def _register_tools(self) -> None:
@@ -119,7 +121,9 @@ class MCPServer:
             elif method == "ping":
                 result = {}
             else:
-                return self._error_response(request_id, -32601, f"Method not found: {method}")
+                return self._error_response(
+                    request_id, -32601, f"Method not found: {method}"
+                )
 
             return self._success_response(request_id, result)
         except Exception as e:
@@ -154,7 +158,11 @@ class MCPServer:
 
         try:
             result = method(**arguments)
-            text = json.dumps(result, ensure_ascii=False, indent=2) if not isinstance(result, str) else result
+            text = (
+                json.dumps(result, ensure_ascii=False, indent=2)
+                if not isinstance(result, str)
+                else result
+            )
             return {"content": [{"type": "text", "text": text}]}
         except Exception as e:
             logger.exception("Tool execution error: %s", e)
@@ -169,7 +177,11 @@ class MCPServer:
 
     @staticmethod
     def _error_response(request_id: Any, code: int, message: str) -> dict[str, Any]:
-        return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {"code": code, "message": message},
+        }
 
 
 def _is_optional_annotation(annotation) -> bool:
@@ -181,6 +193,7 @@ def _is_optional_annotation(annotation) -> bool:
     origin = getattr(annotation, "__origin__", None)
     if origin is not None:
         import typing
+
         if origin is typing.Union:
             return type(None) in annotation.__args__
     return False
