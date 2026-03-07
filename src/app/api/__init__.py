@@ -183,18 +183,8 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
             {"type": "P", "dato": "", "label": "Tildelingsbrev sendt", "besvart": True}
         )
 
-    # U — Utkast (use CREATE_TENDER date as creation timestamp)
-    create_acts = get_activities_by_action(activities, "CREATE_TENDER")
-    if create_acts:
-        hendelser.append(
-            {
-                "type": "U",
-                "dato": _iso_date(create_acts[0]),
-                "label": "Opprettet",
-                "besvart": True,
-            }
-        )
-    elif not any(h["type"] == "K" for h in hendelser):
+    # U — Utkast (if no K-node exists)
+    if not any(h["type"] == "K" for h in hendelser):
         hendelser.append({"type": "U", "dato": "", "label": "Utkast", "besvart": True})
 
     return hendelser
