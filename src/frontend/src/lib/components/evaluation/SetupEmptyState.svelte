@@ -31,13 +31,6 @@
 
 	// ── Derived ──
 
-	let groupWeights = $derived(
-		evaluation.data.criteria.map((c) => ({
-			id: c.id,
-			sum: c.subcriteria.reduce((s, sub) => s + sub.weight, 0)
-		}))
-	);
-
 	let maxSubWeight = $derived(
 		Math.max(1, ...evaluation.data.criteria.flatMap((c) => c.subcriteria.map((s) => s.weight)))
 	);
@@ -58,13 +51,12 @@
 		<div class="section-label">Tildelingskriterier</div>
 		<div class="criteria-editor">
 			{#each evaluation.data.criteria as criterion, ci (criterion.id)}
-				{@const groupWeight = groupWeights.find((g) => g.id === criterion.id)?.sum ?? 0}
 				<div class="criterion-group" data-criterion-id={criterion.id}>
 					<div class="criterion-row criterion-row-group">
 						<div class="criterion-weight">
-							<span class="weight-value weight-value-group">{groupWeight}<span class="weight-pct">%</span></span>
+							<span class="weight-value weight-value-group">{criterion.weight}<span class="weight-pct">%</span></span>
 							<div class="weight-bar">
-								<div class="weight-bar-fill" style="width: {maxSubWeight > 0 ? (groupWeight / (maxSubWeight * 2)) * 100 : 0}%"></div>
+								<div class="weight-bar-fill" style="width: {maxSubWeight > 0 ? (criterion.weight / (maxSubWeight * 2)) * 100 : 0}%"></div>
 							</div>
 						</div>
 						<div class="criterion-name">

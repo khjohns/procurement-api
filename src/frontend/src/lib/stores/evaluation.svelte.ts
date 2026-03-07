@@ -166,6 +166,16 @@ class EvaluationStore {
 		this.data.criteria.reduce((s, c) => s + c.weight, 0) === 100
 	);
 
+	/** Derived quality weight from criteria of type 'quality'. */
+	qualityWeightDerived = $derived(
+		this.data.criteria.filter((c) => c.type === 'quality').reduce((s, c) => s + c.weight, 0)
+	);
+
+	/** Derived price weight from criteria of type 'price'. */
+	priceWeightDerived = $derived(
+		this.data.criteria.filter((c) => c.type === 'price').reduce((s, c) => s + c.weight, 0)
+	);
+
 	/** Pure $derived: computed scores for item-evaluated subcriteria. */
 	itemScores = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
@@ -205,18 +215,13 @@ class EvaluationStore {
 	/** Total weighted score per supplier (0-10 scale). */
 	totals = $derived.by(() => {
 		const result: Record<string, number> = {};
-		const totalWeight = this.data.criteria.reduce((s, c) => s + c.weight, 0);
+		const tw = this.totalWeight;
 		for (const supplier of this.data.suppliers) {
 			let sum = 0;
 			for (const criterion of this.data.criteria) {
-				const avg = weightedAverage(
-					criterion.subcriteria,
-					supplier.id,
-					this.itemScores
-				);
-				sum += avg * criterion.weight;
+				sum += (this.groupScores[criterion.id]?.[supplier.id] ?? 0) * criterion.weight;
 			}
-			result[supplier.id] = totalWeight > 0 ? sum / totalWeight : 0;
+			result[supplier.id] = tw > 0 ? sum / tw : 0;
 		}
 		return result;
 	});
@@ -236,7 +241,7 @@ class EvaluationStore {
 	priceDeductions = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
 		const qb = this.data.contractValue * (this.data.qualityWeight / 100);
-		const tw = this.data.criteria.reduce((s, c) => s + c.weight, 0);
+		const tw = this.totalWeight;
 
 		for (const criterion of this.data.criteria) {
 			for (const sub of criterion.subcriteria) {
@@ -477,21 +482,18 @@ class EvaluationStore {
 
 	/** Update a criterion's weight. */
 	setCriterionWeight(criterionId: string, weight: number) {
-		const criterion = this.data.criteria.find((c) => c.id === criterionId);
+		const criterion = this._findCriterion(criterionId);
 		if (criterion) criterion.weight = Math.max(0, Math.min(100, Math.round(weight)));
 	}
 
 	/** Update a sub-criterion's weight. */
 	setSubCriterionWeight(subCriterionId: string, weight: number) {
-		const sub = this._findSub(subCriterionId);
-		if (sub) {
-			sub.weight = Math.max(0, Math.min(100, Math.round(weight)));
-			// Recalc parent criterion weight
-			for (const c of this.data.criteria) {
-				if (c.subcriteria.some((s) => s.id === subCriterionId)) {
-					c.weight = c.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-					break;
-				}
+		for (const c of this.data.criteria) {
+			const sub = c.subcriteria.find((s) => s.id === subCriterionId);
+			if (sub) {
+				sub.weight = Math.max(0, Math.min(100, Math.round(weight)));
+				this._recalcCriterionWeight(c.id);
+				return;
 			}
 		}
 	}
@@ -519,7 +521,7 @@ class EvaluationStore {
 
 	/** Set a criterion-level note (overordnet vurdering) for a supplier. */
 	setCriterionNote(criterionId: string, supplierId: string, text: string) {
-		const criterion = this.data.criteria.find((c) => c.id === criterionId);
+		const criterion = this._findCriterion(criterionId);
 		if (!criterion) return;
 		if (!criterion.notes) criterion.notes = {};
 		criterion.notes[supplierId] = text;
@@ -588,12 +590,12 @@ class EvaluationStore {
 	}
 
 	renameCriterion(criterionId: string, name: string) {
-		const c = this.data.criteria.find((c) => c.id === criterionId);
+		const c = this._findCriterion(criterionId);
 		if (c) c.name = name;
 	}
 
 	setCriterionType(criterionId: string, type: 'quality' | 'price') {
-		const c = this.data.criteria.find((c) => c.id === criterionId);
+		const c = this._findCriterion(criterionId);
 		if (c) c.type = type;
 	}
 
@@ -606,7 +608,7 @@ class EvaluationStore {
 	}
 
 	addSubCriterion(criterionId: string, name: string, weight: number = 0): string {
-		const c = this.data.criteria.find((c) => c.id === criterionId);
+		const c = this._findCriterion(criterionId);
 		if (!c) return '';
 		const id = uid(`${criterionId}-s`);
 		c.subcriteria = [
@@ -619,9 +621,9 @@ class EvaluationStore {
 
 	removeSubCriterion(subCriterionId: string) {
 		for (const c of this.data.criteria) {
-			const idx = c.subcriteria.findIndex((s) => s.id === subCriterionId);
-			if (idx !== -1) {
-				c.subcriteria = c.subcriteria.filter((s) => s.id !== subCriterionId);
+			const filtered = c.subcriteria.filter((s) => s.id !== subCriterionId);
+			if (filtered.length < c.subcriteria.length) {
+				c.subcriteria = filtered;
 				this._recalcCriterionWeight(c.id);
 				return;
 			}
@@ -634,7 +636,7 @@ class EvaluationStore {
 	}
 
 	reorderSubCriteria(criterionId: string, fromIndex: number, toIndex: number) {
-		const c = this.data.criteria.find((c) => c.id === criterionId);
+		const c = this._findCriterion(criterionId);
 		if (!c || fromIndex < 0 || toIndex < 0 || fromIndex >= c.subcriteria.length || toIndex >= c.subcriteria.length) return;
 		const copy = [...c.subcriteria];
 		const [item] = copy.splice(fromIndex, 1);
@@ -671,19 +673,8 @@ class EvaluationStore {
 
 	/** Recalculate criterion weight from sub-criteria sum. */
 	private _recalcCriterionWeight(criterionId: string) {
-		const c = this.data.criteria.find((c) => c.id === criterionId);
+		const c = this._findCriterion(criterionId);
 		if (c) c.weight = c.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-	}
-
-	/** Load demo data for development. */
-	loadDemo() {
-		import('./demo-data').then(({ demoData }) => {
-			this.data = structuredClone(demoData);
-			this.activeMethod = 'poeng';
-			this.activeView = 'overview';
-			this.selectedSupplierId = null;
-			this.data.status = 'Under evaluering';
-		});
 	}
 
 	/** Initialize or reset the evaluation with new data. */
@@ -692,6 +683,11 @@ class EvaluationStore {
 		this.activeMethod = 'poeng';
 		this.activeView = 'overview';
 		this.selectedSupplierId = null;
+	}
+
+	/** Find a criterion by id. */
+	private _findCriterion(criterionId: string): Criterion | undefined {
+		return this.data.criteria.find((c) => c.id === criterionId);
 	}
 
 	/** Find a sub-criterion by id. */

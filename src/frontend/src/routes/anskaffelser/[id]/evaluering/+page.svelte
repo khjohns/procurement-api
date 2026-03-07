@@ -57,18 +57,14 @@
 	/** Mobile panel state. */
 	let mobilePanelOpen = $state(false);
 
-	/** Ensure we switch to overview when entering work mode. */
+	/** Sync quality/price weights from criteria when entering work mode. */
 	$effect(() => {
 		if (!isSetupMode && evaluation.data.status === 'Oppsett') {
 			evaluation.data.status = 'Under evaluering';
-			// Recalc quality/price weights from criteria
-			const qw = evaluation.data.criteria
-				.filter((c) => c.type === 'quality')
-				.reduce((s, c) => s + c.weight, 0);
-			const pw = evaluation.data.criteria
-				.filter((c) => c.type === 'price')
-				.reduce((s, c) => s + c.weight, 0);
-			evaluation.setQualityPriceWeights(qw, pw);
+			evaluation.setQualityPriceWeights(
+				evaluation.qualityWeightDerived,
+				evaluation.priceWeightDerived
+			);
 		}
 	});
 </script>
