@@ -60,6 +60,7 @@ export interface Supplier {
 export interface EvaluationData {
 	id: string;
 	title: string;
+	procurementName: string;
 	reference: string;
 	status: string;
 	qualityWeight: number;
@@ -206,13 +207,13 @@ class EvaluationStore {
 	/** Price model: quality deduction per subcriterion per supplier. */
 	priceDeductions = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
-		const qualityBudget = this.data.contractValue * (this.data.qualityWeight / 100);
-		const totalWeight = this.data.criteria.reduce((s, c) => s + c.weight, 0);
+		const qb = this.data.contractValue * (this.data.qualityWeight / 100);
+		const tw = this.data.criteria.reduce((s, c) => s + c.weight, 0);
 
 		for (const criterion of this.data.criteria) {
 			for (const sub of criterion.subcriteria) {
 				if (!result[sub.id]) result[sub.id] = {};
-				const maxDeduction = qualityBudget * (sub.weight / totalWeight);
+				const maxDeduction = qb * (sub.weight / tw);
 				for (const supplier of this.data.suppliers) {
 					const score =
 						this.itemScores[sub.id]?.[supplier.id] ??
@@ -259,6 +260,28 @@ class EvaluationStore {
 			.sort((a, b) => a.evaluatedPrice - b.evaluatedPrice)
 			.map((entry, i) => ({ ...entry, rank: i + 1 }));
 	});
+
+	/** Quality budget: how much of contract value is allocated to quality. */
+	qualityBudget = $derived(
+		this.data.contractValue * (this.data.qualityWeight / 100)
+	);
+
+	/** Total weight of all criteria (should be 100). */
+	totalWeight = $derived(
+		this.data.criteria.reduce((s, c) => s + c.weight, 0)
+	);
+
+	/** Margin between #1 and #2 in quality ranking. */
+	margin = $derived(
+		this.ranking.length >= 2
+			? this.ranking[0].score - this.ranking[1].score
+			: 0
+	);
+
+	/** Whether both evaluation methods agree on winner. */
+	sameWinner = $derived(
+		this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id
+	);
 
 	/** Progress tracking. */
 	progress = $derived.by(() => {

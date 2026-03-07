@@ -58,7 +58,7 @@
 	}
 
 	.top-nav {
-		height: 48px;
+		height: var(--header-height);
 		border-bottom: 1px solid var(--color-wire-strong);
 		display: flex;
 		align-items: center;
@@ -138,6 +138,7 @@
 
 	.app-main {
 		flex: 1;
+		min-height: 0;
 		overflow: hidden;
 	}
 

@@ -55,6 +55,12 @@
 	--radius-md: 6px;
 	--radius-lg: 8px;
 
+	/* Overlay */
+	--color-overlay: rgba(0, 0, 0, 0.4);
+
+	/* Layout */
+	--header-height: 48px;
+
 	/* Tipex editor overrides */
 	--color-tipex-bg: #ffffff;
 	--color-tipex-text: #1a1d26;
@@ -90,6 +96,8 @@
 	--color-score-mid: #8890a4;
 	--color-score-low: #c45858;
 	--color-score-low-bg: rgba(196, 88, 88, 0.10);
+
+	--color-overlay: rgba(0, 0, 0, 0.6);
 
 	--color-tipex-bg: #0c0e14;
 	--color-tipex-text: #e2e5ef;

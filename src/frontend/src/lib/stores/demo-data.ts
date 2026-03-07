@@ -3,6 +3,7 @@ import type { EvaluationData } from './evaluation.svelte';
 export const demoData: EvaluationData = {
 	id: '2024-1847',
 	title: 'Evaluering av tilbud',
+	procurementName: 'Rammeavtale IKT-konsulenttjenester 2024–2028',
 	reference: '2024/1847-KJH',
 	status: 'Under evaluering',
 	qualityWeight: 75,

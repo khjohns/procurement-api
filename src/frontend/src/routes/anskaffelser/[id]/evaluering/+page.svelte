@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { evaluation } from '$lib/stores/evaluation.svelte';
+	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
 	import MethodToggle from '$lib/components/evaluation/MethodToggle.svelte';
-	import RankingStrip from '$lib/components/evaluation/RankingStrip.svelte';
 	import OverviewMatrix from '$lib/components/evaluation/OverviewMatrix.svelte';
 	import CriterionView from '$lib/components/evaluation/CriterionView.svelte';
 	import PriceMatrix from '$lib/components/evaluation/PriceMatrix.svelte';
@@ -13,176 +12,599 @@
 		!isOverview ? evaluation.data.criteria.find((c) => c.id === evaluation.activeView) : null
 	);
 
+	let isPriceMode = $derived(evaluation.activeMethod === 'pris');
+
 	/** Show justification panel when viewing a quality criterion. */
-	let showPanel = $derived(
+	let showJustification = $derived(
 		!isOverview && activeCriterion?.type === 'quality'
 	);
+
+	/** Right panel shows ranking in overview/price mode, justification in criterion mode. */
+	let showRankingPanel = $derived(isOverview || isPriceMode);
+
+	/** Compact ranking data. */
+	let rankingItems = $derived(
+		isPriceMode
+			? evaluation.priceRanking.map((r) => ({
+					rank: r.rank,
+					name: r.supplier.name,
+					value: formatNOK(r.evaluatedPrice),
+					unit: 'kr',
+					barWidth: r.rank === 1
+						? 92
+						: Math.min(100, (r.evaluatedPrice / evaluation.priceRanking[evaluation.priceRanking.length - 1].evaluatedPrice) * 100)
+				}))
+			: evaluation.ranking.map((r) => ({
+					rank: r.rank,
+					name: r.supplier.name,
+					value: r.score.toFixed(2),
+					unit: '/ 10',
+					barWidth: r.score * 10
+				}))
+	);
+
+	/** Bottom drawer state. */
+	let drawerOpen = $state(false);
+
+	/** Mobile panel state. */
+	let mobilePanelOpen = $state(false);
 </script>
 
-<header class="eval-header">
-	<div class="eval-header-top">
-		<h1 class="eval-title">{evaluation.data.title}</h1>
-		<div class="eval-status">
-			<span class="eval-status-dot"></span>
-			{evaluation.data.status}
+<div class="eval-workspace">
+	<!-- Main content area -->
+	<div class="eval-main">
+		<!-- Subtle context line -->
+		<div class="eval-context">
+			<span class="context-name">{evaluation.data.procurementName}</span>
+			<span class="context-sep">·</span>
+			<span class="context-ref">{evaluation.data.reference}</span>
 		</div>
-	</div>
-	<div class="eval-meta">
-		<div class="eval-meta-item">
-			<span class="eval-meta-label">Anskaffelse</span>
-			<span class="eval-meta-value">Rammeavtale IKT-konsulenttjenester 2024–2028</span>
-		</div>
-		<div class="eval-meta-item">
-			<span class="eval-meta-label">Ref</span>
-			<span class="eval-meta-value">{evaluation.data.reference}</span>
-		</div>
-	</div>
-</header>
 
-<MethodToggle />
-
-{#if evaluation.activeMethod === 'poeng'}
-	<RankingStrip />
-
-	<div class="workspace" class:workspace-with-panel={showPanel}>
-		<div class="workspace-main">
-			{#if isOverview}
+		<div class="eval-main-content">
+			{#if isPriceMode}
+				<PriceMatrix />
+			{:else if isOverview}
 				<OverviewMatrix />
 			{:else if activeCriterion}
 				<CriterionView criterionId={activeCriterion.id} />
 			{/if}
 		</div>
 
-		{#if showPanel}
-			<aside class="workspace-panel">
-				<div class="panel-header">
-					<span class="panel-title">Begrunnelse</span>
+		<!-- Bottom drawer for full insights -->
+		{#if drawerOpen}
+			<div class="insights-drawer">
+				<div class="drawer-handle">
+					<button class="drawer-close" onclick={() => (drawerOpen = false)}>
+						<span class="drawer-close-icon">&#9662;</span>
+						Lukk analyse
+					</button>
 				</div>
-				<JustificationPanel />
-			</aside>
+				<div class="drawer-content">
+					<InsightsPanel />
+				</div>
+			</div>
 		{/if}
 	</div>
-{:else}
-	<RankingStrip />
-	<PriceMatrix />
-{/if}
 
-<InsightsPanel />
+	<!-- Right panel (desktop) -->
+	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
+		<MethodToggle />
+
+		{#if showRankingPanel}
+			<!-- Compact ranking -->
+			<div class="panel-section">
+				<div class="panel-label">Rangering</div>
+				<div class="ranking-list">
+					{#each rankingItems as item}
+						<div class="rank-item" class:rank-leader={item.rank === 1}>
+							<span class="rank-pos">#{item.rank}</span>
+							<span class="rank-name">{item.name}</span>
+							<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
+						</div>
+						<div class="rank-bar-track">
+							<div
+								class="rank-bar-fill"
+								class:rank-bar-leader={item.rank === 1}
+								style="width: {item.barWidth}%"
+							></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Key insights (compact) -->
+			<div class="panel-section">
+				<div class="panel-label">Nøkkeltall</div>
+				<div class="key-metrics">
+					<div class="metric">
+						<span class="metric-label">Margin #1 → #2</span>
+						<span class="metric-value">
+							<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+							<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
+								{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
+							</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Metodekontroll</span>
+						<span class="metric-value">
+							<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
+							<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitetsbudsjett</span>
+						<span class="metric-value">
+							<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
+							<span class="metric-unit">kr</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitet / pris</span>
+						<span class="metric-value">
+							<span class="metric-num">{evaluation.data.qualityWeight}</span>
+							<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+						</span>
+					</div>
+				</div>
+				<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
+					{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
+					<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
+				</button>
+			</div>
+
+			<!-- Status (subtle) -->
+			<div class="panel-status">
+				<span class="status-label">{evaluation.data.status}</span>
+				<span class="status-progress">
+					{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
+				</span>
+			</div>
+
+		{:else if showJustification}
+			<div class="panel-section panel-section-justification">
+				<div class="panel-label">Begrunnelse</div>
+				<JustificationPanel />
+			</div>
+		{/if}
+	</aside>
+
+	<!-- Mobile panel toggle -->
+	<button
+		class="mobile-panel-toggle"
+		onclick={() => (mobilePanelOpen = !mobilePanelOpen)}
+		aria-label={mobilePanelOpen ? 'Lukk panel' : 'Åpne panel'}
+	>
+		{#if mobilePanelOpen}
+			✕
+		{:else if showJustification}
+			✎
+		{:else}
+			☰
+		{/if}
+	</button>
+
+	<!-- Mobile backdrop -->
+	{#if mobilePanelOpen}
+		<button
+			class="mobile-backdrop"
+			onclick={() => (mobilePanelOpen = false)}
+			aria-label="Lukk panel"
+			tabindex="-1"
+		></button>
+	{/if}
+</div>
 
 <style>
-	.eval-header {
-		margin-bottom: var(--spacing-8);
-	}
-
-	.eval-header-top {
+	.eval-workspace {
 		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--spacing-4);
-		margin-bottom: var(--spacing-3);
+		height: 100%;
+		overflow: hidden;
+		position: relative;
 	}
 
-	.eval-title {
-		font-size: 20px;
-		font-weight: 700;
-		letter-spacing: -0.025em;
-		line-height: 1.2;
-	}
-
-	.eval-status {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		padding: var(--spacing-1) var(--spacing-3);
-		border-radius: 100px;
-		background: var(--color-vekt-bg);
-		border: 1px solid var(--color-vekt-bg-strong);
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--color-vekt);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-
-	.eval-status-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--color-vekt);
-		animation: pulse 2s ease-in-out infinite;
-	}
-
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
-	}
-
-	.eval-meta {
-		display: flex;
-		gap: var(--spacing-6);
-		font-size: 12px;
-		color: var(--color-ink-muted);
-	}
-
-	.eval-meta-item {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-2);
-	}
-
-	.eval-meta-label {
-		color: var(--color-ink-muted);
-	}
-
-	.eval-meta-value {
-		color: var(--color-ink-secondary);
-		font-family: var(--font-data);
-		font-size: 11px;
-	}
-
-	/* ── Two-panel workspace ── */
-	.workspace {
-		display: flex;
-		gap: 0;
-		min-height: 400px;
-	}
-
-	.workspace-main {
+	/* ── Main content ── */
+	.eval-main {
 		flex: 1;
 		min-width: 0;
-		overflow-x: auto;
-	}
-
-	.workspace-with-panel .workspace-main {
-		margin-right: var(--spacing-3);
-	}
-
-	.workspace-panel {
-		width: 380px;
-		flex-shrink: 0;
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-lg);
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding: var(--spacing-5) var(--spacing-6);
 		display: flex;
 		flex-direction: column;
-		max-height: calc(100vh - 200px);
-		position: sticky;
-		top: var(--spacing-4);
 	}
 
-	.panel-header {
-		padding: var(--spacing-3);
-		border-bottom: 1px solid var(--color-wire);
+	.eval-main-content {
+		flex: 1;
+		min-height: 0;
+	}
+
+	/* ── Context line ── */
+	.eval-context {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+		margin-bottom: var(--spacing-5);
+		font-size: 12px;
+		color: var(--color-ink-secondary);
 		flex-shrink: 0;
 	}
 
-	.panel-title {
+	.context-name {
+		font-weight: 600;
+	}
+
+	.context-sep {
+		color: var(--color-ink-ghost);
+	}
+
+	.context-ref {
+		font-family: var(--font-data);
+		font-size: 10px;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Bottom drawer ── */
+	.insights-drawer {
+		flex-shrink: 0;
+		border-top: 1px solid var(--color-wire-strong);
+		max-height: 50%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.drawer-handle {
+		padding: var(--spacing-2) var(--spacing-3);
+		flex-shrink: 0;
+	}
+
+	.drawer-close {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		font-family: var(--font-ui);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: var(--spacing-1);
+		transition: color 0.12s;
+	}
+
+	.drawer-close:hover {
+		color: var(--color-ink);
+	}
+
+	.drawer-close-icon {
+		font-size: 10px;
+	}
+
+	.drawer-content {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	/* ── Right panel ── */
+	.eval-panel {
+		width: 300px;
+		flex-shrink: 0;
+		overflow-y: auto;
+		border-left: 1px solid var(--color-wire);
+		padding: var(--spacing-4);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-5);
+	}
+
+	/* ── Panel sections ── */
+	.panel-section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-3);
+	}
+
+	.panel-section-justification {
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.panel-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Compact ranking ── */
+	.ranking-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-1);
+	}
+
+	.rank-item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-2);
+		margin: 0 calc(-1 * var(--spacing-2));
+		border-radius: var(--radius-sm);
+		transition: background 0.12s;
+	}
+
+	.rank-item:hover {
+		background: var(--color-felt-hover);
+	}
+
+	.rank-pos {
+		font-family: var(--font-data);
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--color-ink-ghost);
+		width: 20px;
+		flex-shrink: 0;
+	}
+
+	.rank-leader .rank-pos {
+		color: var(--color-vekt-dim);
+	}
+
+	.rank-name {
+		flex: 1;
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--color-ink-secondary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.rank-leader .rank-name {
+		color: var(--color-ink);
+		font-weight: 600;
+	}
+
+	.rank-val {
+		font-family: var(--font-data);
+		font-size: 13px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
+		flex-shrink: 0;
+	}
+
+	.rank-val-price {
+		font-size: 11px;
+	}
+
+	.rank-leader .rank-val {
+		color: var(--color-vekt);
+	}
+
+	.rank-bar-track {
+		height: 2px;
+		background: var(--color-felt-active);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+		margin-bottom: var(--spacing-2);
+	}
+
+	.rank-bar-fill {
+		height: 100%;
+		background: var(--color-ink-ghost);
+		border-radius: var(--radius-sm);
+		transition: width 0.25s ease-out;
+	}
+
+	.rank-bar-leader {
+		background: var(--color-vekt);
+	}
+
+	/* ── Key metrics ── */
+	.key-metrics {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2);
+	}
+
+	.metric {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-1) var(--spacing-2);
+		margin: 0 calc(-1 * var(--spacing-2));
+		border-radius: var(--radius-sm);
+		transition: background 0.12s;
+	}
+
+	.metric:hover {
+		background: var(--color-felt-hover);
+	}
+
+	.metric-label {
+		font-size: 11px;
+		color: var(--color-ink-muted);
+	}
+
+	.metric-value {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-1);
+	}
+
+	.metric-num {
+		font-family: var(--font-data);
+		font-size: 12px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
+	}
+
+	.metric-unit {
+		font-family: var(--font-data);
+		font-size: 10px;
+		color: var(--color-ink-ghost);
+	}
+
+	.metric-verdict {
+		font-size: 10px;
+		font-weight: 600;
+		padding: 2px var(--spacing-2);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink-muted);
+		background: var(--color-felt-active);
+	}
+
+	.metric-robust {
+		color: var(--color-score-high);
+		background: var(--color-score-high-bg);
+	}
+
+	.metric-vulnerable {
+		color: var(--color-score-low);
+		background: var(--color-score-low-bg);
+	}
+
+	.metric-icon {
+		font-size: 12px;
+		color: var(--color-ink-muted);
+	}
+
+	.metric-match {
+		color: var(--color-score-high);
+	}
+
+	.metric-text {
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-secondary);
+	}
+
+	/* ── Insights button ── */
+	.insights-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--spacing-2);
+		width: 100%;
+		padding: var(--spacing-2) var(--spacing-3);
+		background: var(--color-vekt-bg);
+		border: 1px solid var(--color-wire-strong);
+		border-radius: var(--radius-sm);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--color-vekt-dim);
+		cursor: pointer;
+		transition: all 0.12s;
+	}
+
+	.insights-btn:hover {
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg-strong);
+	}
+
+	.insights-btn-arrow {
+		font-size: 10px;
+		transition: transform 0.2s;
+	}
+
+	.insights-btn-open {
+		transform: rotate(180deg);
+	}
+
+	/* ── Status (subtle) ── */
+	.panel-status {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-2) var(--spacing-3);
+		margin-top: auto;
+	}
+
+	.status-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+	}
+
+	.status-progress {
+		font-family: var(--font-data);
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Mobile panel toggle ── */
+	.mobile-panel-toggle {
+		display: none;
+	}
+
+	.mobile-backdrop {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		.eval-panel {
+			position: fixed;
+			top: var(--header-height);
+			right: 0;
+			bottom: 0;
+			width: 320px;
+			background: var(--color-canvas);
+			z-index: 100;
+			transform: translateX(100%);
+			transition: transform 0.2s ease-out;
+		}
+
+		.eval-panel.panel-open {
+			transform: translateX(0);
+		}
+
+		.mobile-panel-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: fixed;
+			bottom: var(--spacing-5);
+			right: var(--spacing-5);
+			width: var(--spacing-10);
+			height: var(--spacing-10);
+			border-radius: 50%;
+			background: var(--color-felt-raised);
+			border: 1px solid var(--color-wire-strong);
+			color: var(--color-ink);
+			font-size: 16px;
+			cursor: pointer;
+			z-index: 101;
+			transition: background 0.12s;
+		}
+
+		.mobile-panel-toggle:hover {
+			background: var(--color-felt-active);
+		}
+
+		.mobile-backdrop {
+			display: block;
+			position: fixed;
+			inset: 0;
+			background: var(--color-overlay);
+			z-index: 99;
+			border: none;
+			cursor: default;
+		}
+
+		.eval-main {
+			padding: var(--spacing-3) var(--spacing-4);
+		}
 	}
 </style>
