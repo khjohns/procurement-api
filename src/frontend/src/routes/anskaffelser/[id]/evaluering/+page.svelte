@@ -388,7 +388,7 @@
 	.rank-bar-track {
 		height: 2px;
 		background: var(--color-felt-active);
-		border-radius: 1px;
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 		margin-bottom: var(--spacing-2);
 	}
@@ -396,8 +396,8 @@
 	.rank-bar-fill {
 		height: 100%;
 		background: var(--color-ink-ghost);
-		border-radius: 1px;
-		transition: width 0.4s ease-out;
+		border-radius: var(--radius-sm);
+		transition: width 0.25s ease-out;
 	}
 
 	.rank-bar-leader {
@@ -446,7 +446,7 @@
 	.metric-verdict {
 		font-size: 10px;
 		font-weight: 600;
-		padding: 1px var(--spacing-2);
+		padding: 2px var(--spacing-2);
 		border-radius: var(--radius-sm);
 		color: var(--color-ink-muted);
 		background: var(--color-felt-active);
@@ -525,7 +525,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 	}
 
@@ -548,7 +548,7 @@
 	@media (max-width: 1023px) {
 		.eval-panel {
 			position: fixed;
-			top: 48px;
+			top: var(--header-height);
 			right: 0;
 			bottom: 0;
 			width: 320px;
@@ -569,8 +569,8 @@
 			position: fixed;
 			bottom: var(--spacing-5);
 			right: var(--spacing-5);
-			width: 40px;
-			height: 40px;
+			width: var(--spacing-10);
+			height: var(--spacing-10);
 			border-radius: 50%;
 			background: var(--color-felt-raised);
 			border: 1px solid var(--color-wire-strong);
@@ -589,7 +589,7 @@
 			display: block;
 			position: fixed;
 			inset: 0;
-			background: rgba(0, 0, 0, 0.4);
+			background: var(--color-overlay);
 			z-index: 99;
 			border: none;
 			cursor: default;
