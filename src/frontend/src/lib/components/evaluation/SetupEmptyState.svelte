@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation } from '$lib/stores/evaluation.svelte';
+	import { evaluation, DEFAULT_ITEM_LABEL } from '$lib/stores/evaluation.svelte';
 
 	// ── Criteria CRUD (delegates to store) ──
 
@@ -136,9 +136,9 @@
 										<input
 											class="item-config-input"
 											type="text"
-											value={sub.itemLabel ?? 'Ressurs'}
+											value={sub.itemLabel ?? DEFAULT_ITEM_LABEL}
 											oninput={(e) => evaluation.setItemLabel(sub.id, (e.target as HTMLInputElement).value)}
-											placeholder="Ressurs"
+											placeholder={DEFAULT_ITEM_LABEL}
 										/>
 									</div>
 									<div class="item-config-row">
