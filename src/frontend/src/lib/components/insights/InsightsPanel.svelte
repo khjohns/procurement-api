@@ -12,19 +12,8 @@
 		{ id: 'sensitivitet' as const, label: 'Sensitivitet' }
 	];
 
-	let qualityBudget = $derived(
-		evaluation.data.contractValue * (evaluation.data.qualityWeight / 100)
-	);
-	let totalWeight = $derived(
-		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
-	);
-
-	/** Robustness: margin between #1 and #2 */
-	let margin = $derived(
-		evaluation.ranking.length >= 2
-			? evaluation.ranking[0].score - evaluation.ranking[1].score
-			: 0
-	);
+	let qualityBudget = $derived(evaluation.qualityBudget);
+	let totalWeight = $derived(evaluation.totalWeight);
 
 	/** Criterion with largest spread. */
 	let largestSpread = $derived.by(() => {
@@ -48,10 +37,7 @@
 		return best;
 	});
 
-	/** Whether both methods agree on winner. */
-	let sameWinner = $derived(
-		evaluation.ranking[0]?.supplier.id === evaluation.priceRanking[0]?.supplier.id
-	);
+	let sameWinner = $derived(evaluation.sameWinner);
 
 	/** Criterion with highest weight. */
 	let heaviestCriterion = $derived.by(() => {
@@ -159,8 +145,8 @@
 							<div class="robusthet-insight-label">Margin</div>
 							<div class="robusthet-insight-text">
 								Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-								<span class="mono">{margin.toFixed(1)}</span> poeng.
-								Resultatet er <strong>{margin >= 0.5 ? 'robust' : margin >= 0.2 ? 'moderat robust' : 'sårbart'}</strong>.
+								<span class="mono">{evaluation.margin.toFixed(1)}</span> poeng.
+								Resultatet er <strong>{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat robust' : 'sårbart'}</strong>.
 							</div>
 						</div>
 						<div class="robusthet-insight">

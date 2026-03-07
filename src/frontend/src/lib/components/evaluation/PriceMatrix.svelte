@@ -1,12 +1,8 @@
 <script lang="ts">
 	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
 
-	let qualityBudget = $derived(
-		evaluation.data.contractValue * (evaluation.data.qualityWeight / 100)
-	);
-	let totalWeight = $derived(
-		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
-	);
+	let qualityBudget = $derived(evaluation.qualityBudget);
+	let totalWeight = $derived(evaluation.totalWeight);
 
 	/** Determine fradrag tier relative to other suppliers for this sub. */
 	function fradragTier(subId: string, supplierId: string): string {

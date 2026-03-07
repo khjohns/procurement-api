@@ -43,21 +43,6 @@
 				}))
 	);
 
-	/** Key insight metrics for right panel. */
-	let margin = $derived(
-		evaluation.ranking.length >= 2
-			? evaluation.ranking[0].score - evaluation.ranking[1].score
-			: 0
-	);
-
-	let sameWinner = $derived(
-		evaluation.ranking[0]?.supplier.id === evaluation.priceRanking[0]?.supplier.id
-	);
-
-	let qualityBudget = $derived(
-		evaluation.data.contractValue * (evaluation.data.qualityWeight / 100)
-	);
-
 	/** Bottom drawer state. */
 	let drawerOpen = $state(false);
 
@@ -134,23 +119,23 @@
 					<div class="metric">
 						<span class="metric-label">Margin #1 → #2</span>
 						<span class="metric-value">
-							<span class="metric-num">{margin.toFixed(1)}</span>
-							<span class="metric-verdict" class:metric-robust={margin >= 0.5} class:metric-vulnerable={margin < 0.2}>
-								{margin >= 0.5 ? 'robust' : margin >= 0.2 ? 'moderat' : 'sårbart'}
+							<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+							<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
+								{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
 							</span>
 						</span>
 					</div>
 					<div class="metric">
 						<span class="metric-label">Metodekontroll</span>
 						<span class="metric-value">
-							<span class="metric-icon" class:metric-match={sameWinner}>{sameWinner ? '✓' : '⚠'}</span>
-							<span class="metric-text">{sameWinner ? 'Samsvar' : 'Avvik'}</span>
+							<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
+							<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
 						</span>
 					</div>
 					<div class="metric">
 						<span class="metric-label">Kvalitetsbudsjett</span>
 						<span class="metric-value">
-							<span class="metric-num">{formatNOK(qualityBudget)}</span>
+							<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
 							<span class="metric-unit">kr</span>
 						</span>
 					</div>
@@ -205,6 +190,7 @@
 			class="mobile-backdrop"
 			onclick={() => (mobilePanelOpen = false)}
 			aria-label="Lukk panel"
+			tabindex="-1"
 		></button>
 	{/if}
 </div>
@@ -234,7 +220,6 @@
 	}
 
 	.eval-main-content.drawer-open {
-		flex: 1;
 		overflow-y: auto;
 	}
 
@@ -601,17 +586,13 @@
 		}
 
 		.mobile-backdrop {
-			display: none;
+			display: block;
 			position: fixed;
 			inset: 0;
 			background: rgba(0, 0, 0, 0.4);
 			z-index: 99;
 			border: none;
 			cursor: default;
-		}
-
-		.eval-panel.panel-open ~ .mobile-backdrop {
-			display: block;
 		}
 
 		.eval-main {
