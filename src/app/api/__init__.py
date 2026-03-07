@@ -162,6 +162,10 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         )
 
     for a in by_action[ACTION_REJECT_PARTICIPATION]:
+        # TODO: REJECT_PARTICIPATION activities often have empty organization
+        # fields, causing fallback to "Ukjent leverandør". The activity carries
+        # description.lotResponseId which could be cross-referenced against
+        # SUBMIT_BID/ASK_TO_QUALIFY activities to resolve the supplier name.
         name = get_org_name(a, org_lookup)
         hendelser.append(
             _h("S", ACTION_REJECT_PARTICIPATION, _iso_date(a), f"Avvist: {name}", avvist=True)
