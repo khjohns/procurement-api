@@ -143,14 +143,18 @@
 									</div>
 									<div class="item-config-row">
 										<label class="item-config-label">Aggregering</label>
-										<select
-											class="item-config-select"
-											value={sub.aggregation ?? 'average'}
-											onchange={(e) => evaluation.setAggregation(sub.id, (e.target as HTMLSelectElement).value as 'average' | 'minimum')}
-										>
-											<option value="average">Gjennomsnitt</option>
-											<option value="minimum">Laveste</option>
-										</select>
+										<div class="agg-toggle">
+											<button
+												class="agg-option"
+												class:agg-active={!sub.aggregation || sub.aggregation === 'average'}
+												onclick={() => evaluation.setAggregation(sub.id, 'average')}
+											>Gjennomsnitt</button>
+											<button
+												class="agg-option"
+												class:agg-active={sub.aggregation === 'minimum'}
+												onclick={() => evaluation.setAggregation(sub.id, 'minimum')}
+											>Laveste</button>
+										</div>
 									</div>
 								</div>
 								<div class="item-dimensions">
@@ -724,20 +728,39 @@
 		border-color: var(--color-wire-focus);
 	}
 
-	.item-config-select {
-		padding: var(--spacing-1) var(--spacing-2);
-		background: var(--color-canvas);
+	.agg-toggle {
+		display: inline-flex;
 		border: 1px solid var(--color-wire);
 		border-radius: var(--radius-sm);
-		color: var(--color-ink);
-		font-family: var(--font-ui);
-		font-size: 12px;
-		outline: none;
-		cursor: pointer;
+		overflow: hidden;
 	}
 
-	.item-config-select:focus {
-		border-color: var(--color-wire-focus);
+	.agg-option {
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: var(--color-canvas);
+		border: none;
+		cursor: pointer;
+		transition: all 0.12s;
+		white-space: nowrap;
+	}
+
+	.agg-option:not(:last-child) {
+		border-right: 1px solid var(--color-wire);
+	}
+
+	.agg-option:hover:not(.agg-active) {
+		color: var(--color-ink-secondary);
+		background: var(--color-felt-hover);
+	}
+
+	.agg-option.agg-active {
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg);
+		font-weight: 600;
 	}
 
 	/* ── Item dimensions ── */
