@@ -7,19 +7,19 @@ import io
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
 from protokoll.common import (
     build_org_lookup,
+    dedup_by_sequence_id,
     fmt_date,
     get_activities_by_action,
     get_org_name,
     get_timeline_date,
+    is_mature,
     parse_announcement,
-    parse_submission_deadline,
     strip_html,
 )
 
@@ -234,31 +234,6 @@ PROCEDURE_SHORT = {
 }
 
 
-def _is_mature(procurement: dict) -> bool:
-    """Procurement has passed submission deadline and is not template/cancelled."""
-    if procurement.get("isTemplate") or procurement.get("isCancelled"):
-        return False
-    deadline = parse_submission_deadline(procurement)
-    if not deadline:
-        return False
-    return datetime.now(deadline.tzinfo) > deadline
-
-
-def _dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
-    """Keep the richest record per sequenceId."""
-    best: dict[str, dict] = {}
-    for p in procs:
-        seq = p.get("sequenceId") or str(p.get("id"))
-        existing = best.get(seq)
-        richness = sum(1 for v in p.values() if v not in (None, "", [], {}))
-        if existing is None or richness > existing["_richness"]:
-            p["_richness"] = richness
-            best[seq] = p
-    for p in best.values():
-        p.pop("_richness", None)
-    return list(best.values())
-
-
 def _client():
     return current_app.artifik  # type: ignore[attr-defined]
 
@@ -289,8 +264,8 @@ def list_procurements():
 def list_mature_procurements():
     """Filtered list: past deadline, no templates/cancelled, deduplicated."""
     all_procs = _cached_list_procurements()
-    mature = [p for p in all_procs if _is_mature(p)]
-    mature = _dedup_by_sequence_id(mature)
+    mature = [p for p in all_procs if is_mature(p)]
+    mature = dedup_by_sequence_id(mature)
     mature.sort(key=lambda p: get_timeline_date(p, "submission") or "", reverse=True)
 
     # Fetch activities in parallel for all mature procurements

@@ -193,6 +193,34 @@ def parse_announcement(activities: list[dict]) -> tuple[str, str, str]:
     return announcement_date, doffin_ref, ted_ref
 
 
+def is_mature(procurement: dict) -> bool:
+    """Check if procurement is past submission deadline and not a template/cancelled."""
+    if procurement.get("isTemplate") or procurement.get("isCancelled"):
+        return False
+    deadline = parse_submission_deadline(procurement)
+    if not deadline:
+        return False
+    return datetime.now(deadline.tzinfo) > deadline
+
+
+def _richness(p: dict) -> int:
+    """Score how much data a procurement object contains."""
+    return sum(
+        1 for v in p.values() if v is not None and v != "" and v != [] and v != {}
+    )
+
+
+def dedup_by_sequence_id(procs: list[dict]) -> list[dict]:
+    """Deduplicate procurements by sequenceId, keeping the richest one."""
+    best: dict[str, dict] = {}
+    for p in procs:
+        seq = p.get("sequenceId") or str(p.get("id"))
+        existing = best.get(seq)
+        if existing is None or _richness(p) > _richness(existing):
+            best[seq] = p
+    return list(best.values())
+
+
 def safe_int(val: Any, default: int | None = None) -> int | None:
     """Safely convert a value to int, returning default on failure."""
     try:
