@@ -6,8 +6,6 @@
 		FilePlus2,
 		FilePenLine,
 		UserMinus,
-		CheckCircle2,
-		RefreshCw,
 		Circle
 	} from 'lucide-svelte';
 
@@ -28,11 +26,11 @@
 		if (sak) beskrivelseFull = false;
 	});
 
-	/** All hendelser in one chronological list */
+	/** All hendelser in one chronological list (excluding internal conversation state) */
 	const hendelser = $derived(
-		[...(sak?.hendelser ?? [])].sort(
-			(a, b) => new Date(a.dato).getTime() - new Date(b.dato).getTime()
-		)
+		[...(sak?.hendelser ?? [])]
+			.filter((h) => !SKJULTE_ACTIONS.has(h.action))
+			.sort((a, b) => new Date(a.dato).getTime() - new Date(b.dato).getTime())
 	);
 
 	/** Whether a hendelse is a lifecycle node (U/K/F/S/T/E/P) */
@@ -40,14 +38,18 @@
 		return h.type !== '';
 	}
 
+	/** Actions to hide from the panel (internal conversation state, not meaningful to the user) */
+	const SKJULTE_ACTIONS = new Set([
+		'CONVERSATION_MARKED_COMPLETED',
+		'CONVERSATION_REOPENED',
+	]);
+
 	/** Lucide icon component for non-node activities */
 	const ACTION_IKON: Record<string, typeof Circle> = {
 		PUBLISH_Q8A: MessageCircleQuestion,
 		PUBLISH_ADDITIONAL_INFORMATION: FilePlus2,
 		PUBLISH_CHANGE_PROCUREMENT: FilePenLine,
 		WITHDRAW_PARTICIPATION: UserMinus,
-		CONVERSATION_MARKED_COMPLETED: CheckCircle2,
-		CONVERSATION_REOPENED: RefreshCw,
 	};
 
 	function ikonForAction(action: string): typeof Circle {
@@ -94,16 +96,11 @@
 			</div>
 
 			<div class="panel-body">
-				<!-- Beskrivelse (compact — 2 lines with fade) -->
+				<!-- Beskrivelse (compact — 4 lines clipped) -->
 				{#if beskrivelse}
 					<div class="seksjon">
 						<div class="section-label">Beskrivelse</div>
-						<div class="beskrivelse-wrap" class:beskrivelse-full={beskrivelseFull}>
-							<p class="beskrivelse">{beskrivelse}</p>
-							{#if !beskrivelseFull}
-								<div class="beskrivelse-fade"></div>
-							{/if}
-						</div>
+						<p class="beskrivelse" class:beskrivelse-full={beskrivelseFull}>{beskrivelse}</p>
 						<button
 							class="beskrivelse-toggle"
 							onclick={() => (beskrivelseFull = !beskrivelseFull)}
@@ -115,7 +112,7 @@
 
 				<!-- Hendelsesforløp (integrert kronologi) -->
 				{#if hendelser.length > 0}
-					<div class="seksjon seksjon-forloep">
+					<div class="seksjon">
 						<div class="section-label">Hendelsesforløp</div>
 						<div class="forloep">
 							{#each hendelser as h, i (i)}
@@ -147,12 +144,13 @@
 					</div>
 				{/if}
 
-				<!-- Lenke -->
-				<a href="/anskaffelser/{sak.id}" class="panel-lenke">
-					Åpne saksmappe
-					<span aria-hidden="true">&rarr;</span>
-				</a>
 			</div>
+
+			<!-- Lenke (fixed footer, outside scroll area) -->
+			<a href="/anskaffelser/{sak.id}" class="panel-lenke">
+				Åpne saksmappe
+				<span aria-hidden="true">&rarr;</span>
+			</a>
 		</div>
 	{/if}
 </aside>
@@ -283,11 +281,7 @@
 		flex-direction: column;
 	}
 
-	/* Hendelsesforløp fills remaining space */
-	.seksjon-forloep {
-		flex: 1;
-		min-height: 0;
-	}
+
 
 	.section-label {
 		font-size: 11px;
@@ -298,33 +292,23 @@
 		margin-bottom: 8px;
 	}
 
-	/* Beskrivelse — compact 2-line with fade */
-	.beskrivelse-wrap {
-		position: relative;
-		max-height: 36px; /* ~2 lines at 12px * 1.5 line-height */
-		overflow: hidden;
-	}
-
-	.beskrivelse-wrap.beskrivelse-full {
-		max-height: none;
-	}
-
+	/* Beskrivelse — 4 lines clipped, no gradient */
 	.beskrivelse {
 		font-size: 12px;
 		line-height: 1.5;
 		color: var(--color-ink-secondary);
 		margin: 0;
 		white-space: pre-line;
+		display: -webkit-box;
+		-webkit-line-clamp: 4;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
 
-	.beskrivelse-fade {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		height: 16px;
-		background: linear-gradient(to bottom, transparent, var(--color-felt));
-		pointer-events: none;
+	.beskrivelse.beskrivelse-full {
+		display: block;
+		-webkit-line-clamp: unset;
+		overflow: visible;
 	}
 
 	.beskrivelse-toggle {
@@ -471,14 +455,14 @@
 		opacity: 1;
 	}
 
-	/* Lenke */
+	/* Lenke — fixed footer outside scroll area */
 	.panel-lenke {
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
 		gap: 6px;
-		margin-top: auto;
-		padding-top: 16px;
+		flex-shrink: 0;
+		padding: 16px 24px;
 		border-top: 1px solid var(--color-wire);
 		font-size: 12px;
 		font-weight: 500;
@@ -540,6 +524,10 @@
 		}
 
 		.panel-body {
+			padding: 16px;
+		}
+
+		.panel-lenke {
 			padding: 16px;
 		}
 	}
