@@ -90,6 +90,7 @@
 									<span
 										class="forloep-node forloep-node-{h.type.toLowerCase()}"
 										class:forloep-node-besvart={h.besvart}
+										class:forloep-node-avvist={h.avvist}
 									>{h.type}</span>
 									<span class="forloep-tekst">{h.label}</span>
 								</div>
@@ -329,6 +330,9 @@
 
 	/* Besvart nodes */
 	.forloep-node-besvart { background: transparent; border-color: var(--nc); color: var(--nc); opacity: 0.6; }
+
+	/* Avvist S-nodes: rose color */
+	.forloep-node-avvist { --nc: var(--color-score-low); }
 
 	.forloep-tekst {
 		font-size: 12px;

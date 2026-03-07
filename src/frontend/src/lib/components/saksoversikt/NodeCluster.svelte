@@ -31,6 +31,7 @@
 			class="node node-{item.type.toLowerCase()}"
 			class:node-besvart={item.besvart}
 			class:node-ubesvart={!item.besvart}
+			class:node-avvist={item.avvist}
 			class:node-spor-dim={aktivtSpor !== null && item.type !== aktivtSpor}
 		>{item.type}</div>
 	{/each}
@@ -94,6 +95,11 @@
 		border-color: var(--nc);
 		color: var(--nc);
 		opacity: 0.6;
+	}
+
+	/* Avvist S-nodes: rose color */
+	.node-avvist {
+		--nc: var(--color-score-low);
 	}
 
 	/* Per-node dimming when spor filter is active */

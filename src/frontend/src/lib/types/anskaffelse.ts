@@ -8,6 +8,7 @@ export interface AnskaffelsesHendelse {
 	dato: string;
 	label: string;
 	besvart?: boolean;
+	avvist?: boolean;
 }
 
 export interface AnskaffelsesOversiktItem {

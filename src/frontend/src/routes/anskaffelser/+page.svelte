@@ -17,16 +17,8 @@
 	onMount(() => {
 		fetch('/api/procurements/mature')
 			.then((r) => (r.ok ? r.json() : Promise.reject('Feil ved henting')))
-			.then((data: Omit<AnskaffelsesOversiktItem, 'hendelser'>[]) => {
-				alleMature = data.map((p) => ({
-					...p,
-					hendelser: [
-						{ type: 'K' as const, dato: new Date().toISOString(), label: 'Kunngjort', besvart: true },
-						...(p.deadline
-							? [{ type: 'T' as const, dato: new Date(p.deadline).toISOString(), label: `Tilbudsfrist ${p.deadline}`, besvart: false }]
-							: []),
-					],
-				}));
+			.then((data: AnskaffelsesOversiktItem[]) => {
+				alleMature = data;
 				loading = false;
 			})
 			.catch((e) => {
