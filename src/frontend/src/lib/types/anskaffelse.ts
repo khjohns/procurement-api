@@ -17,5 +17,18 @@ export interface AnskaffelsesOversiktItem {
 	procedure: string;
 	threshold: string;
 	deadline: string;
+	contactPerson: string;
+	awarded: boolean;
+	framework: boolean;
 	hendelser: AnskaffelsesHendelse[];
+}
+
+export type StatusFilter = 'alle' | 'pågående' | 'tildelt';
+
+export interface AnskaffelsesFilter {
+	status: StatusFilter;
+	prosedyrer: Set<string>;
+	terskler: Set<string>;
+	rammeavtale: boolean | null;
+	saksbehandlere: Set<string>;
 }

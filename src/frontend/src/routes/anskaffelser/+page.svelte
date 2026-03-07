@@ -3,7 +3,7 @@
 	import Saksoversikt from '$lib/components/saksoversikt/Saksoversikt.svelte';
 	import OversiktSidebar from '$lib/components/saksoversikt/OversiktSidebar.svelte';
 	import CaseListTable from '$lib/components/case-list/CaseListTable.svelte';
-	import type { AnskaffelsesOversiktItem, HendelseType, OversiktVisning } from '$lib/types/anskaffelse';
+	import type { AnskaffelsesOversiktItem, AnskaffelsesFilter, HendelseType, OversiktVisning } from '$lib/types/anskaffelse';
 
 	const STORAGE_KEY = 'anskaffelser-visning';
 
@@ -13,10 +13,22 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
+	interface MatureApiItem {
+		id: number;
+		sequenceId: string;
+		name: string;
+		procedure: string;
+		threshold: string;
+		deadline: string;
+		contactPerson: string;
+		awarded: boolean;
+		framework: boolean;
+	}
+
 	$effect(() => {
 		fetch('/api/procurements/mature')
 			.then((r) => (r.ok ? r.json() : Promise.reject('Feil ved henting')))
-			.then((data: { id: number; sequenceId: string; name: string; procedure: string; threshold: string; deadline: string }[]) => {
+			.then((data: MatureApiItem[]) => {
 				alleMature = data.map((p) => ({
 					...p,
 					hendelser: [
@@ -32,6 +44,42 @@
 				error = String(e);
 				loading = false;
 			});
+	});
+
+	// ── Filter state ──
+
+	let filter = $state<AnskaffelsesFilter>({
+		status: 'alle',
+		prosedyrer: new Set(),
+		terskler: new Set(),
+		rammeavtale: null,
+		saksbehandlere: new Set(),
+	});
+
+	function byttFilter(f: AnskaffelsesFilter) {
+		filter = f;
+	}
+
+	const filtrert = $derived.by(() => {
+		let result = alleMature;
+
+		// Status
+		if (filter.status === 'pågående') result = result.filter((s) => !s.awarded);
+		else if (filter.status === 'tildelt') result = result.filter((s) => s.awarded);
+
+		// Prosedyre
+		if (filter.prosedyrer.size > 0) result = result.filter((s) => filter.prosedyrer.has(s.procedure));
+
+		// Terskel
+		if (filter.terskler.size > 0) result = result.filter((s) => filter.terskler.has(s.threshold));
+
+		// Rammeavtale
+		if (filter.rammeavtale === true) result = result.filter((s) => s.framework);
+
+		// Saksbehandler
+		if (filter.saksbehandlere.size > 0) result = result.filter((s) => filter.saksbehandlere.has(s.contactPerson));
+
+		return result;
 	});
 
 	// ── View state ──
@@ -78,11 +126,14 @@
 	}
 
 	const sidebarProps = $derived({
-		saker: alleMature,
+		alleSaker: alleMature,
+		saker: filtrert,
 		visning,
 		onvisning: byttVisning,
 		aktivtSpor,
 		onspor: byttSpor,
+		filter,
+		onfilter: byttFilter,
 	});
 </script>
 
@@ -127,11 +178,15 @@
 			<div class="state-message" role="status">
 				<span class="state-text">Ingen anskaffelser funnet.</span>
 			</div>
+		{:else if filtrert.length === 0}
+			<div class="state-message" role="status">
+				<span class="state-text">Ingen anskaffelser matcher valgte filter.</span>
+			</div>
 		{:else if visning === 'tidslinje'}
-			<Saksoversikt saker={alleMature} {aktivtSpor} />
+			<Saksoversikt saker={filtrert} {aktivtSpor} />
 		{:else}
 			<div class="tabell-wrap">
-				<CaseListTable saker={alleMature} />
+				<CaseListTable saker={filtrert} />
 			</div>
 		{/if}
 	</div>

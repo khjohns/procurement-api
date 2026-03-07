@@ -1,27 +1,67 @@
 <script lang="ts">
-	import type { AnskaffelsesOversiktItem, HendelseType, OversiktVisning } from '$lib/types/anskaffelse';
+	import type {
+		AnskaffelsesOversiktItem,
+		AnskaffelsesFilter,
+		HendelseType,
+		OversiktVisning,
+		StatusFilter,
+	} from '$lib/types/anskaffelse';
 
 	interface Props {
+		/** Alle ufiltrerte saker — brukes til å beregne tilgjengelige filtervalg */
+		alleSaker: AnskaffelsesOversiktItem[];
+		/** Filtrerte saker — brukes til telling */
 		saker: AnskaffelsesOversiktItem[];
 		visning: OversiktVisning;
 		onvisning: (v: OversiktVisning) => void;
 		aktivtSpor: HendelseType | null;
 		onspor: (spor: HendelseType | null) => void;
+		filter: AnskaffelsesFilter;
+		onfilter: (f: AnskaffelsesFilter) => void;
 	}
 
-	let { saker, visning, onvisning, aktivtSpor, onspor }: Props = $props();
+	let { alleSaker, saker, visning, onvisning, aktivtSpor, onspor, filter, onfilter }: Props = $props();
 
-	const stats = $derived.by(() => {
+	// ── Tilgjengelige filtervalg (beregnet fra alle, ikke filtrerte) ──
+
+	const tilgjengelig = $derived.by(() => {
+		const prosedyrer = new Map<string, number>();
+		const terskler = new Map<string, number>();
+		const personer = new Map<string, number>();
+		let rammeavtaler = 0;
+		let pågående = 0;
+		let tildelt = 0;
+
+		for (const sak of alleSaker) {
+			// Prosedyre
+			prosedyrer.set(sak.procedure, (prosedyrer.get(sak.procedure) ?? 0) + 1);
+			// Terskel
+			terskler.set(sak.threshold, (terskler.get(sak.threshold) ?? 0) + 1);
+			// Saksbehandler
+			if (sak.contactPerson) {
+				personer.set(sak.contactPerson, (personer.get(sak.contactPerson) ?? 0) + 1);
+			}
+			// Status
+			if (sak.awarded) tildelt++;
+			else pågående++;
+			// Rammeavtale
+			if (sak.framework) rammeavtaler++;
+		}
+
+		return { prosedyrer, terskler, personer, rammeavtaler, pågående, tildelt };
+	});
+
+	// ── Hendelsesstatistikk (fra filtrerte) ──
+
+	const hendelseStats = $derived.by(() => {
 		const telling: Record<HendelseType, number> = { U: 0, K: 0, F: 0, S: 0, T: 0, E: 0, P: 0 };
 		const ubesvart: Record<HendelseType, number> = { U: 0, K: 0, F: 0, S: 0, T: 0, E: 0, P: 0 };
-
 		for (const sak of saker) {
 			for (const h of sak.hendelser) {
 				telling[h.type]++;
 				if (!h.besvart) ubesvart[h.type]++;
 			}
 		}
-
 		return { telling, ubesvart };
 	});
 
@@ -35,19 +75,83 @@
 		{ key: 'P', label: 'Protokoll' },
 	];
 
+	const STATUS_CONFIG: { key: StatusFilter; label: string }[] = [
+		{ key: 'alle', label: 'Alle' },
+		{ key: 'pågående', label: 'Pågående' },
+		{ key: 'tildelt', label: 'Tildelt' },
+	];
+
+	// ── Helpers ──
+
+	function setStatus(s: StatusFilter) {
+		onfilter({ ...filter, status: s });
+	}
+
+	function toggleProsedyre(p: string) {
+		const next = new Set(filter.prosedyrer);
+		if (next.has(p)) next.delete(p);
+		else next.add(p);
+		onfilter({ ...filter, prosedyrer: next });
+	}
+
+	function toggleTerskel(t: string) {
+		const next = new Set(filter.terskler);
+		if (next.has(t)) next.delete(t);
+		else next.add(t);
+		onfilter({ ...filter, terskler: next });
+	}
+
+	function toggleRammeavtale() {
+		onfilter({ ...filter, rammeavtale: filter.rammeavtale === true ? null : true });
+	}
+
+	function togglePerson(p: string) {
+		const next = new Set(filter.saksbehandlere);
+		if (next.has(p)) next.delete(p);
+		else next.add(p);
+		onfilter({ ...filter, saksbehandlere: next });
+	}
+
 	function toggleSpor(spor: HendelseType) {
 		onspor(aktivtSpor === spor ? null : spor);
+	}
+
+	const harAktiveFilter = $derived(
+		filter.status !== 'alle' ||
+		filter.prosedyrer.size > 0 ||
+		filter.terskler.size > 0 ||
+		filter.rammeavtale !== null ||
+		filter.saksbehandlere.size > 0
+	);
+
+	function nullstillFilter() {
+		onfilter({
+			status: 'alle',
+			prosedyrer: new Set(),
+			terskler: new Set(),
+			rammeavtale: null,
+			saksbehandlere: new Set(),
+		});
 	}
 </script>
 
 <aside class="sidebar" aria-label="Anskaffelsesoversikt">
-	<!-- Identitet -->
+	<!-- Identitet + telling -->
 	<div class="sidebar-section">
 		<h2 class="prosjekt-navn">Anskaffelser</h2>
 		<div class="sak-telling">
 			<span class="telling-verdi">{saker.length}</span>
-			<span class="telling-label">anskaffelser</span>
+			{#if saker.length !== alleSaker.length}
+				<span class="telling-label">av {alleSaker.length}</span>
+			{:else}
+				<span class="telling-label">anskaffelser</span>
+			{/if}
 		</div>
+		{#if harAktiveFilter}
+			<button class="nullstill-btn" onclick={nullstillFilter} type="button">
+				Nullstill filter
+			</button>
+		{/if}
 	</div>
 
 	<!-- Visning -->
@@ -69,12 +173,109 @@
 		</div>
 	</div>
 
+	<!-- Status -->
+	<div class="sidebar-section">
+		<div class="section-label">Status</div>
+		<div class="chip-group">
+			{#each STATUS_CONFIG as { key, label } (key)}
+				{@const count = key === 'alle' ? alleSaker.length : key === 'pågående' ? tilgjengelig.pågående : tilgjengelig.tildelt}
+				<button
+					class="chip"
+					class:chip-aktiv={filter.status === key}
+					onclick={() => setStatus(key)}
+					type="button"
+				>
+					{label}
+					<span class="chip-tall">{count}</span>
+				</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Prosedyre -->
+	{#if tilgjengelig.prosedyrer.size > 1}
+		<div class="sidebar-section">
+			<div class="section-label">Prosedyre</div>
+			<div class="chip-group">
+				{#each [...tilgjengelig.prosedyrer].sort((a, b) => b[1] - a[1]) as [prosedyre, count] (prosedyre)}
+					<button
+						class="chip"
+						class:chip-aktiv={filter.prosedyrer.has(prosedyre)}
+						onclick={() => toggleProsedyre(prosedyre)}
+						type="button"
+					>
+						{prosedyre}
+						<span class="chip-tall">{count}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Terskel -->
+	{#if tilgjengelig.terskler.size > 1}
+		<div class="sidebar-section">
+			<div class="section-label">Terskel</div>
+			<div class="chip-group">
+				{#each [...tilgjengelig.terskler].sort((a, b) => b[1] - a[1]) as [terskel, count] (terskel)}
+					<button
+						class="chip"
+						class:chip-aktiv={filter.terskler.has(terskel)}
+						onclick={() => toggleTerskel(terskel)}
+						type="button"
+					>
+						{terskel}
+						<span class="chip-tall">{count}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Rammeavtale -->
+	{#if tilgjengelig.rammeavtaler > 0}
+		<div class="sidebar-section">
+			<div class="section-label">Type</div>
+			<div class="chip-group">
+				<button
+					class="chip"
+					class:chip-aktiv={filter.rammeavtale === true}
+					onclick={toggleRammeavtale}
+					type="button"
+				>
+					Rammeavtale
+					<span class="chip-tall">{tilgjengelig.rammeavtaler}</span>
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Saksbehandler -->
+	{#if tilgjengelig.personer.size > 0}
+		<div class="sidebar-section">
+			<div class="section-label">Saksbehandler</div>
+			<div class="chip-group">
+				{#each [...tilgjengelig.personer].sort((a, b) => b[1] - a[1]) as [person, count] (person)}
+					<button
+						class="chip"
+						class:chip-aktiv={filter.saksbehandlere.has(person)}
+						onclick={() => togglePerson(person)}
+						type="button"
+					>
+						{person}
+						<span class="chip-tall">{count}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- Hendelsesfilter -->
 	<div class="sidebar-section sidebar-section-last">
 		<div class="section-label">Hendelser</div>
 		<div class="spor-knapper">
 			{#each HENDELSE_CONFIG as { key, label } (key)}
-				{#if stats.telling[key] > 0}
+				{#if hendelseStats.telling[key] > 0}
 					<button
 						class="spor-btn spor-{key.toLowerCase()}"
 						class:spor-aktiv={aktivtSpor === key}
@@ -83,9 +284,9 @@
 					>
 						<span class="spor-ikon spor-ikon-{key.toLowerCase()}">{key}</span>
 						<span class="spor-tekst">{label}</span>
-						<span class="spor-tall">{stats.telling[key]}</span>
-						{#if stats.ubesvart[key] > 0}
-							<span class="spor-ubesvart">{stats.ubesvart[key]}</span>
+						<span class="spor-tall">{hendelseStats.telling[key]}</span>
+						{#if hendelseStats.ubesvart[key] > 0}
+							<span class="spor-ubesvart">{hendelseStats.ubesvart[key]}</span>
 						{/if}
 					</button>
 				{/if}
@@ -147,6 +348,25 @@
 		color: var(--color-ink-secondary);
 	}
 
+	.nullstill-btn {
+		display: block;
+		margin-top: 8px;
+		padding: 0;
+		background: none;
+		border: none;
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-vekt);
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.nullstill-btn:hover {
+		color: var(--color-ink);
+	}
+
 	.section-label {
 		font-family: var(--font-data);
 		font-size: 10px;
@@ -188,6 +408,52 @@
 		background: var(--color-felt-active);
 		color: var(--color-ink);
 		font-weight: 600;
+	}
+
+	/* Chip-group (filter chips) */
+	.chip-group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		background: transparent;
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		font-family: var(--font-ui);
+		font-size: 11px;
+		color: var(--color-ink-secondary);
+		transition: background 150ms, border-color 150ms, color 150ms;
+		white-space: nowrap;
+	}
+
+	.chip:hover {
+		background: var(--color-felt);
+		border-color: var(--color-wire-strong);
+	}
+
+	.chip-aktiv {
+		background: var(--color-felt-active);
+		border-color: var(--color-wire-strong);
+		color: var(--color-ink);
+		font-weight: 600;
+	}
+
+	.chip-tall {
+		font-family: var(--font-data);
+		font-size: 9px;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-ghost);
+	}
+
+	.chip-aktiv .chip-tall {
+		color: var(--color-ink-secondary);
 	}
 
 	/* Hendelsesfilter-knapper */
@@ -238,7 +504,6 @@
 		flex-shrink: 0;
 	}
 
-	/* Node-farger for ikoner */
 	.spor-ikon-u { border: 1px solid var(--color-ink-ghost); color: var(--color-ink-muted); }
 	.spor-ikon-k { border: 1px solid var(--color-ink-secondary); color: var(--color-ink-secondary); }
 	.spor-ikon-f { border: 1px solid var(--color-vekt); color: var(--color-vekt); }
@@ -247,7 +512,6 @@
 	.spor-ikon-e { border: 1px solid var(--color-score-high); color: var(--color-score-high); }
 	.spor-ikon-p { border: 1px solid var(--color-ink); color: var(--color-ink); }
 
-	/* Aktiv: filled */
 	.spor-aktiv .spor-ikon-u { background: var(--color-ink-ghost); color: var(--color-canvas); }
 	.spor-aktiv .spor-ikon-k { background: var(--color-ink-secondary); color: var(--color-canvas); }
 	.spor-aktiv .spor-ikon-f { background: var(--color-vekt); color: var(--color-canvas); }

@@ -102,6 +102,7 @@ def list_mature_procurements():
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
         deadline_str = get_timeline_date(p, "submission") or ""
+        procurer = p.get("about_procurer") or {}
 
         results.append({
             "id": p.get("id"),
@@ -110,6 +111,9 @@ def list_mature_procurements():
             "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
             "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
             "deadline": deadline_str[:10] if deadline_str else "",
+            "contactPerson": procurer.get("contact_person") or "",
+            "awarded": bool(p.get("areAwardLettersSent")),
+            "framework": bool(p.get("framework_agreement_involved")),
         })
 
     return jsonify(results)
