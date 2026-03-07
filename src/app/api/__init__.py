@@ -14,7 +14,6 @@ from app.client import ArtifikAPIError
 from protokoll.common import (
     build_org_lookup,
     dedup_by_sequence_id,
-    fmt_date,
     get_activities_by_action,
     get_org_name,
     get_timeline_date,
@@ -63,13 +62,35 @@ def _cached_activities(client, procurement_id: int) -> list[dict]:
     return data
 
 
+def _iso_date(activity: dict) -> str:
+    """Extract ISO date string from an activity, suitable for JS Date parsing."""
+    return activity.get("date") or ""
+
+
+def _announcement_iso_date(activities: list[dict]) -> str:
+    """Get announcement date as ISO string (not formatted for display)."""
+    publish = get_activities_by_action(activities, "PUBLISH_TO_DOFFIN")
+    if publish:
+        return publish[0].get("date") or ""
+    doffin = get_activities_by_action(activities, "DOFFIN_NOTICE_STATUS_PUBLISHED")
+    if doffin:
+        desc = doffin[0].get("description") or {}
+        doffin_notice = desc.get("doffinNotice") or {}
+        return doffin_notice.get("publicationDate") or doffin[0].get("date") or ""
+    return ""
+
+
 def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
-    """Build timeline events from procurement data and activities."""
+    """Build timeline events from procurement data and activities.
+
+    Dates are returned as ISO strings for frontend Date parsing.
+    """
     hendelser: list[dict] = []
     org_lookup = build_org_lookup(activities)
 
     # K — Kunngjort
-    ann_date, doffin_ref, ted_ref = parse_announcement(activities)
+    _, doffin_ref, ted_ref = parse_announcement(activities)
+    ann_date = _announcement_iso_date(activities)
     if ann_date:
         label = "Kunngjort"
         if doffin_ref:
@@ -81,11 +102,10 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     # F — Forespørsel om deltakelse (klynge per leverandør)
     for a in get_activities_by_action(activities, "ASK_TO_QUALIFY"):
         name = get_org_name(a, org_lookup)
-        dato = fmt_date(a.get("date"))
         hendelser.append(
             {
                 "type": "F",
-                "dato": dato,
+                "dato": _iso_date(a),
                 "label": f"Forespørsel: {name}",
                 "besvart": True,
             }
@@ -93,22 +113,20 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 
     # S — Kvalifisering
     for a in get_activities_by_action(activities, "OPEN_QUALIFICATIONS"):
-        dato = fmt_date(a.get("date"))
         hendelser.append(
             {
                 "type": "S",
-                "dato": dato,
+                "dato": _iso_date(a),
                 "label": "Kvalifikasjoner åpnet",
                 "besvart": True,
             }
         )
 
     for a in get_activities_by_action(activities, "QUALIFYING_PARTICIPANTS"):
-        dato = fmt_date(a.get("date"))
         hendelser.append(
             {
                 "type": "S",
-                "dato": dato,
+                "dato": _iso_date(a),
                 "label": "Kvalifiserte leverandører",
                 "besvart": True,
             }
@@ -116,11 +134,10 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 
     for a in get_activities_by_action(activities, "REJECT_PARTICIPATION"):
         name = get_org_name(a, org_lookup)
-        dato = fmt_date(a.get("date"))
         hendelser.append(
             {
                 "type": "S",
-                "dato": dato,
+                "dato": _iso_date(a),
                 "label": f"Avvist: {name}",
                 "besvart": True,
                 "avvist": True,
@@ -130,22 +147,34 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     # T — Tilbud
     for a in get_activities_by_action(activities, "SUBMIT_BID"):
         name = get_org_name(a, org_lookup)
-        dato = fmt_date(a.get("date"))
         hendelser.append(
-            {"type": "T", "dato": dato, "label": f"Tilbud: {name}", "besvart": True}
+            {
+                "type": "T",
+                "dato": _iso_date(a),
+                "label": f"Tilbud: {name}",
+                "besvart": True,
+            }
         )
 
     for a in get_activities_by_action(activities, "OPEN_BIDS"):
-        dato = fmt_date(a.get("date"))
         hendelser.append(
-            {"type": "T", "dato": dato, "label": "Tilbudsåpning", "besvart": True}
+            {
+                "type": "T",
+                "dato": _iso_date(a),
+                "label": "Tilbudsåpning",
+                "besvart": True,
+            }
         )
 
     # E — Evaluert
     for a in get_activities_by_action(activities, "AWARDING_PARTICIPANTS"):
-        dato = fmt_date(a.get("date"))
         hendelser.append(
-            {"type": "E", "dato": dato, "label": "Tildeling utført", "besvart": True}
+            {
+                "type": "E",
+                "dato": _iso_date(a),
+                "label": "Tildeling utført",
+                "besvart": True,
+            }
         )
 
     # P — Protokoll (from procurement field, not activity)
@@ -169,7 +198,7 @@ def _fallback_hendelser(procurement: dict) -> list[dict]:
         hendelser.append(
             {
                 "type": "K",
-                "dato": fmt_date(deadline_str),
+                "dato": deadline_str,
                 "label": "Kunngjort",
                 "besvart": True,
             }
@@ -177,7 +206,7 @@ def _fallback_hendelser(procurement: dict) -> list[dict]:
         hendelser.append(
             {
                 "type": "T",
-                "dato": fmt_date(deadline_str),
+                "dato": deadline_str,
                 "label": f"Tilbudsfrist {deadline_str[:10]}",
                 "besvart": False,
             }
