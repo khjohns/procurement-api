@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import io
 import logging
 import time
@@ -32,6 +33,7 @@ _proc_cache: dict[str, tuple[float, list[dict]]] = {}
 _activity_cache: dict[int, tuple[float, list[dict]]] = {}
 
 _executor = ThreadPoolExecutor(max_workers=10)
+atexit.register(_executor.shutdown, wait=False)
 
 
 def _cached_list_procurements(org_id: str | None = None) -> list[dict]:
@@ -47,7 +49,11 @@ def _cached_list_procurements(org_id: str | None = None) -> list[dict]:
 
 
 def _cached_activities(client, procurement_id: int) -> list[dict]:
-    """Return activities for a procurement with a TTL cache."""
+    """Return activities for a procurement with a TTL cache.
+
+    Takes ``client`` explicitly because this runs in executor threads
+    outside Flask's application context (``_client()`` would fail).
+    """
     now = time.monotonic()
     cached = _activity_cache.get(procurement_id)
     if cached and (now - cached[0]) < _CACHE_TTL:
@@ -197,7 +203,7 @@ def _fetch_hendelser_parallel(
     for future in as_completed(futures):
         pid, proc = futures[future]
         try:
-            activities = future.result(timeout=30)
+            activities = future.result(timeout=10)
             result[pid] = _build_hendelser(proc, activities)
         except Exception:
             log.warning(
