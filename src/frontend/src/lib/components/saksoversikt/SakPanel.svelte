@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AnskaffelsesOversiktItem } from '$lib/types/anskaffelse';
+	import { formatDatoKort } from '$lib/utils/format';
 
 	interface Props {
 		sak: AnskaffelsesOversiktItem | null;
@@ -51,14 +52,6 @@
 		return ACTION_IKON[action] ?? '·';
 	}
 
-	function formatDato(iso: string): string {
-		if (!iso) return '';
-		const d = new Date(iso);
-		const dag = String(d.getDate()).padStart(2, '0');
-		const mnd = String(d.getMonth() + 1).padStart(2, '0');
-		const aar = String(d.getFullYear()).slice(2);
-		return `${dag}.${mnd}.${aar}`;
-	}
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && erAapen) onclose();
@@ -138,7 +131,7 @@
 									class:forloep-besvart={h.besvart}
 									class:forloep-siste={erSiste}
 								>
-									<span class="forloep-dato">{formatDato(h.dato)}</span>
+									<span class="forloep-dato">{formatDatoKort(h.dato)}</span>
 									<div class="forloep-strek" class:forloep-strek-siste={erSiste}></div>
 									<span
 										class="forloep-node forloep-node-{h.type.toLowerCase()}"
@@ -159,7 +152,7 @@
 						<div class="ovrige">
 							{#each ovrigeHendelser as h, i (i)}
 								<div class="ovrig-linje">
-									<span class="ovrig-dato">{formatDato(h.dato)}</span>
+									<span class="ovrig-dato">{formatDatoKort(h.dato)}</span>
 									<span class="ovrig-ikon">{ikonForAction(h.action)}</span>
 									<span class="ovrig-tekst">{h.label}</span>
 								</div>

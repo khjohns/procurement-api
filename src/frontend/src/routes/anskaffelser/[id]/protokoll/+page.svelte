@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation';
 	import { protokoll, type Avvisning } from '$lib/stores/protokoll.svelte';
+	import { formatDato, formatDatoTid } from '$lib/utils/format';
 	import SectionAccordion from '$lib/components/protokoll/SectionAccordion.svelte';
 	import InfoTable from '$lib/components/protokoll/InfoTable.svelte';
 	import SupplierList from '$lib/components/protokoll/SupplierList.svelte';
@@ -449,27 +450,8 @@
 		return [...seen.values()];
 	}
 
-	function formatDate(iso: string | null | undefined): string {
-		if (!iso) return '—';
-		try {
-			const dt = new Date(iso);
-			return dt.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-		} catch {
-			return String(iso);
-		}
-	}
-
-	function formatDateTime(iso: string | null | undefined): string {
-		if (!iso) return '—';
-		try {
-			const dt = new Date(iso);
-			const date = dt.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-			const time = dt.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-			return `${date}, kl. ${time}`;
-		} catch {
-			return String(iso);
-		}
-	}
+	const formatDate = formatDato;
+	const formatDateTime = formatDatoTid;
 
 	/** Add calendar days to an ISO date string and return new ISO date. */
 	function addDays(isoDate: string, days: number): string {
