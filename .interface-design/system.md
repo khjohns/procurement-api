@@ -10,6 +10,86 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 
 ---
 
+## Narrativ og informasjonsarkitektur
+
+Progressiv eksponering av detaljer i tre nivåer. Hvert nivå har et høyrepanel som vises ved klikk (skjult som default) for kontekstavhengige detaljer.
+
+Alle arbeidsflater (kvalifisering, evaluering, protokoll) tilhører én spesifikk anskaffelse. Navigasjonen gjenspeiler dette eierskapet.
+
+### Rutestruktur
+
+```
+/anskaffelser                          → Kontrollbordet (oversikt)
+/anskaffelser/[id]                     → Saksmappen (én anskaffelse)
+/anskaffelser/[id]/kvalifisering       → Arbeidsflate: kvalifikasjonskrav
+/anskaffelser/[id]/evaluering          → Arbeidsflate: evaluering av tilbud
+/anskaffelser/[id]/protokoll           → Arbeidsflate: anskaffelsesprotokoll
+```
+
+### Narrativskille
+
+| Nivå | Rute | Metafor | Formål | Modus |
+|---|---|---|---|---|
+| 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Oversikt, radar |
+| 2 | `/anskaffelser/[id]` | **Saksmappen** | Status, fremdrift, neste steg | Lesing, scanning |
+| 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Arbeid, skriving |
+
+**Kontrollbordet** er proaktivt — brukeren driver prosessen fremover. Ulikt reaktiv triage (tvister som brenner). Vektlegger fremdrift og faser.
+
+**Saksmappen** viser faseoversikt (kvalifisering → evaluering → protokoll med status per fase), sammendrag og nøkkeltall. Navigasjon til arbeidsflater via faseelementene.
+
+**Arbeidsflatene** beholder sine spesialiserte grensesnitt (matriser, skjemaer). Høyrepanelinnhold er kontekstavhengig per arbeidsflate — detaljer utarbeides separat.
+
+### Kontrollbordet — visninger
+
+Kontrollbordet har to visninger: **tidslinje** og **tabell** (toggle, preferanse i localStorage).
+
+#### Tidslinjevisning
+
+HUD-inspirert tidslinjevisning (tilsvarende KOE saksoversikt). Rad-per-anskaffelse med horisontale tidslinje-noder.
+
+**Layout:** 260px meta (anskaffelses-id + tittel) + flex tidslinje-canvas. 52px radhøyde.
+
+**Noder (16px):** Hendelser i anskaffelsens livssyklus.
+
+| Node | Hendelse | Type | Farge (border/tekst) | Karakter |
+|---|---|---|---|---|
+| U | Utkast opprettet | Singel | `ink-ghost` | Passiv |
+| K | Kunngjort på Doffin | Singel | `ink-secondary` | Informativ |
+| F | Forespørsel om deltakelse mottatt | Klynge (antall) | `vekt` (amber) | Innkommende |
+| S | Kvalifiseringssjekk fullført | Klynge (+1 per leverandør) | `score-high`/`score-low` | Kvalifisert/avvist |
+| T | Tilbud mottatt | Klynge (antall) | `vekt` (amber) | Innkommende |
+| E | Tilbudsevaluering fullført | Klynge (+1 per leverandør) | `score-high` | Arbeid utført |
+| P | Protokoll ferdigstilt | Singel | `ink` (full) | Ferdigstilt |
+
+Sekvensiell livssyklus: **U → K → F → S → T → E → P**
+
+**Ubesvart/besvart-logikk:** Noder som representerer ventende arbeid (F uten tilhørende S, T uten tilhørende E) vises som filled (krever oppmerksomhet). Ferdige noder vises som outline med redusert opacity.
+
+**Klynge-logikk:** Hendelser innenfor 5% av tidslinjebredden grupperes. Cluster-tag med prioritet basert på hastegrad. S-noder med semantisk farge (grønn/rose) gir umiddelbar triage i klyngen.
+
+**Tidsakse, dot grid, aktiv rad, eksplosjons-hover, digital ink-flow:** Samme mønster som KOE saksoversikt (se referanseimplementasjon).
+
+#### Tabellvisning
+
+Full-width tabell med kolonner: ID, Navn, Status/fase, Leverandører, Fremdrift (faseindikatorer), Siste aktivitet. Sortérbar. Samme sporkort-estetikk.
+
+#### Høyrepanel (kontrollbordet)
+
+Vises ved klikk på tidslinje-rad (ikke navigasjon — klikk på saksnavn navigerer til saksmappen). 460px slide-in fra høyre.
+
+Innhold: anskaffelses-id, tittel, status, sammendrag, faseoversikt med status per fase, nøkkeltall (antall leverandører, tilbud), hendelsesforløp. "Åpne saksmappe →" lenke i bunn.
+
+### Høyrepanel — arbeidsflater
+
+Detaljer utarbeides separat per arbeidsflate. Kontekstavhengig innhold.
+
+### Merknad om eksisterende sider
+
+Eksisterende sider (evaluering, kvalifisering, protokoll) kan kreve redesign for å passe inn i den nye navigasjonsstrukturen. Alle sider er åpne for justering.
+
+---
+
 ## Tokens
 
 The following subsections show the **dark theme** token values. For light theme values and the full side-by-side comparison, see [## Themes](#themes) below.
