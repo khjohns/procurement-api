@@ -1,6 +1,7 @@
 ---
 name: interface-design:extract
 description: Extract design patterns from existing code to create a system.md file.
+disable-model-invocation: true
 ---
 
 # interface-design extract

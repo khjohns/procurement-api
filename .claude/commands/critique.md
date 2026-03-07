@@ -1,6 +1,7 @@
 ---
 name: interface-design:critique
 description: Critique your build for craft, then rebuild what defaulted.
+disable-model-invocation: true
 ---
 
 # Critique
