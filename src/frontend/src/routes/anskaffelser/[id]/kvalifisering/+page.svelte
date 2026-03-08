@@ -3,11 +3,9 @@
 	import QualificationOverview from '$lib/components/qualification/QualificationOverview.svelte';
 	import RequirementView from '$lib/components/qualification/RequirementView.svelte';
 	import QualificationStatusPanel from '$lib/components/qualification/QualificationStatusPanel.svelte';
+	import QualificationAssessmentPanel from '$lib/components/qualification/QualificationAssessmentPanel.svelte';
 
 	let isOverview = $derived(qualification.activeView === 'overview');
-	let activeRequirement = $derived(
-		!isOverview ? qualification.data.requirements.find((r) => r.id === qualification.activeView) : null
-	);
 
 	let mobilePanelOpen = $state(false);
 </script>
@@ -27,15 +25,19 @@
 		<div class="qual-main-content">
 			{#if isOverview}
 				<QualificationOverview />
-			{:else if activeRequirement}
-				<RequirementView requirementId={activeRequirement.id} />
+			{:else if qualification.activeRequirement}
+				<RequirementView requirementId={qualification.activeRequirement.id} />
 			{/if}
 		</div>
 	</div>
 
 	<!-- Right panel (desktop) -->
 	<aside class="qual-panel" class:panel-open={mobilePanelOpen}>
-		<QualificationStatusPanel />
+		{#if isOverview}
+			<QualificationStatusPanel />
+		{:else}
+			<QualificationAssessmentPanel />
+		{/if}
 	</aside>
 
 	<!-- Mobile panel toggle -->

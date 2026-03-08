@@ -1,12 +1,6 @@
 <script lang="ts">
 	import { qualification } from '$lib/stores/qualification.svelte';
 
-	let isOverview = $derived(qualification.activeView === 'overview');
-
-	let activeReq = $derived(
-		!isOverview ? qualification.data.requirements.find((r) => r.id === qualification.activeView) : null
-	);
-
 	let items = $derived(
 		qualification.data.suppliers.map((s) => {
 			const r = qualification.supplierResults[s.id];
@@ -58,46 +52,59 @@
 	</div>
 </div>
 
-<!-- Requirement detail (when drilled down) -->
-{#if activeReq}
-	<div class="panel-section">
-		<div class="panel-label">Krav</div>
-		<div class="req-detail-name">{activeReq.name}</div>
-		{#if activeReq.description}
-			<div class="req-detail-desc">{activeReq.description}</div>
-		{/if}
-	</div>
-
-	<div class="panel-section">
-		<div class="panel-label">Status per leverandør</div>
-		<div class="req-supplier-list">
-			{#each qualification.data.suppliers as supplier}
-				{@const a = activeReq.assessments[supplier.id]}
-				{@const verdict = a?.verdict ?? 'not_assessed'}
-				{@const doc = a?.documentation ?? 'not_assessed'}
-				<div class="req-supplier-item">
-					<span class="req-supplier-name">{supplier.name}</span>
-					<div class="req-supplier-details">
-						<span class="detail-badge" class:detail-met={verdict === 'met'} class:detail-not-met={verdict === 'not_met'}>
-							{#if verdict === 'met'}✓{:else if verdict === 'not_met'}✗{:else}—{/if}
-						</span>
-						{#if doc === 'submitted'}
-							<span class="detail-doc">Dok. levert</span>
-						{:else if doc === 'not_submitted'}
-							<span class="detail-doc detail-doc-missing">Dok. mangler</span>
-						{/if}
-					</div>
-				</div>
-			{/each}
+<!-- Nøkkeltall (overview metrics) -->
+<div class="panel-section">
+	<div class="panel-label">Nøkkeltall</div>
+	<div class="metrics-grid">
+		<div class="metric">
+			<span class="metric-value" class:metric-positive={qualification.stats.qualified > 0} class:metric-pending={qualification.stats.qualified === 0}>{qualification.stats.qualified}</span>
+			<span class="metric-label">Kvalifisert</span>
+		</div>
+		<div class="metric">
+			<span class="metric-value" class:metric-rejected={qualification.stats.rejected > 0} class:metric-pending={qualification.stats.rejected === 0}>{qualification.stats.rejected}</span>
+			<span class="metric-label">Avvist</span>
+		</div>
+		<div class="metric">
+			<span class="metric-value metric-pending">{qualification.stats.pending}</span>
+			<span class="metric-label">Under vurdering</span>
+		</div>
+		<div class="metric">
+			<span class="metric-value metric-support">{qualification.stats.supportCount}</span>
+			<span class="metric-label">Støttevirksomheter</span>
 		</div>
 	</div>
-{/if}
+</div>
+
+<!-- Progress -->
+<div class="panel-section">
+	<div class="panel-label">Fremdrift</div>
+	<div class="progress-row">
+		<span class="progress-desc">Vurderinger</span>
+		<span class="progress-count">{qualification.progress.assessments.filled}/{qualification.progress.assessments.total}</span>
+		<div class="progress-bar">
+			<div
+				class="progress-fill"
+				style="width: {qualification.progress.assessments.total > 0 ? (qualification.progress.assessments.filled / qualification.progress.assessments.total) * 100 : 0}%"
+			></div>
+		</div>
+	</div>
+	<div class="progress-row">
+		<span class="progress-desc">ESPD</span>
+		<span class="progress-count">{qualification.progress.espd.filled}/{qualification.progress.espd.total}</span>
+		<div class="progress-bar">
+			<div
+				class="progress-fill"
+				style="width: {qualification.progress.espd.total > 0 ? (qualification.progress.espd.filled / qualification.progress.espd.total) * 100 : 0}%"
+			></div>
+		</div>
+	</div>
+</div>
 
 <!-- Status strip (bottom) -->
 <div class="panel-status">
 	<span class="panel-status-label">{qualification.data.status}</span>
 	<span class="panel-status-progress">
-		{qualification.progress.assessments.filled}/{qualification.progress.assessments.total}
+		{qualification.stats.qualified + qualification.stats.rejected}/{qualification.stats.total}
 	</span>
 </div>
 
@@ -220,82 +227,93 @@
 		background: var(--color-score-low);
 	}
 
-	/* ── Requirement detail (drill-down) ── */
-	.req-detail-name {
-		font-size: 13px;
-		font-weight: 600;
-		color: var(--color-ink);
-		line-height: 1.3;
+	/* ── Nøkkeltall (metrics) ── */
+	.metrics-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--spacing-2);
 	}
 
-	.req-detail-desc {
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		line-height: 1.4;
-	}
-
-	.req-supplier-list {
+	.metric {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-2);
-	}
-
-	.req-supplier-item {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		gap: var(--spacing-1);
 		padding: var(--spacing-2);
-		margin: 0 calc(-1 * var(--spacing-2));
+		background: var(--color-felt);
 		border-radius: var(--radius-sm);
-		transition: background 0.12s;
+		border: 1px solid var(--color-wire);
 	}
 
-	.req-supplier-item:hover {
-		background: var(--color-felt-hover);
+	.metric-value {
+		font-family: var(--font-data);
+		font-size: 18px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink-muted);
+		line-height: 1;
 	}
 
-	.req-supplier-name {
-		font-size: 12px;
+	.metric-positive {
+		color: var(--color-score-high);
+	}
+
+	.metric-rejected {
+		color: var(--color-score-low);
+	}
+
+	.metric-pending {
+		color: var(--color-ink-muted);
+	}
+
+	.metric-support {
+		color: var(--color-vekt);
+	}
+
+	.metric-label {
+		font-size: 10px;
 		font-weight: 500;
-		color: var(--color-ink-secondary);
+		color: var(--color-ink-ghost);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
-	.req-supplier-details {
+	/* ── Progress ── */
+	.progress-row {
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-2);
+		margin-bottom: var(--spacing-2);
 	}
 
-	.detail-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 18px;
-		height: 18px;
-		border-radius: var(--radius-sm);
+	.progress-desc {
+		font-size: 11px;
+		color: var(--color-ink-muted);
+		font-weight: 500;
+		min-width: 72px;
+	}
+
+	.progress-count {
+		font-family: var(--font-data);
 		font-size: 10px;
-		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 		color: var(--color-ink-ghost);
+		min-width: 32px;
+		text-align: right;
+	}
+
+	.progress-bar {
+		flex: 1;
+		height: 2px;
 		background: var(--color-felt-active);
+		border-radius: 1px;
+		overflow: hidden;
 	}
 
-	.detail-met {
-		color: var(--color-score-high);
-		background: var(--color-score-high-bg);
-	}
-
-	.detail-not-met {
-		color: var(--color-score-low);
-		background: var(--color-score-low-bg);
-	}
-
-	.detail-doc {
-		font-size: 10px;
-		color: var(--color-ink-ghost);
-	}
-
-	.detail-doc-missing {
-		color: var(--color-score-low);
+	.progress-fill {
+		height: 100%;
+		background: var(--color-vekt-dim);
+		border-radius: 1px;
+		transition: width 0.3s ease-out;
 	}
 
 	/* ── Status strip (bottom) ── */

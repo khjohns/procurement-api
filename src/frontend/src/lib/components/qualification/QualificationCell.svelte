@@ -5,22 +5,20 @@
 		verdict: QualificationVerdict;
 		hasSupport: boolean;
 		hasNotes: boolean;
-		expanded: boolean;
-		onclick: () => void;
+		onclick?: () => void;
 	}
 
-	let { verdict, hasSupport, hasNotes, expanded, onclick }: Props = $props();
+	let { verdict, hasSupport, hasNotes, onclick }: Props = $props();
 </script>
 
 <td
 	class="cell-verdict verdict-{verdict}"
 	class:has-support={hasSupport}
 	class:has-notes={hasNotes}
-	class:expanded
-	role="button"
-	tabindex={0}
+	role={onclick ? 'button' : undefined}
+	tabindex={onclick ? 0 : undefined}
 	{onclick}
-	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick(); } }}
+	onkeydown={onclick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick(); } } : undefined}
 >
 	{#if verdict === 'met'}
 		<span class="verdict-icon">✓</span>
@@ -36,11 +34,14 @@
 		text-align: center;
 		padding: var(--spacing-2) var(--spacing-3);
 		position: relative;
-		cursor: pointer;
 		transition: background 0.12s;
 	}
 
-	.cell-verdict:hover {
+	.cell-verdict[role='button'] {
+		cursor: pointer;
+	}
+
+	.cell-verdict[role='button']:hover {
 		background: var(--color-felt-hover);
 	}
 
@@ -100,12 +101,4 @@
 		background: var(--color-vekt-dim);
 	}
 
-	/* Expanded state */
-	.expanded {
-		background: var(--color-felt);
-	}
-
-	.expanded:hover {
-		background: var(--color-felt);
-	}
 </style>

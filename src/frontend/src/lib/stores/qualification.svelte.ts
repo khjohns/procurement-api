@@ -8,14 +8,21 @@
 
 // ── Types ──
 
-export type DocumentationStatus = 'submitted' | 'not_submitted' | 'not_assessed';
 export type QualificationBasis = 'own' | 'supported';
 export type QualificationVerdict = 'met' | 'not_met' | 'not_assessed';
 
+export interface SupportEntity {
+	id: string;
+	name: string;
+	espdSubmitted: boolean;
+	commitmentSubmitted: boolean;
+	scope: string;
+}
+
 export interface QualificationAssessment {
-	documentation: DocumentationStatus;
+	espdSubmitted: boolean;
 	basis: QualificationBasis;
-	supportEntityName: string;
+	supportEntities: SupportEntity[];
 	verdict: QualificationVerdict;
 	notes: string;
 }
@@ -45,19 +52,26 @@ export interface QualificationData {
 
 function emptyAssessment(): QualificationAssessment {
 	return {
-		documentation: 'not_assessed',
+		espdSubmitted: false,
 		basis: 'own',
-		supportEntityName: '',
+		supportEntities: [],
 		verdict: 'not_assessed',
 		notes: ''
 	};
 }
 
+let nextEntityId = 1;
+
 class QualificationStore {
 	activeView = $state<string>('overview');
+	selectedSupplierId = $state<string | null>(null);
 
 	setActiveView(view: string) {
 		this.activeView = view;
+	}
+
+	selectSupplier(id: string) {
+		this.selectedSupplierId = id;
 	}
 
 	data = $state<QualificationData>({
@@ -78,23 +92,23 @@ class QualificationStore {
 					'Registrert i Foretaksregisteret, skatteattest, HMS-egenerklæring',
 				assessments: {
 					bouvet: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: 'Alle attester levert og kontrollert.'
 					},
 					sopra: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: 'Skatteattest og firmaattest i orden.'
 					},
 					knowit: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: ''
 					}
@@ -107,26 +121,33 @@ class QualificationStore {
 					'Kredittvurdering minimum A, ansvarsforsikring min. 10 MNOK',
 				assessments: {
 					bouvet: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: 'Kredittvurdering AAA. Forsikringsbevis vedlagt.'
 					},
 					sopra: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: ''
 					},
 					knowit: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'supported',
-						supportEntityName: 'Knowit AB',
+						supportEntities: [
+							{
+								id: 'se-1',
+								name: 'Knowit AB',
+								espdSubmitted: true,
+								commitmentSubmitted: true,
+								scope: 'Kredittvurdering og forsikringsdekning'
+							}
+						],
 						verdict: 'met',
-						notes:
-							'Knowit Obiwan AS oppfyller ikke kravet alene. Støtter seg på morselskapet Knowit AB. Forpliktelseserklæring vedlagt.'
+						notes: 'Knowit Obiwan AS oppfyller ikke kravet alene. Støtter seg på morselskapet Knowit AB. Forpliktelseserklæring vedlagt.'
 					}
 				}
 			},
@@ -137,23 +158,23 @@ class QualificationStore {
 					'Minst 3 relevante referanseprosjekter siste 5 år, ISO 27001 eller tilsvarende',
 				assessments: {
 					bouvet: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'met',
 						notes: '5 relevante referanseprosjekter dokumentert. ISO 27001-sertifisert.'
 					},
 					sopra: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'not_assessed',
 						notes: ''
 					},
 					knowit: {
-						documentation: 'submitted',
+						espdSubmitted: true,
 						basis: 'own',
-						supportEntityName: '',
+						supportEntities: [],
 						verdict: 'not_assessed',
 						notes: ''
 					}
@@ -162,7 +183,14 @@ class QualificationStore {
 		]
 	});
 
-	/** Per-supplier qualification result: met/notMet/pending counts and final verdict. */
+	/** The currently active requirement (when drilled down). */
+	activeRequirement = $derived(
+		this.activeView !== 'overview'
+			? this.data.requirements.find((r) => r.id === this.activeView) ?? null
+			: null
+	);
+
+	/** Per-supplier qualification result. */
 	supplierResults = $derived.by(() => {
 		const result: Record<string, { qualified: boolean; met: number; notMet: number; total: number; allAssessed: boolean }> = {};
 		for (const supplier of this.data.suppliers) {
@@ -185,25 +213,43 @@ class QualificationStore {
 		return result;
 	});
 
-	/** Progress: how many cells have been assessed (verdict !== 'not_assessed'). */
+	/** Progress: how many cells have been assessed. */
 	progress = $derived.by(() => {
 		let total = 0;
 		let assessed = 0;
-		let documented = 0;
+		let espdCount = 0;
 
 		for (const req of this.data.requirements) {
 			for (const supplier of this.data.suppliers) {
 				total++;
 				const a = req.assessments[supplier.id];
 				if (a && a.verdict !== 'not_assessed') assessed++;
-				if (a && a.documentation === 'submitted') documented++;
+				if (a && a.espdSubmitted) espdCount++;
 			}
 		}
 
 		return {
 			assessments: { filled: assessed, total },
-			documentation: { filled: documented, total }
+			espd: { filled: espdCount, total }
 		};
+	});
+
+	/** Aggregate stats for overview panel. */
+	stats = $derived.by(() => {
+		const results = Object.values(this.supplierResults);
+		const qualified = results.filter((r) => r.qualified).length;
+		const rejected = results.filter((r) => r.allAssessed && !r.qualified).length;
+		const pending = results.length - qualified - rejected;
+
+		let supportCount = 0;
+		for (const req of this.data.requirements) {
+			for (const supplier of this.data.suppliers) {
+				const a = req.assessments[supplier.id];
+				if (a && a.basis === 'supported') supportCount++;
+			}
+		}
+
+		return { qualified, rejected, pending, supportCount, total: results.length };
 	});
 
 	// ── Mutation methods ──
@@ -215,21 +261,16 @@ class QualificationStore {
 		return req.assessments[supplierId];
 	}
 
-	setDocumentation(reqId: string, supplierId: string, status: DocumentationStatus) {
+	setEspd(reqId: string, supplierId: string, submitted: boolean) {
 		const a = this.getAssessment(reqId, supplierId);
-		if (a) a.documentation = status;
+		if (a) a.espdSubmitted = submitted;
 	}
 
 	setBasis(reqId: string, supplierId: string, basis: QualificationBasis) {
 		const a = this.getAssessment(reqId, supplierId);
 		if (!a) return;
 		a.basis = basis;
-		if (basis === 'own') a.supportEntityName = '';
-	}
-
-	setSupportEntityName(reqId: string, supplierId: string, name: string) {
-		const a = this.getAssessment(reqId, supplierId);
-		if (a) a.supportEntityName = name;
+		if (basis === 'own') a.supportEntities = [];
 	}
 
 	setVerdict(reqId: string, supplierId: string, verdict: QualificationVerdict) {
@@ -240,6 +281,31 @@ class QualificationStore {
 	setNote(reqId: string, supplierId: string, text: string) {
 		const a = this.getAssessment(reqId, supplierId);
 		if (a) a.notes = text;
+	}
+
+	// ── Support entity methods ──
+
+	addSupportEntity(reqId: string, supplierId: string, name: string) {
+		const a = this.getAssessment(reqId, supplierId);
+		if (!a) return;
+		a.supportEntities = [...a.supportEntities, {
+			id: `se-${nextEntityId++}`,
+			name,
+			espdSubmitted: false,
+			commitmentSubmitted: false,
+			scope: ''
+		}];
+	}
+
+	removeSupportEntity(reqId: string, supplierId: string, entityId: string) {
+		const a = this.getAssessment(reqId, supplierId);
+		if (!a) return;
+		a.supportEntities = a.supportEntities.filter((e) => e.id !== entityId);
+	}
+
+	updateSupportEntity(reqId: string, supplierId: string, entityId: string, patch: Partial<Omit<SupportEntity, 'id'>>) {
+		const entity = this.getAssessment(reqId, supplierId)?.supportEntities.find((e) => e.id === entityId);
+		if (entity) Object.assign(entity, patch);
 	}
 
 	initialize(newData: QualificationData) {
