@@ -12,6 +12,7 @@
 	import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
 	import DateInput from '$lib/components/protokoll/DateInput.svelte';
 	import { tick } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
 	import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
 
@@ -848,13 +849,14 @@
 				{/if}
 
 				{#if protokoll.nextMissingSectionId}
-					<button class="footer-action" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
-						&#8594; Neste manglende
+					<button class="footer-action footer-action-responsive" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h9M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						Neste
 					</button>
 				{/if}
 
 				{#if protokoll.openCount >= 1}
-					<button class="footer-action" onclick={handleToggleAll}>
+					<button class="footer-action footer-action-responsive" onclick={handleToggleAll}>
 						{allOpen ? 'Lukk alle' : 'Vis alle'}
 					</button>
 				{/if}
@@ -863,20 +865,20 @@
 				<div class="footer-nav-wrap">
 					<button
 						class="footer-action"
-						onclick={() => navPopupOpen = !navPopupOpen}
+						onclick={(e) => { e.stopPropagation(); navPopupOpen = !navPopupOpen; }}
 						aria-expanded={navPopupOpen}
 						aria-controls="section-nav-popup"
 					>
-						&#9776; Seksjoner
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+						Seksjoner
 					</button>
 					{#if navPopupOpen}
-						<div class="section-nav-popup" id="section-nav-popup" role="menu">
+						<div class="section-nav-popup" id="section-nav-popup" transition:slide={{ duration: 150 }}>
 							{#each chapters as group}
 								<div class="nav-chapter">{group.chapter}</div>
 								{#each group.sections as section}
 									<button
 										class="nav-item"
-										role="menuitem"
 										onclick={() => handleNavJump(section.id)}
 									>
 										<span class="nav-num">{section.sectionNumber}</span>
@@ -966,7 +968,7 @@
 		padding: var(--spacing-2) var(--spacing-4);
 		background: var(--color-vekt);
 		color: var(--color-canvas);
-		border: none;
+		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
 		font-family: var(--font-ui);
 		font-size: 13px;
@@ -1536,6 +1538,7 @@
 		width: 320px;
 		max-height: 480px;
 		overflow-y: auto;
+		overflow-x: hidden;
 		background: var(--color-felt-raised);
 		border: 1px solid var(--color-wire-strong);
 		border-radius: var(--radius-md);
@@ -1639,6 +1642,10 @@
 		}
 
 		.footer-missing {
+			display: none;
+		}
+
+		.footer-action-responsive {
 			display: none;
 		}
 	}
