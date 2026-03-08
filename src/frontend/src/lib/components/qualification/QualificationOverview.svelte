@@ -40,14 +40,12 @@
 					{#each qualification.data.suppliers as supplier}
 						{@const a = req.assessments[supplier.id]}
 						{@const verdict = a?.verdict ?? 'not_assessed'}
-						{@const hasSupport = a?.basis === 'supported' && !!a?.supportEntityName}
+						{@const hasSupport = a?.basis === 'supported' && (a?.supportEntities?.length ?? 0) > 0}
 						{@const hasNotes = !!(a?.notes)}
 						<QualificationCell
 							{verdict}
 							{hasSupport}
 							{hasNotes}
-							expanded={false}
-							onclick={() => { /* row handles navigation */ }}
 						/>
 					{/each}
 				</tr>
