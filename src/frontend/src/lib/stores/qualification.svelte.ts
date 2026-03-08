@@ -54,6 +54,12 @@ function emptyAssessment(): QualificationAssessment {
 }
 
 class QualificationStore {
+	activeView = $state<string>('overview');
+
+	setActiveView(view: string) {
+		this.activeView = view;
+	}
+
 	data = $state<QualificationData>({
 		id: '2024-1847',
 		title: 'Kvalifisering av leverandører',

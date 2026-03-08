@@ -1,102 +1,185 @@
 <script lang="ts">
 	import { qualification } from '$lib/stores/qualification.svelte';
-	import QualificationSummary from '$lib/components/qualification/QualificationSummary.svelte';
-	import QualificationMatrix from '$lib/components/qualification/QualificationMatrix.svelte';
+	import QualificationOverview from '$lib/components/qualification/QualificationOverview.svelte';
+	import RequirementView from '$lib/components/qualification/RequirementView.svelte';
+	import QualificationStatusPanel from '$lib/components/qualification/QualificationStatusPanel.svelte';
+
+	let isOverview = $derived(qualification.activeView === 'overview');
+	let activeRequirement = $derived(
+		!isOverview ? qualification.data.requirements.find((r) => r.id === qualification.activeView) : null
+	);
+
+	let mobilePanelOpen = $state(false);
 </script>
 
-<header class="qual-header">
-	<div class="qual-header-top">
-		<h1 class="qual-title">{qualification.data.title}</h1>
-		<div class="qual-status">
-			<span class="qual-status-dot"></span>
-			{qualification.data.status}
+<div class="qual-workspace">
+	<!-- Main content area -->
+	<div class="qual-main">
+		<!-- Context line -->
+		<div class="qual-context">
+			<span class="context-name">{qualification.data.title}</span>
+			{#if qualification.data.reference}
+				<span class="context-sep">·</span>
+				<span class="context-ref">{qualification.data.reference}</span>
+			{/if}
 		</div>
-	</div>
-	<div class="qual-meta">
-		<div class="qual-meta-item">
-			<span class="qual-meta-label">Anskaffelse</span>
-			<span class="qual-meta-value">Rammeavtale IKT-konsulenttjenester 2024–2028</span>
-		</div>
-		<div class="qual-meta-item">
-			<span class="qual-meta-label">Ref</span>
-			<span class="qual-meta-value">{qualification.data.reference}</span>
-		</div>
-	</div>
-</header>
 
-<QualificationSummary />
-<QualificationMatrix />
+		<div class="qual-main-content">
+			{#if isOverview}
+				<QualificationOverview />
+			{:else if activeRequirement}
+				<RequirementView requirementId={activeRequirement.id} />
+			{/if}
+		</div>
+	</div>
+
+	<!-- Right panel (desktop) -->
+	<aside class="qual-panel" class:panel-open={mobilePanelOpen}>
+		<QualificationStatusPanel activeView={qualification.activeView} />
+	</aside>
+
+	<!-- Mobile panel toggle -->
+	<button
+		class="mobile-panel-toggle"
+		onclick={() => (mobilePanelOpen = !mobilePanelOpen)}
+		aria-label={mobilePanelOpen ? 'Lukk panel' : 'Åpne panel'}
+	>
+		{mobilePanelOpen ? '✕' : '☰'}
+	</button>
+
+	<!-- Mobile backdrop -->
+	{#if mobilePanelOpen}
+		<button
+			class="mobile-backdrop"
+			onclick={() => (mobilePanelOpen = false)}
+			aria-label="Lukk panel"
+			tabindex="-1"
+		></button>
+	{/if}
+</div>
 
 <style>
-	.qual-header {
-		margin-bottom: var(--spacing-8);
-	}
-
-	.qual-header-top {
+	.qual-workspace {
 		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--spacing-4);
-		margin-bottom: var(--spacing-3);
+		height: 100%;
+		overflow: hidden;
+		position: relative;
 	}
 
-	.qual-title {
-		font-size: 20px;
-		font-weight: 700;
-		letter-spacing: -0.025em;
-		line-height: 1.2;
+	/* ── Main content ── */
+	.qual-main {
+		flex: 1;
+		min-width: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding: var(--spacing-5) var(--spacing-6);
+		display: flex;
+		flex-direction: column;
 	}
 
-	.qual-status {
-		display: inline-flex;
+	.qual-main-content {
+		flex: 1;
+		min-height: 0;
+	}
+
+	/* ── Context line ── */
+	.qual-context {
+		display: flex;
 		align-items: center;
-		gap: var(--spacing-2);
-		padding: var(--spacing-1) var(--spacing-3);
-		border-radius: 100px;
-		background: var(--color-vekt-bg);
-		border: 1px solid rgba(232, 168, 56, 0.15);
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--color-vekt);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		white-space: nowrap;
+		gap: var(--spacing-3);
+		margin-bottom: var(--spacing-5);
+		font-size: 12px;
+		color: var(--color-ink-secondary);
 		flex-shrink: 0;
 	}
 
-	.qual-status-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--color-vekt);
-		animation: pulse 2s ease-in-out infinite;
+	.context-name {
+		font-weight: 600;
 	}
 
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
-	}
-
-	.qual-meta {
-		display: flex;
-		gap: var(--spacing-6);
-		font-size: 12px;
-		color: var(--color-ink-muted);
-	}
-
-	.qual-meta-item {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-2);
-	}
-
-	.qual-meta-label {
+	.context-sep {
 		color: var(--color-ink-ghost);
 	}
 
-	.qual-meta-value {
-		color: var(--color-ink-secondary);
+	.context-ref {
 		font-family: var(--font-data);
-		font-size: 11px;
+		font-size: 10px;
+		color: var(--color-ink-ghost);
+	}
+
+	/* ── Right panel ── */
+	.qual-panel {
+		width: 300px;
+		flex-shrink: 0;
+		overflow-y: auto;
+		border-left: 1px solid var(--color-wire);
+		padding: var(--spacing-4);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-5);
+	}
+
+	/* ── Mobile ── */
+	.mobile-panel-toggle {
+		display: none;
+	}
+
+	.mobile-backdrop {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		.qual-panel {
+			position: fixed;
+			top: var(--header-height);
+			right: 0;
+			bottom: 0;
+			width: 320px;
+			background: var(--color-canvas);
+			z-index: 100;
+			transform: translateX(100%);
+			transition: transform 0.2s ease-out;
+		}
+
+		.qual-panel.panel-open {
+			transform: translateX(0);
+		}
+
+		.mobile-panel-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: fixed;
+			bottom: var(--spacing-5);
+			right: var(--spacing-5);
+			width: var(--spacing-10);
+			height: var(--spacing-10);
+			border-radius: 50%;
+			background: var(--color-felt-raised);
+			border: 1px solid var(--color-wire-strong);
+			color: var(--color-ink);
+			font-size: 16px;
+			cursor: pointer;
+			z-index: 101;
+			transition: background 0.12s;
+		}
+
+		.mobile-panel-toggle:hover {
+			background: var(--color-felt-active);
+		}
+
+		.mobile-backdrop {
+			display: block;
+			position: fixed;
+			inset: 0;
+			background: var(--color-overlay);
+			z-index: 99;
+			border: none;
+			cursor: default;
+		}
+
+		.qual-main {
+			padding: var(--spacing-3) var(--spacing-4);
+		}
 	}
 </style>
