@@ -1,16 +1,10 @@
 <script lang="ts">
 	import { qualification } from '$lib/stores/qualification.svelte';
 
-	interface Props {
-		activeView: string;
-	}
-
-	let { activeView }: Props = $props();
-
-	let isOverview = $derived(activeView === 'overview');
+	let isOverview = $derived(qualification.activeView === 'overview');
 
 	let activeReq = $derived(
-		!isOverview ? qualification.data.requirements.find((r) => r.id === activeView) : null
+		!isOverview ? qualification.data.requirements.find((r) => r.id === qualification.activeView) : null
 	);
 
 	let items = $derived(

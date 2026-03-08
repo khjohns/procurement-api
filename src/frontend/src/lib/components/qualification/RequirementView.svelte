@@ -12,23 +12,19 @@
 
 	let { requirementId }: Props = $props();
 
-	let requirement = $derived(
-		qualification.data.requirements.find((r) => r.id === requirementId)!
-	);
+	let nav = $derived.by(() => {
+		const reqs = qualification.data.requirements;
+		const index = reqs.findIndex((r) => r.id === requirementId);
+		return {
+			requirement: reqs[index],
+			prev: index > 0 ? reqs[index - 1] : null,
+			next: index < reqs.length - 1 ? reqs[index + 1] : null
+		};
+	});
 
-	let reqIndex = $derived(
-		qualification.data.requirements.findIndex((r) => r.id === requirementId)
-	);
-
-	let prevReq = $derived(
-		reqIndex > 0 ? qualification.data.requirements[reqIndex - 1] : null
-	);
-
-	let nextReq = $derived(
-		reqIndex < qualification.data.requirements.length - 1
-			? qualification.data.requirements[reqIndex + 1]
-			: null
-	);
+	let requirement = $derived(nav.requirement);
+	let prevReq = $derived(nav.prev);
+	let nextReq = $derived(nav.next);
 
 	const docOptions: { value: DocumentationStatus; label: string }[] = [
 		{ value: 'submitted', label: 'Levert' },
@@ -370,24 +366,14 @@
 		font-weight: 600;
 	}
 
-	.option-submitted {
-		background: var(--color-score-high-bg);
-		border-color: rgba(61, 154, 110, 0.18);
-		color: var(--color-score-high);
-	}
-
-	.option-not-submitted {
-		background: var(--color-score-low-bg);
-		border-color: rgba(196, 88, 88, 0.18);
-		color: var(--color-score-low);
-	}
-
+	.option-submitted,
 	.option-met {
 		background: var(--color-score-high-bg);
 		border-color: rgba(61, 154, 110, 0.18);
 		color: var(--color-score-high);
 	}
 
+	.option-not-submitted,
 	.option-not-met {
 		background: var(--color-score-low-bg);
 		border-color: rgba(196, 88, 88, 0.18);

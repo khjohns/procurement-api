@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { qualification } from '$lib/stores/qualification.svelte';
 	import QualificationCell from './QualificationCell.svelte';
-
-	let hoverReq = $state<string | null>(null);
 </script>
 
 <div class="section-label">Kvalifikasjonsmatrise</div>
@@ -28,9 +26,6 @@
 				<tr
 					class="row-req"
 					class:row-last={isLast}
-					class:row-hover={hoverReq === req.id}
-					onmouseenter={() => (hoverReq = req.id)}
-					onmouseleave={() => (hoverReq = null)}
 					onclick={() => qualification.setActiveView(req.id)}
 					role="button"
 					tabindex={0}
@@ -134,8 +129,7 @@
 		transition: background 0.08s;
 	}
 
-	.row-req:hover,
-	.row-hover {
+	.row-req:hover {
 		background: var(--color-felt-hover);
 	}
 

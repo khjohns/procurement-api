@@ -35,7 +35,7 @@
 
 	<!-- Right panel (desktop) -->
 	<aside class="qual-panel" class:panel-open={mobilePanelOpen}>
-		<QualificationStatusPanel activeView={qualification.activeView} />
+		<QualificationStatusPanel />
 	</aside>
 
 	<!-- Mobile panel toggle -->

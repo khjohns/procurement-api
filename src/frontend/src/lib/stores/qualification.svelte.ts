@@ -208,42 +208,38 @@ class QualificationStore {
 
 	// ── Mutation methods ──
 
-	setDocumentation(reqId: string, supplierId: string, status: DocumentationStatus) {
+	private getAssessment(reqId: string, supplierId: string): QualificationAssessment | null {
 		const req = this.data.requirements.find((r) => r.id === reqId);
-		if (!req) return;
+		if (!req) return null;
 		if (!req.assessments[supplierId]) req.assessments[supplierId] = emptyAssessment();
-		req.assessments[supplierId].documentation = status;
+		return req.assessments[supplierId];
+	}
+
+	setDocumentation(reqId: string, supplierId: string, status: DocumentationStatus) {
+		const a = this.getAssessment(reqId, supplierId);
+		if (a) a.documentation = status;
 	}
 
 	setBasis(reqId: string, supplierId: string, basis: QualificationBasis) {
-		const req = this.data.requirements.find((r) => r.id === reqId);
-		if (!req) return;
-		if (!req.assessments[supplierId]) req.assessments[supplierId] = emptyAssessment();
-		req.assessments[supplierId].basis = basis;
-		if (basis === 'own') {
-			req.assessments[supplierId].supportEntityName = '';
-		}
+		const a = this.getAssessment(reqId, supplierId);
+		if (!a) return;
+		a.basis = basis;
+		if (basis === 'own') a.supportEntityName = '';
 	}
 
 	setSupportEntityName(reqId: string, supplierId: string, name: string) {
-		const req = this.data.requirements.find((r) => r.id === reqId);
-		if (!req) return;
-		if (!req.assessments[supplierId]) req.assessments[supplierId] = emptyAssessment();
-		req.assessments[supplierId].supportEntityName = name;
+		const a = this.getAssessment(reqId, supplierId);
+		if (a) a.supportEntityName = name;
 	}
 
 	setVerdict(reqId: string, supplierId: string, verdict: QualificationVerdict) {
-		const req = this.data.requirements.find((r) => r.id === reqId);
-		if (!req) return;
-		if (!req.assessments[supplierId]) req.assessments[supplierId] = emptyAssessment();
-		req.assessments[supplierId].verdict = verdict;
+		const a = this.getAssessment(reqId, supplierId);
+		if (a) a.verdict = verdict;
 	}
 
 	setNote(reqId: string, supplierId: string, text: string) {
-		const req = this.data.requirements.find((r) => r.id === reqId);
-		if (!req) return;
-		if (!req.assessments[supplierId]) req.assessments[supplierId] = emptyAssessment();
-		req.assessments[supplierId].notes = text;
+		const a = this.getAssessment(reqId, supplierId);
+		if (a) a.notes = text;
 	}
 
 	initialize(newData: QualificationData) {
