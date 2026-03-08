@@ -1,14 +1,6 @@
 <script lang="ts">
 	import { qualification } from '$lib/stores/qualification.svelte';
 	import QualificationCell from './QualificationCell.svelte';
-	import QualificationPanel from './QualificationPanel.svelte';
-
-	let expandedPanel = $state<string | null>(null);
-
-	function togglePanel(reqId: string, supplierId: string) {
-		const key = `${reqId}:${supplierId}`;
-		expandedPanel = expandedPanel === key ? null : key;
-	}
 </script>
 
 <div class="section-label">Kvalifikasjonsmatrise</div>
@@ -31,9 +23,16 @@
 		<tbody>
 			{#each qualification.data.requirements as req, ri}
 				{@const isLast = ri === qualification.data.requirements.length - 1}
-				<tr class="row-req" class:row-last={isLast}>
+				<tr
+					class="row-req"
+					class:row-last={isLast}
+					onclick={() => qualification.setActiveView(req.id)}
+					role="button"
+					tabindex={0}
+					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); qualification.setActiveView(req.id); } }}
+				>
 					<td class="cell-req">
-						<div class="req-name">{req.name}</div>
+						<div class="req-name">{req.name}<span class="drill-chevron">›</span></div>
 						{#if req.description}
 							<div class="req-desc">{req.description}</div>
 						{/if}
@@ -43,27 +42,15 @@
 						{@const verdict = a?.verdict ?? 'not_assessed'}
 						{@const hasSupport = a?.basis === 'supported' && !!a?.supportEntityName}
 						{@const hasNotes = !!(a?.notes)}
-						{@const panelKey = `${req.id}:${supplier.id}`}
 						<QualificationCell
 							{verdict}
 							{hasSupport}
 							{hasNotes}
-							expanded={expandedPanel === panelKey}
-							onclick={() => togglePanel(req.id, supplier.id)}
+							expanded={false}
+							onclick={() => { /* row handles navigation */ }}
 						/>
 					{/each}
 				</tr>
-
-				{#each qualification.data.suppliers as supplier}
-					{#if expandedPanel === `${req.id}:${supplier.id}`}
-						<QualificationPanel
-							reqId={req.id}
-							reqName={req.name}
-							supplierId={supplier.id}
-							supplierName={supplier.name}
-						/>
-					{/if}
-				{/each}
 			{/each}
 
 			<!-- Result row -->
@@ -88,30 +75,6 @@
 			</tr>
 		</tbody>
 	</table>
-</div>
-
-<!-- Progress -->
-<div class="qual-progress">
-	<div class="progress-item">
-		<span class="progress-label">Vurderinger</span>
-		<span class="progress-value">{qualification.progress.assessments.filled} / {qualification.progress.assessments.total}</span>
-		<div class="progress-bar">
-			<div
-				class="progress-bar-fill"
-				style="width: {(qualification.progress.assessments.filled / Math.max(qualification.progress.assessments.total, 1)) * 100}%"
-			></div>
-		</div>
-	</div>
-	<div class="progress-item">
-		<span class="progress-label">Dokumentasjon</span>
-		<span class="progress-value">{qualification.progress.documentation.filled} / {qualification.progress.documentation.total}</span>
-		<div class="progress-bar">
-			<div
-				class="progress-bar-fill partial"
-				style="width: {(qualification.progress.documentation.filled / Math.max(qualification.progress.documentation.total, 1)) * 100}%"
-			></div>
-		</div>
-	</div>
 </div>
 
 <style>
@@ -162,6 +125,17 @@
 	.row-req {
 		background: var(--color-canvas);
 		border-bottom: 1px solid var(--color-wire);
+		cursor: pointer;
+		transition: background 0.08s;
+	}
+
+	.row-req:hover {
+		background: var(--color-felt-hover);
+	}
+
+	.row-req:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.row-last {
@@ -178,6 +152,18 @@
 		color: var(--color-ink);
 		font-size: 12px;
 		margin-bottom: 2px;
+	}
+
+	.drill-chevron {
+		font-size: 14px;
+		color: var(--color-ink-ghost);
+		margin-left: var(--spacing-2);
+		opacity: 0;
+		transition: opacity 0.1s;
+	}
+
+	.row-req:hover .drill-chevron {
+		opacity: 1;
 	}
 
 	.req-desc {
@@ -229,52 +215,5 @@
 
 	.result-pending {
 		color: var(--color-ink-ghost);
-	}
-
-	/* Progress */
-	.qual-progress {
-		margin-top: var(--spacing-4);
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-6);
-	}
-
-	.progress-item {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-3);
-		font-size: 12px;
-		color: var(--color-ink-muted);
-	}
-
-	.progress-label {
-		color: var(--color-ink-ghost);
-		font-size: 11px;
-	}
-
-	.progress-value {
-		font-family: var(--font-data);
-		font-variant-numeric: tabular-nums;
-		font-size: 12px;
-		color: var(--color-ink-secondary);
-	}
-
-	.progress-bar {
-		width: 80px;
-		height: 3px;
-		background: var(--color-felt-raised);
-		border-radius: 2px;
-		overflow: hidden;
-	}
-
-	.progress-bar-fill {
-		height: 100%;
-		border-radius: 2px;
-		background: var(--color-score-high);
-		transition: width 0.3s ease-out;
-	}
-
-	.progress-bar-fill.partial {
-		background: var(--color-vekt-dim);
 	}
 </style>
