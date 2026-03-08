@@ -32,7 +32,7 @@
 					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); qualification.setActiveView(req.id); } }}
 				>
 					<td class="cell-req">
-						<div class="req-name">{req.name}</div>
+						<div class="req-name">{req.name}<span class="drill-chevron">›</span></div>
 						{#if req.description}
 							<div class="req-desc">{req.description}</div>
 						{/if}
@@ -47,7 +47,7 @@
 							{hasSupport}
 							{hasNotes}
 							expanded={false}
-							onclick={() => qualification.setActiveView(req.id)}
+							onclick={() => { /* row handles navigation */ }}
 						/>
 					{/each}
 				</tr>
@@ -152,6 +152,18 @@
 		color: var(--color-ink);
 		font-size: 12px;
 		margin-bottom: 2px;
+	}
+
+	.drill-chevron {
+		font-size: 14px;
+		color: var(--color-ink-ghost);
+		margin-left: var(--spacing-2);
+		opacity: 0;
+		transition: opacity 0.1s;
+	}
+
+	.row-req:hover .drill-chevron {
+		opacity: 1;
 	}
 
 	.req-desc {

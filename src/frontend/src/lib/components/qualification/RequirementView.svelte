@@ -65,7 +65,7 @@
 
 <!-- Requirement description -->
 {#if requirement.description}
-	<div class="req-description">{requirement.description}</div>
+	<p class="req-description">{requirement.description}</p>
 {/if}
 
 <!-- Supplier assessments -->
@@ -155,7 +155,7 @@
 			</div>
 		</div>
 
-		<div class="notes-section">
+		<div class="notes-section" style="margin-top: var(--spacing-3); padding-top: var(--spacing-3); border-top: 1px solid var(--color-wire);">
 			<div class="field-label">Begrunnelse</div>
 			<textarea
 				class="notes-textarea"
@@ -249,20 +249,15 @@
 		font-size: 12px;
 		color: var(--color-ink-muted);
 		line-height: 1.5;
-		margin-bottom: var(--spacing-5);
-		padding: var(--spacing-3) var(--spacing-4);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-md);
+		margin: 0 0 var(--spacing-4) 0;
 	}
 
 	/* ── Supplier sections ── */
 	.supplier-section {
-		padding: var(--spacing-4) var(--spacing-5);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-lg);
-		margin-bottom: var(--spacing-4);
+		padding: var(--spacing-3) var(--spacing-4);
+		margin-bottom: var(--spacing-3);
 		border-left: 3px solid var(--color-wire-strong);
+		border-bottom: 1px solid var(--color-wire);
 	}
 
 	.section-met {
@@ -357,6 +352,11 @@
 		background: var(--color-felt-hover);
 		border-color: var(--color-wire-strong);
 		color: var(--color-ink);
+	}
+
+	.option-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.option-active {
