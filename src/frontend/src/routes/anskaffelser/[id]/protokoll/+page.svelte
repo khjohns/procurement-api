@@ -11,6 +11,7 @@
 	import DataQualityTable from '$lib/components/protokoll/DataQualityTable.svelte';
 	import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
 	import DateInput from '$lib/components/protokoll/DateInput.svelte';
+	import { tick } from 'svelte';
 	import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
 	import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
 
@@ -96,6 +97,66 @@
 				: 'var(--color-score-low)'
 	);
 
+	// ── Shared scroll helper ──
+
+	function scrollToSection(sectionId: string) {
+		tick().then(() => {
+			document.getElementById(`section-header-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		});
+	}
+
+	// ── Section nav popup ──
+
+	let navPopupOpen = $state(false);
+
+	function handleNavJump(sectionId: string) {
+		if (!protokoll.isSectionOpen(sectionId)) {
+			protokoll.toggleSection(sectionId);
+		}
+		navPopupOpen = false;
+		scrollToSection(sectionId);
+	}
+
+	function handleNextMissing() {
+		const id = protokoll.nextMissingSectionId;
+		if (!id) return;
+		handleNavJump(id);
+	}
+
+	// ── Auto-save indicator ──
+
+	let showSaved = $state(false);
+
+	$effect(() => {
+		const ts = protokoll.lastSavedAt;
+		if (!ts) return;
+		showSaved = true;
+		const timer = setTimeout(() => { showSaved = false; }, 1500);
+		return () => clearTimeout(timer);
+	});
+
+	// ── scrollIntoView after section toggle ──
+
+	function handleSectionToggle(sectionId: string) {
+		const wasOpen = protokoll.isSectionOpen(sectionId);
+		protokoll.toggleSection(sectionId);
+		if (!wasOpen) {
+			scrollToSection(sectionId);
+		}
+	}
+
+	// ── Vis/Lukk alle ──
+
+	let allOpen = $derived(protokoll.openCount === protokoll.visibleSections.length && protokoll.visibleSections.length > 0);
+
+	function handleToggleAll() {
+		if (allOpen) {
+			protokoll.closeAllSections();
+		} else {
+			protokoll.openAllSections();
+		}
+	}
+
 	// ── Procurement search ──
 
 	function handleSearch() {
@@ -110,6 +171,7 @@
 
 	function handleWindowClick() {
 		if (searchOpen) searchOpen = false;
+		if (navPopupOpen) navPopupOpen = false;
 	}
 
 	// ── Generate docx ──
@@ -587,12 +649,15 @@
 			</div>
 			<button
 				class="generate-btn"
+				class:generate-btn-draft={protokoll.completeness.percent < 100}
 				disabled={generating}
 				onclick={handleGenerate}
-				title={protokoll.completeness.percent < 100 ? 'Noen seksjoner er ufullstendige' : ''}
+				title={protokoll.completeness.percent < 100 ? `${protokoll.completeness.done}/${protokoll.completeness.total} seksjoner fullført` : ''}
 			>
 				{#if generating}
 					<span class="spinner"></span> Genererer...
+				{:else if protokoll.completeness.percent < 100}
+					&#8595; Generer utkast
 				{:else}
 					&#8595; Generer .docx
 				{/if}
@@ -644,7 +709,7 @@
 					<SectionAccordion
 						{section}
 						open={protokoll.isSectionOpen(section.id)}
-						ontoggle={() => protokoll.toggleSection(section.id)}
+						ontoggle={() => handleSectionToggle(section.id)}
 					>
 						{#each section.fields as field (field.key)}
 							{@const fieldKey = field.key}
@@ -778,19 +843,64 @@
 					{/if}
 				</div>
 
-				{#if protokoll.openCount >= 2}
-					<button class="footer-collapse" onclick={() => protokoll.closeAllSections()}>
-						Lukk alle
+				{#if showSaved}
+					<span class="footer-saved">Lagret</span>
+				{/if}
+
+				{#if protokoll.nextMissingSectionId}
+					<button class="footer-action" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
+						&#8594; Neste manglende
 					</button>
 				{/if}
 
+				{#if protokoll.openCount >= 1}
+					<button class="footer-action" onclick={handleToggleAll}>
+						{allOpen ? 'Lukk alle' : 'Vis alle'}
+					</button>
+				{/if}
+
+				<!-- Section nav popup -->
+				<div class="footer-nav-wrap">
+					<button
+						class="footer-action"
+						onclick={() => navPopupOpen = !navPopupOpen}
+						aria-expanded={navPopupOpen}
+						aria-controls="section-nav-popup"
+					>
+						&#9776; Seksjoner
+					</button>
+					{#if navPopupOpen}
+						<div class="section-nav-popup" id="section-nav-popup" role="menu">
+							{#each chapters as group}
+								<div class="nav-chapter">{group.chapter}</div>
+								{#each group.sections as section}
+									<button
+										class="nav-item"
+										role="menuitem"
+										onclick={() => handleNavJump(section.id)}
+									>
+										<span class="nav-num">{section.sectionNumber}</span>
+										<span class="nav-title">{section.title}</span>
+										<span class="nav-badge nav-badge-{section.status}">
+											{section.status === 'complete' ? '✓' : section.status === 'partial' ? '◐' : '○'}
+										</span>
+									</button>
+								{/each}
+							{/each}
+						</div>
+					{/if}
+				</div>
+
 				<button
 					class="generate-btn generate-btn-footer"
+					class:generate-btn-draft={protokoll.completeness.percent < 100}
 					disabled={generating}
 					onclick={handleGenerate}
 				>
 					{#if generating}
 						<span class="spinner"></span> Genererer...
+					{:else if protokoll.completeness.percent < 100}
+						&#8595; Generer utkast
 					{:else}
 						&#8595; Generer .docx
 					{/if}
@@ -826,7 +936,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
-		color: var(--color-ink-muted);
+		color: var(--color-ink-ghost);
 		margin-bottom: var(--spacing-2);
 	}
 
@@ -880,6 +990,17 @@
 	.generate-btn:focus-visible {
 		outline: none;
 		box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-vekt);
+	}
+
+	.generate-btn-draft {
+		background: var(--color-felt-active);
+		color: var(--color-ink-secondary);
+		border: 1px solid var(--color-wire);
+	}
+
+	.generate-btn-draft:hover:not(:disabled) {
+		background: var(--color-felt-hover);
+		filter: none;
 	}
 
 	.generate-btn-footer {
@@ -1316,7 +1437,7 @@
 	.sticky-footer {
 		position: fixed;
 		bottom: 0;
-		left: 228px;
+		left: var(--sidebar-width, 228px);
 		right: 0;
 		background: var(--color-felt);
 		border-top: 1px solid var(--color-wire);
@@ -1368,7 +1489,19 @@
 		color: var(--color-ink-secondary);
 	}
 
-	.footer-collapse {
+	.footer-saved {
+		font-size: 11px;
+		color: var(--color-ink-ghost);
+		font-family: var(--font-ui);
+		animation: fade-saved 1.5s ease-out forwards;
+	}
+
+	@keyframes fade-saved {
+		0%, 60% { opacity: 1; }
+		100% { opacity: 0; }
+	}
+
+	.footer-action {
 		padding: var(--spacing-1) var(--spacing-3);
 		background: none;
 		border: 1px solid var(--color-wire);
@@ -1378,22 +1511,120 @@
 		font-family: var(--font-ui);
 		cursor: pointer;
 		transition: background-color 0.12s, color 0.12s;
+		white-space: nowrap;
 	}
 
-	.footer-collapse:hover {
+	.footer-action:hover {
 		background: var(--color-felt-hover);
 		color: var(--color-ink);
 	}
 
-	.footer-collapse:focus-visible {
+	.footer-action:focus-visible {
 		outline: none;
 		border-color: var(--color-wire-focus);
+	}
+
+	/* ── Section nav popup ── */
+	.footer-nav-wrap {
+		position: relative;
+	}
+
+	.section-nav-popup {
+		position: absolute;
+		bottom: calc(100% + var(--spacing-2));
+		right: 0;
+		width: 320px;
+		max-height: 480px;
+		overflow-y: auto;
+		background: var(--color-felt-raised);
+		border: 1px solid var(--color-wire-strong);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-2) 0;
+		z-index: 30;
+	}
+
+	.nav-chapter {
+		padding: var(--spacing-2) var(--spacing-4);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: var(--color-ink-ghost);
+	}
+
+	.nav-chapter:not(:first-child) {
+		margin-top: var(--spacing-1);
+		border-top: 1px solid var(--color-wire);
+		padding-top: var(--spacing-3);
+	}
+
+	.nav-item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		width: 100%;
+		padding: var(--spacing-1) var(--spacing-4);
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		font-family: var(--font-ui);
+		transition: background-color 0.08s;
+	}
+
+	.nav-item:hover {
+		background: var(--color-felt-hover);
+	}
+
+	.nav-item:focus-visible {
+		outline: none;
+		background: var(--color-felt-hover);
+	}
+
+	.nav-num {
+		font-family: var(--font-data);
+		font-size: 11px;
+		color: var(--color-ink-muted);
+		font-variant-numeric: tabular-nums;
+		min-width: 18px;
+		flex-shrink: 0;
+	}
+
+	.nav-title {
+		font-size: 12px;
+		color: var(--color-ink);
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.nav-badge {
+		font-size: 10px;
+		flex-shrink: 0;
+	}
+
+	.nav-badge-complete {
+		color: var(--color-score-high);
+	}
+
+	.nav-badge-partial {
+		color: var(--color-vekt);
+	}
+
+	.nav-badge-empty {
+		color: var(--color-score-low);
 	}
 
 	/* ── Responsive ── */
 	@media (max-width: 1024px) {
 		.sticky-footer {
 			left: 0;
+		}
+
+		.section-nav-popup {
+			width: 280px;
 		}
 	}
 

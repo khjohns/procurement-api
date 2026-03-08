@@ -76,6 +76,9 @@ class ProtokollStore {
 	private _saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private _lastSavedJson = '';
 
+	/** Timestamp of last successful save (for UI indicator). */
+	lastSavedAt = $state<number | null>(null);
+
 	// Derived: which document part (matches Python logic)
 	isDel2 = $derived(
 		DEL2_THRESHOLDS.has(this.procurement?.threshold ?? '')
@@ -294,6 +297,18 @@ class ProtokollStore {
 		this.openSections = new Set();
 	}
 
+	openAllSections() {
+		this.openSections = new Set(this.visibleSections.map((s) => s.id));
+	}
+
+	/** ID of the first incomplete section, or null if all complete. */
+	get nextMissingSectionId(): string | null {
+		const missing = this.visibleSections.find(
+			(s) => s.id !== 'datakvalitet' && s.status !== 'complete'
+		);
+		return missing?.id ?? null;
+	}
+
 	isSectionOpen(sectionId: string): boolean {
 		return this.openSections.has(sectionId);
 	}
@@ -385,6 +400,7 @@ class ProtokollStore {
 			if (json === this._lastSavedJson) return;
 			localStorage.setItem(this._storageKey(procId), json);
 			this._lastSavedJson = json;
+			this.lastSavedAt = Date.now();
 		} catch {
 			// localStorage full or unavailable — ignore
 		}
