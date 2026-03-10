@@ -309,6 +309,21 @@ class ProtokollStore {
 		return missing?.id ?? null;
 	}
 
+	/** Next incomplete section after the given one, wrapping around. */
+	nextMissingSectionAfter(currentId: string | null): string | null {
+		const sections = this.visibleSections.filter(
+			(s) => s.id !== 'datakvalitet' && s.status !== 'complete'
+		);
+		if (sections.length === 0) return null;
+		if (!currentId) return sections[0].id;
+		const allIds = this.visibleSections.map((s) => s.id);
+		const currentIdx = allIds.indexOf(currentId);
+		// Find first missing section after current
+		const after = sections.find((s) => allIds.indexOf(s.id) > currentIdx);
+		// Wrap around if nothing after
+		return after?.id ?? sections[0].id;
+	}
+
 	isSectionOpen(sectionId: string): boolean {
 		return this.openSections.has(sectionId);
 	}

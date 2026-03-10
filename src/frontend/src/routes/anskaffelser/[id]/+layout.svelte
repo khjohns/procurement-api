@@ -138,7 +138,8 @@
 	.app-main {
 		flex: 1;
 		min-height: 0;
-		overflow: hidden;
+		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	@media (max-width: 1023px) {

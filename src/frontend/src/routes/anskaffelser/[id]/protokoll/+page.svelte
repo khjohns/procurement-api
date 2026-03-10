@@ -109,17 +109,19 @@
 	// ── Section nav popup ──
 
 	let navPopupOpen = $state(false);
+	let lastVisitedSectionId = $state<string | null>(null);
 
 	function handleNavJump(sectionId: string) {
 		if (!protokoll.isSectionOpen(sectionId)) {
 			protokoll.toggleSection(sectionId);
 		}
 		navPopupOpen = false;
+		lastVisitedSectionId = sectionId;
 		scrollToSection(sectionId);
 	}
 
 	function handleNextMissing() {
-		const id = protokoll.nextMissingSectionId;
+		const id = protokoll.nextMissingSectionAfter(lastVisitedSectionId);
 		if (!id) return;
 		handleNavJump(id);
 	}
@@ -142,6 +144,7 @@
 		const wasOpen = protokoll.isSectionOpen(sectionId);
 		protokoll.toggleSection(sectionId);
 		if (!wasOpen) {
+			lastVisitedSectionId = sectionId;
 			scrollToSection(sectionId);
 		}
 	}
@@ -648,21 +651,6 @@
 					&middot; {protokoll.delLabel}
 				</div>
 			</div>
-			<button
-				class="generate-btn"
-				class:generate-btn-draft={protokoll.completeness.percent < 100}
-				disabled={generating}
-				onclick={handleGenerate}
-				title={protokoll.completeness.percent < 100 ? `${protokoll.completeness.done}/${protokoll.completeness.total} seksjoner fullført` : ''}
-			>
-				{#if generating}
-					<span class="spinner"></span> Genererer...
-				{:else if protokoll.completeness.percent < 100}
-					&#8595; Generer utkast
-				{:else}
-					&#8595; Generer .docx
-				{/if}
-			</button>
 		</header>
 
 		<!-- Progress strip -->
@@ -849,28 +837,32 @@
 				{/if}
 
 				{#if protokoll.nextMissingSectionId}
-					<button class="footer-action footer-action-responsive" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h9M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-						Neste
+					<button class="footer-action footer-action-stacked footer-action-responsive" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
+						<svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M1 6h9M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						<span>Neste</span>
 					</button>
 				{/if}
 
-				{#if protokoll.openCount >= 1}
-					<button class="footer-action footer-action-responsive" onclick={handleToggleAll}>
-						{allOpen ? 'Lukk alle' : 'Vis alle'}
-					</button>
-				{/if}
+				<button class="footer-action footer-action-stacked footer-action-responsive" onclick={handleToggleAll}>
+					{#if allOpen}
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5.5L7 9.5L11 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						<span>Lukk alle</span>
+					{:else}
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 8.5L7 4.5L11 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						<span>Vis alle</span>
+					{/if}
+				</button>
 
 				<!-- Section nav popup -->
 				<div class="footer-nav-wrap">
 					<button
-						class="footer-action"
+						class="footer-action footer-action-stacked"
 						onclick={(e) => { e.stopPropagation(); navPopupOpen = !navPopupOpen; }}
 						aria-expanded={navPopupOpen}
 						aria-controls="section-nav-popup"
 					>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-						Seksjoner
+						<svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+						<span>Seksjoner</span>
 					</button>
 					{#if navPopupOpen}
 						<div class="section-nav-popup" id="section-nav-popup" transition:slide={{ duration: 150 }}>
@@ -1437,18 +1429,16 @@
 
 	/* ── Sticky footer ── */
 	.sticky-footer {
-		position: fixed;
+		position: sticky;
 		bottom: 0;
-		left: var(--sidebar-width, 228px);
-		right: 0;
+		max-width: 800px;
+		margin: 0 auto;
 		background: var(--color-felt);
 		border-top: 1px solid var(--color-wire);
 		z-index: 20;
 	}
 
 	.footer-inner {
-		max-width: 800px;
-		margin: 0 auto;
 		padding: var(--spacing-3) var(--spacing-4);
 		display: flex;
 		align-items: center;
@@ -1524,6 +1514,12 @@
 	.footer-action:focus-visible {
 		outline: none;
 		border-color: var(--color-wire-focus);
+	}
+
+	.footer-action-stacked {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-1);
 	}
 
 	/* ── Section nav popup ── */
@@ -1622,10 +1618,6 @@
 
 	/* ── Responsive ── */
 	@media (max-width: 1024px) {
-		.sticky-footer {
-			left: 0;
-		}
-
 		.section-nav-popup {
 			width: 280px;
 		}
