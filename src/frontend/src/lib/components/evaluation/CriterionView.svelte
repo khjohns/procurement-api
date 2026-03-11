@@ -1367,6 +1367,11 @@
 		background: var(--color-felt-hover);
 	}
 
+	.cell-score:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.cell-score.cell-selected {
 		background: var(--color-vekt-bg);
 	}
@@ -1468,7 +1473,7 @@
 	.role-config-label {
 		font-family: var(--font-ui);
 		font-size: 11px;
-		font-weight: 700;
+		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-ink-ghost);
@@ -1501,7 +1506,7 @@
 		border: none;
 		outline: none;
 		width: 80px;
-		padding: 2px var(--spacing-1);
+		padding: var(--spacing-1);
 	}
 
 	.role-chip-input::placeholder {
@@ -1510,7 +1515,12 @@
 
 	.role-chip-input:focus {
 		background: var(--color-canvas);
-		border-radius: 2px;
+		border-radius: var(--radius-sm);
+	}
+
+	.role-chip-input:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.role-chip-remove {
@@ -1588,7 +1598,7 @@
 		border: none;
 		outline: none;
 		text-align: center;
-		padding: 1px 2px;
+		padding: var(--spacing-1);
 		text-transform: none;
 		letter-spacing: normal;
 		font-family: var(--font-ui);
@@ -1601,7 +1611,12 @@
 
 	.resource-person-input:focus {
 		background: var(--color-canvas);
-		border-radius: 2px;
+		border-radius: var(--radius-sm);
+	}
+
+	.resource-person-input:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.resource-cell {
@@ -1644,7 +1659,7 @@
 		font-size: 11px;
 		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink);
 	}
 

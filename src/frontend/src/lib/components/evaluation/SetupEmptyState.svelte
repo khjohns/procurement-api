@@ -315,9 +315,14 @@
 		background: var(--color-vekt-bg-strong);
 	}
 
+	.empty-action:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	/* ── Section label ── */
 	.section-label {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -557,6 +562,11 @@
 		background: var(--color-felt-active);
 	}
 
+	.move-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.move-btn:disabled {
 		opacity: 0.2;
 		cursor: default;
@@ -586,6 +596,12 @@
 	.criterion-remove:hover {
 		color: var(--color-score-low);
 		background: var(--color-felt-active);
+	}
+
+	.criterion-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
 	}
 
 	.add-sub-btn {
@@ -618,6 +634,11 @@
 		color: var(--color-vekt-dim);
 	}
 
+	.add-sub-btn:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.add-criterion-btn {
 		display: block;
 		width: 100%;
@@ -637,6 +658,11 @@
 	.add-criterion-btn:hover {
 		color: var(--color-vekt);
 		background: var(--color-vekt-bg);
+	}
+
+	.add-criterion-btn:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* Total row */
@@ -705,6 +731,11 @@
 		background: var(--color-felt-hover);
 	}
 
+	.eval-type-toggle:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.eval-type-toggle.eval-type-item {
 		color: var(--color-vekt-dim);
 		border-color: var(--color-vekt-bg-strong);
@@ -744,7 +775,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 		white-space: nowrap;
 	}
@@ -801,6 +832,11 @@
 		font-weight: 600;
 	}
 
+	.agg-option:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	/* ── Item dimensions ── */
 	.item-dimensions {
 		display: flex;
@@ -812,7 +848,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 	}
 
@@ -901,6 +937,12 @@
 		background: var(--color-felt-active);
 	}
 
+	.item-dimension-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
+	}
+
 	.item-dimension-add {
 		align-self: flex-start;
 		padding: var(--spacing-1) var(--spacing-2);
@@ -916,6 +958,11 @@
 
 	.item-dimension-add:hover {
 		color: var(--color-vekt-dim);
+	}
+
+	.item-dimension-add:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* ── Roles config ── */
@@ -934,7 +981,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 	}
 
@@ -991,6 +1038,12 @@
 		background: var(--color-felt-active);
 	}
 
+	.role-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
+	}
+
 	.role-add {
 		align-self: flex-start;
 		padding: var(--spacing-1) var(--spacing-2);
@@ -1006,5 +1059,10 @@
 
 	.role-add:hover {
 		color: var(--color-vekt-dim);
+	}
+
+	.role-add:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 </style>

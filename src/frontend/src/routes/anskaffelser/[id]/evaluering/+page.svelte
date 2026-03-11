@@ -322,6 +322,12 @@
 		color: var(--color-ink);
 	}
 
+	.drawer-close:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		border-radius: var(--radius-sm);
+	}
+
 	.drawer-close-icon {
 		font-size: 10px;
 	}
@@ -554,6 +560,11 @@
 		background: var(--color-vekt-bg-strong);
 	}
 
+	.insights-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.insights-btn-arrow {
 		font-size: 10px;
 		transition: transform 0.2s;
@@ -608,13 +619,18 @@
 		background: var(--color-vekt-bg);
 	}
 
+	.setup-toggle-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.setup-toggle-close {
 		padding: var(--spacing-2) var(--spacing-3);
 		font-family: var(--font-ui);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 		background: none;
 		border: 1px solid var(--color-wire);
@@ -626,6 +642,11 @@
 	.setup-toggle-close:hover {
 		color: var(--color-ink);
 		border-color: var(--color-wire-strong);
+	}
+
+	.setup-toggle-close:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* ── Mobile panel toggle ── */
