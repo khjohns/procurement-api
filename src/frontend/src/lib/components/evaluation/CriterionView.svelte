@@ -313,11 +313,12 @@
 					<tr>
 						<th class="th-ic-name"></th>
 						{#each evaluation.data.suppliers as supplier}
+							{@const supplierScore = getSupplierResourceScore(supplier.id)}
 							<th class="th-supplier-group" colspan={roles.length}>
 								<span class="supplier-group-name">{supplier.name}</span>
 								<span class="supplier-group-agg">
-									<span class="agg-score tier-{scoreTier(getSupplierResourceScore(supplier.id))}">
-										{getSupplierResourceScore(supplier.id).toFixed(1)}
+									<span class="agg-score tier-{scoreTier(supplierScore)}">
+										{supplierScore.toFixed(1)}
 									</span>
 								</span>
 							</th>

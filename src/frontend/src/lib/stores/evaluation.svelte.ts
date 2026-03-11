@@ -99,30 +99,31 @@ export function criterionMode(c: Criterion): 'leaf' | 'traditional' | 'resource'
 
 // ── Score computation functions ──
 
-/** Weighted average of item-criteria scores for a single item. */
-export function itemScore(item: EvaluationItem, criteria: ItemCriterion[]): number {
-	const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
+/** Clamp a score to 0–10. */
+function clampScore(value: number): number {
+	return clampScore(value);
+}
+
+/** Weighted average of an item's scores across weighted dimensions. */
+export function weightedItemScore(item: EvaluationItem, dimensions: readonly { id: string; weight: number }[]): number {
+	const totalWeight = dimensions.reduce((s, d) => s + d.weight, 0);
 	if (totalWeight === 0) return 0;
-	const sum = criteria.reduce((acc, c) => acc + (item.scores[c.id] ?? 0) * c.weight, 0);
+	const sum = dimensions.reduce((acc, d) => acc + (item.scores[d.id] ?? 0) * d.weight, 0);
 	return sum / totalWeight;
 }
 
-/** Weighted average of moment (sub-criterion) scores for a single resource. */
-export function resourceMomentScore(item: EvaluationItem, moments: SubCriterion[]): number {
-	const totalWeight = moments.reduce((s, m) => s + m.weight, 0);
-	if (totalWeight === 0) return 0;
-	const sum = moments.reduce((acc, m) => acc + (item.scores[m.id] ?? 0) * m.weight, 0);
-	return sum / totalWeight;
-}
+// Convenience aliases — both use the same generic function.
+export const itemScore = weightedItemScore;
+export const resourceMomentScore = weightedItemScore;
 
-/** Aggregate item scores for a supplier on one sub-criterion. */
-export function supplierItemScore(
+/** Aggregate item scores for a supplier (average or minimum). */
+export function aggregateItemScores(
 	items: EvaluationItem[],
-	criteria: ItemCriterion[],
+	dimensions: readonly { id: string; weight: number }[],
 	method: AggregationMethod
 ): number {
 	if (items.length === 0) return 0;
-	const scores = items.map((item) => itemScore(item, criteria));
+	const scores = items.map((item) => weightedItemScore(item, dimensions));
 
 	switch (method) {
 		case 'average':
@@ -132,22 +133,9 @@ export function supplierItemScore(
 	}
 }
 
-/** Aggregate resource scores for a supplier using moments (subcriteria as dimensions). */
-export function supplierResourceScore(
-	items: EvaluationItem[],
-	moments: SubCriterion[],
-	method: AggregationMethod
-): number {
-	if (items.length === 0) return 0;
-	const scores = items.map((item) => resourceMomentScore(item, moments));
-
-	switch (method) {
-		case 'average':
-			return scores.reduce((a, b) => a + b, 0) / scores.length;
-		case 'minimum':
-			return Math.min(...scores);
-	}
-}
+// Convenience aliases for call sites that pass specific types.
+export const supplierItemScore = aggregateItemScores;
+export const supplierResourceScore = aggregateItemScores;
 
 /** Weighted average for a single supplier across subcriteria. */
 export function weightedAverage(
@@ -539,7 +527,7 @@ class EvaluationStore {
 	/** Update a single score (sub-criterion level). */
 	setScore(subCriterionId: string, supplierId: string, value: number) {
 		const sub = this._findSub(subCriterionId);
-		if (sub) sub.scores[supplierId] = Math.max(0, Math.min(10, value));
+		if (sub) sub.scores[supplierId] = clampScore(value);
 	}
 
 	/** Update a score on a leaf criterion (mode 1). */
@@ -547,7 +535,7 @@ class EvaluationStore {
 		const criterion = this._findCriterion(criterionId);
 		if (!criterion) return;
 		if (!criterion.scores) criterion.scores = {};
-		criterion.scores[supplierId] = Math.max(0, Math.min(10, value));
+		criterion.scores[supplierId] = clampScore(value);
 	}
 
 	/** Update a note. */
@@ -575,7 +563,7 @@ class EvaluationStore {
 		const items = sub.items[supplierId];
 		if (!items) return;
 		const item = items.find((i) => i.id === itemId);
-		if (item) item.scores[itemCriterionId] = Math.max(0, Math.min(10, value));
+		if (item) item.scores[itemCriterionId] = clampScore(value);
 	}
 
 	/** Set a note for a specific item on a specific item-criterion (sub-level). */
@@ -766,33 +754,25 @@ class EvaluationStore {
 
 	/** Set the label (person name) for a role on a specific supplier. */
 	setRoleLabel(criterionId: string, supplierId: string, roleId: string, label: string) {
-		const criterion = this._findCriterion(criterionId);
-		if (!criterion?.items) return;
-		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		const item = this._findRoleItem(criterionId, supplierId, roleId);
 		if (item) item.label = label;
 	}
 
 	/** Set a score for a role on a moment (subcriterion) for a specific supplier. */
 	setRoleScore(criterionId: string, supplierId: string, roleId: string, momentId: string, value: number) {
-		const criterion = this._findCriterion(criterionId);
-		if (!criterion?.items) return;
-		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
-		if (item) item.scores[momentId] = Math.max(0, Math.min(10, value));
+		const item = this._findRoleItem(criterionId, supplierId, roleId);
+		if (item) item.scores[momentId] = clampScore(value);
 	}
 
 	/** Set a note for a role on a moment for a specific supplier. */
 	setRoleNote(criterionId: string, supplierId: string, roleId: string, momentId: string, text: string) {
-		const criterion = this._findCriterion(criterionId);
-		if (!criterion?.items) return;
-		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		const item = this._findRoleItem(criterionId, supplierId, roleId);
 		if (item) item.notes[momentId] = text;
 	}
 
 	/** Set a holistic note for a role resource. */
 	setRoleResourceNote(criterionId: string, supplierId: string, roleId: string, text: string) {
-		const criterion = this._findCriterion(criterionId);
-		if (!criterion?.items) return;
-		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		const item = this._findRoleItem(criterionId, supplierId, roleId);
 		if (item) item.note = text;
 	}
 
@@ -999,6 +979,12 @@ class EvaluationStore {
 	private _findItemCriterion(subCriterionId: string, itemCriterionId: string): ItemCriterion | undefined {
 		const sub = this._findSub(subCriterionId);
 		return sub?.itemCriteria?.find((c) => c.id === itemCriterionId);
+	}
+
+	/** Find a role's item (resource) for a supplier on a criterion. */
+	private _findRoleItem(criterionId: string, supplierId: string, roleId: string): EvaluationItem | undefined {
+		const criterion = this._findCriterion(criterionId);
+		return criterion?.items?.[supplierId]?.find((i) => i.roleId === roleId);
 	}
 
 	/** Find a sub-criterion by id. */

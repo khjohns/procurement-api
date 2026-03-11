@@ -51,6 +51,7 @@
 		<div class="section-label">Tildelingskriterier</div>
 		<div class="criteria-editor">
 			{#each evaluation.data.criteria as criterion, ci (criterion.id)}
+				{@const mode = criterionMode(criterion)}
 				<div class="criterion-group" data-criterion-id={criterion.id}>
 					<div class="criterion-row criterion-row-group">
 						<div class="criterion-weight">
@@ -115,10 +116,10 @@
 									type="text"
 									value={sub.name}
 									oninput={(e) => evaluation.renameSubCriterion(sub.id, (e.target as HTMLInputElement).value)}
-									placeholder={criterionMode(criterion) === 'resource' ? 'Moment...' : 'Underkriterium...'}
+									placeholder={mode === 'resource' ? 'Moment...' : 'Underkriterium...'}
 								/>
 							</div>
-							{#if criterionMode(criterion) !== 'resource'}
+							{#if mode !== 'resource'}
 								<button
 									class="eval-type-toggle"
 									class:eval-type-item={sub.evaluationType === 'item'}
@@ -206,10 +207,10 @@
 
 					<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
 						<span class="add-sub-spacer"></span>
-						<span class="add-sub-label">+ {criterionMode(criterion) === 'resource' ? 'Moment' : 'Underkriterium'}</span>
+						<span class="add-sub-label">+ {mode === 'resource' ? 'Moment' : 'Underkriterium'}</span>
 					</button>
 
-					{#if criterionMode(criterion) === 'resource'}
+					{#if mode === 'resource'}
 						<div class="roles-config">
 							<div class="roles-config-label">Roller</div>
 							{#each criterion.roles ?? [] as role (role.id)}
