@@ -1197,7 +1197,7 @@
 	}
 
 	.section-label {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -1467,7 +1467,7 @@
 
 	.role-config-label {
 		font-family: var(--font-ui);
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -1485,11 +1485,11 @@
 	.role-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
+		gap: var(--spacing-1);
 		background: var(--color-felt);
 		border: 1px solid var(--color-wire);
 		border-radius: var(--radius-sm);
-		padding: 2px var(--spacing-1);
+		padding: var(--spacing-1) var(--spacing-2);
 	}
 
 	.role-chip-input {
@@ -1519,12 +1519,18 @@
 		background: none;
 		border: none;
 		cursor: pointer;
-		padding: 0 2px;
+		padding: 0 var(--spacing-1);
 		line-height: 1;
 	}
 
 	.role-chip-remove:hover {
 		color: var(--color-score-low);
+	}
+
+	.role-chip-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		border-radius: var(--radius-sm);
 	}
 
 	.role-add-btn {
@@ -1536,13 +1542,18 @@
 		border: 1px dashed var(--color-wire);
 		border-radius: var(--radius-sm);
 		cursor: pointer;
-		padding: 2px var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-2);
 		transition: all 0.1s;
 	}
 
 	.role-add-btn:hover {
 		color: var(--color-vekt);
 		border-color: var(--color-vekt-dim);
+	}
+
+	.role-add-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* ── Resource matrix specifics ── */
@@ -1552,7 +1563,7 @@
 	}
 
 	.th-resource-first {
-		border-left: 2px solid var(--color-wire-strong) !important;
+		border-left: 2px solid var(--color-wire-strong);
 	}
 
 	.resource-role-name {
