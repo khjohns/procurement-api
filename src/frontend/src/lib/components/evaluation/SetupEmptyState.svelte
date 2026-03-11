@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, DEFAULT_ITEM_LABEL } from '$lib/stores/evaluation.svelte';
+	import { evaluation, DEFAULT_ITEM_LABEL, criterionMode } from '$lib/stores/evaluation.svelte';
 
 	// ── Criteria CRUD (delegates to store) ──
 
@@ -76,6 +76,16 @@
 						>
 							{criterion.type === 'quality' ? 'Kvalitet' : 'Pris'}
 						</button>
+						{#if criterion.type === 'quality'}
+							<button
+								class="eval-type-toggle"
+								class:eval-type-item={criterion.evaluationType === 'item'}
+								onclick={() => evaluation.setCriterionEvaluationType(criterion.id, criterion.evaluationType === 'item' ? 'simple' : 'item')}
+								title={criterion.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for standard' : 'Standard evaluering — klikk for ressursevaluering'}
+							>
+								{criterion.evaluationType === 'item' ? 'Ressurs' : 'Standard'}
+							</button>
+						{/if}
 						<div class="criterion-move">
 							<button class="move-btn" disabled={ci === 0} onclick={() => moveCriterion(ci, 'up')} title="Flytt opp">&#9650;</button>
 							<button class="move-btn" disabled={ci === evaluation.data.criteria.length - 1} onclick={() => moveCriterion(ci, 'down')} title="Flytt ned">&#9660;</button>
@@ -105,17 +115,19 @@
 									type="text"
 									value={sub.name}
 									oninput={(e) => evaluation.renameSubCriterion(sub.id, (e.target as HTMLInputElement).value)}
-									placeholder="Underkriterium..."
+									placeholder={criterionMode(criterion) === 'resource' ? 'Moment...' : 'Underkriterium...'}
 								/>
 							</div>
-							<button
-								class="eval-type-toggle"
-								class:eval-type-item={sub.evaluationType === 'item'}
-								onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
-								title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
-							>
-								{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
-							</button>
+							{#if criterionMode(criterion) !== 'resource'}
+								<button
+									class="eval-type-toggle"
+									class:eval-type-item={sub.evaluationType === 'item'}
+									onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
+									title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
+								>
+									{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
+								</button>
+							{/if}
 							<div class="criterion-move">
 								<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
 								<button class="move-btn" disabled={si === criterion.subcriteria.length - 1} onclick={() => moveSubCriterion(criterion.id, si, 'down')} title="Flytt ned">&#9660;</button>
@@ -158,7 +170,7 @@
 									</div>
 								</div>
 								<div class="item-dimensions">
-									<div class="item-dimensions-label">Dimensjoner</div>
+									<div class="item-dimensions-label">Momenter</div>
 									{#each sub.itemCriteria ?? [] as ic (ic.id)}
 										<div class="item-dimension-row">
 											<input
@@ -175,7 +187,7 @@
 												type="text"
 												value={ic.name}
 												oninput={(e) => evaluation.renameItemCriterion(sub.id, ic.id, (e.target as HTMLInputElement).value)}
-												placeholder="Dimensjonsnavn..."
+												placeholder="Momentnavn..."
 											/>
 											<button
 												class="item-dimension-remove"
@@ -185,7 +197,7 @@
 										</div>
 									{/each}
 									<button class="item-dimension-add" onclick={() => evaluation.addItemCriterion(sub.id, '', 0)}>
-										+ Dimensjon
+										+ Moment
 									</button>
 								</div>
 							</div>
@@ -194,8 +206,33 @@
 
 					<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
 						<span class="add-sub-spacer"></span>
-						<span class="add-sub-label">+ Underkriterium</span>
+						<span class="add-sub-label">+ {criterionMode(criterion) === 'resource' ? 'Moment' : 'Underkriterium'}</span>
 					</button>
+
+					{#if criterionMode(criterion) === 'resource'}
+						<div class="roles-config">
+							<div class="roles-config-label">Roller</div>
+							{#each criterion.roles ?? [] as role (role.id)}
+								<div class="role-row">
+									<input
+										class="role-name-input"
+										type="text"
+										value={role.name}
+										oninput={(e) => evaluation.renameRole(criterion.id, role.id, (e.target as HTMLInputElement).value)}
+										placeholder="Rollenavn..."
+									/>
+									<button
+										class="role-remove"
+										onclick={() => evaluation.removeRole(criterion.id, role.id)}
+										title="Fjern rolle"
+									>×</button>
+								</div>
+							{/each}
+							<button class="role-add" onclick={() => evaluation.addRole(criterion.id, '')}>
+								+ Rolle
+							</button>
+						</div>
+					{/if}
 				</div>
 			{/each}
 
@@ -877,6 +914,96 @@
 	}
 
 	.item-dimension-add:hover {
+		color: var(--color-vekt-dim);
+	}
+
+	/* ── Roles config ── */
+	.roles-config {
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
+		background: var(--color-felt);
+		padding: var(--spacing-3) var(--spacing-4);
+		padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2);
+		border-bottom: 1px solid var(--color-wire);
+	}
+
+	.roles-config-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-ink-muted);
+	}
+
+	.role-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.role-name-input {
+		flex: 1;
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
+		font-family: var(--font-ui);
+		font-size: 12px;
+		outline: none;
+		transition: border-color 0.12s;
+	}
+
+	.role-name-input:focus {
+		border-color: var(--color-wire-focus);
+	}
+
+	.role-name-input::placeholder {
+		color: var(--color-ink-ghost);
+	}
+
+	.role-remove {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		color: var(--color-ink-ghost);
+		background: none;
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		opacity: 0;
+		transition: all 0.1s;
+	}
+
+	.role-row:hover > .role-remove {
+		opacity: 1;
+	}
+
+	.role-remove:hover {
+		color: var(--color-score-low);
+		background: var(--color-felt-active);
+	}
+
+	.role-add {
+		align-self: flex-start;
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: color 0.1s;
+	}
+
+	.role-add:hover {
 		color: var(--color-vekt-dim);
 	}
 </style>

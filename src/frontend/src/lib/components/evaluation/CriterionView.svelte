@@ -2,7 +2,10 @@
 	import {
 		evaluation,
 		scoreTier,
+		criterionMode,
+		resourceMomentScore,
 		itemScore,
+		type Role,
 		type EvaluationItem,
 		type ItemCriterion
 	} from '$lib/stores/evaluation.svelte';
@@ -17,6 +20,8 @@
 	let criterion = $derived(
 		evaluation.data.criteria.find((c) => c.id === criterionId)!
 	);
+
+	let mode = $derived(criterionMode(criterion));
 
 	let criterionIndex = $derived(
 		evaluation.data.criteria.findIndex((c) => c.id === criterionId)
@@ -71,7 +76,7 @@
 		else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
 	}
 
-	/** Score input for simple sub-criteria. */
+	/** Score input for simple sub-criteria and leaf mode. */
 	let editingScore = $state<string | null>(null);
 	let scoreEditValue = $state('');
 
@@ -91,6 +96,64 @@
 	function handleScoreKeydown(e: KeyboardEvent, subId: string, supplierId: string) {
 		if (e.key === 'Enter') { e.preventDefault(); commitScoreEdit(subId, supplierId); }
 		else if (e.key === 'Escape') { e.preventDefault(); editingScore = null; }
+	}
+
+	/** Leaf criterion score editing. */
+	function startLeafScoreEdit(supplierId: string, currentScore: number) {
+		editingScore = `leaf:${supplierId}`;
+		scoreEditValue = currentScore > 0 ? String(currentScore) : '';
+	}
+
+	function commitLeafScoreEdit(supplierId: string) {
+		const num = parseInt(scoreEditValue, 10);
+		if (!isNaN(num) && num >= 0 && num <= 10) {
+			evaluation.setCriterionScore(criterionId, supplierId, num);
+		}
+		editingScore = null;
+	}
+
+	function handleLeafScoreKeydown(e: KeyboardEvent, supplierId: string) {
+		if (e.key === 'Enter') { e.preventDefault(); commitLeafScoreEdit(supplierId); }
+		else if (e.key === 'Escape') { e.preventDefault(); editingScore = null; }
+	}
+
+	/** Resource mode: role score editing. */
+	let editingRoleScore = $state<string | null>(null);
+	let roleScoreEditValue = $state('');
+
+	function startRoleScoreEdit(supplierId: string, roleId: string, momentId: string, currentScore: number) {
+		editingRoleScore = `${supplierId}:${roleId}:${momentId}`;
+		roleScoreEditValue = currentScore > 0 ? String(currentScore) : '';
+	}
+
+	function commitRoleScoreEdit(supplierId: string, roleId: string, momentId: string) {
+		const num = parseInt(roleScoreEditValue, 10);
+		if (!isNaN(num) && num >= 0 && num <= 10) {
+			evaluation.setRoleScore(criterionId, supplierId, roleId, momentId, num);
+		}
+		editingRoleScore = null;
+	}
+
+	function handleRoleScoreKeydown(e: KeyboardEvent, supplierId: string, roleId: string, momentId: string) {
+		if (e.key === 'Enter') { e.preventDefault(); commitRoleScoreEdit(supplierId, roleId, momentId); }
+		else if (e.key === 'Escape') { e.preventDefault(); editingRoleScore = null; }
+	}
+
+	/** Resource mode: get item (resource) for a supplier+role. */
+	function getRoleItem(supplierId: string, roleId: string): EvaluationItem | undefined {
+		return criterion.items?.[supplierId]?.find((i) => i.roleId === roleId);
+	}
+
+	/** Resource mode: role weighted score across moments. */
+	function getRoleScore(supplierId: string, roleId: string): number {
+		const item = getRoleItem(supplierId, roleId);
+		if (!item) return 0;
+		return resourceMomentScore(item, criterion.subcriteria);
+	}
+
+	/** Resource mode: supplier aggregated score. */
+	function getSupplierResourceScore(supplierId: string): number {
+		return evaluation.groupScores[criterion.id]?.[supplierId] ?? 0;
 	}
 
 	/** Adding items to item-level sub-criteria. */
@@ -131,6 +194,9 @@
 		{/if}
 		<span class="nav-title">{criterion.name}</span>
 		<span class="nav-weight">{criterion.weight}%</span>
+		{#if mode === 'resource'}
+			<span class="nav-mode-badge">RESSURS</span>
+		{/if}
 		{#if nextCriterion}
 			<button class="nav-arrow" onclick={() => evaluation.setActiveView(nextCriterion.id)} title={nextCriterion.name}>
 				›
@@ -140,197 +206,12 @@
 	<div class="nav-spacer"></div>
 </div>
 
-<!-- Item-level sub-criteria sections -->
-{#each itemSubs as sub}
-	{@const itemCriteria = sub.itemCriteria!}
-	<div class="item-section">
-		<div class="item-section-header">
-			<span class="item-section-name">{sub.name}</span>
-			<span class="item-section-weight">
-				{#if editingWeight === sub.id}
-					<span class="weight-edit-inline">
-						<!-- svelte-ignore a11y_autofocus -->
-						<input
-							type="number" class="weight-input" min="0" max="100"
-							bind:value={editValue}
-							onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
-							onblur={() => commitEdit('sub', sub.id)}
-							autofocus
-						/>%
-					</span>
-				{:else}
-					<button class="weight-clickable" onclick={() => startEdit(sub.id, sub.weight)}>
-						{sub.weight}%
-					</button>
-				{/if}
-			</span>
-			<div class="item-section-agg">
-				<span class="agg-label">Aggregering:</span>
-				<button
-					class="agg-btn" class:active={sub.aggregation === 'average' || !sub.aggregation}
-					onclick={() => evaluation.setAggregation(sub.id, 'average')}
-				>Snitt</button>
-				<button
-					class="agg-btn" class:active={sub.aggregation === 'minimum'}
-					onclick={() => evaluation.setAggregation(sub.id, 'minimum')}
-				>Minimum</button>
-			</div>
-		</div>
-
-		<div class="item-matrix-wrap">
-			<table class="item-matrix">
-				<thead>
-					<tr>
-						<th class="th-ic-name"></th>
-						{#each evaluation.data.suppliers as supplier}
-							{@const items = sub.items?.[supplier.id] ?? []}
-							{#if items.length > 0}
-								{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
-								<th class="th-supplier-group" colspan={items.length + 1}>
-									<span class="supplier-group-name">{supplier.name}</span>
-									<span class="supplier-group-agg">
-										<span class="agg-score tier-{scoreTier(aggScore)}">{aggScore.toFixed(1)}</span>
-									</span>
-								</th>
-							{:else}
-								<th class="th-supplier-group th-empty">
-									<span class="supplier-group-name">{supplier.name}</span>
-								</th>
-							{/if}
-						{/each}
-					</tr>
-					<tr class="row-resource-names">
-						<th class="th-ic-label">
-							<span class="ic-label-text">Vekt</span>
-						</th>
-						{#each evaluation.data.suppliers as supplier}
-							{@const items = sub.items?.[supplier.id] ?? []}
-							{#if items.length > 0}
-								{#each items as item}
-									<th class="th-resource">
-										<span class="resource-name">{item.name}</span>
-										{#if item.label}
-											<span class="resource-label">{item.label}</span>
-										{/if}
-									</th>
-								{/each}
-								<th class="th-resource-avg">Snitt</th>
-							{:else}
-								<th class="th-resource-empty">
-									<span class="empty-hint">Ingen ressurser</span>
-								</th>
-							{/if}
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each itemCriteria as ic}
-						<tr class="row-ic">
-							<td class="cell-ic-name">
-								<span class="ic-name">{ic.name}</span>
-								<span class="ic-weight">{ic.weight}%</span>
-							</td>
-							{#each evaluation.data.suppliers as supplier}
-								{@const items = sub.items?.[supplier.id] ?? []}
-								{#if items.length > 0}
-									{@const colBest = getItemColumnBest(items, ic.id)}
-									{#each items as item}
-										{@const score = item.scores[ic.id] ?? 0}
-										{@const isBest = score === colBest && score > 0}
-										<ItemScoreCell
-											{score}
-											{isBest}
-											onchange={(v) => evaluation.setItemScore(sub.id, supplier.id, item.id, ic.id, v)}
-										/>
-									{/each}
-									<!-- Column average -->
-									{@const colAvg = items.length > 0 ? items.reduce((s, i) => s + (i.scores[ic.id] ?? 0), 0) / items.length : 0}
-									<td class="cell-col-avg">
-										<span class="col-avg-value tier-{scoreTier(colAvg)}">
-											{colAvg.toFixed(1)}
-										</span>
-									</td>
-								{:else}
-									<td class="cell-empty">—</td>
-								{/if}
-							{/each}
-						</tr>
-					{/each}
-				</tbody>
-				<tfoot>
-					<tr class="row-item-totals">
-						<td class="cell-ic-name cell-total-label">Snitt</td>
-						{#each evaluation.data.suppliers as supplier}
-							{@const items = sub.items?.[supplier.id] ?? []}
-							{#if items.length > 0}
-								{@const bestAvg = getItemBestAvg(items, itemCriteria)}
-								{#each items as item}
-									{@const avg = itemScore(item, itemCriteria)}
-									{@const isItemBest = avg === bestAvg && avg > 0}
-									<td class="cell-item-avg">
-										<span class="item-avg-value tier-{scoreTier(avg)}" class:avg-best={isItemBest}>
-											{avg.toFixed(1)}
-										</span>
-									</td>
-								{/each}
-								{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
-								<td class="cell-col-avg cell-agg-final">
-									<span class="col-avg-value tier-{scoreTier(aggScore)} agg-final">
-										{aggScore.toFixed(1)}
-									</span>
-								</td>
-							{:else}
-								<td class="cell-empty">—</td>
-							{/if}
-						{/each}
-					</tr>
-				</tfoot>
-			</table>
-		</div>
-
-		<!-- Add resource buttons per supplier -->
-		<div class="add-resource-strip">
-			{#each evaluation.data.suppliers as supplier}
-				{@const addKey = `${sub.id}:${supplier.id}`}
-				{#if addingItem === addKey}
-					<div class="add-form">
-						<span class="add-form-label">{supplier.name}:</span>
-						<input
-							class="add-input" type="text" placeholder="Navn"
-							bind:value={newItemName}
-							onkeydown={(e) => { if (e.key === 'Enter') handleAddItem(sub.id, supplier.id); if (e.key === 'Escape') addingItem = null; }}
-						/>
-						<input
-							class="add-input add-input-sm" type="text" placeholder="Rolle"
-							bind:value={newItemLabel}
-							onkeydown={(e) => { if (e.key === 'Enter') handleAddItem(sub.id, supplier.id); if (e.key === 'Escape') addingItem = null; }}
-						/>
-						<button class="add-confirm" onclick={() => handleAddItem(sub.id, supplier.id)}>Legg til</button>
-						<button class="add-cancel" onclick={() => addingItem = null}>×</button>
-					</div>
-				{:else}
-					<button
-						class="add-resource-btn"
-						onclick={() => { addingItem = addKey; newItemName = ''; newItemLabel = ''; }}
-					>
-						+ {sub.itemLabel ?? 'Ressurs'} ({supplier.name})
-					</button>
-				{/if}
-			{/each}
-		</div>
-	</div>
-{/each}
-
-<!-- Simple sub-criteria table -->
-{#if simpleSubs.length > 0}
+{#if mode === 'leaf'}
+	<!-- ══ LEAF MODE: direct scores on criterion ══ -->
 	<div class="simple-section">
-		{#if itemSubs.length > 0}
-			<div class="section-label">Øvrige underkriterier</div>
-		{/if}
 		<div class="matrix-wrap">
 			<table class="simple-matrix">
 				<colgroup>
-					<col class="col-weight" />
 					<col class="col-criteria" />
 					{#each evaluation.data.suppliers as _}
 						<col class="col-supplier" />
@@ -338,92 +219,48 @@
 				</colgroup>
 				<thead>
 					<tr>
-						<th class="th-weight">Vekt</th>
-						<th>Underkriterium</th>
+						<th>Leverandør</th>
 						{#each evaluation.data.suppliers as supplier}
 							<th class="th-supplier">{supplier.name}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
-					{#each simpleSubs as sub}
-						<tr class="row-sub">
-							<td class="cell-weight">
-								{#if editingWeight === sub.id}
-									<div class="weight-edit">
-										<!-- svelte-ignore a11y_autofocus -->
-										<input
-											type="number" class="weight-input" min="0" max="100"
-											bind:value={editValue}
-											onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
-											onblur={() => commitEdit('sub', sub.id)}
-											autofocus
-										/><span class="weight-pct-edit">%</span>
-									</div>
-								{:else}
-									<button class="weight-display weight-btn" onclick={() => startEdit(sub.id, sub.weight)}>
-										<span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span>
-									</button>
-								{/if}
-							</td>
-							<td class="cell-criteria">{sub.name}</td>
-							{#each evaluation.data.suppliers as supplier}
-								{@const score = sub.scores[supplier.id] ?? 0}
-								{@const tier = scoreTier(score)}
-								{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
-								{@const hasNotes = !!sub.notes[supplier.id]}
-								{@const scoreKey = `${sub.id}:${supplier.id}`}
-								<td
-									class="cell-score score-{tier}"
-									class:score-best={isBest}
-									class:has-notes={hasNotes}
-									class:cell-selected={evaluation.selectedSupplierId === supplier.id}
-									onclick={() => {
-										evaluation.selectSupplier(supplier.id);
-										if (editingScore !== scoreKey) startScoreEdit(sub.id, supplier.id, score);
-									}}
-									role="button"
-									tabindex={0}
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
-											evaluation.selectSupplier(supplier.id);
-											startScoreEdit(sub.id, supplier.id, score);
-										}
-									}}
-								>
-									{#if editingScore === scoreKey}
-										<!-- svelte-ignore a11y_autofocus -->
-										<input
-											type="number" class="score-input" min="0" max="10"
-											bind:value={scoreEditValue}
-											onkeydown={(e) => handleScoreKeydown(e, sub.id, supplier.id)}
-											onblur={() => commitScoreEdit(sub.id, supplier.id)}
-											onclick={(e) => e.stopPropagation()}
-											autofocus
-										/>
-									{:else}
-										<span class="score-value">{score > 0 ? score : '—'}</span>
-									{/if}
-								</td>
-							{/each}
-						</tr>
-					{/each}
-
-					<!-- Sub-total row -->
-					<tr class="row-total">
-						<td class="cell-weight">
-							<div class="weight-display">
-								<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
-							</div>
-						</td>
-						<td class="cell-criteria cell-total-name">Samlet</td>
+					<tr class="row-sub">
+						<td class="cell-criteria">{criterion.name}</td>
 						{#each evaluation.data.suppliers as supplier}
-							{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+							{@const score = criterion.scores?.[supplier.id] ?? 0}
 							{@const tier = scoreTier(score)}
-							{@const best = evaluation.bestGroupScores[criterion.id] ?? 0}
-							{@const isBest = score === best && score > 0}
-							<td class="cell-score cell-total-score score-{tier}" class:score-best={isBest}>
-								<span class="score-value">{score.toFixed(1)}</span>
+							{@const leafKey = `leaf:${supplier.id}`}
+							<td
+								class="cell-score score-{tier}"
+								class:cell-selected={evaluation.selectedSupplierId === supplier.id}
+								onclick={() => {
+									evaluation.selectSupplier(supplier.id);
+									if (editingScore !== leafKey) startLeafScoreEdit(supplier.id, score);
+								}}
+								role="button"
+								tabindex={0}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										evaluation.selectSupplier(supplier.id);
+										startLeafScoreEdit(supplier.id, score);
+									}
+								}}
+							>
+								{#if editingScore === leafKey}
+									<!-- svelte-ignore a11y_autofocus -->
+									<input
+										type="number" class="score-input" min="0" max="10"
+										bind:value={scoreEditValue}
+										onkeydown={(e) => handleLeafScoreKeydown(e, supplier.id)}
+										onblur={() => commitLeafScoreEdit(supplier.id)}
+										onclick={(e) => e.stopPropagation()}
+										autofocus
+									/>
+								{:else}
+									<span class="score-value">{score > 0 ? score : '—'}</span>
+								{/if}
 							</td>
 						{/each}
 					</tr>
@@ -431,6 +268,478 @@
 			</table>
 		</div>
 	</div>
+
+{:else if mode === 'resource'}
+	<!-- ══ RESOURCE MODE: roles × moments (criterion-level) ══ -->
+	{@const roles = criterion.roles ?? []}
+	{@const moments = criterion.subcriteria}
+
+	<!-- Role config strip -->
+	<div class="role-config">
+		<span class="role-config-label">ROLLER</span>
+		<div class="role-chips">
+			{#each roles as role}
+				<span class="role-chip">
+					<input class="role-chip-input" type="text" value={role.name}
+						oninput={(e) => evaluation.renameRole(criterionId, role.id, e.currentTarget.value)}
+						placeholder="Rollenavn..." />
+					<button class="role-chip-remove" onclick={() => evaluation.removeRole(criterionId, role.id)}>×</button>
+				</span>
+			{/each}
+			<button class="role-add-btn" onclick={() => evaluation.addRole(criterionId, '')}>+</button>
+		</div>
+	</div>
+
+	<!-- Aggregation selector -->
+	<div class="item-section-header">
+		<div class="item-section-agg">
+			<span class="agg-label">Aggregering:</span>
+			<button
+				class="agg-btn" class:active={criterion.aggregation === 'average' || !criterion.aggregation}
+				onclick={() => evaluation.setCriterionAggregation(criterionId, 'average')}
+			>Snitt</button>
+			<button
+				class="agg-btn" class:active={criterion.aggregation === 'minimum'}
+				onclick={() => evaluation.setCriterionAggregation(criterionId, 'minimum')}
+			>Minimum</button>
+		</div>
+	</div>
+
+	{#if roles.length > 0 && moments.length > 0}
+		<div class="item-matrix-wrap">
+			<table class="item-matrix resource-matrix">
+				<thead>
+					<!-- Supplier group headers -->
+					<tr>
+						<th class="th-ic-name"></th>
+						{#each evaluation.data.suppliers as supplier}
+							<th class="th-supplier-group" colspan={roles.length}>
+								<span class="supplier-group-name">{supplier.name}</span>
+								<span class="supplier-group-agg">
+									<span class="agg-score tier-{scoreTier(getSupplierResourceScore(supplier.id))}">
+										{getSupplierResourceScore(supplier.id).toFixed(1)}
+									</span>
+								</span>
+							</th>
+						{/each}
+					</tr>
+					<!-- Role sub-headers per supplier -->
+					<tr class="row-resource-names">
+						<th class="th-ic-label">
+							<span class="ic-label-text">Vekt</span>
+						</th>
+						{#each evaluation.data.suppliers as supplier}
+							{#each roles as role, roleIdx}
+								{@const item = getRoleItem(supplier.id, role.id)}
+								<th class="th-resource" class:th-resource-first={roleIdx === 0}>
+									<span class="resource-role-name">{role.name || 'Rolle'}</span>
+									<input
+										class="resource-person-input"
+										type="text"
+										value={item?.label ?? ''}
+										oninput={(e) => evaluation.setRoleLabel(criterionId, supplier.id, role.id, e.currentTarget.value)}
+										placeholder="Person..."
+									/>
+								</th>
+							{/each}
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					<!-- Moment rows (subcriteria with weight) -->
+					{#each moments as moment}
+						<tr class="row-ic">
+							<td class="cell-ic-name">
+								<span class="ic-name">{moment.name}</span>
+								<span class="ic-weight">
+									{#if editingWeight === moment.id}
+										<span class="weight-edit-inline">
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="number" class="weight-input" min="0" max="100"
+												bind:value={editValue}
+												onkeydown={(e) => handleWeightKeydown(e, 'sub', moment.id)}
+												onblur={() => commitEdit('sub', moment.id)}
+												autofocus
+											/>%
+										</span>
+									{:else}
+										<button class="weight-clickable" onclick={() => startEdit(moment.id, moment.weight)}>
+											{moment.weight}%
+										</button>
+									{/if}
+								</span>
+							</td>
+							{#each evaluation.data.suppliers as supplier}
+								{#each roles as role, roleIdx}
+									{@const item = getRoleItem(supplier.id, role.id)}
+									{@const score = item?.scores[moment.id] ?? 0}
+									{@const cellKey = `${supplier.id}:${role.id}:${moment.id}`}
+									<td
+										class="cell-score resource-cell"
+										class:resource-cell-first={roleIdx === 0}
+										class:score-high={scoreTier(score) === 'high'}
+										class:score-mid={scoreTier(score) === 'mid'}
+										class:score-low={scoreTier(score) === 'low'}
+										onclick={() => {
+											if (editingRoleScore !== cellKey) startRoleScoreEdit(supplier.id, role.id, moment.id, score);
+										}}
+										role="button"
+										tabindex={0}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') startRoleScoreEdit(supplier.id, role.id, moment.id, score);
+										}}
+									>
+										{#if editingRoleScore === cellKey}
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="number" class="score-input" min="0" max="10"
+												bind:value={roleScoreEditValue}
+												onkeydown={(e) => handleRoleScoreKeydown(e, supplier.id, role.id, moment.id)}
+												onblur={() => commitRoleScoreEdit(supplier.id, role.id, moment.id)}
+												onclick={(e) => e.stopPropagation()}
+												autofocus
+											/>
+										{:else}
+											<span class="score-value">{score > 0 ? score : '—'}</span>
+										{/if}
+									</td>
+								{/each}
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+				<tfoot>
+					<!-- Role score row (weighted avg of moments) -->
+					<tr class="row-role-scores">
+						<td class="cell-ic-name cell-total-label">Rolle</td>
+						{#each evaluation.data.suppliers as supplier}
+							{#each roles as role, roleIdx}
+								{@const rs = getRoleScore(supplier.id, role.id)}
+								<td class="cell-role-score" class:resource-cell-first={roleIdx === 0}>
+									<span class="role-score-value tier-{scoreTier(rs)}">
+										{rs.toFixed(1)}
+									</span>
+								</td>
+							{/each}
+						{/each}
+					</tr>
+					<!-- Supplier score row (aggregated) -->
+					<tr class="row-supplier-scores">
+						<td class="cell-ic-name cell-supplier-total-label">Samlet</td>
+						{#each evaluation.data.suppliers as supplier}
+							{@const ss = getSupplierResourceScore(supplier.id)}
+							<td class="cell-supplier-score" colspan={roles.length}>
+								<span class="supplier-score-value tier-{scoreTier(ss)}">
+									{ss.toFixed(1)}
+								</span>
+							</td>
+						{/each}
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+	{:else if roles.length === 0}
+		<div class="section-label">Legg til roller for å starte evaluering.</div>
+	{:else}
+		<div class="section-label">Legg til underkriterier (momenter) for å starte evaluering.</div>
+	{/if}
+
+{:else}
+	<!-- ══ TRADITIONAL MODE: itemSubs + simpleSubs split ══ -->
+
+	<!-- Item-level sub-criteria sections -->
+	{#each itemSubs as sub}
+		{@const itemCriteria = sub.itemCriteria!}
+		<div class="item-section">
+			<div class="item-section-header">
+				<span class="item-section-name">{sub.name}</span>
+				<span class="item-section-weight">
+					{#if editingWeight === sub.id}
+						<span class="weight-edit-inline">
+							<!-- svelte-ignore a11y_autofocus -->
+							<input
+								type="number" class="weight-input" min="0" max="100"
+								bind:value={editValue}
+								onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
+								onblur={() => commitEdit('sub', sub.id)}
+								autofocus
+							/>%
+						</span>
+					{:else}
+						<button class="weight-clickable" onclick={() => startEdit(sub.id, sub.weight)}>
+							{sub.weight}%
+						</button>
+					{/if}
+				</span>
+				<div class="item-section-agg">
+					<span class="agg-label">Aggregering:</span>
+					<button
+						class="agg-btn" class:active={sub.aggregation === 'average' || !sub.aggregation}
+						onclick={() => evaluation.setAggregation(sub.id, 'average')}
+					>Snitt</button>
+					<button
+						class="agg-btn" class:active={sub.aggregation === 'minimum'}
+						onclick={() => evaluation.setAggregation(sub.id, 'minimum')}
+					>Minimum</button>
+				</div>
+			</div>
+
+			<div class="item-matrix-wrap">
+				<table class="item-matrix">
+					<thead>
+						<tr>
+							<th class="th-ic-name"></th>
+							{#each evaluation.data.suppliers as supplier}
+								{@const items = sub.items?.[supplier.id] ?? []}
+								{#if items.length > 0}
+									{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
+									<th class="th-supplier-group" colspan={items.length + 1}>
+										<span class="supplier-group-name">{supplier.name}</span>
+										<span class="supplier-group-agg">
+											<span class="agg-score tier-{scoreTier(aggScore)}">{aggScore.toFixed(1)}</span>
+										</span>
+									</th>
+								{:else}
+									<th class="th-supplier-group th-empty">
+										<span class="supplier-group-name">{supplier.name}</span>
+									</th>
+								{/if}
+							{/each}
+						</tr>
+						<tr class="row-resource-names">
+							<th class="th-ic-label">
+								<span class="ic-label-text">Vekt</span>
+							</th>
+							{#each evaluation.data.suppliers as supplier}
+								{@const items = sub.items?.[supplier.id] ?? []}
+								{#if items.length > 0}
+									{#each items as item}
+										<th class="th-resource">
+											<span class="resource-name">{item.name}</span>
+											{#if item.label}
+												<span class="resource-label">{item.label}</span>
+											{/if}
+										</th>
+									{/each}
+									<th class="th-resource-avg">Snitt</th>
+								{:else}
+									<th class="th-resource-empty">
+										<span class="empty-hint">Ingen ressurser</span>
+									</th>
+								{/if}
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each itemCriteria as ic}
+							<tr class="row-ic">
+								<td class="cell-ic-name">
+									<span class="ic-name">{ic.name}</span>
+									<span class="ic-weight">{ic.weight}%</span>
+								</td>
+								{#each evaluation.data.suppliers as supplier}
+									{@const items = sub.items?.[supplier.id] ?? []}
+									{#if items.length > 0}
+										{@const colBest = getItemColumnBest(items, ic.id)}
+										{#each items as item}
+											{@const score = item.scores[ic.id] ?? 0}
+											{@const isBest = score === colBest && score > 0}
+											<ItemScoreCell
+												{score}
+												{isBest}
+												onchange={(v) => evaluation.setItemScore(sub.id, supplier.id, item.id, ic.id, v)}
+											/>
+										{/each}
+										<!-- Column average -->
+										{@const colAvg = items.length > 0 ? items.reduce((s, i) => s + (i.scores[ic.id] ?? 0), 0) / items.length : 0}
+										<td class="cell-col-avg">
+											<span class="col-avg-value tier-{scoreTier(colAvg)}">
+												{colAvg.toFixed(1)}
+											</span>
+										</td>
+									{:else}
+										<td class="cell-empty">—</td>
+									{/if}
+								{/each}
+							</tr>
+						{/each}
+					</tbody>
+					<tfoot>
+						<tr class="row-item-totals">
+							<td class="cell-ic-name cell-total-label">Snitt</td>
+							{#each evaluation.data.suppliers as supplier}
+								{@const items = sub.items?.[supplier.id] ?? []}
+								{#if items.length > 0}
+									{@const bestAvg = getItemBestAvg(items, itemCriteria)}
+									{#each items as item}
+										{@const avg = itemScore(item, itemCriteria)}
+										{@const isItemBest = avg === bestAvg && avg > 0}
+										<td class="cell-item-avg">
+											<span class="item-avg-value tier-{scoreTier(avg)}" class:avg-best={isItemBest}>
+												{avg.toFixed(1)}
+											</span>
+										</td>
+									{/each}
+									{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
+									<td class="cell-col-avg cell-agg-final">
+										<span class="col-avg-value tier-{scoreTier(aggScore)} agg-final">
+											{aggScore.toFixed(1)}
+										</span>
+									</td>
+								{:else}
+									<td class="cell-empty">—</td>
+								{/if}
+							{/each}
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+
+			<!-- Add resource buttons per supplier -->
+			<div class="add-resource-strip">
+				{#each evaluation.data.suppliers as supplier}
+					{@const addKey = `${sub.id}:${supplier.id}`}
+					{#if addingItem === addKey}
+						<div class="add-form">
+							<span class="add-form-label">{supplier.name}:</span>
+							<input
+								class="add-input" type="text" placeholder="Navn"
+								bind:value={newItemName}
+								onkeydown={(e) => { if (e.key === 'Enter') handleAddItem(sub.id, supplier.id); if (e.key === 'Escape') addingItem = null; }}
+							/>
+							<input
+								class="add-input add-input-sm" type="text" placeholder="Rolle"
+								bind:value={newItemLabel}
+								onkeydown={(e) => { if (e.key === 'Enter') handleAddItem(sub.id, supplier.id); if (e.key === 'Escape') addingItem = null; }}
+							/>
+							<button class="add-confirm" onclick={() => handleAddItem(sub.id, supplier.id)}>Legg til</button>
+							<button class="add-cancel" onclick={() => addingItem = null}>×</button>
+						</div>
+					{:else}
+						<button
+							class="add-resource-btn"
+							onclick={() => { addingItem = addKey; newItemName = ''; newItemLabel = ''; }}
+						>
+							+ {sub.itemLabel ?? 'Ressurs'} ({supplier.name})
+						</button>
+					{/if}
+				{/each}
+			</div>
+		</div>
+	{/each}
+
+	<!-- Simple sub-criteria table -->
+	{#if simpleSubs.length > 0}
+		<div class="simple-section">
+			{#if itemSubs.length > 0}
+				<div class="section-label">Øvrige underkriterier</div>
+			{/if}
+			<div class="matrix-wrap">
+				<table class="simple-matrix">
+					<colgroup>
+						<col class="col-weight" />
+						<col class="col-criteria" />
+						{#each evaluation.data.suppliers as _}
+							<col class="col-supplier" />
+						{/each}
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="th-weight">Vekt</th>
+							<th>Underkriterium</th>
+							{#each evaluation.data.suppliers as supplier}
+								<th class="th-supplier">{supplier.name}</th>
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each simpleSubs as sub}
+							<tr class="row-sub">
+								<td class="cell-weight">
+									{#if editingWeight === sub.id}
+										<div class="weight-edit">
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="number" class="weight-input" min="0" max="100"
+												bind:value={editValue}
+												onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
+												onblur={() => commitEdit('sub', sub.id)}
+												autofocus
+											/><span class="weight-pct-edit">%</span>
+										</div>
+									{:else}
+										<button class="weight-display weight-btn" onclick={() => startEdit(sub.id, sub.weight)}>
+											<span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span>
+										</button>
+									{/if}
+								</td>
+								<td class="cell-criteria">{sub.name}</td>
+								{#each evaluation.data.suppliers as supplier}
+									{@const score = sub.scores[supplier.id] ?? 0}
+									{@const tier = scoreTier(score)}
+									{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
+									{@const hasNotes = !!sub.notes[supplier.id]}
+									{@const scoreKey = `${sub.id}:${supplier.id}`}
+									<td
+										class="cell-score score-{tier}"
+										class:score-best={isBest}
+										class:has-notes={hasNotes}
+										class:cell-selected={evaluation.selectedSupplierId === supplier.id}
+										onclick={() => {
+											evaluation.selectSupplier(supplier.id);
+											if (editingScore !== scoreKey) startScoreEdit(sub.id, supplier.id, score);
+										}}
+										role="button"
+										tabindex={0}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												evaluation.selectSupplier(supplier.id);
+												startScoreEdit(sub.id, supplier.id, score);
+											}
+										}}
+									>
+										{#if editingScore === scoreKey}
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="number" class="score-input" min="0" max="10"
+												bind:value={scoreEditValue}
+												onkeydown={(e) => handleScoreKeydown(e, sub.id, supplier.id)}
+												onblur={() => commitScoreEdit(sub.id, supplier.id)}
+												onclick={(e) => e.stopPropagation()}
+												autofocus
+											/>
+										{:else}
+											<span class="score-value">{score > 0 ? score : '—'}</span>
+										{/if}
+									</td>
+								{/each}
+							</tr>
+						{/each}
+
+						<!-- Sub-total row -->
+						<tr class="row-total">
+							<td class="cell-weight">
+								<div class="weight-display">
+									<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
+								</div>
+							</td>
+							<td class="cell-criteria cell-total-name">Samlet</td>
+							{#each evaluation.data.suppliers as supplier}
+								{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+								{@const tier = scoreTier(score)}
+								{@const best = evaluation.bestGroupScores[criterion.id] ?? 0}
+								{@const isBest = score === best && score > 0}
+								<td class="cell-score cell-total-score score-{tier}" class:score-best={isBest}>
+									<span class="score-value">{score.toFixed(1)}</span>
+								</td>
+							{/each}
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{/if}
 {/if}
 
 <style>
@@ -1131,6 +1440,213 @@
 
 	.row-total .cell-weight {
 		border-left-color: var(--color-vekt);
+	}
+
+	/* ── Nav mode badge ── */
+	.nav-mode-badge {
+		font-family: var(--font-ui);
+		font-size: 9px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-vekt);
+		background: var(--color-vekt-bg-strong);
+		padding: 2px var(--spacing-2);
+		border-radius: var(--radius-sm);
+	}
+
+	/* ── Role config strip ── */
+	.role-config {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+		margin-bottom: var(--spacing-3);
+		padding: var(--spacing-2) 0;
+	}
+
+	.role-config-label {
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-ghost);
+		white-space: nowrap;
+	}
+
+	.role-chips {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.role-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		padding: 2px var(--spacing-1);
+	}
+
+	.role-chip-input {
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink);
+		background: transparent;
+		border: none;
+		outline: none;
+		width: 80px;
+		padding: 2px var(--spacing-1);
+	}
+
+	.role-chip-input::placeholder {
+		color: var(--color-ink-ghost);
+	}
+
+	.role-chip-input:focus {
+		background: var(--color-canvas);
+		border-radius: 2px;
+	}
+
+	.role-chip-remove {
+		font-size: 13px;
+		color: var(--color-ink-ghost);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0 2px;
+		line-height: 1;
+	}
+
+	.role-chip-remove:hover {
+		color: var(--color-score-low);
+	}
+
+	.role-add-btn {
+		font-family: var(--font-ui);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-ink-muted);
+		background: none;
+		border: 1px dashed var(--color-wire);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		padding: 2px var(--spacing-2);
+		transition: all 0.1s;
+	}
+
+	.role-add-btn:hover {
+		color: var(--color-vekt);
+		border-color: var(--color-vekt-dim);
+	}
+
+	/* ── Resource matrix specifics ── */
+	.resource-matrix .th-resource {
+		min-width: 80px;
+		max-width: 110px;
+	}
+
+	.th-resource-first {
+		border-left: 2px solid var(--color-wire-strong) !important;
+	}
+
+	.resource-role-name {
+		display: block;
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--color-ink-muted);
+		text-transform: none;
+		letter-spacing: normal;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.resource-person-input {
+		display: block;
+		width: 100%;
+		font-size: 11px;
+		font-weight: 400;
+		color: var(--color-ink-secondary);
+		background: transparent;
+		border: none;
+		outline: none;
+		text-align: center;
+		padding: 1px 2px;
+		text-transform: none;
+		letter-spacing: normal;
+		font-family: var(--font-ui);
+	}
+
+	.resource-person-input::placeholder {
+		color: var(--color-ink-ghost);
+		font-style: italic;
+	}
+
+	.resource-person-input:focus {
+		background: var(--color-canvas);
+		border-radius: 2px;
+	}
+
+	.resource-cell {
+		border-left: 1px solid var(--color-wire);
+	}
+
+	.resource-cell-first {
+		border-left: 2px solid var(--color-wire-strong);
+	}
+
+	/* Role score row */
+	.row-role-scores {
+		border-top: 1px solid var(--color-wire-strong);
+	}
+
+	.cell-role-score {
+		text-align: center;
+		padding: var(--spacing-2);
+		border-left: 1px solid var(--color-wire);
+	}
+
+	.cell-role-score.resource-cell-first {
+		border-left: 2px solid var(--color-wire-strong);
+	}
+
+	.role-score-value {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	/* Supplier score row */
+	.row-supplier-scores {
+		background: var(--color-canvas);
+		border-top: 1px solid var(--color-wire-strong);
+	}
+
+	.cell-supplier-total-label {
+		font-size: 11px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-ink);
+	}
+
+	.cell-supplier-score {
+		text-align: center;
+		padding: var(--spacing-2) var(--spacing-3);
+		border-left: 2px solid var(--color-wire-strong);
+	}
+
+	.supplier-score-value {
+		font-family: var(--font-data);
+		font-variant-numeric: tabular-nums;
+		font-size: 16px;
+		font-weight: 700;
 	}
 
 	/* Tier colors (shared) */

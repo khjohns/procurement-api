@@ -3,6 +3,11 @@
  * Uses Svelte 5 runes with class-based pattern (per ADR-003).
  *
  * All cascading calculations use $derived — no $effect.
+ *
+ * Three criterion modes:
+ *   Mode 1 (leaf):        subcriteria.length === 0, evaluationType !== 'item' → direct scores
+ *   Mode 2 (traditional): subcriteria.length > 0,  evaluationType !== 'item' → weighted sub-scores
+ *   Mode 3 (resource):    evaluationType === 'item' → roles × moments (subcriteria as moments)
  */
 
 // ── Item-level types ──
@@ -17,12 +22,20 @@ export interface EvaluationItem {
 	id: string;
 	name: string;
 	label?: string; // role, type, category
-	scores: Record<string, number>; // itemCriterionId → 0–10
-	notes: Record<string, string>; // itemCriterionId → text
+	roleId?: string; // links to Role.id for criterion-level resource evaluation
+	scores: Record<string, number>; // itemCriterionId or subCriterionId → 0–10
+	notes: Record<string, string>; // itemCriterionId or subCriterionId → text
 	note?: string; // holistic resource note
 }
 
 export type AggregationMethod = 'average' | 'minimum';
+
+// ── Role type (criterion-level resource evaluation) ──
+
+export interface Role {
+	id: string;
+	name: string;
+}
 
 // ── Core types ──
 
@@ -32,7 +45,7 @@ export interface SubCriterion {
 	weight: number;
 	scores: Record<string, number>;
 	notes: Record<string, string>;
-	// Item-level evaluation (optional)
+	// Item-level evaluation (optional, sub-criterion level)
 	evaluationType?: 'simple' | 'item';
 	itemLabel?: string; // "Ressurs", "Prosjekt", "Tiltak"
 	itemCriteria?: ItemCriterion[];
@@ -47,6 +60,13 @@ export interface Criterion {
 	weight: number;
 	subcriteria: SubCriterion[];
 	notes?: Record<string, string>; // supplierId → overordnet vurdering
+	// Leaf criterion scoring (mode 1: no subcriteria)
+	scores?: Record<string, number>; // supplierId → 0–10
+	// Criterion-level resource evaluation (mode 3)
+	evaluationType?: 'simple' | 'item';
+	roles?: Role[]; // shared across all suppliers
+	items?: Record<string, EvaluationItem[]>; // supplierId → resources (with roleId)
+	aggregation?: AggregationMethod;
 }
 
 export interface Supplier {
@@ -70,6 +90,13 @@ export interface EvaluationData {
 
 export type ActiveMethod = 'poeng' | 'pris';
 
+/** Determine the mode of a criterion. */
+export function criterionMode(c: Criterion): 'leaf' | 'traditional' | 'resource' {
+	if (c.evaluationType === 'item') return 'resource';
+	if (c.subcriteria.length === 0) return 'leaf';
+	return 'traditional';
+}
+
 // ── Score computation functions ──
 
 /** Weighted average of item-criteria scores for a single item. */
@@ -77,6 +104,14 @@ export function itemScore(item: EvaluationItem, criteria: ItemCriterion[]): numb
 	const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
 	if (totalWeight === 0) return 0;
 	const sum = criteria.reduce((acc, c) => acc + (item.scores[c.id] ?? 0) * c.weight, 0);
+	return sum / totalWeight;
+}
+
+/** Weighted average of moment (sub-criterion) scores for a single resource. */
+export function resourceMomentScore(item: EvaluationItem, moments: SubCriterion[]): number {
+	const totalWeight = moments.reduce((s, m) => s + m.weight, 0);
+	if (totalWeight === 0) return 0;
+	const sum = moments.reduce((acc, m) => acc + (item.scores[m.id] ?? 0) * m.weight, 0);
 	return sum / totalWeight;
 }
 
@@ -88,6 +123,23 @@ export function supplierItemScore(
 ): number {
 	if (items.length === 0) return 0;
 	const scores = items.map((item) => itemScore(item, criteria));
+
+	switch (method) {
+		case 'average':
+			return scores.reduce((a, b) => a + b, 0) / scores.length;
+		case 'minimum':
+			return Math.min(...scores);
+	}
+}
+
+/** Aggregate resource scores for a supplier using moments (subcriteria as dimensions). */
+export function supplierResourceScore(
+	items: EvaluationItem[],
+	moments: SubCriterion[],
+	method: AggregationMethod
+): number {
+	if (items.length === 0) return 0;
+	const scores = items.map((item) => resourceMomentScore(item, moments));
 
 	switch (method) {
 		case 'average':
@@ -161,11 +213,11 @@ class EvaluationStore {
 	/** Selected supplier in the justification panel. */
 	selectedSupplierId = $state<string | null>(null);
 
-	/** True when minimum data is present to show the scoring matrix. */
+	/** True when minimum data is present to show results/ranking. */
 	isReady = $derived(
 		this.data.suppliers.length >= 2 &&
 		this.data.criteria.length > 0 &&
-		this.data.criteria.every((c) => c.subcriteria.length > 0)
+		this.data.criteria.every((c) => c.weight > 0)
 	);
 
 	/** True when criterion weights sum to exactly 100. */
@@ -203,17 +255,32 @@ class EvaluationStore {
 		return result;
 	});
 
-	/** Computed group averages per supplier (uses itemScores overlay). */
+	/** Computed group averages per supplier (handles all three modes). */
 	groupScores = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
 		for (const criterion of this.data.criteria) {
 			result[criterion.id] = {};
+			const mode = criterionMode(criterion);
 			for (const supplier of this.data.suppliers) {
-				result[criterion.id][supplier.id] = weightedAverage(
-					criterion.subcriteria,
-					supplier.id,
-					this.itemScores
-				);
+				if (mode === 'resource') {
+					// Mode 3: roles × moments (subcriteria as dimensions)
+					const items = criterion.items?.[supplier.id] ?? [];
+					result[criterion.id][supplier.id] = supplierResourceScore(
+						items,
+						criterion.subcriteria,
+						criterion.aggregation ?? 'average'
+					);
+				} else if (mode === 'leaf') {
+					// Mode 1: direct scores on criterion
+					result[criterion.id][supplier.id] = criterion.scores?.[supplier.id] ?? 0;
+				} else {
+					// Mode 2: traditional weighted subcriteria
+					result[criterion.id][supplier.id] = weightedAverage(
+						criterion.subcriteria,
+						supplier.id,
+						this.itemScores
+					);
+				}
 			}
 		}
 		return result;
@@ -244,22 +311,42 @@ class EvaluationStore {
 			.map((entry, i) => ({ ...entry, rank: i + 1 }));
 	});
 
-	/** Price model: quality deduction per subcriterion per supplier. */
+	/** Price model: quality deduction per scoring unit per supplier. */
 	priceDeductions = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
 		const qb = this.data.contractValue * (this.data.qualityWeight / 100);
 		const tw = this.totalWeight;
 
 		for (const criterion of this.data.criteria) {
-			for (const sub of criterion.subcriteria) {
-				if (!result[sub.id]) result[sub.id] = {};
-				const maxDeduction = qb * (sub.weight / tw);
+			const mode = criterionMode(criterion);
+			if (mode === 'leaf') {
+				// Leaf criteria: deduction based on criterion-level score
+				if (!result[criterion.id]) result[criterion.id] = {};
+				const maxDeduction = qb * (criterion.weight / tw);
 				for (const supplier of this.data.suppliers) {
-					const score =
-						this.itemScores[sub.id]?.[supplier.id] ??
-						sub.scores[supplier.id] ??
-						0;
-					result[sub.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+					const score = criterion.scores?.[supplier.id] ?? 0;
+					result[criterion.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+				}
+			} else if (mode === 'resource') {
+				// Resource criteria: deduction based on aggregated resource score
+				if (!result[criterion.id]) result[criterion.id] = {};
+				const maxDeduction = qb * (criterion.weight / tw);
+				for (const supplier of this.data.suppliers) {
+					const score = this.groupScores[criterion.id]?.[supplier.id] ?? 0;
+					result[criterion.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+				}
+			} else {
+				// Traditional: per-subcriterion deductions
+				for (const sub of criterion.subcriteria) {
+					if (!result[sub.id]) result[sub.id] = {};
+					const maxDeduction = qb * (sub.weight / tw);
+					for (const supplier of this.data.suppliers) {
+						const score =
+							this.itemScores[sub.id]?.[supplier.id] ??
+							sub.scores[supplier.id] ??
+							0;
+						result[sub.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+					}
 				}
 			}
 		}
@@ -323,7 +410,7 @@ class EvaluationStore {
 		this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id
 	);
 
-	/** Progress tracking. */
+	/** Progress tracking (handles all three modes). */
 	progress = $derived.by(() => {
 		let totalCells = 0;
 		let filledCells = 0;
@@ -331,35 +418,63 @@ class EvaluationStore {
 		let filledNotes = 0;
 
 		for (const criterion of this.data.criteria) {
-			for (const sub of criterion.subcriteria) {
-				if (sub.evaluationType === 'item' && sub.itemCriteria) {
-					const nCriteria = sub.itemCriteria.length;
-					// Count item-level cells
-					for (const supplier of this.data.suppliers) {
-						const items = sub.items?.[supplier.id] ?? [];
-						if (items.length === 0) {
-							// Expect at least 1 item per supplier
-							totalCells += nCriteria;
-						} else {
-							for (const item of items) {
-								for (const ic of sub.itemCriteria) {
-									totalCells++;
-									if (item.scores[ic.id] !== undefined) filledCells++;
-								}
+			const mode = criterionMode(criterion);
+
+			if (mode === 'leaf') {
+				// Mode 1: one cell per supplier on the criterion
+				for (const supplier of this.data.suppliers) {
+					totalCells++;
+					if (criterion.scores?.[supplier.id] !== undefined) filledCells++;
+					totalNotes++;
+					if (criterion.notes?.[supplier.id]) filledNotes++;
+				}
+			} else if (mode === 'resource') {
+				// Mode 3: roles × moments per supplier
+				const nMoments = criterion.subcriteria.length;
+				for (const supplier of this.data.suppliers) {
+					const items = criterion.items?.[supplier.id] ?? [];
+					if (items.length === 0) {
+						totalCells += Math.max(1, nMoments);
+					} else {
+						for (const item of items) {
+							for (const sub of criterion.subcriteria) {
+								totalCells++;
+								if (item.scores[sub.id] !== undefined) filledCells++;
 							}
 						}
 					}
-					// Count sub-level notes
-					for (const supplier of this.data.suppliers) {
-						totalNotes++;
-						if (sub.notes[supplier.id]) filledNotes++;
-					}
-				} else {
-					for (const supplier of this.data.suppliers) {
-						totalCells++;
-						if (sub.scores[supplier.id] !== undefined) filledCells++;
-						totalNotes++;
-						if (sub.notes[supplier.id]) filledNotes++;
+					totalNotes++;
+					if (criterion.notes?.[supplier.id]) filledNotes++;
+				}
+			} else {
+				// Mode 2: traditional subcriteria
+				for (const sub of criterion.subcriteria) {
+					if (sub.evaluationType === 'item' && sub.itemCriteria) {
+						const nCriteria = sub.itemCriteria.length;
+						for (const supplier of this.data.suppliers) {
+							const items = sub.items?.[supplier.id] ?? [];
+							if (items.length === 0) {
+								totalCells += nCriteria;
+							} else {
+								for (const item of items) {
+									for (const ic of sub.itemCriteria) {
+										totalCells++;
+										if (item.scores[ic.id] !== undefined) filledCells++;
+									}
+								}
+							}
+						}
+						for (const supplier of this.data.suppliers) {
+							totalNotes++;
+							if (sub.notes[supplier.id]) filledNotes++;
+						}
+					} else {
+						for (const supplier of this.data.suppliers) {
+							totalCells++;
+							if (sub.scores[supplier.id] !== undefined) filledCells++;
+							totalNotes++;
+							if (sub.notes[supplier.id]) filledNotes++;
+						}
 					}
 				}
 			}
@@ -375,6 +490,11 @@ class EvaluationStore {
 	bestScores = $derived.by(() => {
 		const result: Record<string, number> = {};
 		for (const criterion of this.data.criteria) {
+			// For leaf criteria, best score at criterion level
+			if (criterionMode(criterion) === 'leaf' && criterion.scores) {
+				const vals = Object.values(criterion.scores);
+				result[criterion.id] = vals.length > 0 ? Math.max(...vals) : 0;
+			}
 			for (const sub of criterion.subcriteria) {
 				const overlay = this.itemScores[sub.id];
 				const vals = overlay
@@ -399,13 +519,16 @@ class EvaluationStore {
 		return result;
 	});
 
-	/** Weight warnings: criterion id → mismatch between criterion weight and sub-criteria sum. */
+	/** Weight warnings: criterion id → mismatch between criterion weight and sub-criteria sum (mode 2 only). */
 	weightWarnings = $derived.by(() => {
 		const result: Record<string, { criterionWeight: number; subSum: number }> = {};
 		for (const criterion of this.data.criteria) {
-			const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-			if (subSum !== criterion.weight) {
-				result[criterion.id] = { criterionWeight: criterion.weight, subSum };
+			const mode = criterionMode(criterion);
+			if (mode === 'traditional') {
+				const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
+				if (subSum !== criterion.weight) {
+					result[criterion.id] = { criterionWeight: criterion.weight, subSum };
+				}
 			}
 		}
 		return result;
@@ -413,10 +536,18 @@ class EvaluationStore {
 
 	// ── Mutation methods ──
 
-	/** Update a single score. */
+	/** Update a single score (sub-criterion level). */
 	setScore(subCriterionId: string, supplierId: string, value: number) {
 		const sub = this._findSub(subCriterionId);
 		if (sub) sub.scores[supplierId] = Math.max(0, Math.min(10, value));
+	}
+
+	/** Update a score on a leaf criterion (mode 1). */
+	setCriterionScore(criterionId: string, supplierId: string, value: number) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion) return;
+		if (!criterion.scores) criterion.scores = {};
+		criterion.scores[supplierId] = Math.max(0, Math.min(10, value));
 	}
 
 	/** Update a note. */
@@ -431,7 +562,7 @@ class EvaluationStore {
 		if (supplier) supplier.price = price;
 	}
 
-	/** Set a score for a specific item on a specific item-criterion. */
+	/** Set a score for a specific item on a specific item-criterion (sub-level). */
 	setItemScore(
 		subCriterionId: string,
 		supplierId: string,
@@ -447,7 +578,7 @@ class EvaluationStore {
 		if (item) item.scores[itemCriterionId] = Math.max(0, Math.min(10, value));
 	}
 
-	/** Set a note for a specific item on a specific item-criterion. */
+	/** Set a note for a specific item on a specific item-criterion (sub-level). */
 	setItemNote(
 		subCriterionId: string,
 		supplierId: string,
@@ -463,14 +594,14 @@ class EvaluationStore {
 		if (item) item.notes[itemCriterionId] = text;
 	}
 
-	/** Add an item to a supplier's list for a sub-criterion. */
+	/** Add an item to a supplier's list for a sub-criterion (sub-level item eval). */
 	addItem(subCriterionId: string, supplierId: string, name: string, label?: string) {
 		const sub = this._findSub(subCriterionId);
 		if (!sub || sub.evaluationType !== 'item') return;
 		if (!sub.items) sub.items = {};
 		if (!sub.items[supplierId]) sub.items[supplierId] = [];
 		sub.items[supplierId].push({
-			id: crypto.randomUUID(),
+			id: uid('item'),
 			name,
 			label,
 			scores: {},
@@ -478,7 +609,7 @@ class EvaluationStore {
 		});
 	}
 
-	/** Remove an item. */
+	/** Remove an item (sub-level). */
 	removeItem(subCriterionId: string, supplierId: string, itemId: string) {
 		const sub = this._findSub(subCriterionId);
 		if (!sub?.items) return;
@@ -487,7 +618,7 @@ class EvaluationStore {
 		sub.items[supplierId] = items.filter((i) => i.id !== itemId);
 	}
 
-	/** Update a criterion's weight. */
+	/** Update a criterion's weight (direct). */
 	setCriterionWeight(criterionId: string, weight: number) {
 		const criterion = this._findCriterion(criterionId);
 		if (criterion) criterion.weight = clampWeight(weight);
@@ -499,13 +630,16 @@ class EvaluationStore {
 			const sub = c.subcriteria.find((s) => s.id === subCriterionId);
 			if (sub) {
 				sub.weight = clampWeight(weight);
-				this._recalcCriterionWeight(c.id);
+				// Only auto-recalculate criterion weight for traditional mode
+				if (criterionMode(c) === 'traditional') {
+					this._recalcCriterionWeight(c.id);
+				}
 				return;
 			}
 		}
 	}
 
-	/** Change aggregation method. */
+	/** Change aggregation method (sub-level). */
 	setAggregation(subCriterionId: string, method: AggregationMethod) {
 		const sub = this._findSub(subCriterionId);
 		if (sub) sub.aggregation = method;
@@ -532,7 +666,7 @@ class EvaluationStore {
 		if (sub) sub.itemLabel = label;
 	}
 
-	/** Add an item-criterion (dimension) to an item-evaluated sub-criterion. */
+	/** Add an item-criterion (moment/dimension) to an item-evaluated sub-criterion. */
 	addItemCriterion(subCriterionId: string, name: string, weight: number): string {
 		const sub = this._findSub(subCriterionId);
 		if (!sub || !sub.itemCriteria) return '';
@@ -546,7 +680,6 @@ class EvaluationStore {
 		const sub = this._findSub(subCriterionId);
 		if (!sub || !sub.itemCriteria) return;
 		sub.itemCriteria = sub.itemCriteria.filter((ic) => ic.id !== itemCriterionId);
-		// Clean up scores referencing this dimension
 		if (sub.items) {
 			for (const items of Object.values(sub.items)) {
 				for (const item of items) {
@@ -567,6 +700,100 @@ class EvaluationStore {
 	setItemCriterionWeight(subCriterionId: string, itemCriterionId: string, weight: number) {
 		const ic = this._findItemCriterion(subCriterionId, itemCriterionId);
 		if (ic) ic.weight = clampWeight(weight);
+	}
+
+	// ── Criterion-level resource evaluation (mode 3) ──
+
+	/** Toggle criterion between simple and resource evaluation. */
+	setCriterionEvaluationType(criterionId: string, type: 'simple' | 'item') {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion) return;
+		criterion.evaluationType = type;
+		if (type === 'item') {
+			if (!criterion.roles || criterion.roles.length === 0) {
+				criterion.roles = [{ id: uid('role'), name: '' }];
+			}
+			if (!criterion.items) criterion.items = {};
+			if (!criterion.aggregation) criterion.aggregation = 'average';
+		}
+	}
+
+	/** Set aggregation method for criterion-level resources. */
+	setCriterionAggregation(criterionId: string, method: AggregationMethod) {
+		const criterion = this._findCriterion(criterionId);
+		if (criterion) criterion.aggregation = method;
+	}
+
+	/** Add a role to a criterion. */
+	addRole(criterionId: string, name: string): string {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion) return '';
+		if (!criterion.roles) criterion.roles = [];
+		const id = uid('role');
+		criterion.roles = [...criterion.roles, { id, name }];
+		// Create placeholder items for all suppliers
+		if (!criterion.items) criterion.items = {};
+		for (const supplier of this.data.suppliers) {
+			if (!criterion.items[supplier.id]) criterion.items[supplier.id] = [];
+			criterion.items[supplier.id] = [
+				...criterion.items[supplier.id],
+				{ id: uid('item'), name: '', roleId: id, scores: {}, notes: {} }
+			];
+		}
+		return id;
+	}
+
+	/** Remove a role and its associated items. */
+	removeRole(criterionId: string, roleId: string) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion?.roles) return;
+		criterion.roles = criterion.roles.filter((r) => r.id !== roleId);
+		if (criterion.items) {
+			for (const supplierId of Object.keys(criterion.items)) {
+				criterion.items[supplierId] = criterion.items[supplierId].filter(
+					(i) => i.roleId !== roleId
+				);
+			}
+		}
+	}
+
+	/** Rename a role. */
+	renameRole(criterionId: string, roleId: string, name: string) {
+		const criterion = this._findCriterion(criterionId);
+		const role = criterion?.roles?.find((r) => r.id === roleId);
+		if (role) role.name = name;
+	}
+
+	/** Set the label (person name) for a role on a specific supplier. */
+	setRoleLabel(criterionId: string, supplierId: string, roleId: string, label: string) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion?.items) return;
+		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		if (item) item.label = label;
+	}
+
+	/** Set a score for a role on a moment (subcriterion) for a specific supplier. */
+	setRoleScore(criterionId: string, supplierId: string, roleId: string, momentId: string, value: number) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion?.items) return;
+		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		if (item) item.scores[momentId] = Math.max(0, Math.min(10, value));
+	}
+
+	/** Set a note for a role on a moment for a specific supplier. */
+	setRoleNote(criterionId: string, supplierId: string, roleId: string, momentId: string, text: string) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion?.items) return;
+		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		if (item) item.notes[momentId] = text;
+	}
+
+	/** Set a holistic note for a role resource. */
+	setRoleResourceNote(criterionId: string, supplierId: string, roleId: string, text: string) {
+		const criterion = this._findCriterion(criterionId);
+		if (!criterion?.items) return;
+		const item = criterion.items[supplierId]?.find((i) => i.roleId === roleId);
+		if (item) item.note = text;
 	}
 
 	/** Set the active view (overview or criterion detail). */
@@ -592,7 +819,7 @@ class EvaluationStore {
 		criterion.notes[supplierId] = text;
 	}
 
-	/** Set a holistic resource note (covering all dimensions). */
+	/** Set a holistic resource note (covering all dimensions) on sub-level items. */
 	setItemResourceNote(
 		subCriterionId: string,
 		supplierId: string,
@@ -627,6 +854,7 @@ class EvaluationStore {
 		this.data.priceWeight = price;
 	}
 
+	/** Add a criterion (leaf by default — no subcriteria). */
 	addCriterion(name: string, type: 'quality' | 'price'): string {
 		const id = uid('c');
 		this.data.criteria = [
@@ -636,15 +864,7 @@ class EvaluationStore {
 				name,
 				type,
 				weight: 0,
-				subcriteria: [
-					{
-						id: uid(`${id}-s`),
-						name: name || '',
-						weight: 0,
-						scores: {},
-						notes: {}
-					}
-				]
+				subcriteria: []
 			}
 		];
 		return id;
@@ -680,7 +900,10 @@ class EvaluationStore {
 			...c.subcriteria,
 			{ id, name, weight, scores: {}, notes: {} }
 		];
-		this._recalcCriterionWeight(criterionId);
+		// For traditional mode, recalculate criterion weight
+		if (criterionMode(c) === 'traditional') {
+			this._recalcCriterionWeight(criterionId);
+		}
 		return id;
 	}
 
@@ -689,7 +912,9 @@ class EvaluationStore {
 			const filtered = c.subcriteria.filter((s) => s.id !== subCriterionId);
 			if (filtered.length < c.subcriteria.length) {
 				c.subcriteria = filtered;
-				this._recalcCriterionWeight(c.id);
+				if (criterionMode(c) === 'traditional') {
+					this._recalcCriterionWeight(c.id);
+				}
 				return;
 			}
 		}
@@ -715,6 +940,19 @@ class EvaluationStore {
 			...this.data.suppliers,
 			{ id, name, price }
 		];
+		// For resource-mode criteria with roles, create placeholder items for the new supplier
+		for (const criterion of this.data.criteria) {
+			if (criterionMode(criterion) === 'resource' && criterion.roles) {
+				if (!criterion.items) criterion.items = {};
+				criterion.items[id] = criterion.roles.map((role) => ({
+					id: uid('item'),
+					name: '',
+					roleId: role.id,
+					scores: {},
+					notes: {}
+				}));
+			}
+		}
 		return id;
 	}
 
@@ -723,6 +961,8 @@ class EvaluationStore {
 		// Cascade: remove scores, notes, items for this supplier
 		for (const c of this.data.criteria) {
 			if (c.notes) delete c.notes[supplierId];
+			if (c.scores) delete c.scores[supplierId];
+			if (c.items) delete c.items[supplierId];
 			for (const sub of c.subcriteria) {
 				delete sub.scores[supplierId];
 				delete sub.notes[supplierId];

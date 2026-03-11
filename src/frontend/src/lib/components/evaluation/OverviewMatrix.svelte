@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, scoreTier } from '$lib/stores/evaluation.svelte';
+	import { evaluation, scoreTier, criterionMode } from '$lib/stores/evaluation.svelte';
 
 	let totalWeight = $derived(
 		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
@@ -32,13 +32,15 @@
 		<tbody>
 			{#each evaluation.data.criteria as criterion}
 				{@const isQuality = criterion.type === 'quality'}
+				{@const mode = criterionMode(criterion)}
+				{@const isLeaf = mode === 'leaf'}
+				{@const isResource = mode === 'resource'}
 				<tr
-					class="row-criterion"
-					class:row-clickable={isQuality}
-					onclick={() => { if (isQuality) evaluation.setActiveView(criterion.id); }}
-					role={isQuality ? 'button' : undefined}
-					tabindex={isQuality ? 0 : undefined}
-					onkeydown={(e) => { if (isQuality && (e.key === 'Enter' || e.key === ' ')) evaluation.setActiveView(criterion.id); }}
+					class="row-criterion row-clickable"
+					onclick={() => { evaluation.setActiveView(criterion.id); }}
+					role="button"
+					tabindex={0}
+					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.setActiveView(criterion.id); }}
 				>
 					<td class="cell-weight">
 						<div class="weight-display">
@@ -51,12 +53,13 @@
 					<td class="cell-criteria">
 						<div class="criteria-content">
 							<span class="criteria-name">{criterion.name}</span>
-							{#if isQuality}
+							{#if isResource}
+								<span class="criteria-badge badge-resource">Ressurs</span>
+								<span class="criteria-sub-count">{criterion.subcriteria.length} momenter</span>
+							{:else if !isLeaf && isQuality}
 								<span class="criteria-sub-count">{criterion.subcriteria.length} underkriterier</span>
 							{/if}
-							{#if isQuality}
-								<span class="criteria-arrow">→</span>
-							{/if}
+							<span class="criteria-arrow">→</span>
 						</div>
 					</td>
 					{#each evaluation.data.suppliers as supplier}
@@ -66,7 +69,7 @@
 						{@const isBest = score === best && score > 0}
 						<td class="cell-score score-{tier}" class:score-best={isBest}>
 							<span class="score-value">
-								{score > 0 ? score.toFixed(1) : '—'}
+								{score > 0 ? (isLeaf ? String(score) : score.toFixed(1)) : '—'}
 							</span>
 						</td>
 					{/each}
@@ -294,5 +297,21 @@
 		background: var(--color-score-low-bg);
 		border-radius: var(--radius-sm);
 		border-left: 3px solid var(--color-score-low);
+	}
+
+	.criteria-badge {
+		padding: 1px var(--spacing-2);
+		font-size: 9px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		border-radius: var(--radius-sm);
+		flex-shrink: 0;
+	}
+
+	.badge-resource {
+		color: var(--color-vekt-dim);
+		background: var(--color-vekt-bg);
+		border: 1px solid var(--color-vekt-bg-strong);
 	}
 </style>

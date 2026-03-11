@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { evaluation, scoreTier, itemScore } from '$lib/stores/evaluation.svelte';
+	import { evaluation, scoreTier, itemScore, criterionMode, resourceMomentScore } from '$lib/stores/evaluation.svelte';
 
 	let criterion = $derived(
 		evaluation.data.criteria.find((c) => c.id === evaluation.activeView)
 	);
+
+	let mode = $derived(criterion ? criterionMode(criterion) : 'traditional');
 
 	let supplier = $derived(
 		evaluation.data.suppliers.find((s) => s.id === evaluation.selectedSupplierId)
@@ -43,23 +45,37 @@
 		let total = 0;
 		let filled = 0;
 
-		// Criterion-level note
-		total++;
-		if (criterion.notes?.[supplierId]) filled++;
-
-		// Item-level: per-resource notes
-		for (const sub of itemSubs) {
-			const items = sub.items?.[supplierId] ?? [];
-			for (const item of items) {
-				total++;
-				if (item.note) filled++;
-			}
-		}
-
-		// Simple: per-sub-criterion notes
-		for (const sub of simpleSubs) {
+		if (mode === 'leaf') {
+			// Leaf: criterion-level note only
 			total++;
-			if (sub.notes[supplierId]) filled++;
+			if (criterion.notes?.[supplierId]) filled++;
+		} else if (mode === 'resource') {
+			// Resource: criterion-level note + one note per role
+			total++;
+			if (criterion.notes?.[supplierId]) filled++;
+			const roles = criterion.roles ?? [];
+			for (const role of roles) {
+				total++;
+				const item = criterion.items?.[supplierId]?.find((i) => i.roleId === role.id);
+				if (item?.note) filled++;
+			}
+		} else {
+			// Traditional: criterion-level note + per-sub notes + per-item notes
+			total++;
+			if (criterion.notes?.[supplierId]) filled++;
+
+			for (const sub of itemSubs) {
+				const items = sub.items?.[supplierId] ?? [];
+				for (const item of items) {
+					total++;
+					if (item.note) filled++;
+				}
+			}
+
+			for (const sub of simpleSubs) {
+				total++;
+				if (sub.notes[supplierId]) filled++;
+			}
 		}
 
 		return { filled, total };
@@ -109,12 +125,14 @@
 		<div class="panel-content">
 			<!-- Overordnet vurdering (criterion-level note) -->
 			{#if criterion && supplier}
-				{@const groupScore = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+				{@const displayScore = mode === 'leaf'
+					? (criterion.scores?.[supplier.id] ?? 0)
+					: (evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0)}
 				<div class="note-section note-overordnet">
 					<div class="note-header">
 						<span class="note-title">Overordnet vurdering</span>
-						<span class="note-score tier-{scoreTier(groupScore)}">
-							{groupScore.toFixed(1)}
+						<span class="note-score tier-{scoreTier(displayScore)}">
+							{mode === 'leaf' && displayScore === 0 ? '—' : displayScore.toFixed(1)}
 						</span>
 					</div>
 					<textarea
@@ -127,81 +145,131 @@
 				</div>
 			{/if}
 
-			<!-- Item-level sub-criteria: per-resource notes -->
-			{#each itemSubs as sub}
-				{@const items = sub.items?.[supplier.id] ?? []}
-				{#if items.length > 0}
-					{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
-					<div class="note-group">
-						<div class="note-group-header">
-							<span class="note-group-name">{sub.name}</span>
-							<span class="note-group-score tier-{scoreTier(aggScore)}">
-								{aggScore.toFixed(1)}
-							</span>
-						</div>
+			<!-- Resource mode: per-role notes -->
+			{#if mode === 'resource' && criterion.roles}
+				{@const roles = criterion.roles}
+				{@const items = criterion.items?.[supplier.id] ?? []}
+				<div class="note-group">
+					<div class="note-group-header">
+						<span class="note-group-name">Ressurser</span>
+						<span class="note-group-score tier-{scoreTier(evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0)}">
+							{(evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0).toFixed(1)}
+						</span>
+					</div>
 
-						{#each items as item}
-							{@const avg = itemScore(item, sub.itemCriteria ?? [])}
+					{#each roles as role}
+						{@const item = items.find((i) => i.roleId === role.id)}
+						{#if item}
+							{@const total = resourceMomentScore(item, criterion.subcriteria)}
 							<div class="resource-note">
 								<div class="resource-header">
-									<span class="resource-name">{item.name}</span>
+									<span class="resource-name">{role.name}</span>
 									{#if item.label}
 										<span class="resource-role">{item.label}</span>
 									{/if}
 								</div>
 								<div class="resource-scores">
-									{#each sub.itemCriteria ?? [] as ic}
-										{@const score = item.scores[ic.id] ?? 0}
+									{#each criterion.subcriteria as moment}
+										{@const score = item.scores[moment.id] ?? 0}
 										<span class="resource-score-badge tier-{scoreTier(score)}">
-											<span class="badge-label">{ic.name}</span>
+											<span class="badge-label">{moment.name}</span>
 											<span class="badge-value">{score}</span>
 										</span>
 									{/each}
-									<span class="resource-score-avg tier-{scoreTier(avg)}">
-										Snitt {avg.toFixed(1)}
+									<span class="resource-score-avg tier-{scoreTier(total)}">
+										Snitt {total.toFixed(1)}
 									</span>
 								</div>
 								<textarea
 									class="note-textarea note-textarea-sm"
 									value={item.note ?? ''}
-									oninput={(e) => evaluation.setItemResourceNote(sub.id, supplier.id, item.id, e.currentTarget.value)}
-									placeholder="Vurdering av {item.name}..."
+									oninput={(e) => evaluation.setRoleResourceNote(criterion.id, supplier.id, role.id, e.currentTarget.value)}
+									placeholder="Vurdering av {role.name}..."
+									rows="2"
+								></textarea>
+							</div>
+						{/if}
+					{/each}
+				</div>
+			{/if}
+
+			<!-- Traditional mode: Item-level sub-criteria: per-resource notes -->
+			{#if mode === 'traditional'}
+				{#each itemSubs as sub}
+					{@const items = sub.items?.[supplier.id] ?? []}
+					{#if items.length > 0}
+						{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
+						<div class="note-group">
+							<div class="note-group-header">
+								<span class="note-group-name">{sub.name}</span>
+								<span class="note-group-score tier-{scoreTier(aggScore)}">
+									{aggScore.toFixed(1)}
+								</span>
+							</div>
+
+							{#each items as item}
+								{@const avg = itemScore(item, sub.itemCriteria ?? [])}
+								<div class="resource-note">
+									<div class="resource-header">
+										<span class="resource-name">{item.name}</span>
+										{#if item.label}
+											<span class="resource-role">{item.label}</span>
+										{/if}
+									</div>
+									<div class="resource-scores">
+										{#each sub.itemCriteria ?? [] as ic}
+											{@const score = item.scores[ic.id] ?? 0}
+											<span class="resource-score-badge tier-{scoreTier(score)}">
+												<span class="badge-label">{ic.name}</span>
+												<span class="badge-value">{score}</span>
+											</span>
+										{/each}
+										<span class="resource-score-avg tier-{scoreTier(avg)}">
+											Snitt {avg.toFixed(1)}
+										</span>
+									</div>
+									<textarea
+										class="note-textarea note-textarea-sm"
+										value={item.note ?? ''}
+										oninput={(e) => evaluation.setItemResourceNote(sub.id, supplier.id, item.id, e.currentTarget.value)}
+										placeholder="Vurdering av {item.name}..."
+										rows="2"
+									></textarea>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				{/each}
+
+				<!-- Simple sub-criteria: per-sub-criterion notes -->
+				{#if simpleSubs.length > 0}
+					<div class="note-group">
+						{#if itemSubs.length > 0}
+							<div class="note-group-header">
+								<span class="note-group-name">Underkriterier</span>
+							</div>
+						{/if}
+
+						{#each simpleSubs as sub}
+							{@const score = sub.scores[supplier.id] ?? 0}
+							<div class="sub-note">
+								<div class="sub-note-header">
+									<span class="sub-note-name">{sub.name}</span>
+									<span class="sub-note-score tier-{scoreTier(score)}">
+										{score > 0 ? score : '—'}
+									</span>
+								</div>
+								<textarea
+									class="note-textarea note-textarea-sm"
+									value={sub.notes[supplier.id] ?? ''}
+									oninput={(e) => evaluation.setNote(sub.id, supplier.id, e.currentTarget.value)}
+									placeholder="Begrunnelse for poengsettingen..."
 									rows="2"
 								></textarea>
 							</div>
 						{/each}
 					</div>
 				{/if}
-			{/each}
-
-			<!-- Simple sub-criteria: per-sub-criterion notes -->
-			{#if simpleSubs.length > 0}
-				<div class="note-group">
-					{#if itemSubs.length > 0}
-						<div class="note-group-header">
-							<span class="note-group-name">Underkriterier</span>
-						</div>
-					{/if}
-
-					{#each simpleSubs as sub}
-						{@const score = sub.scores[supplier.id] ?? 0}
-						<div class="sub-note">
-							<div class="sub-note-header">
-								<span class="sub-note-name">{sub.name}</span>
-								<span class="sub-note-score tier-{scoreTier(score)}">
-									{score > 0 ? score : '—'}
-								</span>
-							</div>
-							<textarea
-								class="note-textarea note-textarea-sm"
-								value={sub.notes[supplier.id] ?? ''}
-								oninput={(e) => evaluation.setNote(sub.id, supplier.id, e.currentTarget.value)}
-								placeholder="Begrunnelse for poengsettingen..."
-								rows="2"
-							></textarea>
-						</div>
-					{/each}
-				</div>
 			{/if}
 		</div>
 	</div>
