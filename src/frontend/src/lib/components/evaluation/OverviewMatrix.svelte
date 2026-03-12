@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { evaluation, scoreTier, criterionMode } from '$lib/stores/evaluation.svelte';
 
-	let totalWeight = $derived(
-		evaluation.data.criteria.reduce((s, c) => s + c.weight, 0)
-	);
-
 	let bestTotal = $derived(
 		Math.max(...Object.values(evaluation.totals), 0)
 	);
@@ -95,7 +91,7 @@
 			<tr class="row-total">
 				<td class="cell-weight">
 					<div class="weight-display">
-						<span class="weight-num">{totalWeight}<span class="weight-pct">%</span></span>
+						<span class="weight-num">{evaluation.totalWeight}<span class="weight-pct">%</span></span>
 					</div>
 				</td>
 				<td class="cell-criteria">
@@ -182,8 +178,8 @@
 </div>
 {/if}
 
-{#if totalWeight !== 100}
-	<div class="weight-warning">Vektsum: {totalWeight} % (forventet 100 %)</div>
+{#if evaluation.totalWeight !== 100}
+	<div class="weight-warning">Vektsum: {evaluation.totalWeight} % (forventet 100 %)</div>
 {/if}
 
 <style>

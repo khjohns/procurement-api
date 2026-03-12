@@ -101,7 +101,7 @@ export function criterionMode(c: Criterion): 'leaf' | 'traditional' | 'resource'
 
 /** Clamp a score to 0–10. */
 function clampScore(value: number): number {
-	return clampScore(value);
+	return Math.max(0, Math.min(10, Math.round(value)));
 }
 
 /** Weighted average of an item's scores across weighted dimensions. */

@@ -289,6 +289,9 @@
 							class="row-sub row-clickable-t"
 							class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
 							onclick={() => evaluation.selectSupplier(supplier.id)}
+							role="row"
+							tabindex={0}
+							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.selectSupplier(supplier.id); }}
 						>
 							<td class="cell-supplier-name-t">{supplier.name}</td>
 							<td
@@ -850,6 +853,9 @@
 								class="row-sub row-clickable-t"
 								class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
 								onclick={() => evaluation.selectSupplier(supplier.id)}
+								role="row"
+								tabindex={0}
+								onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.selectSupplier(supplier.id); }}
 							>
 								<td class="cell-supplier-name-t">{supplier.name}</td>
 								{#each simpleSubs as sub}
