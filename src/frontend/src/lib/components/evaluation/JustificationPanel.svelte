@@ -50,14 +50,16 @@
 			total++;
 			if (criterion.notes?.[supplierId]) filled++;
 		} else if (mode === 'resource') {
-			// Resource: criterion-level note + one note per role
+			// Resource: criterion-level note + one note per role that has a resource
 			total++;
 			if (criterion.notes?.[supplierId]) filled++;
 			const roles = criterion.roles ?? [];
 			for (const role of roles) {
-				total++;
 				const item = criterion.items?.[supplierId]?.find((i) => i.roleId === role.id);
-				if (item?.note) filled++;
+				if (item) {
+					total++;
+					if (item.note) filled++;
+				}
 			}
 		} else {
 			// Traditional: criterion-level note + per-sub notes + per-item notes
@@ -146,7 +148,7 @@
 			{/if}
 
 			<!-- Resource mode: per-role notes -->
-			{#if mode === 'resource' && criterion.roles}
+			{#if mode === 'resource' && criterion.roles?.length}
 				{@const roles = criterion.roles}
 				{@const items = criterion.items?.[supplier.id] ?? []}
 				<div class="note-group">
