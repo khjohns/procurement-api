@@ -10,6 +10,7 @@
 		type ItemCriterion
 	} from '$lib/stores/evaluation.svelte';
 	import ItemScoreCell from './ItemScoreCell.svelte';
+	import ScoreCell from './ScoreCell.svelte';
 
 	interface Props {
 		criterionId: string;
@@ -74,47 +75,6 @@
 	function handleWeightKeydown(e: KeyboardEvent, type: 'criterion' | 'sub', id: string) {
 		if (e.key === 'Enter') { e.preventDefault(); commitEdit(type, id); }
 		else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
-	}
-
-	/** Score input for simple sub-criteria and leaf mode. */
-	let editingScore = $state<string | null>(null);
-	let scoreEditValue = $state('');
-
-	function startScoreEdit(subId: string, supplierId: string, currentScore: number) {
-		editingScore = `${subId}:${supplierId}`;
-		scoreEditValue = currentScore > 0 ? String(currentScore) : '';
-	}
-
-	function commitScoreEdit(subId: string, supplierId: string) {
-		const num = parseInt(scoreEditValue, 10);
-		if (!isNaN(num) && num >= 0 && num <= 10) {
-			evaluation.setScore(subId, supplierId, num);
-		}
-		editingScore = null;
-	}
-
-	function handleScoreKeydown(e: KeyboardEvent, subId: string, supplierId: string) {
-		if (e.key === 'Enter') { e.preventDefault(); commitScoreEdit(subId, supplierId); }
-		else if (e.key === 'Escape') { e.preventDefault(); editingScore = null; }
-	}
-
-	/** Leaf criterion score editing. */
-	function startLeafScoreEdit(supplierId: string, currentScore: number) {
-		editingScore = `leaf:${supplierId}`;
-		scoreEditValue = currentScore > 0 ? String(currentScore) : '';
-	}
-
-	function commitLeafScoreEdit(supplierId: string) {
-		const num = parseInt(scoreEditValue, 10);
-		if (!isNaN(num) && num >= 0 && num <= 10) {
-			evaluation.setCriterionScore(criterionId, supplierId, num);
-		}
-		editingScore = null;
-	}
-
-	function handleLeafScoreKeydown(e: KeyboardEvent, supplierId: string) {
-		if (e.key === 'Enter') { e.preventDefault(); commitLeafScoreEdit(supplierId); }
-		else if (e.key === 'Escape') { e.preventDefault(); editingScore = null; }
 	}
 
 	/** Resource mode: role score editing. */
@@ -231,38 +191,12 @@
 						<td class="cell-criteria">{criterion.name}</td>
 						{#each evaluation.data.suppliers as supplier}
 							{@const score = criterion.scores?.[supplier.id] ?? 0}
-							{@const tier = scoreTier(score)}
-							{@const leafKey = `leaf:${supplier.id}`}
-							<td
-								class="cell-score score-{tier}"
-								class:cell-selected={evaluation.selectedSupplierId === supplier.id}
-								onclick={() => {
-									evaluation.selectSupplier(supplier.id);
-									if (editingScore !== leafKey) startLeafScoreEdit(supplier.id, score);
-								}}
-								role="button"
-								tabindex={0}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										evaluation.selectSupplier(supplier.id);
-										startLeafScoreEdit(supplier.id, score);
-									}
-								}}
-							>
-								{#if editingScore === leafKey}
-									<!-- svelte-ignore a11y_autofocus -->
-									<input
-										type="number" class="score-input" min="0" max="10"
-										bind:value={scoreEditValue}
-										onkeydown={(e) => handleLeafScoreKeydown(e, supplier.id)}
-										onblur={() => commitLeafScoreEdit(supplier.id)}
-										onclick={(e) => e.stopPropagation()}
-										autofocus
-									/>
-								{:else}
-									<span class="score-value">{score > 0 ? score : '—'}</span>
-								{/if}
-							</td>
+							<ScoreCell
+								{score}
+								isSelected={evaluation.selectedSupplierId === supplier.id}
+								onclick={() => evaluation.selectSupplier(supplier.id)}
+								oncommit={(v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
+							/>
 						{/each}
 					</tr>
 				</tbody>
@@ -283,8 +217,6 @@
 				<tbody>
 					{#each evaluation.data.suppliers as supplier}
 						{@const score = criterion.scores?.[supplier.id] ?? 0}
-						{@const tier = scoreTier(score)}
-						{@const leafKey = `leaf:${supplier.id}`}
 						<tr
 							class="row-sub row-clickable-t"
 							class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
@@ -294,37 +226,13 @@
 							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.selectSupplier(supplier.id); }}
 						>
 							<td class="cell-supplier-name-t">{supplier.name}</td>
-							<td
-								class="cell-score score-{tier}"
-								class:cell-selected={evaluation.selectedSupplierId === supplier.id}
-								onclick={(e) => {
-									e.stopPropagation();
-									evaluation.selectSupplier(supplier.id);
-									if (editingScore !== leafKey) startLeafScoreEdit(supplier.id, score);
-								}}
-								role="button"
-								tabindex={0}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										evaluation.selectSupplier(supplier.id);
-										startLeafScoreEdit(supplier.id, score);
-									}
-								}}
-							>
-								{#if editingScore === leafKey}
-									<!-- svelte-ignore a11y_autofocus -->
-									<input
-										type="number" class="score-input" min="0" max="10"
-										bind:value={scoreEditValue}
-										onkeydown={(e) => handleLeafScoreKeydown(e, supplier.id)}
-										onblur={() => commitLeafScoreEdit(supplier.id)}
-										onclick={(e) => e.stopPropagation()}
-										autofocus
-									/>
-								{:else}
-									<span class="score-value">{score > 0 ? score : '—'}</span>
-								{/if}
-							</td>
+							<ScoreCell
+								{score}
+								isSelected={evaluation.selectedSupplierId === supplier.id}
+								onclick={() => evaluation.selectSupplier(supplier.id)}
+								oncommit={(v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
+								stopPropagation
+							/>
 						</tr>
 					{/each}
 				</tbody>
@@ -743,42 +651,15 @@
 								<td class="cell-criteria">{sub.name}</td>
 								{#each evaluation.data.suppliers as supplier}
 									{@const score = sub.scores[supplier.id] ?? 0}
-									{@const tier = scoreTier(score)}
 									{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
-									{@const hasNotes = !!sub.notes[supplier.id]}
-									{@const scoreKey = `${sub.id}:${supplier.id}`}
-									<td
-										class="cell-score score-{tier}"
-										class:score-best={isBest}
-										class:has-notes={hasNotes}
-										class:cell-selected={evaluation.selectedSupplierId === supplier.id}
-										onclick={() => {
-											evaluation.selectSupplier(supplier.id);
-											if (editingScore !== scoreKey) startScoreEdit(sub.id, supplier.id, score);
-										}}
-										role="button"
-										tabindex={0}
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												evaluation.selectSupplier(supplier.id);
-												startScoreEdit(sub.id, supplier.id, score);
-											}
-										}}
-									>
-										{#if editingScore === scoreKey}
-											<!-- svelte-ignore a11y_autofocus -->
-											<input
-												type="number" class="score-input" min="0" max="10"
-												bind:value={scoreEditValue}
-												onkeydown={(e) => handleScoreKeydown(e, sub.id, supplier.id)}
-												onblur={() => commitScoreEdit(sub.id, supplier.id)}
-												onclick={(e) => e.stopPropagation()}
-												autofocus
-											/>
-										{:else}
-											<span class="score-value">{score > 0 ? score : '—'}</span>
-										{/if}
-									</td>
+									<ScoreCell
+										{score}
+										{isBest}
+										hasNotes={!!sub.notes[supplier.id]}
+										isSelected={evaluation.selectedSupplierId === supplier.id}
+										onclick={() => evaluation.selectSupplier(supplier.id)}
+										oncommit={(v) => evaluation.setScore(sub.id, supplier.id, v)}
+									/>
 								{/each}
 							</tr>
 						{/each}
@@ -793,12 +674,8 @@
 							<td class="cell-criteria cell-total-name">Samlet</td>
 							{#each evaluation.data.suppliers as supplier}
 								{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
-								{@const tier = scoreTier(score)}
 								{@const best = evaluation.bestGroupScores[criterion.id] ?? 0}
-								{@const isBest = score === best && score > 0}
-								<td class="cell-score cell-total-score score-{tier}" class:score-best={isBest}>
-									<span class="score-value">{score.toFixed(1)}</span>
-								</td>
+								<ScoreCell {score} isBest={score === best && score > 0} />
 							{/each}
 						</tr>
 					</tbody>
@@ -860,47 +737,18 @@
 								<td class="cell-supplier-name-t">{supplier.name}</td>
 								{#each simpleSubs as sub}
 									{@const score = sub.scores[supplier.id] ?? 0}
-									{@const tier = scoreTier(score)}
 									{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
-									{@const hasNotes = !!sub.notes[supplier.id]}
-									{@const scoreKey = `${sub.id}:${supplier.id}`}
-									<td
-										class="cell-score score-{tier}"
-										class:score-best={isBest}
-										class:has-notes={hasNotes}
-										class:cell-selected={evaluation.selectedSupplierId === supplier.id}
-										onclick={(e) => {
-											e.stopPropagation();
-											evaluation.selectSupplier(supplier.id);
-											if (editingScore !== scoreKey) startScoreEdit(sub.id, supplier.id, score);
-										}}
-										role="button"
-										tabindex={0}
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												evaluation.selectSupplier(supplier.id);
-												startScoreEdit(sub.id, supplier.id, score);
-											}
-										}}
-									>
-										{#if editingScore === scoreKey}
-											<!-- svelte-ignore a11y_autofocus -->
-											<input
-												type="number" class="score-input" min="0" max="10"
-												bind:value={scoreEditValue}
-												onkeydown={(e) => handleScoreKeydown(e, sub.id, supplier.id)}
-												onblur={() => commitScoreEdit(sub.id, supplier.id)}
-												onclick={(e) => e.stopPropagation()}
-												autofocus
-											/>
-										{:else}
-											<span class="score-value">{score > 0 ? score : '—'}</span>
-										{/if}
-									</td>
+									<ScoreCell
+										{score}
+										{isBest}
+										hasNotes={!!sub.notes[supplier.id]}
+										isSelected={evaluation.selectedSupplierId === supplier.id}
+										onclick={() => evaluation.selectSupplier(supplier.id)}
+										oncommit={(v) => evaluation.setScore(sub.id, supplier.id, v)}
+										stopPropagation
+									/>
 								{/each}
-								<td class="cell-score cell-total-score score-{totalTier}" class:score-best={isTotalBest}>
-									<span class="score-value">{totalScore > 0 ? totalScore.toFixed(1) : '—'}</span>
-								</td>
+								<ScoreCell score={totalScore} isBest={isTotalBest} />
 							</tr>
 						{/each}
 					</tbody>

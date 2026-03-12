@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { evaluation, DEFAULT_ITEM_LABEL, criterionMode } from '$lib/stores/evaluation.svelte';
+	import PillToggle from './PillToggle.svelte';
 
 	// ── Criteria CRUD (delegates to store) ──
 
@@ -78,14 +79,13 @@
 							{criterion.type === 'quality' ? 'Kvalitet' : 'Pris'}
 						</button>
 						{#if criterion.type === 'quality'}
-							<button
-								class="eval-type-toggle"
-								class:eval-type-item={criterion.evaluationType === 'item'}
+							<PillToggle
+								active={criterion.evaluationType === 'item'}
 								onclick={() => evaluation.setCriterionEvaluationType(criterion.id, criterion.evaluationType === 'item' ? 'simple' : 'item')}
 								title={criterion.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for standard' : 'Standard evaluering — klikk for ressursevaluering'}
 							>
 								{criterion.evaluationType === 'item' ? 'Ressurs' : 'Standard'}
-							</button>
+							</PillToggle>
 						{/if}
 						<div class="criterion-move">
 							<button class="move-btn" disabled={ci === 0} onclick={() => moveCriterion(ci, 'up')} title="Flytt opp">&#9650;</button>
@@ -120,14 +120,13 @@
 								/>
 							</div>
 							{#if mode !== 'resource'}
-								<button
-									class="eval-type-toggle"
-									class:eval-type-item={sub.evaluationType === 'item'}
+								<PillToggle
+									active={sub.evaluationType === 'item'}
 									onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
 									title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
 								>
 									{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
-								</button>
+								</PillToggle>
 							{/if}
 							<div class="criterion-move">
 								<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
@@ -702,49 +701,6 @@
 		font-family: var(--font-data);
 		color: var(--color-score-low);
 		margin-left: auto;
-	}
-
-	/* ── Eval type toggle ── */
-	.eval-type-toggle {
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 2px var(--spacing-2);
-		font-family: var(--font-ui);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-ink-ghost);
-		background: none;
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all 0.12s;
-		line-height: 1.4;
-	}
-
-	.eval-type-toggle:hover {
-		color: var(--color-ink-secondary);
-		border-color: var(--color-wire);
-		background: var(--color-felt-hover);
-	}
-
-	.eval-type-toggle:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
-	}
-
-	.eval-type-toggle.eval-type-item {
-		color: var(--color-vekt-dim);
-		border-color: var(--color-vekt-bg-strong);
-		background: var(--color-vekt-bg);
-	}
-
-	.eval-type-toggle.eval-type-item:hover {
-		color: var(--color-vekt);
-		background: var(--color-vekt-bg-strong);
 	}
 
 	/* ── Item config panel ── */

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { evaluation, scoreTier, criterionMode } from '$lib/stores/evaluation.svelte';
+	import PillToggle from './PillToggle.svelte';
 
 	let bestTotal = $derived(
 		Math.max(...Object.values(evaluation.totals), 0)
@@ -8,16 +9,16 @@
 
 <div class="matrix-header">
 	<span class="section-label">Oversikt — alle tildelingskriterier</span>
-	<button
-		class="axis-toggle"
+	<PillToggle
 		onclick={() => evaluation.toggleMatrixTransposed()}
 		title={evaluation.matrixTransposed ? 'Vis kriterier som rader' : 'Vis leverandører som rader'}
+		active={evaluation.matrixTransposed}
 	>
 		<span class="axis-toggle-icon" class:transposed={evaluation.matrixTransposed}>⇄</span>
 		<span class="axis-toggle-label">
 			{evaluation.matrixTransposed ? 'Leverandører × Kriterier' : 'Kriterier × Leverandører'}
 		</span>
-	</button>
+	</PillToggle>
 </div>
 
 {#if !evaluation.matrixTransposed}
@@ -197,33 +198,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
-	}
-
-	.axis-toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		padding: var(--spacing-1) var(--spacing-2);
-		font-family: var(--font-ui);
-		font-size: 10px;
-		font-weight: 500;
-		color: var(--color-ink-muted);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all 0.12s;
-	}
-
-	.axis-toggle:hover {
-		color: var(--color-ink);
-		border-color: var(--color-wire-strong);
-		background: var(--color-felt-hover);
-	}
-
-	.axis-toggle:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	.axis-toggle-icon {

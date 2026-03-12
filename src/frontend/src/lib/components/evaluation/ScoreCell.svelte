@@ -7,11 +7,66 @@
 		hasNotes?: boolean;
 		drilldown?: boolean;
 		expanded?: boolean;
+		isSelected?: boolean;
 		onclick?: () => void;
+		/** If provided, the cell supports inline editing. Called with new value on commit. */
+		oncommit?: (value: number) => void;
+		/** Stop event propagation on click (useful inside clickable rows). */
+		stopPropagation?: boolean;
 	}
 
-	let { score, isBest = false, hasNotes = false, drilldown = false, expanded = false, onclick }: Props = $props();
+	let {
+		score,
+		isBest = false,
+		hasNotes = false,
+		drilldown = false,
+		expanded = false,
+		isSelected = false,
+		onclick,
+		oncommit,
+		stopPropagation = false
+	}: Props = $props();
+
 	let tier = $derived(scoreTier(score));
+	let editing = $state(false);
+	let editValue = $state('');
+
+	let displayValue = $derived(
+		typeof score === 'number' && !Number.isInteger(score) ? score.toFixed(1) : score
+	);
+
+	function startEdit() {
+		if (!oncommit) return;
+		editing = true;
+		editValue = score > 0 ? String(score) : '';
+	}
+
+	function commit() {
+		if (!editing) return;
+		const num = parseInt(editValue, 10);
+		if (!isNaN(num)) oncommit!(num);
+		editing = false;
+	}
+
+	function handleClick(e: MouseEvent) {
+		if (stopPropagation) e.stopPropagation();
+		onclick?.();
+		if (oncommit && !editing) startEdit();
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			onclick?.();
+			if (oncommit) startEdit();
+		}
+	}
+
+	function handleInputKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') { e.preventDefault(); commit(); }
+		else if (e.key === 'Escape') { e.preventDefault(); editing = false; }
+	}
+
+	let interactive = $derived(!!(onclick || oncommit));
 </script>
 
 <td
@@ -20,12 +75,25 @@
 	class:has-notes={hasNotes}
 	class:score-drilldown={drilldown}
 	class:expanded
-	role={onclick ? 'button' : undefined}
-	tabindex={onclick ? 0 : undefined}
-	onclick={onclick}
-	onkeydown={(e) => { if (onclick && (e.key === 'Enter' || e.key === ' ')) onclick(); }}
+	class:cell-selected={isSelected}
+	onclick={interactive ? handleClick : undefined}
+	role={interactive ? 'button' : undefined}
+	tabindex={interactive ? 0 : undefined}
+	onkeydown={interactive ? handleKeydown : undefined}
 >
-	<span class="score-value">{typeof score === 'number' && !Number.isInteger(score) ? score.toFixed(1) : score}</span>
+	{#if editing}
+		<!-- svelte-ignore a11y_autofocus -->
+		<input
+			type="number" class="score-input" min="0" max="10"
+			bind:value={editValue}
+			onkeydown={handleInputKeydown}
+			onblur={commit}
+			onclick={(e) => e.stopPropagation()}
+			autofocus
+		/>
+	{:else}
+		<span class="score-value">{displayValue}</span>
+	{/if}
 </td>
 
 <style>
@@ -51,6 +119,10 @@
 	.cell-score:focus-visible {
 		outline: none;
 		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
+	.cell-selected {
+		background: var(--color-vekt-bg);
 	}
 
 	.score-value {
@@ -100,5 +172,27 @@
 
 	.score-drilldown.expanded .score-value::after {
 		transform: rotate(180deg);
+	}
+
+	/* Inline score editing */
+	.score-input {
+		width: 36px;
+		padding: 2px 4px;
+		font-family: var(--font-data);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-ink);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire-focus);
+		border-radius: var(--radius-sm);
+		text-align: center;
+		outline: none;
+		-moz-appearance: textfield;
+	}
+
+	.score-input::-webkit-inner-spin-button,
+	.score-input::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
 	}
 </style>
