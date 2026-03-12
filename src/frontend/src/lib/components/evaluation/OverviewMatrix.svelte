@@ -10,7 +10,22 @@
 	);
 </script>
 
-<div class="section-label">Oversikt — alle tildelingskriterier</div>
+<div class="matrix-header">
+	<span class="section-label">Oversikt — alle tildelingskriterier</span>
+	<button
+		class="axis-toggle"
+		onclick={() => evaluation.toggleMatrixTransposed()}
+		title={evaluation.matrixTransposed ? 'Vis kriterier som rader' : 'Vis leverandører som rader'}
+	>
+		<span class="axis-toggle-icon" class:transposed={evaluation.matrixTransposed}>⇄</span>
+		<span class="axis-toggle-label">
+			{evaluation.matrixTransposed ? 'Leverandører × Kriterier' : 'Kriterier × Leverandører'}
+		</span>
+	</button>
+</div>
+
+{#if !evaluation.matrixTransposed}
+<!-- Default: criteria as rows, suppliers as columns -->
 <div class="matrix-wrap">
 	<table class="matrix">
 		<colgroup>
@@ -99,20 +114,136 @@
 	</table>
 </div>
 
+{:else}
+<!-- Transposed: suppliers as rows, criteria as columns -->
+<div class="matrix-wrap">
+	<table class="matrix matrix-transposed">
+		<colgroup>
+			<col class="col-supplier-name" />
+			{#each evaluation.data.criteria as _}
+				<col class="col-criterion-t" />
+			{/each}
+			<col class="col-total-t" />
+		</colgroup>
+		<thead>
+			<tr>
+				<th class="th-supplier-name">Leverandør</th>
+				{#each evaluation.data.criteria as criterion}
+					<th
+						class="th-criterion-t th-clickable"
+						onclick={() => evaluation.setActiveView(criterion.id)}
+						role="button"
+						tabindex={0}
+						onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.setActiveView(criterion.id); }}
+					>
+						<span class="th-criterion-name">{criterion.name}</span>
+						<span class="th-weight-badge">{criterion.weight}%</span>
+					</th>
+				{/each}
+				<th class="th-total-t">Total</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each evaluation.data.suppliers as supplier}
+				{@const total = evaluation.totals[supplier.id] ?? 0}
+				{@const isBestTotal = total === bestTotal && total > 0}
+				{@const totalTier = scoreTier(total)}
+				<tr
+					class="row-supplier row-clickable"
+					class:row-supplier-selected={evaluation.selectedSupplierId === supplier.id}
+					onclick={() => evaluation.selectSupplier(supplier.id)}
+					role="button"
+					tabindex={0}
+					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') evaluation.selectSupplier(supplier.id); }}
+				>
+					<td class="cell-supplier-name">
+						<span class="supplier-name-text">{supplier.name}</span>
+					</td>
+					{#each evaluation.data.criteria as criterion}
+						{@const mode = criterionMode(criterion)}
+						{@const isLeaf = mode === 'leaf'}
+						{@const score = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+						{@const tier = scoreTier(score)}
+						{@const best = evaluation.bestGroupScores[criterion.id] ?? 0}
+						{@const isBest = score === best && score > 0}
+						<td class="cell-score score-{tier}" class:score-best={isBest}>
+							<span class="score-value">
+								{score > 0 ? (isLeaf ? String(score) : score.toFixed(1)) : '—'}
+							</span>
+						</td>
+					{/each}
+					<td class="cell-score cell-total score-{totalTier}" class:score-best={isBestTotal}>
+						<span class="score-value">{total > 0 ? total.toFixed(1) : '—'}</span>
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
+{/if}
+
 {#if totalWeight !== 100}
 	<div class="weight-warning">Vektsum: {totalWeight} % (forventet 100 %)</div>
 {/if}
 
 <style>
+	/* ── Header with toggle ── */
+	.matrix-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: var(--spacing-3);
+	}
+
 	.section-label {
 		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
-		margin-bottom: var(--spacing-3);
 	}
 
+	.axis-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 10px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: var(--color-felt);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: all 0.12s;
+	}
+
+	.axis-toggle:hover {
+		color: var(--color-ink);
+		border-color: var(--color-wire-strong);
+		background: var(--color-felt-hover);
+	}
+
+	.axis-toggle:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
+	.axis-toggle-icon {
+		font-size: 12px;
+		transition: transform 0.2s;
+	}
+
+	.axis-toggle-icon.transposed {
+		transform: rotate(90deg);
+	}
+
+	.axis-toggle-label {
+		letter-spacing: 0.02em;
+	}
+
+	/* ── Shared matrix styles ── */
 	.matrix-wrap {
 		overflow-x: auto;
 		border-radius: var(--radius-lg);
@@ -124,10 +255,6 @@
 		border-collapse: collapse;
 		font-size: 12px;
 	}
-
-	.col-weight { width: 80px; }
-	.col-criteria { width: auto; }
-	.col-supplier { width: 140px; }
 
 	.matrix th {
 		padding: var(--spacing-3);
@@ -141,10 +268,99 @@
 		text-align: left;
 	}
 
+	/* ── Default orientation columns ── */
+	.col-weight { width: 80px; }
+	.col-criteria { width: auto; }
+	.col-supplier { width: 140px; }
+
 	.th-weight { text-align: center; }
 	.th-supplier { text-align: center; }
 
-	/* Rows */
+	/* ── Transposed orientation columns ── */
+	.col-supplier-name { width: auto; min-width: 160px; }
+	.col-criterion-t { width: 120px; }
+	.col-total-t { width: 100px; }
+
+	.th-supplier-name {
+		white-space: nowrap;
+	}
+
+	.th-criterion-t {
+		text-align: center;
+		vertical-align: bottom;
+		max-width: 120px;
+	}
+
+	.th-clickable {
+		cursor: pointer;
+		transition: color 0.1s, background 0.1s;
+	}
+
+	.th-clickable:hover {
+		color: var(--color-vekt-dim);
+		background: var(--color-felt-hover);
+	}
+
+	.th-clickable:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
+	.th-criterion-name {
+		display: block;
+		font-size: 10px;
+		line-height: 1.3;
+		text-transform: none;
+		letter-spacing: normal;
+		font-weight: 600;
+		color: var(--color-ink);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 120px;
+	}
+
+	.th-weight-badge {
+		display: block;
+		margin-top: var(--spacing-1);
+		font-family: var(--font-data);
+		font-size: 9px;
+		font-weight: 500;
+		color: var(--color-vekt-dim);
+	}
+
+	.th-total-t {
+		text-align: center;
+		font-weight: 700;
+	}
+
+	/* ── Supplier name cell (transposed) ── */
+	.cell-supplier-name {
+		padding: var(--spacing-3);
+		border-left: 3px solid var(--color-wire-strong);
+	}
+
+	.supplier-name-text {
+		font-weight: 600;
+		color: var(--color-ink);
+		font-size: 12px;
+	}
+
+	.row-supplier {
+		background: var(--color-felt);
+		border-bottom: 1px solid var(--color-wire);
+		transition: background 0.08s;
+	}
+
+	.row-supplier-selected {
+		border-left-color: var(--color-vekt);
+	}
+
+	.row-supplier-selected .cell-supplier-name {
+		border-left-color: var(--color-vekt);
+	}
+
+	/* ── Rows (shared) ── */
 	.row-criterion {
 		background: var(--color-felt);
 		border-bottom: 1px solid var(--color-wire);
@@ -169,7 +385,7 @@
 		border-top: 2px solid var(--color-wire-strong);
 	}
 
-	/* Weight column */
+	/* ── Weight column (default orientation) ── */
 	.cell-weight {
 		padding: var(--spacing-3);
 		vertical-align: middle;
@@ -211,7 +427,7 @@
 		border-radius: 1px;
 	}
 
-	/* Criteria column */
+	/* ── Criteria column (default orientation) ── */
 	.cell-criteria {
 		padding: var(--spacing-3);
 	}
@@ -231,7 +447,7 @@
 	.total-label {
 		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.08em;
 	}
 
 	.criteria-sub-count {
@@ -251,7 +467,7 @@
 		transform: translateX(2px);
 	}
 
-	/* Score cells */
+	/* ── Score cells (shared) ── */
 	.cell-score {
 		text-align: center;
 		font-family: var(--font-data);
@@ -282,12 +498,13 @@
 		font-weight: 700;
 	}
 
-	.row-total .score-best .score-value {
+	.row-total .score-best .score-value,
+	.cell-total.score-best .score-value {
 		background: var(--color-vekt-bg);
 		color: var(--color-vekt);
 	}
 
-	/* Weight warning */
+	/* ── Weight warning ── */
 	.weight-warning {
 		margin-top: var(--spacing-2);
 		padding: var(--spacing-2) var(--spacing-3);

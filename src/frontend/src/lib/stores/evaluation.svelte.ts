@@ -201,6 +201,9 @@ class EvaluationStore {
 	/** Selected supplier in the justification panel. */
 	selectedSupplierId = $state<string | null>(null);
 
+	/** Whether the overview matrix shows transposed axes (suppliers as rows). */
+	matrixTransposed = $state<boolean>(false);
+
 	/** True when minimum data is present to show results/ranking. */
 	isReady = $derived(
 		this.data.suppliers.length >= 2 &&
@@ -791,6 +794,11 @@ class EvaluationStore {
 		this.selectedSupplierId = supplierId;
 	}
 
+	/** Toggle the overview matrix axis orientation. */
+	toggleMatrixTransposed() {
+		this.matrixTransposed = !this.matrixTransposed;
+	}
+
 	/** Set a criterion-level note (overordnet vurdering) for a supplier. */
 	setCriterionNote(criterionId: string, supplierId: string, text: string) {
 		const criterion = this._findCriterion(criterionId);
@@ -968,6 +976,7 @@ class EvaluationStore {
 		this.activeMethod = 'poeng';
 		this.activeView = 'overview';
 		this.selectedSupplierId = null;
+		this.matrixTransposed = false;
 	}
 
 	/** Find a criterion by id. */

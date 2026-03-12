@@ -210,6 +210,7 @@
 	<!-- ══ LEAF MODE: direct scores on criterion ══ -->
 	<div class="simple-section">
 		<div class="matrix-wrap">
+			{#if !evaluation.matrixTransposed}
 			<table class="simple-matrix">
 				<colgroup>
 					<col class="col-criteria" />
@@ -266,6 +267,66 @@
 					</tr>
 				</tbody>
 			</table>
+			{:else}
+			<!-- Transposed: suppliers as rows -->
+			<table class="simple-matrix matrix-transposed">
+				<colgroup>
+					<col class="col-supplier-name-t" />
+					<col class="col-score-t" />
+				</colgroup>
+				<thead>
+					<tr>
+						<th class="th-supplier-name-t">Leverandør</th>
+						<th class="th-score-t">{criterion.name}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each evaluation.data.suppliers as supplier}
+						{@const score = criterion.scores?.[supplier.id] ?? 0}
+						{@const tier = scoreTier(score)}
+						{@const leafKey = `leaf:${supplier.id}`}
+						<tr
+							class="row-sub row-clickable-t"
+							class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
+							onclick={() => evaluation.selectSupplier(supplier.id)}
+						>
+							<td class="cell-supplier-name-t">{supplier.name}</td>
+							<td
+								class="cell-score score-{tier}"
+								class:cell-selected={evaluation.selectedSupplierId === supplier.id}
+								onclick={(e) => {
+									e.stopPropagation();
+									evaluation.selectSupplier(supplier.id);
+									if (editingScore !== leafKey) startLeafScoreEdit(supplier.id, score);
+								}}
+								role="button"
+								tabindex={0}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										evaluation.selectSupplier(supplier.id);
+										startLeafScoreEdit(supplier.id, score);
+									}
+								}}
+							>
+								{#if editingScore === leafKey}
+									<!-- svelte-ignore a11y_autofocus -->
+									<input
+										type="number" class="score-input" min="0" max="10"
+										bind:value={scoreEditValue}
+										onkeydown={(e) => handleLeafScoreKeydown(e, supplier.id)}
+										onblur={() => commitLeafScoreEdit(supplier.id)}
+										onclick={(e) => e.stopPropagation()}
+										autofocus
+									/>
+								{:else}
+									<span class="score-value">{score > 0 ? score : '—'}</span>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+			{/if}
 		</div>
 	</div>
 
@@ -637,6 +698,7 @@
 				<div class="section-label">Øvrige underkriterier</div>
 			{/if}
 			<div class="matrix-wrap">
+				{#if !evaluation.matrixTransposed}
 				<table class="simple-matrix">
 					<colgroup>
 						<col class="col-weight" />
@@ -738,6 +800,106 @@
 						</tr>
 					</tbody>
 				</table>
+				{:else}
+				<!-- Transposed: suppliers as rows, sub-criteria as columns -->
+				<table class="simple-matrix matrix-transposed">
+					<colgroup>
+						<col class="col-supplier-name-t" />
+						{#each simpleSubs as _}
+							<col class="col-sub-t" />
+						{/each}
+						<col class="col-total-t" />
+					</colgroup>
+					<thead>
+						<tr>
+							<th class="th-supplier-name-t">Leverandør</th>
+							{#each simpleSubs as sub}
+								<th class="th-sub-t">
+									<span class="th-sub-name">{sub.name}</span>
+									<span class="th-sub-weight">
+										{#if editingWeight === sub.id}
+											<span class="weight-edit-inline-t">
+												<!-- svelte-ignore a11y_autofocus -->
+												<input
+													type="number" class="weight-input weight-input-t" min="0" max="100"
+													bind:value={editValue}
+													onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
+													onblur={() => commitEdit('sub', sub.id)}
+													onclick={(e) => e.stopPropagation()}
+													autofocus
+												/>%
+											</span>
+										{:else}
+											<button class="weight-clickable-t" onclick={(e) => { e.stopPropagation(); startEdit(sub.id, sub.weight); }}>
+												{sub.weight}%
+											</button>
+										{/if}
+									</span>
+								</th>
+							{/each}
+							<th class="th-total-t">Samlet</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each evaluation.data.suppliers as supplier}
+							{@const totalScore = evaluation.groupScores[criterion.id]?.[supplier.id] ?? 0}
+							{@const totalTier = scoreTier(totalScore)}
+							{@const best = evaluation.bestGroupScores[criterion.id] ?? 0}
+							{@const isTotalBest = totalScore === best && totalScore > 0}
+							<tr
+								class="row-sub row-clickable-t"
+								class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
+								onclick={() => evaluation.selectSupplier(supplier.id)}
+							>
+								<td class="cell-supplier-name-t">{supplier.name}</td>
+								{#each simpleSubs as sub}
+									{@const score = sub.scores[supplier.id] ?? 0}
+									{@const tier = scoreTier(score)}
+									{@const isBest = score === (evaluation.bestScores[sub.id] ?? 0) && score > 0}
+									{@const hasNotes = !!sub.notes[supplier.id]}
+									{@const scoreKey = `${sub.id}:${supplier.id}`}
+									<td
+										class="cell-score score-{tier}"
+										class:score-best={isBest}
+										class:has-notes={hasNotes}
+										class:cell-selected={evaluation.selectedSupplierId === supplier.id}
+										onclick={(e) => {
+											e.stopPropagation();
+											evaluation.selectSupplier(supplier.id);
+											if (editingScore !== scoreKey) startScoreEdit(sub.id, supplier.id, score);
+										}}
+										role="button"
+										tabindex={0}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												evaluation.selectSupplier(supplier.id);
+												startScoreEdit(sub.id, supplier.id, score);
+											}
+										}}
+									>
+										{#if editingScore === scoreKey}
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												type="number" class="score-input" min="0" max="10"
+												bind:value={scoreEditValue}
+												onkeydown={(e) => handleScoreKeydown(e, sub.id, supplier.id)}
+												onblur={() => commitScoreEdit(sub.id, supplier.id)}
+												onclick={(e) => e.stopPropagation()}
+												autofocus
+											/>
+										{:else}
+											<span class="score-value">{score > 0 ? score : '—'}</span>
+										{/if}
+									</td>
+								{/each}
+								<td class="cell-score cell-total-score score-{totalTier}" class:score-best={isTotalBest}>
+									<span class="score-value">{totalScore > 0 ? totalScore.toFixed(1) : '—'}</span>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -1680,4 +1842,110 @@
 	.tier-high { color: var(--color-score-high); }
 	.tier-mid { color: var(--color-ink-secondary); }
 	.tier-low { color: var(--color-score-low); }
+
+	/* ── Transposed mode styles ── */
+	.col-supplier-name-t { width: auto; min-width: 140px; }
+	.col-score-t { width: 140px; }
+	.col-sub-t { width: 120px; }
+	.col-total-t { width: 100px; }
+
+	.th-supplier-name-t {
+		white-space: nowrap;
+	}
+
+	.th-score-t {
+		text-align: center;
+		text-transform: none;
+		letter-spacing: normal;
+		font-weight: 600;
+		color: var(--color-ink);
+	}
+
+	.th-sub-t {
+		text-align: center;
+		vertical-align: bottom;
+	}
+
+	.th-sub-name {
+		display: block;
+		font-size: 10px;
+		line-height: 1.3;
+		text-transform: none;
+		letter-spacing: normal;
+		font-weight: 600;
+		color: var(--color-ink);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 120px;
+	}
+
+	.th-sub-weight {
+		display: block;
+		margin-top: var(--spacing-1);
+		font-family: var(--font-data);
+		font-size: 9px;
+		font-weight: 500;
+		color: var(--color-vekt-dim);
+		text-transform: none;
+		letter-spacing: normal;
+	}
+
+	.th-total-t {
+		text-align: center;
+		font-weight: 700;
+	}
+
+	.weight-edit-inline-t {
+		font-family: var(--font-data);
+		font-size: 10px;
+		color: var(--color-vekt-dim);
+	}
+
+	.weight-input-t {
+		width: 32px;
+		font-size: 10px;
+	}
+
+	.weight-clickable-t {
+		font-family: var(--font-data);
+		font-size: 9px;
+		font-weight: 500;
+		color: var(--color-vekt-dim);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.weight-clickable-t:hover {
+		color: var(--color-vekt);
+	}
+
+	.weight-clickable-t:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		border-radius: var(--radius-sm);
+	}
+
+	.cell-supplier-name-t {
+		padding: var(--spacing-3);
+		font-weight: 600;
+		color: var(--color-ink);
+		font-size: 12px;
+		border-left: 3px solid var(--color-wire-strong);
+	}
+
+	.row-clickable-t {
+		cursor: pointer;
+		transition: background 0.08s;
+	}
+
+	.row-clickable-t:hover {
+		background: var(--color-felt-hover);
+	}
+
+	.row-selected-t .cell-supplier-name-t {
+		border-left-color: var(--color-vekt);
+	}
 </style>
