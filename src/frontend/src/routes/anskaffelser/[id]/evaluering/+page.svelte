@@ -16,16 +16,19 @@
 
 	let isPriceMode = $derived(evaluation.activeMethod === 'pris');
 
-	/** Setup mode: not enough data to show the matrix. */
-	let isSetupMode = $derived(!evaluation.isReady);
+	/** Show empty state when no criteria or all weights are 0. */
+	let showEmptyState = $derived(
+		evaluation.data.criteria.length === 0 ||
+		evaluation.data.criteria.every((c) => c.weight === 0)
+	);
 
 	/** Show justification panel when viewing a quality criterion. */
 	let showJustification = $derived(
-		!isSetupMode && !isOverview && activeCriterion?.type === 'quality'
+		!isOverview && activeCriterion?.type === 'quality'
 	);
 
 	/** Right panel shows ranking in overview/price mode, justification in criterion mode. */
-	let showRankingPanel = $derived(!isSetupMode && (isOverview || isPriceMode));
+	let showRankingPanel = $derived(evaluation.isReady && (isOverview || isPriceMode));
 
 	/** Setup toggle in work mode (allows adjusting setup without losing scores). */
 	let setupToggleOpen = $state(false);
@@ -57,9 +60,9 @@
 	/** Mobile panel state. */
 	let mobilePanelOpen = $state(false);
 
-	/** Sync quality/price weights from criteria when entering work mode. */
+	/** Sync quality/price weights from criteria when data is ready. */
 	$effect(() => {
-		if (!isSetupMode && evaluation.data.status === 'Oppsett') {
+		if (evaluation.isReady && evaluation.data.status === 'Oppsett') {
 			evaluation.data.status = 'Under evaluering';
 			evaluation.setQualityPriceWeights(
 				evaluation.qualityWeightDerived,
@@ -72,144 +75,140 @@
 <div class="eval-workspace">
 	<!-- Main content area -->
 	<div class="eval-main">
-		{#if isSetupMode}
-			<!-- Setup mode: show criteria editor -->
-			<div class="eval-main-content">
-				<SetupEmptyState />
-			</div>
-		{:else}
-			<!-- Work mode: context line + matrix -->
-			<div class="eval-context">
-				<span class="context-name">{evaluation.data.procurementName || 'Evaluering'}</span>
-				{#if evaluation.data.reference}
-					<span class="context-sep">·</span>
-					<span class="context-ref">{evaluation.data.reference}</span>
-				{/if}
-			</div>
-
-			<div class="eval-main-content">
-				{#if isPriceMode}
-					<PriceMatrix />
-				{:else if isOverview}
-					<OverviewMatrix />
-				{:else if activeCriterion}
-					<CriterionView criterionId={activeCriterion.id} />
-				{/if}
-			</div>
-
-			<!-- Bottom drawer for full insights -->
-			{#if drawerOpen}
-				<div class="insights-drawer">
-					<div class="drawer-handle">
-						<button class="drawer-close" onclick={() => (drawerOpen = false)}>
-							<span class="drawer-close-icon">&#9662;</span>
-							Lukk analyse
-						</button>
-					</div>
-					<div class="drawer-content">
-						<InsightsPanel />
-					</div>
-				</div>
+		<div class="eval-context">
+			<span class="context-name">{evaluation.data.procurementName || 'Evaluering'}</span>
+			{#if evaluation.data.reference}
+				<span class="context-sep">·</span>
+				<span class="context-ref">{evaluation.data.reference}</span>
 			{/if}
+		</div>
+
+		<div class="eval-main-content">
+			{#if showEmptyState}
+				<SetupEmptyState />
+			{:else if isPriceMode}
+				<PriceMatrix />
+			{:else if isOverview}
+				<OverviewMatrix />
+			{:else if activeCriterion}
+				<CriterionView criterionId={activeCriterion.id} />
+			{/if}
+		</div>
+
+		<!-- Bottom drawer for full insights -->
+		{#if drawerOpen}
+			<div class="insights-drawer">
+				<div class="drawer-handle">
+					<button class="drawer-close" onclick={() => (drawerOpen = false)}>
+						<span class="drawer-close-icon">&#9662;</span>
+						Lukk analyse
+					</button>
+				</div>
+				<div class="drawer-content">
+					<InsightsPanel />
+				</div>
+			</div>
 		{/if}
 	</div>
 
 	<!-- Right panel (desktop) -->
 	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
-		{#if isSetupMode}
-			<!-- Setup panel -->
-			<SetupPanel />
-		{:else}
-			<MethodToggle />
+		<MethodToggle />
 
+		{#if setupToggleOpen || evaluation.data.suppliers.length === 0}
+			<!-- Setup panel (open by toggle or when no suppliers) -->
+			<SetupPanel />
 			{#if setupToggleOpen}
-				<!-- Inline setup in work mode -->
-				<SetupPanel />
 				<button class="setup-toggle-close" onclick={() => (setupToggleOpen = false)}>
 					Lukk oppsett
 				</button>
-			{:else if showRankingPanel}
-				<!-- Setup toggle button -->
-				<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
-					&#9881; Oppsett
-				</button>
-
-				<!-- Compact ranking -->
-				<div class="panel-section">
-					<div class="panel-label">Rangering</div>
-					<div class="ranking-list">
-						{#each rankingItems as item}
-							<div class="rank-item" class:rank-leader={item.rank === 1}>
-								<span class="rank-pos">#{item.rank}</span>
-								<span class="rank-name">{item.name}</span>
-								<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
-							</div>
-							<div class="rank-bar-track">
-								<div
-									class="rank-bar-fill"
-									class:rank-bar-leader={item.rank === 1}
-									style="width: {item.barWidth}%"
-								></div>
-							</div>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Key insights (compact) -->
-				<div class="panel-section">
-					<div class="panel-label">Nøkkeltall</div>
-					<div class="key-metrics">
-						<div class="metric">
-							<span class="metric-label">Margin #1 → #2</span>
-							<span class="metric-value">
-								<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
-								<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
-									{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
-								</span>
-							</span>
-						</div>
-						<div class="metric">
-							<span class="metric-label">Metodekontroll</span>
-							<span class="metric-value">
-								<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
-								<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
-							</span>
-						</div>
-						<div class="metric">
-							<span class="metric-label">Kvalitetsbudsjett</span>
-							<span class="metric-value">
-								<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
-								<span class="metric-unit">kr</span>
-							</span>
-						</div>
-						<div class="metric">
-							<span class="metric-label">Kvalitet / pris</span>
-							<span class="metric-value">
-								<span class="metric-num">{evaluation.data.qualityWeight}</span>
-								<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
-							</span>
-						</div>
-					</div>
-					<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
-						{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
-						<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
-					</button>
-				</div>
-
-				<!-- Status (subtle) -->
-				<div class="panel-status">
-					<span class="status-label">{evaluation.data.status}</span>
-					<span class="status-progress">
-						{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
-					</span>
-				</div>
-
-			{:else if showJustification}
-				<div class="panel-section panel-section-justification">
-					<div class="panel-label">Begrunnelse</div>
-					<JustificationPanel />
-				</div>
 			{/if}
+		{:else if showRankingPanel}
+			<!-- Setup toggle button -->
+			<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
+				&#9881; Oppsett
+			</button>
+
+			<!-- Compact ranking -->
+			<div class="panel-section">
+				<div class="panel-label">Rangering</div>
+				<div class="ranking-list">
+					{#each rankingItems as item}
+						<div class="rank-item" class:rank-leader={item.rank === 1}>
+							<span class="rank-pos">#{item.rank}</span>
+							<span class="rank-name">{item.name}</span>
+							<span class="rank-val" class:rank-val-price={isPriceMode}>{item.value}</span>
+						</div>
+						<div class="rank-bar-track">
+							<div
+								class="rank-bar-fill"
+								class:rank-bar-leader={item.rank === 1}
+								style="width: {item.barWidth}%"
+							></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Key insights (compact) -->
+			<div class="panel-section">
+				<div class="panel-label">Nøkkeltall</div>
+				<div class="key-metrics">
+					<div class="metric">
+						<span class="metric-label">Margin #1 → #2</span>
+						<span class="metric-value">
+							<span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+							<span class="metric-verdict" class:metric-robust={evaluation.margin >= 0.5} class:metric-vulnerable={evaluation.margin < 0.2}>
+								{evaluation.margin >= 0.5 ? 'robust' : evaluation.margin >= 0.2 ? 'moderat' : 'sårbart'}
+							</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Metodekontroll</span>
+						<span class="metric-value">
+							<span class="metric-icon" class:metric-match={evaluation.sameWinner}>{evaluation.sameWinner ? '✓' : '⚠'}</span>
+							<span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitetsbudsjett</span>
+						<span class="metric-value">
+							<span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
+							<span class="metric-unit">kr</span>
+						</span>
+					</div>
+					<div class="metric">
+						<span class="metric-label">Kvalitet / pris</span>
+						<span class="metric-value">
+							<span class="metric-num">{evaluation.data.qualityWeight}</span>
+							<span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+						</span>
+					</div>
+				</div>
+				<button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
+					{drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
+					<span class="insights-btn-arrow" class:insights-btn-open={drawerOpen}>↑</span>
+				</button>
+			</div>
+
+			<!-- Status (subtle) -->
+			<div class="panel-status">
+				<span class="status-label">{evaluation.data.status}</span>
+				<span class="status-progress">
+					{evaluation.progress.scores.filled}/{evaluation.progress.scores.total}
+				</span>
+			</div>
+
+		{:else if showJustification}
+			<div class="panel-section panel-section-justification">
+				<div class="panel-label">Begrunnelse</div>
+				<JustificationPanel />
+			</div>
+		{:else}
+			<!-- Default: show setup toggle when not in ranking or justification mode -->
+			<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
+				&#9881; Oppsett
+			</button>
 		{/if}
 	</aside>
 
@@ -221,8 +220,6 @@
 	>
 		{#if mobilePanelOpen}
 			✕
-		{:else if isSetupMode}
-			&#9881;
 		{:else if showJustification}
 			✎
 		{:else}
@@ -323,6 +320,12 @@
 
 	.drawer-close:hover {
 		color: var(--color-ink);
+	}
+
+	.drawer-close:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		border-radius: var(--radius-sm);
 	}
 
 	.drawer-close-icon {
@@ -557,6 +560,11 @@
 		background: var(--color-vekt-bg-strong);
 	}
 
+	.insights-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.insights-btn-arrow {
 		font-size: 10px;
 		transition: transform 0.2s;
@@ -611,13 +619,18 @@
 		background: var(--color-vekt-bg);
 	}
 
+	.setup-toggle-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.setup-toggle-close {
 		padding: var(--spacing-2) var(--spacing-3);
 		font-family: var(--font-ui);
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 		background: none;
 		border: 1px solid var(--color-wire);
@@ -629,6 +642,11 @@
 	.setup-toggle-close:hover {
 		color: var(--color-ink);
 		border-color: var(--color-wire-strong);
+	}
+
+	.setup-toggle-close:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* ── Mobile panel toggle ── */

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { evaluation, DEFAULT_ITEM_LABEL } from '$lib/stores/evaluation.svelte';
+	import { evaluation, DEFAULT_ITEM_LABEL, criterionMode } from '$lib/stores/evaluation.svelte';
+	import PillToggle from './PillToggle.svelte';
 
 	// ── Criteria CRUD (delegates to store) ──
 
@@ -51,6 +52,7 @@
 		<div class="section-label">Tildelingskriterier</div>
 		<div class="criteria-editor">
 			{#each evaluation.data.criteria as criterion, ci (criterion.id)}
+				{@const mode = criterionMode(criterion)}
 				<div class="criterion-group" data-criterion-id={criterion.id}>
 					<div class="criterion-row criterion-row-group">
 						<div class="criterion-weight">
@@ -76,6 +78,15 @@
 						>
 							{criterion.type === 'quality' ? 'Kvalitet' : 'Pris'}
 						</button>
+						{#if criterion.type === 'quality'}
+							<PillToggle
+								active={criterion.evaluationType === 'item'}
+								onclick={() => evaluation.setCriterionEvaluationType(criterion.id, criterion.evaluationType === 'item' ? 'simple' : 'item')}
+								title={criterion.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for standard' : 'Standard evaluering — klikk for ressursevaluering'}
+							>
+								{criterion.evaluationType === 'item' ? 'Ressurs' : 'Standard'}
+							</PillToggle>
+						{/if}
 						<div class="criterion-move">
 							<button class="move-btn" disabled={ci === 0} onclick={() => moveCriterion(ci, 'up')} title="Flytt opp">&#9650;</button>
 							<button class="move-btn" disabled={ci === evaluation.data.criteria.length - 1} onclick={() => moveCriterion(ci, 'down')} title="Flytt ned">&#9660;</button>
@@ -105,17 +116,18 @@
 									type="text"
 									value={sub.name}
 									oninput={(e) => evaluation.renameSubCriterion(sub.id, (e.target as HTMLInputElement).value)}
-									placeholder="Underkriterium..."
+									placeholder={mode === 'resource' ? 'Moment...' : 'Underkriterium...'}
 								/>
 							</div>
-							<button
-								class="eval-type-toggle"
-								class:eval-type-item={sub.evaluationType === 'item'}
-								onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
-								title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
-							>
-								{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
-							</button>
+							{#if mode !== 'resource'}
+								<PillToggle
+									active={sub.evaluationType === 'item'}
+									onclick={() => evaluation.setEvaluationType(sub.id, sub.evaluationType === 'item' ? 'simple' : 'item')}
+									title={sub.evaluationType === 'item' ? 'Ressursevaluering aktiv — klikk for enkel' : 'Enkel evaluering — klikk for ressursevaluering'}
+								>
+									{sub.evaluationType === 'item' ? 'Ressurs' : 'Enkel'}
+								</PillToggle>
+							{/if}
 							<div class="criterion-move">
 								<button class="move-btn" disabled={si === 0} onclick={() => moveSubCriterion(criterion.id, si, 'up')} title="Flytt opp">&#9650;</button>
 								<button class="move-btn" disabled={si === criterion.subcriteria.length - 1} onclick={() => moveSubCriterion(criterion.id, si, 'down')} title="Flytt ned">&#9660;</button>
@@ -158,7 +170,7 @@
 									</div>
 								</div>
 								<div class="item-dimensions">
-									<div class="item-dimensions-label">Dimensjoner</div>
+									<div class="item-dimensions-label">Momenter</div>
 									{#each sub.itemCriteria ?? [] as ic (ic.id)}
 										<div class="item-dimension-row">
 											<input
@@ -175,7 +187,7 @@
 												type="text"
 												value={ic.name}
 												oninput={(e) => evaluation.renameItemCriterion(sub.id, ic.id, (e.target as HTMLInputElement).value)}
-												placeholder="Dimensjonsnavn..."
+												placeholder="Momentnavn..."
 											/>
 											<button
 												class="item-dimension-remove"
@@ -185,7 +197,7 @@
 										</div>
 									{/each}
 									<button class="item-dimension-add" onclick={() => evaluation.addItemCriterion(sub.id, '', 0)}>
-										+ Dimensjon
+										+ Moment
 									</button>
 								</div>
 							</div>
@@ -194,8 +206,33 @@
 
 					<button class="add-sub-btn" onclick={() => addSubCriterion(criterion.id)}>
 						<span class="add-sub-spacer"></span>
-						<span class="add-sub-label">+ Underkriterium</span>
+						<span class="add-sub-label">+ {mode === 'resource' ? 'Moment' : 'Underkriterium'}</span>
 					</button>
+
+					{#if mode === 'resource'}
+						<div class="roles-config">
+							<div class="roles-config-label">Roller</div>
+							{#each criterion.roles ?? [] as role (role.id)}
+								<div class="role-row">
+									<input
+										class="role-name-input"
+										type="text"
+										value={role.name}
+										oninput={(e) => evaluation.renameRole(criterion.id, role.id, (e.target as HTMLInputElement).value)}
+										placeholder="Rollenavn..."
+									/>
+									<button
+										class="role-remove"
+										onclick={() => evaluation.removeRole(criterion.id, role.id)}
+										title="Fjern rolle"
+									>×</button>
+								</div>
+							{/each}
+							<button class="role-add" onclick={() => evaluation.addRole(criterion.id, '')}>
+								+ Rolle
+							</button>
+						</div>
+					{/if}
 				</div>
 			{/each}
 
@@ -277,9 +314,14 @@
 		background: var(--color-vekt-bg-strong);
 	}
 
+	.empty-action:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	/* ── Section label ── */
 	.section-label {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -519,6 +561,11 @@
 		background: var(--color-felt-active);
 	}
 
+	.move-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.move-btn:disabled {
 		opacity: 0.2;
 		cursor: default;
@@ -548,6 +595,12 @@
 	.criterion-remove:hover {
 		color: var(--color-score-low);
 		background: var(--color-felt-active);
+	}
+
+	.criterion-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
 	}
 
 	.add-sub-btn {
@@ -580,6 +633,11 @@
 		color: var(--color-vekt-dim);
 	}
 
+	.add-sub-btn:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	.add-criterion-btn {
 		display: block;
 		width: 100%;
@@ -599,6 +657,11 @@
 	.add-criterion-btn:hover {
 		color: var(--color-vekt);
 		background: var(--color-vekt-bg);
+	}
+
+	.add-criterion-btn:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
 	}
 
 	/* Total row */
@@ -640,44 +703,6 @@
 		margin-left: auto;
 	}
 
-	/* ── Eval type toggle ── */
-	.eval-type-toggle {
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 2px var(--spacing-2);
-		font-family: var(--font-ui);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-ink-ghost);
-		background: none;
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all 0.12s;
-		line-height: 1.4;
-	}
-
-	.eval-type-toggle:hover {
-		color: var(--color-ink-secondary);
-		border-color: var(--color-wire);
-		background: var(--color-felt-hover);
-	}
-
-	.eval-type-toggle.eval-type-item {
-		color: var(--color-vekt-dim);
-		border-color: var(--color-vekt-bg-strong);
-		background: var(--color-vekt-bg);
-	}
-
-	.eval-type-toggle.eval-type-item:hover {
-		color: var(--color-vekt);
-		background: var(--color-vekt-bg-strong);
-	}
-
 	/* ── Item config panel ── */
 	.item-config {
 		border-left: 3px solid rgba(232, 168, 56, 0.15);
@@ -706,7 +731,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 		white-space: nowrap;
 	}
@@ -763,6 +788,11 @@
 		font-weight: 600;
 	}
 
+	.agg-option:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+	}
+
 	/* ── Item dimensions ── */
 	.item-dimensions {
 		display: flex;
@@ -774,7 +804,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-muted);
 	}
 
@@ -863,6 +893,12 @@
 		background: var(--color-felt-active);
 	}
 
+	.item-dimension-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
+	}
+
 	.item-dimension-add {
 		align-self: flex-start;
 		padding: var(--spacing-1) var(--spacing-2);
@@ -878,5 +914,111 @@
 
 	.item-dimension-add:hover {
 		color: var(--color-vekt-dim);
+	}
+
+	.item-dimension-add:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
+	/* ── Roles config ── */
+	.roles-config {
+		border-left: 3px solid rgba(232, 168, 56, 0.15);
+		background: var(--color-felt);
+		padding: var(--spacing-3) var(--spacing-4);
+		padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-2);
+		border-bottom: 1px solid var(--color-wire);
+	}
+
+	.roles-config-label {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-ink-muted);
+	}
+
+	.role-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.role-name-input {
+		flex: 1;
+		padding: var(--spacing-1) var(--spacing-2);
+		background: var(--color-canvas);
+		border: 1px solid var(--color-wire);
+		border-radius: var(--radius-sm);
+		color: var(--color-ink);
+		font-family: var(--font-ui);
+		font-size: 12px;
+		outline: none;
+		transition: border-color 0.12s;
+	}
+
+	.role-name-input:focus {
+		border-color: var(--color-wire-focus);
+	}
+
+	.role-name-input::placeholder {
+		color: var(--color-ink-ghost);
+	}
+
+	.role-remove {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		color: var(--color-ink-ghost);
+		background: none;
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		opacity: 0;
+		transition: all 0.1s;
+	}
+
+	.role-row:hover > .role-remove {
+		opacity: 1;
+	}
+
+	.role-remove:hover {
+		color: var(--color-score-low);
+		background: var(--color-felt-active);
+	}
+
+	.role-remove:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+		opacity: 1;
+	}
+
+	.role-add {
+		align-self: flex-start;
+		padding: var(--spacing-1) var(--spacing-2);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-ink-muted);
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: color 0.1s;
+	}
+
+	.role-add:hover {
+		color: var(--color-vekt-dim);
+	}
+
+	.role-add:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
 	}
 </style>
