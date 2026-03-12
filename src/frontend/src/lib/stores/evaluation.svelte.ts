@@ -165,6 +165,11 @@ export function scoreTier(score: number): 'high' | 'mid' | 'low' {
 	return 'low';
 }
 
+/** Effective global weight for a sub-criterion (sub-weights are relative within criterion, sum to 100). */
+export function subEffectiveWeight(criterionWeight: number, subWeight: number, subWeightSum: number): number {
+	return subWeightSum > 0 ? criterionWeight * subWeight / subWeightSum : 0;
+}
+
 /** Clamp a weight value to 0–100 integer. */
 function clampWeight(value: number): number {
 	return Math.max(0, Math.min(100, Math.round(value)));
@@ -328,9 +333,12 @@ class EvaluationStore {
 				}
 			} else {
 				// Traditional: per-subcriterion deductions
+				// Sub-weights are relative within criterion (sum to 100),
+				// so effective global weight = criterion.weight × sub.weight / subSum
+				const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
 				for (const sub of criterion.subcriteria) {
 					if (!result[sub.id]) result[sub.id] = {};
-					const maxDeduction = qb * (sub.weight / tw);
+					const maxDeduction = qb * (subEffectiveWeight(criterion.weight, sub.weight, subSum) / tw);
 					for (const supplier of this.data.suppliers) {
 						const score =
 							this.itemScores[sub.id]?.[supplier.id] ??
@@ -510,15 +518,15 @@ class EvaluationStore {
 		return result;
 	});
 
-	/** Weight warnings: criterion id → mismatch between criterion weight and sub-criteria sum (mode 2 only). */
+	/** Weight warnings: criterion id → sub-criteria weights don't sum to 100% (traditional mode only). */
 	weightWarnings = $derived.by(() => {
-		const result: Record<string, { criterionWeight: number; subSum: number }> = {};
+		const result: Record<string, { expected: number; subSum: number }> = {};
 		for (const criterion of this.data.criteria) {
 			const mode = criterionMode(criterion);
 			if (mode === 'traditional') {
 				const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-				if (subSum !== criterion.weight) {
-					result[criterion.id] = { criterionWeight: criterion.weight, subSum };
+				if (subSum !== 100) {
+					result[criterion.id] = { expected: 100, subSum };
 				}
 			}
 		}
@@ -615,16 +623,12 @@ class EvaluationStore {
 		if (criterion) criterion.weight = clampWeight(weight);
 	}
 
-	/** Update a sub-criterion's weight. */
+	/** Update a sub-criterion's weight (relative within its criterion, sums to 100). */
 	setSubCriterionWeight(subCriterionId: string, weight: number) {
 		for (const c of this.data.criteria) {
 			const sub = c.subcriteria.find((s) => s.id === subCriterionId);
 			if (sub) {
 				sub.weight = clampWeight(weight);
-				// Only auto-recalculate criterion weight for traditional mode
-				if (criterionMode(c) === 'traditional') {
-					this._recalcCriterionWeight(c.id);
-				}
 				return;
 			}
 		}
@@ -888,10 +892,6 @@ class EvaluationStore {
 			...c.subcriteria,
 			{ id, name, weight, scores: {}, notes: {} }
 		];
-		// For traditional mode, recalculate criterion weight
-		if (criterionMode(c) === 'traditional') {
-			this._recalcCriterionWeight(criterionId);
-		}
 		return id;
 	}
 
@@ -900,9 +900,6 @@ class EvaluationStore {
 			const filtered = c.subcriteria.filter((s) => s.id !== subCriterionId);
 			if (filtered.length < c.subcriteria.length) {
 				c.subcriteria = filtered;
-				if (criterionMode(c) === 'traditional') {
-					this._recalcCriterionWeight(c.id);
-				}
 				return;
 			}
 		}
@@ -964,14 +961,21 @@ class EvaluationStore {
 		if (s) s.name = name;
 	}
 
-	/** Recalculate criterion weight from sub-criteria sum. */
-	private _recalcCriterionWeight(criterionId: string) {
-		const c = this._findCriterion(criterionId);
-		if (c) c.weight = c.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-	}
-
 	/** Initialize or reset the evaluation with new data. */
 	initialize(newData: EvaluationData) {
+		// Migrate old-format sub-weights (global scale → relative within criterion).
+		// Old format: sub-weights sum to criterion.weight. New format: sum to 100.
+		for (const c of newData.criteria) {
+			if (criterionMode(c) === 'traditional' && c.subcriteria.length > 0) {
+				const subSum = c.subcriteria.reduce((s, sub) => s + sub.weight, 0);
+				if (subSum > 0 && subSum !== 100 && subSum === c.weight) {
+					const scale = 100 / subSum;
+					for (const sub of c.subcriteria) {
+						sub.weight = Math.round(sub.weight * scale);
+					}
+				}
+			}
+		}
 		this.data = newData;
 		this.activeMethod = 'poeng';
 		this.activeView = 'overview';

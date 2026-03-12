@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
+	import { evaluation, formatNOK, subEffectiveWeight } from '$lib/stores/evaluation.svelte';
 	import SensitivityPane from './SensitivityPane.svelte';
 
 	let collapsed = $state(false);
@@ -95,8 +95,9 @@
 									<td class="bv-value">{formatNOK(maxDeduction)} kr</td>
 									<td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
 								</tr>
+								{@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
 								{#each criterion.subcriteria as sub}
-									{@const subMaxDeduction = qualityBudget * (sub.weight / totalWeight)}
+									{@const subMaxDeduction = qualityBudget * (subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}
 									<tr class:bv-row-price={criterion.type === 'price'}>
 										<td class="bv-sub">{sub.name}</td>
 										<td class="bv-weight">{sub.weight} %</td>
