@@ -44,7 +44,9 @@
 	function commit() {
 		if (!editing) return;
 		const num = parseInt(editValue, 10);
-		if (!isNaN(num)) oncommit!(num);
+		if (!isNaN(num) && num >= 0 && num <= 10 && oncommit) {
+			oncommit(num);
+		}
 		editing = false;
 	}
 
