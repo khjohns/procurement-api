@@ -667,9 +667,22 @@
 						<!-- Sub-total row -->
 						<tr class="row-total">
 							<td class="cell-weight">
-								<div class="weight-display">
-									<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
-								</div>
+								{#if editingWeight === criterion.id}
+									<div class="weight-edit">
+										<!-- svelte-ignore a11y_autofocus -->
+										<input
+											type="number" class="weight-input" min="0" max="100"
+											bind:value={editValue}
+											onkeydown={(e) => handleWeightKeydown(e, 'criterion', criterion.id)}
+											onblur={() => commitEdit('criterion', criterion.id)}
+											autofocus
+										/><span class="weight-pct-edit">%</span>
+									</div>
+								{:else}
+									<button class="weight-display weight-btn" onclick={() => startEdit(criterion.id, criterion.weight)}>
+										<span class="weight-num">{criterion.weight}<span class="weight-pct">%</span></span>
+									</button>
+								{/if}
 							</td>
 							<td class="cell-criteria cell-total-name">Samlet</td>
 							{#each evaluation.data.suppliers as supplier}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
+	import { evaluation, formatNOK, subEffectiveWeight } from '$lib/stores/evaluation.svelte';
 
 	let qualityBudget = $derived(evaluation.qualityBudget);
 	let totalWeight = $derived(evaluation.totalWeight);
@@ -105,12 +105,13 @@
 				</tr>
 
 				<!-- Sub-criterion rows -->
+				{@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
 				{#each criterion.subcriteria as sub, si}
 					{@const isLast = si === criterion.subcriteria.length - 1}
 					<tr class="row-sub" class:row-group-last={isLast}>
 						<td class="cell-weight">
 							<div class="weight-display">
-								<span class="weight-num-small muted">{formatNOK(qualityBudget * sub.weight / totalWeight)}</span>
+								<span class="weight-num-small muted">{formatNOK(qualityBudget * subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}</span>
 							</div>
 						</td>
 						<td class="cell-criteria">{sub.name}</td>
