@@ -11,6 +11,13 @@
  */
 
 import { extractBidders } from '$lib/utils/activities';
+import {
+  computeProgress,
+  computePriceDeductions,
+  computeGroupScores,
+  computeBestScores,
+  computeWeightWarnings,
+} from './evaluation-computations';
 
 // ── Item-level types ──
 
@@ -315,42 +322,15 @@ class EvaluationStore {
   });
 
   /** Computed group averages per supplier (handles all three modes). */
-  groupScores = $derived.by(() => {
-    const result: Record<string, Record<string, number>> = {};
-    for (const criterion of this.data.criteria) {
-      result[criterion.id] = {};
-      const mode = criterionMode(criterion);
-      // Price criteria in poengmodell: auto-score from supplier prices
-      if (criterion.type === 'price' && this.activeMethod === 'poeng') {
-        for (const supplier of this.data.suppliers) {
-          result[criterion.id][supplier.id] = this.priceFormulaScores[supplier.id] ?? 0;
-        }
-        continue;
-      }
-      for (const supplier of this.data.suppliers) {
-        if (mode === 'resource') {
-          // Mode 3: roles × moments (subcriteria as dimensions)
-          const items = criterion.items?.[supplier.id] ?? [];
-          result[criterion.id][supplier.id] = supplierResourceScore(
-            items,
-            criterion.subcriteria,
-            criterion.aggregation ?? 'average'
-          );
-        } else if (mode === 'leaf') {
-          // Mode 1: direct scores on criterion
-          result[criterion.id][supplier.id] = criterion.scores?.[supplier.id] ?? 0;
-        } else {
-          // Mode 2: traditional weighted subcriteria
-          result[criterion.id][supplier.id] = weightedAverage(
-            criterion.subcriteria,
-            supplier.id,
-            this.itemScores
-          );
-        }
-      }
-    }
-    return result;
-  });
+  groupScores = $derived.by(() =>
+    computeGroupScores(
+      this.data.criteria,
+      this.data.suppliers,
+      this.activeMethod,
+      this.itemScores,
+      this.priceFormulaScores
+    )
+  );
 
   /** Total weighted score per supplier (0-10 scale). */
   totals = $derived.by(() => {
@@ -390,38 +370,15 @@ class EvaluationStore {
   });
 
   /** Price model: quality deduction per scoring unit per supplier. */
-  priceDeductions = $derived.by(() => {
-    const result: Record<string, Record<string, number>> = {};
-    const qb = this.data.contractValue * (this.data.qualityWeight / 100);
-    const tw = this.totalWeight;
-
-    for (const criterion of this.data.criteria) {
-      if (criterion.type === 'price') continue; // price criteria have no deduction
-      const mode = criterionMode(criterion);
-      // Use explicit maxPriceDeduction if set, otherwise derive from weights
-      const maxDed = criterion.maxPriceDeduction ?? (tw > 0 ? qb * (criterion.weight / tw) : 0);
-
-      if (mode === 'leaf' || mode === 'resource') {
-        result[criterion.id] = {};
-        for (const supplier of this.data.suppliers) {
-          const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = Math.min(entered, maxDed);
-        }
-      } else {
-        // Traditional: split maxDed proportionally across subcriteria by sub-weight
-        const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-        for (const sub of criterion.subcriteria) {
-          result[sub.id] = {};
-          const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
-          for (const supplier of this.data.suppliers) {
-            const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
-            result[sub.id][supplier.id] = Math.min(entered, subMaxDed);
-          }
-        }
-      }
-    }
-    return result;
-  });
+  priceDeductions = $derived.by(() =>
+    computePriceDeductions(
+      this.data.criteria,
+      this.data.suppliers,
+      this.data.contractValue,
+      this.data.qualityWeight,
+      this.totalWeight
+    )
+  );
 
   /** Total deduction per supplier. */
   totalDeductions = $derived.by(() => {
@@ -471,98 +428,10 @@ class EvaluationStore {
   sameWinner = $derived(this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id);
 
   /** Progress tracking (handles all three modes). */
-  progress = $derived.by(() => {
-    let totalCells = 0;
-    let filledCells = 0;
-    let totalNotes = 0;
-    let filledNotes = 0;
-
-    for (const criterion of this.data.criteria) {
-      const mode = criterionMode(criterion);
-
-      if (mode === 'leaf') {
-        // Mode 1: one cell per supplier on the criterion
-        for (const supplier of this.data.suppliers) {
-          totalCells++;
-          if (criterion.scores?.[supplier.id] !== undefined) filledCells++;
-          totalNotes++;
-          if (criterion.notes?.[supplier.id]) filledNotes++;
-        }
-      } else if (mode === 'resource') {
-        // Mode 3: roles × moments per supplier
-        const nMoments = criterion.subcriteria.length;
-        for (const supplier of this.data.suppliers) {
-          const items = criterion.items?.[supplier.id] ?? [];
-          if (items.length === 0) {
-            totalCells += Math.max(1, nMoments);
-          } else {
-            for (const item of items) {
-              for (const sub of criterion.subcriteria) {
-                totalCells++;
-                if (item.scores[sub.id] !== undefined) filledCells++;
-              }
-            }
-          }
-          totalNotes++;
-          if (criterion.notes?.[supplier.id]) filledNotes++;
-        }
-      } else {
-        // Mode 2: traditional subcriteria
-        for (const sub of criterion.subcriteria) {
-          if (sub.evaluationType === 'item' && sub.itemCriteria) {
-            const nCriteria = sub.itemCriteria.length;
-            for (const supplier of this.data.suppliers) {
-              const items = sub.items?.[supplier.id] ?? [];
-              if (items.length === 0) {
-                totalCells += nCriteria;
-              } else {
-                for (const item of items) {
-                  for (const ic of sub.itemCriteria) {
-                    totalCells++;
-                    if (item.scores[ic.id] !== undefined) filledCells++;
-                  }
-                }
-              }
-            }
-            for (const supplier of this.data.suppliers) {
-              totalNotes++;
-              if (sub.notes[supplier.id]) filledNotes++;
-            }
-          } else {
-            for (const supplier of this.data.suppliers) {
-              totalCells++;
-              if (sub.scores[supplier.id] !== undefined) filledCells++;
-              totalNotes++;
-              if (sub.notes[supplier.id]) filledNotes++;
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      scores: { filled: filledCells, total: totalCells },
-      notes: { filled: filledNotes, total: totalNotes },
-    };
-  });
+  progress = $derived.by(() => computeProgress(this.data.criteria, this.data.suppliers));
 
   /** Best score per sub-criterion: subId → max score across suppliers. */
-  bestScores = $derived.by(() => {
-    const result: Record<string, number> = {};
-    for (const criterion of this.data.criteria) {
-      // For leaf criteria, best score at criterion level
-      if (criterionMode(criterion) === 'leaf' && criterion.scores) {
-        const vals = Object.values(criterion.scores);
-        result[criterion.id] = vals.length > 0 ? Math.max(...vals) : 0;
-      }
-      for (const sub of criterion.subcriteria) {
-        const overlay = this.itemScores[sub.id];
-        const vals = overlay ? Object.values(overlay) : Object.values(sub.scores);
-        result[sub.id] = vals.length > 0 ? Math.max(...vals) : 0;
-      }
-    }
-    return result;
-  });
+  bestScores = $derived.by(() => computeBestScores(this.data.criteria, this.itemScores));
 
   /** Best group score per criterion: criterionId → max group score. */
   bestGroupScores = $derived.by(() => {
@@ -578,19 +447,7 @@ class EvaluationStore {
   });
 
   /** Weight warnings: criterion id → sub-criteria weights don't sum to 100% (traditional mode only). */
-  weightWarnings = $derived.by(() => {
-    const result: Record<string, { expected: number; subSum: number }> = {};
-    for (const criterion of this.data.criteria) {
-      const mode = criterionMode(criterion);
-      if (mode === 'traditional') {
-        const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-        if (subSum !== 100) {
-          result[criterion.id] = { expected: 100, subSum };
-        }
-      }
-    }
-    return result;
-  });
+  weightWarnings = $derived.by(() => computeWeightWarnings(this.data.criteria));
 
   // ── Mutation methods ──
 
