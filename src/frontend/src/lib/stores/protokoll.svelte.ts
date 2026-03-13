@@ -12,18 +12,14 @@ import {
   type SectionDefinition,
   type SectionContext,
   type FieldDefinition,
+  type ComputeFilledContext,
+  type Avvisning,
+  type AvvisningKategori,
 } from './protokoll-sections';
 import { extractBidders } from '$lib/utils/activities';
 
-// ── Types ──
-
-export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud';
-
-export interface Avvisning {
-  kategori: AvvisningKategori;
-  begrunnelse: string;
-  datoAvvist?: string;
-}
+// Re-export types that were moved to protokoll-sections.ts
+export type { Avvisning, AvvisningKategori } from './protokoll-sections';
 
 export interface ManualFields {
   [key: string]: unknown;
@@ -185,58 +181,16 @@ class ProtokollStore {
   private _fieldFilled(field: FieldDefinition): { filled: number; total: number } {
     const val = this.manual[field.key];
 
-    switch (field.type) {
-      case 'date': {
-        const dateStr = typeof val === 'string' ? val.trim() : '';
-        return { total: 1, filled: dateStr.length > 0 ? 1 : 0 };
-      }
-
-      case 'textarea':
-      case 'tipex': {
-        const text = typeof val === 'string' ? val.replace(/<[^>]*>/g, '').trim() : '';
-        return { total: 1, filled: text.length > 0 ? 1 : 0 };
-      }
-
-      case 'checkbox-textarea': {
-        // Checkbox unchecked = complete (nothing to do). Checked + empty = incomplete.
-        const checked = !!this.manual[field.key];
-        if (!checked) return { total: 1, filled: 1 };
-        const begrunnelse =
-          typeof this.manual[`${field.key}Begrunnelse`] === 'string'
-            ? (this.manual[`${field.key}Begrunnelse`] as string).trim()
-            : '';
-        return { total: 1, filled: begrunnelse.length > 0 ? 1 : 0 };
-      }
-
-      case 'per-supplier-textarea':
-      case 'per-supplier-tipex': {
-        const record = val as Record<string, string> | undefined;
-        if (!record || this.suppliers.length === 0) {
-          return { total: this.suppliers.length || 1, filled: 0 };
-        }
-        let filled = 0;
-        for (const s of this.suppliers) {
-          const text = (record[s.id] ?? '').replace(/<[^>]*>/g, '').trim();
-          if (text.length > 0) filled++;
-        }
-        return { total: this.suppliers.length, filled };
-      }
-
-      case 'avvisning-card': {
-        const record = val as Record<string, Avvisning> | undefined;
-        if (!record) return { total: 1, filled: 0 };
-        const entries = Object.values(record);
-        if (entries.length === 0) return { total: 1, filled: 0 };
-        let filled = 0;
-        for (const entry of entries) {
-          if (entry.kategori && entry.begrunnelse?.trim()) filled++;
-        }
-        return { total: entries.length, filled };
-      }
-
-      default:
-        return { total: 0, filled: 0 };
+    // Delegate to co-located computeFilled when available
+    if (field.computeFilled) {
+      const context: ComputeFilledContext = {
+        suppliers: this.suppliers,
+        manual: this.manual,
+      };
+      return field.computeFilled(val, context);
     }
+
+    return { total: 0, filled: 0 };
   }
 
   // ── Mutation methods ──

@@ -11,6 +11,25 @@
  */
 
 import { extractBidders } from '$lib/utils/activities';
+import {
+  computeProgress,
+  computePriceDeductions,
+  computeGroupScores,
+  computeBestScores,
+  computeWeightWarnings,
+} from './evaluation-computations';
+import {
+  uid,
+  clampScore,
+  clampWeight,
+  findCriterion,
+  findSub,
+  findItemCriterion,
+  findRoleItem,
+} from './evaluation-helpers';
+import * as itemMutations from './evaluation-items';
+import * as roleMutations from './evaluation-roles';
+import * as structureMutations from './evaluation-structure';
 
 // ── Item-level types ──
 
@@ -107,11 +126,6 @@ export function criterionMode(c: Criterion): 'leaf' | 'traditional' | 'resource'
 
 // ── Score computation functions ──
 
-/** Clamp a score to 0–10. */
-function clampScore(value: number): number {
-  return Math.max(0, Math.min(10, Math.round(value)));
-}
-
 /** Weighted average of an item's scores across weighted dimensions. */
 export function weightedItemScore(
   item: EvaluationItem,
@@ -189,10 +203,7 @@ export function subEffectiveWeight(
   return subWeightSum > 0 ? (criterionWeight * subWeight) / subWeightSum : 0;
 }
 
-/** Clamp a weight value to 0–100 integer. */
-function clampWeight(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
+export { uid, clampScore, clampWeight } from './evaluation-helpers';
 
 export const DEFAULT_ITEM_LABEL = 'Ressurs';
 
@@ -208,11 +219,6 @@ const emptyData: EvaluationData = {
   suppliers: [],
   criteria: [],
 };
-
-let idCounter = 0;
-function uid(prefix: string): string {
-  return `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 const LS_PREFIX = 'eval-';
 
@@ -315,42 +321,15 @@ class EvaluationStore {
   });
 
   /** Computed group averages per supplier (handles all three modes). */
-  groupScores = $derived.by(() => {
-    const result: Record<string, Record<string, number>> = {};
-    for (const criterion of this.data.criteria) {
-      result[criterion.id] = {};
-      const mode = criterionMode(criterion);
-      // Price criteria in poengmodell: auto-score from supplier prices
-      if (criterion.type === 'price' && this.activeMethod === 'poeng') {
-        for (const supplier of this.data.suppliers) {
-          result[criterion.id][supplier.id] = this.priceFormulaScores[supplier.id] ?? 0;
-        }
-        continue;
-      }
-      for (const supplier of this.data.suppliers) {
-        if (mode === 'resource') {
-          // Mode 3: roles × moments (subcriteria as dimensions)
-          const items = criterion.items?.[supplier.id] ?? [];
-          result[criterion.id][supplier.id] = supplierResourceScore(
-            items,
-            criterion.subcriteria,
-            criterion.aggregation ?? 'average'
-          );
-        } else if (mode === 'leaf') {
-          // Mode 1: direct scores on criterion
-          result[criterion.id][supplier.id] = criterion.scores?.[supplier.id] ?? 0;
-        } else {
-          // Mode 2: traditional weighted subcriteria
-          result[criterion.id][supplier.id] = weightedAverage(
-            criterion.subcriteria,
-            supplier.id,
-            this.itemScores
-          );
-        }
-      }
-    }
-    return result;
-  });
+  groupScores = $derived.by(() =>
+    computeGroupScores(
+      this.data.criteria,
+      this.data.suppliers,
+      this.activeMethod,
+      this.itemScores,
+      this.priceFormulaScores
+    )
+  );
 
   /** Total weighted score per supplier (0-10 scale). */
   totals = $derived.by(() => {
@@ -390,38 +369,15 @@ class EvaluationStore {
   });
 
   /** Price model: quality deduction per scoring unit per supplier. */
-  priceDeductions = $derived.by(() => {
-    const result: Record<string, Record<string, number>> = {};
-    const qb = this.data.contractValue * (this.data.qualityWeight / 100);
-    const tw = this.totalWeight;
-
-    for (const criterion of this.data.criteria) {
-      if (criterion.type === 'price') continue; // price criteria have no deduction
-      const mode = criterionMode(criterion);
-      // Use explicit maxPriceDeduction if set, otherwise derive from weights
-      const maxDed = criterion.maxPriceDeduction ?? (tw > 0 ? qb * (criterion.weight / tw) : 0);
-
-      if (mode === 'leaf' || mode === 'resource') {
-        result[criterion.id] = {};
-        for (const supplier of this.data.suppliers) {
-          const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = Math.min(entered, maxDed);
-        }
-      } else {
-        // Traditional: split maxDed proportionally across subcriteria by sub-weight
-        const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-        for (const sub of criterion.subcriteria) {
-          result[sub.id] = {};
-          const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
-          for (const supplier of this.data.suppliers) {
-            const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
-            result[sub.id][supplier.id] = Math.min(entered, subMaxDed);
-          }
-        }
-      }
-    }
-    return result;
-  });
+  priceDeductions = $derived.by(() =>
+    computePriceDeductions(
+      this.data.criteria,
+      this.data.suppliers,
+      this.data.contractValue,
+      this.data.qualityWeight,
+      this.totalWeight
+    )
+  );
 
   /** Total deduction per supplier. */
   totalDeductions = $derived.by(() => {
@@ -471,98 +427,10 @@ class EvaluationStore {
   sameWinner = $derived(this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id);
 
   /** Progress tracking (handles all three modes). */
-  progress = $derived.by(() => {
-    let totalCells = 0;
-    let filledCells = 0;
-    let totalNotes = 0;
-    let filledNotes = 0;
-
-    for (const criterion of this.data.criteria) {
-      const mode = criterionMode(criterion);
-
-      if (mode === 'leaf') {
-        // Mode 1: one cell per supplier on the criterion
-        for (const supplier of this.data.suppliers) {
-          totalCells++;
-          if (criterion.scores?.[supplier.id] !== undefined) filledCells++;
-          totalNotes++;
-          if (criterion.notes?.[supplier.id]) filledNotes++;
-        }
-      } else if (mode === 'resource') {
-        // Mode 3: roles × moments per supplier
-        const nMoments = criterion.subcriteria.length;
-        for (const supplier of this.data.suppliers) {
-          const items = criterion.items?.[supplier.id] ?? [];
-          if (items.length === 0) {
-            totalCells += Math.max(1, nMoments);
-          } else {
-            for (const item of items) {
-              for (const sub of criterion.subcriteria) {
-                totalCells++;
-                if (item.scores[sub.id] !== undefined) filledCells++;
-              }
-            }
-          }
-          totalNotes++;
-          if (criterion.notes?.[supplier.id]) filledNotes++;
-        }
-      } else {
-        // Mode 2: traditional subcriteria
-        for (const sub of criterion.subcriteria) {
-          if (sub.evaluationType === 'item' && sub.itemCriteria) {
-            const nCriteria = sub.itemCriteria.length;
-            for (const supplier of this.data.suppliers) {
-              const items = sub.items?.[supplier.id] ?? [];
-              if (items.length === 0) {
-                totalCells += nCriteria;
-              } else {
-                for (const item of items) {
-                  for (const ic of sub.itemCriteria) {
-                    totalCells++;
-                    if (item.scores[ic.id] !== undefined) filledCells++;
-                  }
-                }
-              }
-            }
-            for (const supplier of this.data.suppliers) {
-              totalNotes++;
-              if (sub.notes[supplier.id]) filledNotes++;
-            }
-          } else {
-            for (const supplier of this.data.suppliers) {
-              totalCells++;
-              if (sub.scores[supplier.id] !== undefined) filledCells++;
-              totalNotes++;
-              if (sub.notes[supplier.id]) filledNotes++;
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      scores: { filled: filledCells, total: totalCells },
-      notes: { filled: filledNotes, total: totalNotes },
-    };
-  });
+  progress = $derived.by(() => computeProgress(this.data.criteria, this.data.suppliers));
 
   /** Best score per sub-criterion: subId → max score across suppliers. */
-  bestScores = $derived.by(() => {
-    const result: Record<string, number> = {};
-    for (const criterion of this.data.criteria) {
-      // For leaf criteria, best score at criterion level
-      if (criterionMode(criterion) === 'leaf' && criterion.scores) {
-        const vals = Object.values(criterion.scores);
-        result[criterion.id] = vals.length > 0 ? Math.max(...vals) : 0;
-      }
-      for (const sub of criterion.subcriteria) {
-        const overlay = this.itemScores[sub.id];
-        const vals = overlay ? Object.values(overlay) : Object.values(sub.scores);
-        result[sub.id] = vals.length > 0 ? Math.max(...vals) : 0;
-      }
-    }
-    return result;
-  });
+  bestScores = $derived.by(() => computeBestScores(this.data.criteria, this.itemScores));
 
   /** Best group score per criterion: criterionId → max group score. */
   bestGroupScores = $derived.by(() => {
@@ -578,31 +446,21 @@ class EvaluationStore {
   });
 
   /** Weight warnings: criterion id → sub-criteria weights don't sum to 100% (traditional mode only). */
-  weightWarnings = $derived.by(() => {
-    const result: Record<string, { expected: number; subSum: number }> = {};
-    for (const criterion of this.data.criteria) {
-      const mode = criterionMode(criterion);
-      if (mode === 'traditional') {
-        const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-        if (subSum !== 100) {
-          result[criterion.id] = { expected: 100, subSum };
-        }
-      }
-    }
-    return result;
-  });
+  weightWarnings = $derived.by(() => computeWeightWarnings(this.data.criteria));
 
   // ── Mutation methods ──
 
+  // ── Scoring mutations (kept inline — simple find-then-set) ──
+
   /** Update a single score (sub-criterion level). */
   setScore(subCriterionId: string, supplierId: string, value: number) {
-    const sub = this._findSub(subCriterionId);
+    const sub = findSub(this.data, subCriterionId);
     if (sub) sub.scores[supplierId] = clampScore(value);
   }
 
   /** Update a score on a leaf criterion (mode 1). */
   setCriterionScore(criterionId: string, supplierId: string, value: number) {
-    const criterion = this._findCriterion(criterionId);
+    const criterion = findCriterion(this.data, criterionId);
     if (!criterion) return;
     if (!criterion.scores) criterion.scores = {};
     criterion.scores[supplierId] = clampScore(value);
@@ -610,24 +468,24 @@ class EvaluationStore {
 
   /** Update a note. */
   setNote(subCriterionId: string, supplierId: string, text: string) {
-    const sub = this._findSub(subCriterionId);
+    const sub = findSub(this.data, subCriterionId);
     if (sub) sub.notes[supplierId] = text;
   }
 
   /** Set the explicit max deduction for a criterion in prismodell (NOK). */
   setCriterionMaxPriceDeduction(criterionId: string, value: number) {
-    const c = this._findCriterion(criterionId);
+    const c = findCriterion(this.data, criterionId);
     if (c) c.maxPriceDeduction = Math.max(0, Math.round(value));
   }
 
   /** Set a prismodell deduction amount (NOK) on a leaf/resource criterion. */
   setCriterionPriceDeductionAmount(criterionId: string, supplierId: string, amount: number) {
-    this._setPriceDeduction(this._findCriterion(criterionId), supplierId, amount);
+    this._setPriceDeduction(findCriterion(this.data, criterionId), supplierId, amount);
   }
 
   /** Set a prismodell deduction amount (NOK) on a sub-criterion. */
   setSubPriceDeductionAmount(subCriterionId: string, supplierId: string, amount: number) {
-    this._setPriceDeduction(this._findSub(subCriterionId), supplierId, amount);
+    this._setPriceDeduction(findSub(this.data, subCriterionId), supplierId, amount);
   }
 
   /** Update supplier price. */
@@ -636,238 +494,104 @@ class EvaluationStore {
     if (supplier) supplier.price = price;
   }
 
-  /** Set a score for a specific item on a specific item-criterion (sub-level). */
-  setItemScore(
-    subCriterionId: string,
-    supplierId: string,
-    itemId: string,
-    itemCriterionId: string,
-    value: number
-  ) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub?.items) return;
-    const items = sub.items[supplierId];
-    if (!items) return;
-    const item = items.find((i) => i.id === itemId);
-    if (item) item.scores[itemCriterionId] = clampScore(value);
-  }
-
-  /** Set a note for a specific item on a specific item-criterion (sub-level). */
-  setItemNote(
-    subCriterionId: string,
-    supplierId: string,
-    itemId: string,
-    itemCriterionId: string,
-    text: string
-  ) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub?.items) return;
-    const items = sub.items[supplierId];
-    if (!items) return;
-    const item = items.find((i) => i.id === itemId);
-    if (item) item.notes[itemCriterionId] = text;
-  }
-
-  /** Add an item to a supplier's list for a sub-criterion (sub-level item eval). */
-  addItem(subCriterionId: string, supplierId: string, name: string, label?: string) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub || sub.evaluationType !== 'item') return;
-    if (!sub.items) sub.items = {};
-    if (!sub.items[supplierId]) sub.items[supplierId] = [];
-    sub.items[supplierId].push({
-      id: uid('item'),
-      name,
-      label,
-      scores: {},
-      notes: {},
-    });
-  }
-
-  /** Remove an item (sub-level). */
-  removeItem(subCriterionId: string, supplierId: string, itemId: string) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub?.items) return;
-    const items = sub.items[supplierId];
-    if (!items) return;
-    sub.items[supplierId] = items.filter((i) => i.id !== itemId);
-  }
-
   /** Update a criterion's weight (direct). */
   setCriterionWeight(criterionId: string, weight: number) {
-    const criterion = this._findCriterion(criterionId);
+    const criterion = findCriterion(this.data, criterionId);
     if (criterion) criterion.weight = clampWeight(weight);
   }
 
   /** Update a sub-criterion's weight (relative within its criterion, sums to 100). */
   setSubCriterionWeight(subCriterionId: string, weight: number) {
-    for (const c of this.data.criteria) {
-      const sub = c.subcriteria.find((s) => s.id === subCriterionId);
-      if (sub) {
-        sub.weight = clampWeight(weight);
-        return;
-      }
-    }
+    const sub = findSub(this.data, subCriterionId);
+    if (sub) sub.weight = clampWeight(weight);
   }
 
-  /** Change aggregation method (sub-level). */
-  setAggregation(subCriterionId: string, method: AggregationMethod) {
-    const sub = this._findSub(subCriterionId);
-    if (sub) sub.aggregation = method;
+  // ── Item mutation delegates ──
+
+  setItemScore(subCriterionId: string, supplierId: string, itemId: string, itemCriterionId: string, value: number) {
+    itemMutations.setItemScore(this.data, subCriterionId, supplierId, itemId, itemCriterionId, value);
   }
 
-  /** Toggle a sub-criterion between simple and item-level evaluation. */
+  setItemNote(subCriterionId: string, supplierId: string, itemId: string, itemCriterionId: string, text: string) {
+    itemMutations.setItemNote(this.data, subCriterionId, supplierId, itemId, itemCriterionId, text);
+  }
+
+  setItemResourceNote(subCriterionId: string, supplierId: string, itemId: string, text: string) {
+    itemMutations.setItemResourceNote(this.data, subCriterionId, supplierId, itemId, text);
+  }
+
+  addItem(subCriterionId: string, supplierId: string, name: string, label?: string) {
+    itemMutations.addItem(this.data, subCriterionId, supplierId, name, label);
+  }
+
+  removeItem(subCriterionId: string, supplierId: string, itemId: string) {
+    itemMutations.removeItem(this.data, subCriterionId, supplierId, itemId);
+  }
+
   setEvaluationType(subCriterionId: string, type: 'simple' | 'item') {
-    const sub = this._findSub(subCriterionId);
-    if (!sub) return;
-    sub.evaluationType = type;
-    if (type === 'item') {
-      if (!sub.itemCriteria || sub.itemCriteria.length === 0) {
-        sub.itemCriteria = [{ id: uid('ic'), name: '', weight: 100 }];
-      }
-      if (!sub.items) sub.items = {};
-      if (!sub.itemLabel) sub.itemLabel = DEFAULT_ITEM_LABEL;
-      if (!sub.aggregation) sub.aggregation = 'average';
-    }
+    itemMutations.setEvaluationType(this.data, subCriterionId, type);
   }
 
-  /** Set the item label for an item-evaluated sub-criterion. */
   setItemLabel(subCriterionId: string, label: string) {
-    const sub = this._findSub(subCriterionId);
-    if (sub) sub.itemLabel = label;
+    itemMutations.setItemLabel(this.data, subCriterionId, label);
   }
 
-  /** Add an item-criterion (moment/dimension) to an item-evaluated sub-criterion. */
+  setAggregation(subCriterionId: string, method: AggregationMethod) {
+    itemMutations.setAggregation(this.data, subCriterionId, method);
+  }
+
   addItemCriterion(subCriterionId: string, name: string, weight: number): string {
-    const sub = this._findSub(subCriterionId);
-    if (!sub || !sub.itemCriteria) return '';
-    const id = uid('ic');
-    sub.itemCriteria = [...sub.itemCriteria, { id, name, weight }];
-    return id;
+    return itemMutations.addItemCriterion(this.data, subCriterionId, name, weight);
   }
 
-  /** Remove an item-criterion dimension. */
   removeItemCriterion(subCriterionId: string, itemCriterionId: string) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub || !sub.itemCriteria) return;
-    sub.itemCriteria = sub.itemCriteria.filter((ic) => ic.id !== itemCriterionId);
-    if (sub.items) {
-      for (const items of Object.values(sub.items)) {
-        for (const item of items) {
-          delete item.scores[itemCriterionId];
-          delete item.notes[itemCriterionId];
-        }
-      }
-    }
+    itemMutations.removeItemCriterion(this.data, subCriterionId, itemCriterionId);
   }
 
-  /** Rename an item-criterion dimension. */
   renameItemCriterion(subCriterionId: string, itemCriterionId: string, name: string) {
-    const ic = this._findItemCriterion(subCriterionId, itemCriterionId);
-    if (ic) ic.name = name;
+    itemMutations.renameItemCriterion(this.data, subCriterionId, itemCriterionId, name);
   }
 
-  /** Set weight for an item-criterion dimension. */
   setItemCriterionWeight(subCriterionId: string, itemCriterionId: string, weight: number) {
-    const ic = this._findItemCriterion(subCriterionId, itemCriterionId);
-    if (ic) ic.weight = clampWeight(weight);
+    itemMutations.setItemCriterionWeight(this.data, subCriterionId, itemCriterionId, weight);
   }
 
-  // ── Criterion-level resource evaluation (mode 3) ──
+  // ── Role mutation delegates ──
 
-  /** Toggle criterion between simple and resource evaluation. */
   setCriterionEvaluationType(criterionId: string, type: 'simple' | 'item') {
-    const criterion = this._findCriterion(criterionId);
-    if (!criterion) return;
-    criterion.evaluationType = type;
-    if (type === 'item') {
-      if (!criterion.roles || criterion.roles.length === 0) {
-        criterion.roles = [{ id: uid('role'), name: '' }];
-      }
-      if (!criterion.items) criterion.items = {};
-      if (!criterion.aggregation) criterion.aggregation = 'average';
-    }
+    roleMutations.setCriterionEvaluationType(this.data, criterionId, type);
   }
 
-  /** Set aggregation method for criterion-level resources. */
   setCriterionAggregation(criterionId: string, method: AggregationMethod) {
-    const criterion = this._findCriterion(criterionId);
-    if (criterion) criterion.aggregation = method;
+    roleMutations.setCriterionAggregation(this.data, criterionId, method);
   }
 
-  /** Add a role to a criterion. */
   addRole(criterionId: string, name: string): string {
-    const criterion = this._findCriterion(criterionId);
-    if (!criterion) return '';
-    if (!criterion.roles) criterion.roles = [];
-    const id = uid('role');
-    criterion.roles = [...criterion.roles, { id, name }];
-    // Create placeholder items for all suppliers
-    if (!criterion.items) criterion.items = {};
-    for (const supplier of this.data.suppliers) {
-      if (!criterion.items[supplier.id]) criterion.items[supplier.id] = [];
-      criterion.items[supplier.id] = [
-        ...criterion.items[supplier.id],
-        { id: uid('item'), name: '', roleId: id, scores: {}, notes: {} },
-      ];
-    }
-    return id;
+    return roleMutations.addRole(this.data, criterionId, name);
   }
 
-  /** Remove a role and its associated items. */
   removeRole(criterionId: string, roleId: string) {
-    const criterion = this._findCriterion(criterionId);
-    if (!criterion?.roles) return;
-    criterion.roles = criterion.roles.filter((r) => r.id !== roleId);
-    if (criterion.items) {
-      for (const supplierId of Object.keys(criterion.items)) {
-        criterion.items[supplierId] = criterion.items[supplierId].filter(
-          (i) => i.roleId !== roleId
-        );
-      }
-    }
+    roleMutations.removeRole(this.data, criterionId, roleId);
   }
 
-  /** Rename a role. */
   renameRole(criterionId: string, roleId: string, name: string) {
-    const criterion = this._findCriterion(criterionId);
-    const role = criterion?.roles?.find((r) => r.id === roleId);
-    if (role) role.name = name;
+    roleMutations.renameRole(this.data, criterionId, roleId, name);
   }
 
-  /** Set the label (person name) for a role on a specific supplier. */
   setRoleLabel(criterionId: string, supplierId: string, roleId: string, label: string) {
-    const item = this._findRoleItem(criterionId, supplierId, roleId);
-    if (item) item.label = label;
+    roleMutations.setRoleLabel(this.data, criterionId, supplierId, roleId, label);
   }
 
-  /** Set a score for a role on a moment (subcriterion) for a specific supplier. */
-  setRoleScore(
-    criterionId: string,
-    supplierId: string,
-    roleId: string,
-    momentId: string,
-    value: number
-  ) {
-    const item = this._findRoleItem(criterionId, supplierId, roleId);
-    if (item) item.scores[momentId] = clampScore(value);
+  setRoleScore(criterionId: string, supplierId: string, roleId: string, momentId: string, value: number) {
+    roleMutations.setRoleScore(this.data, criterionId, supplierId, roleId, momentId, value);
   }
 
-  /** Set a note for a role on a moment for a specific supplier. */
-  setRoleNote(
-    criterionId: string,
-    supplierId: string,
-    roleId: string,
-    momentId: string,
-    text: string
-  ) {
-    const item = this._findRoleItem(criterionId, supplierId, roleId);
-    if (item) item.notes[momentId] = text;
+  setRoleNote(criterionId: string, supplierId: string, roleId: string, momentId: string, text: string) {
+    roleMutations.setRoleNote(this.data, criterionId, supplierId, roleId, momentId, text);
   }
 
-  /** Set a holistic note for a role resource. */
   setRoleResourceNote(criterionId: string, supplierId: string, roleId: string, text: string) {
-    const item = this._findRoleItem(criterionId, supplierId, roleId);
-    if (item) item.note = text;
+    roleMutations.setRoleResourceNote(this.data, criterionId, supplierId, roleId, text);
   }
 
   /** Set the active view (overview or criterion detail). */
@@ -892,23 +616,13 @@ class EvaluationStore {
 
   /** Set a criterion-level note (overordnet vurdering) for a supplier. */
   setCriterionNote(criterionId: string, supplierId: string, text: string) {
-    const criterion = this._findCriterion(criterionId);
+    const criterion = findCriterion(this.data, criterionId);
     if (!criterion) return;
     if (!criterion.notes) criterion.notes = {};
     criterion.notes[supplierId] = text;
   }
 
-  /** Set a holistic resource note (covering all dimensions) on sub-level items. */
-  setItemResourceNote(subCriterionId: string, supplierId: string, itemId: string, text: string) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub?.items) return;
-    const items = sub.items[supplierId];
-    if (!items) return;
-    const item = items.find((i) => i.id === itemId);
-    if (item) item.note = text;
-  }
-
-  // ── Structure mutation methods ──
+  // ── Structure mutation delegates ──
 
   setTitle(title: string) {
     this.data.title = title;
@@ -928,128 +642,52 @@ class EvaluationStore {
     this.data.priceWeight = price;
   }
 
-  /** Add a criterion (leaf by default — no subcriteria). */
   addCriterion(name: string, type: 'quality' | 'price'): string {
-    const id = uid('c');
-    this.data.criteria = [
-      ...this.data.criteria,
-      {
-        id,
-        name,
-        type,
-        weight: 0,
-        subcriteria: [],
-      },
-    ];
-    return id;
+    return structureMutations.addCriterion(this.data, name, type);
   }
 
   removeCriterion(criterionId: string) {
-    this.data.criteria = this.data.criteria.filter((c) => c.id !== criterionId);
+    structureMutations.removeCriterion(this.data, criterionId);
   }
 
   renameCriterion(criterionId: string, name: string) {
-    const c = this._findCriterion(criterionId);
-    if (c) c.name = name;
+    structureMutations.renameCriterion(this.data, criterionId, name);
   }
 
   setCriterionType(criterionId: string, type: 'quality' | 'price') {
-    const c = this._findCriterion(criterionId);
-    if (c) c.type = type;
+    structureMutations.setCriterionType(this.data, criterionId, type);
   }
 
   reorderCriteria(fromIndex: number, toIndex: number) {
-    if (
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= this.data.criteria.length ||
-      toIndex >= this.data.criteria.length
-    )
-      return;
-    const copy = [...this.data.criteria];
-    const [item] = copy.splice(fromIndex, 1);
-    copy.splice(toIndex, 0, item);
-    this.data.criteria = copy;
+    structureMutations.reorderCriteria(this.data, fromIndex, toIndex);
   }
 
   addSubCriterion(criterionId: string, name: string, weight: number = 0): string {
-    const c = this._findCriterion(criterionId);
-    if (!c) return '';
-    const id = uid(`${criterionId}-s`);
-    c.subcriteria = [...c.subcriteria, { id, name, weight, scores: {}, notes: {} }];
-    return id;
+    return structureMutations.addSubCriterion(this.data, criterionId, name, weight);
   }
 
   removeSubCriterion(subCriterionId: string) {
-    for (const c of this.data.criteria) {
-      const filtered = c.subcriteria.filter((s) => s.id !== subCriterionId);
-      if (filtered.length < c.subcriteria.length) {
-        c.subcriteria = filtered;
-        return;
-      }
-    }
+    structureMutations.removeSubCriterion(this.data, subCriterionId);
   }
 
   renameSubCriterion(subCriterionId: string, name: string) {
-    const sub = this._findSub(subCriterionId);
-    if (sub) sub.name = name;
+    structureMutations.renameSubCriterion(this.data, subCriterionId, name);
   }
 
   reorderSubCriteria(criterionId: string, fromIndex: number, toIndex: number) {
-    const c = this._findCriterion(criterionId);
-    if (
-      !c ||
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= c.subcriteria.length ||
-      toIndex >= c.subcriteria.length
-    )
-      return;
-    const copy = [...c.subcriteria];
-    const [item] = copy.splice(fromIndex, 1);
-    copy.splice(toIndex, 0, item);
-    c.subcriteria = copy;
+    structureMutations.reorderSubCriteria(this.data, criterionId, fromIndex, toIndex);
   }
 
   addSupplier(name: string, price?: number): string {
-    const id = uid('sup');
-    this.data.suppliers = [...this.data.suppliers, { id, name, price }];
-    // For resource-mode criteria with roles, create placeholder items for the new supplier
-    for (const criterion of this.data.criteria) {
-      if (criterionMode(criterion) === 'resource' && criterion.roles) {
-        if (!criterion.items) criterion.items = {};
-        criterion.items[id] = criterion.roles.map((role) => ({
-          id: uid('item'),
-          name: '',
-          roleId: role.id,
-          scores: {},
-          notes: {},
-        }));
-      }
-    }
-    return id;
+    return structureMutations.addSupplier(this.data, name, price);
   }
 
   removeSupplier(supplierId: string) {
-    this.data.suppliers = this.data.suppliers.filter((s) => s.id !== supplierId);
-    // Cascade: remove scores, notes, items for this supplier
-    for (const c of this.data.criteria) {
-      if (c.notes) delete c.notes[supplierId];
-      if (c.scores) delete c.scores[supplierId];
-      if (c.priceDeductionAmounts) delete c.priceDeductionAmounts[supplierId];
-      if (c.items) delete c.items[supplierId];
-      for (const sub of c.subcriteria) {
-        delete sub.scores[supplierId];
-        delete sub.notes[supplierId];
-        if (sub.priceDeductionAmounts) delete sub.priceDeductionAmounts[supplierId];
-        if (sub.items) delete sub.items[supplierId];
-      }
-    }
+    structureMutations.removeSupplier(this.data, supplierId);
   }
 
   renameSupplier(supplierId: string, name: string) {
-    const s = this.data.suppliers.find((s) => s.id === supplierId);
-    if (s) s.name = name;
+    structureMutations.renameSupplier(this.data, supplierId, name);
   }
 
   /** Initialize from route data if the procurement has changed. Preserves existing work for the same procurement. */
@@ -1132,38 +770,6 @@ class EvaluationStore {
     node.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
   }
 
-  /** Find a criterion by id. */
-  private _findCriterion(criterionId: string): Criterion | undefined {
-    return this.data.criteria.find((c) => c.id === criterionId);
-  }
-
-  /** Find an item-criterion by sub-criterion and item-criterion id. */
-  private _findItemCriterion(
-    subCriterionId: string,
-    itemCriterionId: string
-  ): ItemCriterion | undefined {
-    const sub = this._findSub(subCriterionId);
-    return sub?.itemCriteria?.find((c) => c.id === itemCriterionId);
-  }
-
-  /** Find a role's item (resource) for a supplier on a criterion. */
-  private _findRoleItem(
-    criterionId: string,
-    supplierId: string,
-    roleId: string
-  ): EvaluationItem | undefined {
-    const criterion = this._findCriterion(criterionId);
-    return criterion?.items?.[supplierId]?.find((i) => i.roleId === roleId);
-  }
-
-  /** Find a sub-criterion by id. */
-  private _findSub(subCriterionId: string): SubCriterion | undefined {
-    for (const criterion of this.data.criteria) {
-      const sub = criterion.subcriteria.find((s) => s.id === subCriterionId);
-      if (sub) return sub;
-    }
-    return undefined;
-  }
 }
 
 export const evaluation = new EvaluationStore();
