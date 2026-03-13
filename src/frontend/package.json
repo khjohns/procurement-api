@@ -30,9 +30,12 @@
     "vite": "^7.3.1"
   },
   "dependencies": {
-    "@friendofsvelte/tipex": "^0.1.1",
+    "@tiptap/core": "^2.27.2",
+    "@tiptap/pm": "^2.27.2",
+    "@tiptap/starter-kit": "^2.27.2",
     "@tiptap/extension-character-count": "^2.27.2",
     "@tiptap/extension-placeholder": "^2.27.2",
+    "@floating-ui/dom": "^1.7.0",
     "bits-ui": "^2.16.2",
     "lucide-svelte": "^0.577.0"
   }

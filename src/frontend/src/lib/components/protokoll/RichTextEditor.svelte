@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Tipex, defaultExtensions } from '@friendofsvelte/tipex';
-  import '@friendofsvelte/tipex/styles/index.css';
-  import '@friendofsvelte/tipex/styles/theme.css';
-  import CharacterCount from '@tiptap/extension-character-count';
+  import { onMount } from 'svelte';
+  import { Editor } from '@tiptap/core';
+  import StarterKit from '@tiptap/starter-kit';
   import Placeholder from '@tiptap/extension-placeholder';
-  import type { Editor } from '@tiptap/core';
+  import CharacterCount from '@tiptap/extension-character-count';
+  import EditorMenu from './EditorMenu.svelte';
+  import type { EditorOptions } from '@tiptap/core';
 
   interface Props {
     body?: string;
@@ -27,37 +28,57 @@
   }: Props = $props();
 
   let editor: Editor | undefined = $state();
+  let editorContainer: HTMLDivElement | undefined = $state();
   let charCount = $derived(editor?.storage.characterCount?.characters() ?? 0);
 
-  let extensions = $derived([
-    ...defaultExtensions,
-    CharacterCount,
-    Placeholder.configure({ placeholder }),
-  ]);
+  onMount(() => {
+    if (!editorContainer) return;
 
-  function handleUpdate() {
-    if (!editor) return;
-    const newHtml = editor.getHTML();
-    html = newHtml;
-    onchange?.(newHtml);
-  }
+    const editorInstance = new Editor({
+      element: editorContainer,
+      extensions: [
+        StarterKit.configure({
+          heading: {
+            levels: [2, 3],
+          },
+          history: {
+            depth: 100,
+          },
+        }),
+        Placeholder.configure({ placeholder }),
+        CharacterCount.configure({
+          limit: null,
+        }),
+      ],
+      content: body,
+      onUpdate: ({ editor: e }) => {
+        html = e.getHTML();
+        onchange?.(html);
+      },
+      onCreate: ({ editor: e }) => {
+        editor = e;
+      },
+    } as EditorOptions);
+
+    return () => {
+      editorInstance.destroy();
+    };
+  });
 </script>
 
 <div class="rte-wrap">
   {#if label}
     <div class="rte-label">{label}</div>
   {/if}
+
   <div class="rte-container" style="--rte-max-height: {maxHeight}">
-    <Tipex
-      {body}
-      {extensions}
-      bind:tipex={editor}
-      floating
-      focal
-      onupdate={handleUpdate}
-      class="rte-editor"
-    />
+    {#if editor}
+      <EditorMenu {editor} />
+    {/if}
+
+    <div bind:this={editorContainer} class="rte-editor" />
   </div>
+
   <div class="rte-footer">
     <span class="rte-char-count">{charCount} tegn</span>
     {#if hint}
@@ -82,6 +103,7 @@
   }
 
   .rte-container {
+    position: relative;
     background: var(--color-canvas);
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
@@ -93,30 +115,58 @@
     border-color: var(--color-wire-focus);
   }
 
-  .rte-container :global(.tipex-editor) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    backdrop-filter: none;
+  :global(.rte-editor) {
+    outline: none;
   }
 
-  .rte-container :global(.tipex-editor-section) {
+  :global(.rte-editor .ProseMirror) {
     min-height: 200px;
     max-height: var(--rte-max-height, 60vh);
     overflow-y: auto;
     padding: var(--spacing-4, 16px);
-    font-family: var(--font-ui);
-    font-size: 14px;
+    font-family: var(--font-editor);
+    font-size: 16px;
     line-height: 1.6;
+    color: var(--color-ink);
+    outline: none;
+  }
+
+  /* Headings */
+  :global(.rte-editor .ProseMirror h2) {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 1em 0 0.5em;
     color: var(--color-ink);
   }
 
-  .rte-container :global(.tipex-editor-section .ProseMirror) {
-    outline: none;
-    min-height: 160px;
+  :global(.rte-editor .ProseMirror h3) {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0.8em 0 0.4em;
+    color: var(--color-ink);
   }
 
-  .rte-container :global(.tipex-editor-section .ProseMirror p.is-editor-empty:first-child::before) {
+  /* Lists */
+  :global(.rte-editor .ProseMirror ul),
+  :global(.rte-editor .ProseMirror ol) {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+
+  :global(.rte-editor .ProseMirror li) {
+    margin-bottom: 0.25em;
+  }
+
+  /* Blockquote */
+  :global(.rte-editor .ProseMirror blockquote) {
+    border-left: 3px solid var(--color-wire-strong);
+    padding-left: var(--spacing-4, 16px);
+    color: var(--color-ink-secondary);
+    margin: 0.5em 0;
+  }
+
+  /* Placeholder */
+  :global(.rte-editor .ProseMirror p.is-editor-empty:first-child::before) {
     color: var(--color-ink-ghost);
     font-style: italic;
     content: attr(data-placeholder);
@@ -125,77 +175,22 @@
     pointer-events: none;
   }
 
-  /* Tipex toolbar overrides */
-  .rte-container :global(.tipex-controller) {
-    background: var(--color-felt-raised) !important;
-    border-top: 1px solid var(--color-wire-strong) !important;
-    border-radius: 0 !important;
-    backdrop-filter: none;
-  }
-
-  .rte-container :global(.tipex-controller button) {
-    color: var(--color-ink-secondary) !important;
-  }
-
-  .rte-container :global(.tipex-controller button:hover) {
-    color: var(--color-ink) !important;
-    background: var(--color-felt-hover) !important;
-  }
-
-  .rte-container :global(.tipex-controller button.active) {
-    color: var(--color-vekt) !important;
-    background: var(--color-vekt-bg) !important;
-  }
-
-  /* Typography inside editor */
-  .rte-container :global(.tiptap h2) {
-    font-size: 16px;
-    font-weight: 700;
-    margin: 1em 0 0.5em;
-    color: var(--color-ink);
-  }
-
-  .rte-container :global(.tiptap h3) {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0.8em 0 0.4em;
-    color: var(--color-ink);
-  }
-
-  .rte-container :global(.tiptap ul),
-  .rte-container :global(.tiptap ol) {
-    padding-left: 1.5em;
-    margin: 0.5em 0;
-  }
-
-  .rte-container :global(.tiptap li) {
-    margin-bottom: 0.25em;
-  }
-
-  .rte-container :global(.tiptap blockquote) {
-    border-left: 3px solid var(--color-wire-strong);
-    padding-left: var(--spacing-4, 16px);
-    color: var(--color-ink-secondary);
-    margin: 0.5em 0;
-  }
-
   .rte-footer {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--spacing-3, 12px);
+    padding: 0 var(--spacing-4, 16px) var(--spacing-3, 12px);
+    font-size: 11px;
+    color: var(--color-ink-muted);
   }
 
   .rte-char-count {
-    font-size: 11px;
     font-family: var(--font-data);
-    color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
   }
 
   .rte-hint {
-    font-size: 11px;
-    color: var(--color-ink-muted);
     text-align: right;
   }
 </style>
