@@ -148,12 +148,13 @@
               {#each roles as role, roleIdx}
                 {@const item = getRoleItem(supplier.id, role.id)}
                 {@const score = item?.scores[moment.id] ?? 0}
+                {@const tier = scoreTier(score)}
                 <td
                   class="cell-score resource-cell"
                   class:resource-cell-first={roleIdx === 0}
-                  class:score-high={scoreTier(score) === 'high'}
-                  class:score-mid={scoreTier(score) === 'mid'}
-                  class:score-low={scoreTier(score) === 'low'}
+                  class:score-high={tier === 'high'}
+                  class:score-mid={tier === 'mid'}
+                  class:score-low={tier === 'low'}
                 >
                   <InlineNumberEditor
                     value={score}

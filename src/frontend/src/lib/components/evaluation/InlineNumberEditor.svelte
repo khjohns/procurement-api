@@ -4,7 +4,6 @@
     min?: number;
     max?: number;
     suffix?: string;
-    displayFormatter?: (v: number) => string;
     oncommit: (value: number) => void;
     variant?: 'weight' | 'weight-column' | 'weight-transposed' | 'score';
   }
@@ -14,7 +13,6 @@
     min = 0,
     max = 100,
     suffix = '',
-    displayFormatter,
     oncommit,
     variant = 'weight',
   }: Props = $props();
@@ -29,7 +27,7 @@
 
   function commit() {
     const num = parseInt(editValue, 10);
-    if (!isNaN(num) && num >= min && num <= max) {
+    if (!isNaN(num) && num >= min && num <= max && num !== value) {
       oncommit(num);
     }
     editing = false;
@@ -49,9 +47,7 @@
     }
   }
 
-  let displayText = $derived(
-    displayFormatter ? displayFormatter(value) : `${value}${suffix}`
-  );
+  let displayText = $derived(`${value}${suffix}`);
 </script>
 
 {#if variant === 'weight'}
