@@ -1,10 +1,28 @@
 <script lang="ts">
-  import { evaluation, formatNOK, subEffectiveWeight } from '$lib/stores/evaluation.svelte';
+  import { evaluation, formatNOK, criterionMode } from '$lib/stores/evaluation.svelte';
 
-  let qualityBudget = $derived(evaluation.qualityBudget);
-  let totalWeight = $derived(evaluation.totalWeight);
+  /** Effective max deduction for a criterion (explicit or weight-derived). */
+  function effectiveMaxDed(criterionId: string): number {
+    const c = evaluation.data.criteria.find((c) => c.id === criterionId);
+    if (!c) return 0;
+    if (c.maxPriceDeduction != null) return c.maxPriceDeduction;
+    const tw = evaluation.totalWeight;
+    return tw > 0 ? (evaluation.qualityBudget * c.weight) / tw : 0;
+  }
 
-  /** Determine fradrag tier relative to other suppliers for this sub. */
+  /** Total group deduction: leaf deduction or sum of sub-deductions. */
+  function groupDeduction(criterionId: string, supplierId: string): number {
+    const criterion = evaluation.data.criteria.find((c) => c.id === criterionId);
+    if (!criterion) return 0;
+    if (criterion.subcriteria.length === 0) {
+      return evaluation.priceDeductions[criterionId]?.[supplierId] ?? 0;
+    }
+    return criterion.subcriteria.reduce(
+      (sum, sub) => sum + (evaluation.priceDeductions[sub.id]?.[supplierId] ?? 0),
+      0
+    );
+  }
+
   function fradragTier(subId: string, supplierId: string): string {
     const deductions = evaluation.priceDeductions[subId];
     if (!deductions) return '';
@@ -17,15 +35,6 @@
     return 'fradrag-mid';
   }
 
-  function groupDeduction(criterionId: string, supplierId: string): number {
-    const criterion = evaluation.data.criteria.find((c) => c.id === criterionId);
-    if (!criterion) return 0;
-    return criterion.subcriteria.reduce(
-      (sum, sub) => sum + (evaluation.priceDeductions[sub.id]?.[supplierId] ?? 0),
-      0
-    );
-  }
-
   function groupFradragTier(criterionId: string, supplierId: string): string {
     const vals = evaluation.data.suppliers.map((s) => groupDeduction(criterionId, s.id));
     const val = groupDeduction(criterionId, supplierId);
@@ -35,6 +44,56 @@
     if (val === min) return 'fradrag-high';
     return 'fradrag-mid';
   }
+
+  // ── Max deduction editing ──
+  let editingMaxDed: Record<string, boolean> = $state({});
+  let editMaxDedVal: Record<string, string> = $state({});
+  let maxDedInputs: Record<string, HTMLInputElement | undefined> = {};
+
+  function startEditMaxDed(criterionId: string, current: number) {
+    editingMaxDed[criterionId] = true;
+    editMaxDedVal[criterionId] = current > 0 ? String(current) : '';
+    requestAnimationFrame(() => maxDedInputs[criterionId]?.select());
+  }
+
+  function commitMaxDed(criterionId: string) {
+    const raw = (editMaxDedVal[criterionId] ?? '').replace(/\s/g, '');
+    const num = parseInt(raw, 10);
+    if (!isNaN(num) && num >= 0) evaluation.setCriterionMaxPriceDeduction(criterionId, num);
+    editingMaxDed[criterionId] = false;
+  }
+
+  // ── Score editing ──
+  let editingScore: Record<string, boolean> = $state({});
+  let editScoreVal: Record<string, string> = $state({});
+
+  function getScore(id: string, supplierId: string, isLeaf: boolean): number {
+    if (isLeaf) {
+      return evaluation.data.criteria.find((c) => c.id === id)?.scores?.[supplierId] ?? 0;
+    }
+    for (const c of evaluation.data.criteria) {
+      const sub = c.subcriteria.find((s) => s.id === id);
+      if (sub) return sub.scores[supplierId] ?? 0;
+    }
+    return 0;
+  }
+
+  function commitScore(id: string, supplierId: string, isLeaf: boolean) {
+    const key = `${id}:${supplierId}`;
+    const num = parseInt((editScoreVal[key] ?? '').trim(), 10);
+    if (!isNaN(num) && num >= 0 && num <= 10) {
+      if (isLeaf) evaluation.setCriterionScore(id, supplierId, num);
+      else evaluation.setScore(id, supplierId, num);
+    }
+    editingScore[key] = false;
+  }
+
+  /** Total of all quality max deductions. */
+  let totalMaxDed = $derived(
+    evaluation.data.criteria
+      .filter((c) => c.type === 'quality')
+      .reduce((s, c) => s + effectiveMaxDed(c.id), 0)
+  );
 </script>
 
 <!-- Config strip: supplier prices -->
@@ -80,7 +139,7 @@
     <thead>
       <tr>
         <th class="th-weight">Maks fradrag</th>
-        <th>Kvalitetskriterier</th>
+        <th>Tildelingskriterier</th>
         {#each evaluation.data.suppliers as supplier}
           <th class="th-supplier">{supplier.name}</th>
         {/each}
@@ -88,50 +147,154 @@
     </thead>
     <tbody>
       {#each evaluation.data.criteria as criterion}
+        {@const mode = criterionMode(criterion)}
+        {@const isPriceType = criterion.type === 'price'}
+        {@const isLeaf = mode === 'leaf'}
+
         <!-- Group row -->
-        <tr class="row-group">
+        <tr class="row-group" class:row-price-crit={isPriceType}>
+          <!-- Max deduction cell -->
           <td class="cell-weight">
-            <div class="weight-display">
-              <span class="weight-num-small"
-                >{formatNOK((qualityBudget * criterion.weight) / totalWeight)}</span
+            {#if isPriceType}
+              <span class="ingen-label">Ingen</span>
+            {:else if editingMaxDed[criterion.id]}
+              <!-- svelte-ignore a11y_autofocus -->
+              <input
+                bind:this={maxDedInputs[criterion.id]}
+                type="text"
+                inputmode="numeric"
+                class="maxded-input"
+                value={editMaxDedVal[criterion.id]}
+                oninput={(e) => (editMaxDedVal[criterion.id] = e.currentTarget.value)}
+                onblur={() => commitMaxDed(criterion.id)}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') commitMaxDed(criterion.id);
+                  if (e.key === 'Escape') editingMaxDed[criterion.id] = false;
+                }}
+                autofocus
+              />
+            {:else}
+              <button
+                class="maxded-btn"
+                onclick={() => startEditMaxDed(criterion.id, effectiveMaxDed(criterion.id))}
+                title="Klikk for å sette maksimalt fratrekk"
               >
-            </div>
+                <span class="weight-num-small">{formatNOK(effectiveMaxDed(criterion.id))}</span>
+                <span class="edit-hint">kr ✎</span>
+              </button>
+            {/if}
           </td>
+
           <td class="cell-criteria">{criterion.name}</td>
+
           {#each evaluation.data.suppliers as supplier}
-            {@const deduction = groupDeduction(criterion.id, supplier.id)}
-            <td class="cell-pris {groupFradragTier(criterion.id, supplier.id)}">
-              <span class="pris-value"
-                ><span class="pris-prefix">−</span>{formatNOK(deduction)}</span
-              >
-            </td>
+            {#if isPriceType}
+              <!-- Price criterion: show supplier's price -->
+              {@const prices = evaluation.data.suppliers.map((s) => s.price ?? 0)}
+              {@const minPrice = Math.min(...prices)}
+              <td class="cell-pris" class:fradrag-best={(supplier.price ?? 0) === minPrice}>
+                <span class="pris-value">{formatNOK(supplier.price ?? 0)}</span>
+              </td>
+            {:else if isLeaf}
+              <!-- Leaf quality criterion: show score + deduction -->
+              {@const deduction = groupDeduction(criterion.id, supplier.id)}
+              {@const score = getScore(criterion.id, supplier.id, true)}
+              {@const key = `${criterion.id}:${supplier.id}`}
+              <td class="cell-pris cell-scoring {groupFradragTier(criterion.id, supplier.id)}">
+                {#if editingScore[key]}
+                  <!-- svelte-ignore a11y_autofocus -->
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    class="score-input"
+                    autofocus
+                    bind:value={editScoreVal[key]}
+                    onblur={() => commitScore(criterion.id, supplier.id, true)}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') commitScore(criterion.id, supplier.id, true);
+                      if (e.key === 'Escape') editingScore[key] = false;
+                    }}
+                    onclick={(e) => e.stopPropagation()}
+                  />
+                {:else}
+                  <button
+                    class="score-chip"
+                    onclick={() => {
+                      editScoreVal[`${criterion.id}:${supplier.id}`] =
+                        score > 0 ? String(score) : '';
+                      editingScore[`${criterion.id}:${supplier.id}`] = true;
+                    }}
+                    title="Klikk for å sette poeng (0–10)">{score}/10</button
+                  >
+                {/if}
+                <span class="pris-value"
+                  ><span class="pris-prefix">−</span>{formatNOK(deduction)}</span
+                >
+              </td>
+            {:else}
+              <!-- Group row for traditional/resource: show aggregated deduction only -->
+              {@const deduction = groupDeduction(criterion.id, supplier.id)}
+              <td class="cell-pris {groupFradragTier(criterion.id, supplier.id)}">
+                <span class="pris-value"
+                  ><span class="pris-prefix">−</span>{formatNOK(deduction)}</span
+                >
+              </td>
+            {/if}
           {/each}
         </tr>
 
-        <!-- Sub-criterion rows -->
-        {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
-        {#each criterion.subcriteria as sub, si}
-          {@const isLast = si === criterion.subcriteria.length - 1}
-          <tr class="row-sub" class:row-group-last={isLast}>
-            <td class="cell-weight">
-              <div class="weight-display">
-                <span class="weight-num-small muted"
-                  >{formatNOK(
-                    (qualityBudget * subEffectiveWeight(criterion.weight, sub.weight, subSum)) /
-                      totalWeight
-                  )}</span
-                >
-              </div>
-            </td>
-            <td class="cell-criteria">{sub.name}</td>
-            {#each evaluation.data.suppliers as supplier}
-              {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
-              <td class="cell-pris {fradragTier(sub.id, supplier.id)}">
-                <span class="pris-value">{formatNOK(deduction)}</span>
+        <!-- Sub-criterion rows (traditional mode only) -->
+        {#if mode === 'traditional'}
+          {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
+          {#each criterion.subcriteria as sub, si}
+            {@const isLast = si === criterion.subcriteria.length - 1}
+            {@const subMaxDed =
+              subSum > 0 ? effectiveMaxDed(criterion.id) * (sub.weight / subSum) : 0}
+            <tr class="row-sub" class:row-group-last={isLast}>
+              <td class="cell-weight">
+                <div class="weight-display">
+                  <span class="weight-num-small muted">{formatNOK(subMaxDed)}</span>
+                </div>
               </td>
-            {/each}
-          </tr>
-        {/each}
+              <td class="cell-criteria">{sub.name}</td>
+              {#each evaluation.data.suppliers as supplier}
+                {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
+                {@const score = getScore(sub.id, supplier.id, false)}
+                {@const key = `${sub.id}:${supplier.id}`}
+                <td class="cell-pris cell-scoring {fradragTier(sub.id, supplier.id)}">
+                  {#if editingScore[key]}
+                    <!-- svelte-ignore a11y_autofocus -->
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      class="score-input"
+                      autofocus
+                      bind:value={editScoreVal[key]}
+                      onblur={() => commitScore(sub.id, supplier.id, false)}
+                      onkeydown={(e) => {
+                        if (e.key === 'Enter') commitScore(sub.id, supplier.id, false);
+                        if (e.key === 'Escape') editingScore[key] = false;
+                      }}
+                      onclick={(e) => e.stopPropagation()}
+                    />
+                  {:else}
+                    <button
+                      class="score-chip"
+                      onclick={() => {
+                        editScoreVal[`${sub.id}:${supplier.id}`] = score > 0 ? String(score) : '';
+                        editingScore[`${sub.id}:${supplier.id}`] = true;
+                      }}
+                      title="Klikk for å sette poeng (0–10)">{score}/10</button
+                    >
+                  {/if}
+                  <span class="pris-value">{formatNOK(deduction)}</span>
+                </td>
+              {/each}
+            </tr>
+          {/each}
+        {/if}
       {/each}
 
       <!-- Summation rows -->
@@ -150,7 +313,7 @@
       <tr class="row-pris-sum">
         <td class="cell-weight">
           <div class="weight-display">
-            <span class="weight-num-small">{formatNOK(qualityBudget)}</span>
+            <span class="weight-num-small">{formatNOK(totalMaxDed)}</span>
           </div>
         </td>
         <td class="cell-criteria">Sum kvalitetsfradrag</td>
@@ -260,13 +423,13 @@
   }
 
   .col-weight {
-    width: 100px;
+    width: 110px;
   }
   .col-criteria {
     width: auto;
   }
   .col-supplier {
-    width: 140px;
+    width: 150px;
   }
 
   .matrix th {
@@ -314,6 +477,64 @@
     font-size: 10px;
   }
 
+  /* Max deduction editing */
+  .ingen-label {
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--color-ink-ghost);
+    font-style: italic;
+  }
+
+  .maxded-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-1);
+    border-radius: var(--radius-sm);
+    width: 100%;
+    transition: background 0.1s;
+  }
+
+  .maxded-btn:hover {
+    background: var(--color-felt-hover);
+  }
+
+  .edit-hint {
+    font-size: 9px;
+    color: var(--color-ink-ghost);
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .maxded-btn:hover .edit-hint {
+    opacity: 1;
+  }
+
+  .maxded-input {
+    width: 80px;
+    padding: var(--spacing-1) var(--spacing-2);
+    font-family: var(--font-data);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-wire-focus);
+    border-radius: var(--radius-sm);
+    outline: none;
+    -moz-appearance: textfield;
+  }
+
+  .maxded-input::-webkit-inner-spin-button,
+  .maxded-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   .cell-criteria {
     padding: var(--spacing-2) var(--spacing-3);
     font-weight: 500;
@@ -326,6 +547,9 @@
   .row-group .cell-criteria {
     font-weight: 600;
     color: var(--color-ink);
+  }
+  .row-price-crit .cell-weight {
+    border-left-color: var(--color-wire);
   }
   .row-sub {
     background: var(--color-canvas);
@@ -345,6 +569,56 @@
     font-variant-numeric: tabular-nums;
     font-size: 12px;
     padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  /* Score + deduction stacked cell */
+  .cell-scoring {
+    padding: var(--spacing-1) var(--spacing-3);
+    vertical-align: middle;
+  }
+
+  .score-chip {
+    display: inline-block;
+    font-family: var(--font-data);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-ghost);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 2px;
+    transition: all 0.1s;
+    line-height: 1;
+  }
+
+  .score-chip:hover {
+    color: var(--color-ink-muted);
+    background: var(--color-felt-hover);
+  }
+
+  .score-input {
+    width: 36px;
+    padding: 2px 4px;
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-wire-focus);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    outline: none;
+    display: block;
+    margin: 0 auto var(--spacing-1);
+    -moz-appearance: textfield;
+  }
+
+  .score-input::-webkit-inner-spin-button,
+  .score-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   .pris-value {

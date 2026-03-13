@@ -69,6 +69,8 @@ export interface Criterion {
   roles?: Role[]; // shared across all suppliers
   items?: Record<string, EvaluationItem[]>; // supplierId → resources (with roleId)
   aggregation?: AggregationMethod;
+  /** Prismodell: explicit max deduction in NOK (e.g. 300_000). When set, overrides weight-derived amount. */
+  maxPriceDeduction?: number;
 }
 
 export interface Supplier {
@@ -378,34 +380,32 @@ class EvaluationStore {
     const tw = this.totalWeight;
 
     for (const criterion of this.data.criteria) {
+      if (criterion.type === 'price') continue; // price criteria have no deduction
       const mode = criterionMode(criterion);
+      // Use explicit maxPriceDeduction if set, otherwise derive from weights
+      const maxDed = criterion.maxPriceDeduction ?? (tw > 0 ? qb * (criterion.weight / tw) : 0);
+
       if (mode === 'leaf') {
-        // Leaf criteria: deduction based on criterion-level score
-        if (!result[criterion.id]) result[criterion.id] = {};
-        const maxDeduction = qb * (criterion.weight / tw);
+        result[criterion.id] = {};
         for (const supplier of this.data.suppliers) {
           const score = criterion.scores?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDeduction * (score / 10);
+          result[criterion.id][supplier.id] = maxDed * (score / 10);
         }
       } else if (mode === 'resource') {
-        // Resource criteria: deduction based on aggregated resource score
-        if (!result[criterion.id]) result[criterion.id] = {};
-        const maxDeduction = qb * (criterion.weight / tw);
+        result[criterion.id] = {};
         for (const supplier of this.data.suppliers) {
           const score = this.groupScores[criterion.id]?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDeduction * (score / 10);
+          result[criterion.id][supplier.id] = maxDed * (score / 10);
         }
       } else {
-        // Traditional: per-subcriterion deductions
-        // Sub-weights are relative within criterion (sum to 100),
-        // so effective global weight = criterion.weight × sub.weight / subSum
+        // Traditional: split maxDed proportionally across subcriteria by sub-weight
         const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
         for (const sub of criterion.subcriteria) {
-          if (!result[sub.id]) result[sub.id] = {};
-          const maxDeduction = qb * (subEffectiveWeight(criterion.weight, sub.weight, subSum) / tw);
+          result[sub.id] = {};
+          const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
           for (const supplier of this.data.suppliers) {
             const score = this.itemScores[sub.id]?.[supplier.id] ?? sub.scores[supplier.id] ?? 0;
-            result[sub.id][supplier.id] = maxDeduction * (score / 10);
+            result[sub.id][supplier.id] = subMaxDed * (score / 10);
           }
         }
       }
@@ -602,6 +602,12 @@ class EvaluationStore {
   setNote(subCriterionId: string, supplierId: string, text: string) {
     const sub = this._findSub(subCriterionId);
     if (sub) sub.notes[supplierId] = text;
+  }
+
+  /** Set the explicit max deduction for a criterion in prismodell (NOK). */
+  setCriterionMaxPriceDeduction(criterionId: string, value: number) {
+    const c = this._findCriterion(criterionId);
+    if (c) c.maxPriceDeduction = Math.max(0, Math.round(value));
   }
 
   /** Update supplier price. */
