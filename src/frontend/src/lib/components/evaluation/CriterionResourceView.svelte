@@ -104,11 +104,12 @@
   function getSupplierResourceScore(supplierId: string): number {
     return evaluation.groupScores[criterion.id]?.[supplierId] ?? 0;
   }
+
+  let roles = $derived(criterion.roles ?? []);
+  let moments = $derived(criterion.subcriteria);
 </script>
 
 <!-- ══ RESOURCE MODE: roles × moments (criterion-level) ══ -->
-{@const roles = criterion.roles ?? []}
-{@const moments = criterion.subcriteria}
 
 <!-- Role config strip -->
 <div class="role-config">
