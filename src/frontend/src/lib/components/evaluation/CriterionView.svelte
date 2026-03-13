@@ -1416,10 +1416,6 @@
 	.score-mid .score-value { color: var(--color-ink-secondary); }
 	.score-low .score-value { color: var(--color-score-low); }
 
-	.score-best .score-value {
-		background: var(--color-score-high-bg);
-		font-weight: 700;
-	}
 
 	.has-notes::after {
 		content: '';

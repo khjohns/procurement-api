@@ -133,8 +133,9 @@
 											class:forloep-node-avvist={h.avvist}
 										>{h.type}</span>
 									{:else}
+										{@const IkonComponent = ikonForAction(h.action)}
 										<span class="forloep-ikon">
-											<svelte:component this={ikonForAction(h.action)} size={10} strokeWidth={2} />
+											<IkonComponent size={10} strokeWidth={2} />
 										</span>
 									{/if}
 									<span class="forloep-tekst" class:forloep-tekst-aktivitet={!erNodeType}>{h.label}</span>

@@ -441,11 +441,6 @@
 		color: var(--color-ink-secondary);
 	}
 
-	.picker-chip-w {
-		font-family: var(--font-data);
-		color: var(--color-vekt-dim);
-		font-weight: 600;
-	}
 
 	.picker-empty {
 		padding: var(--spacing-3);
