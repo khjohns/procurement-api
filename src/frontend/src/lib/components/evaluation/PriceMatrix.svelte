@@ -96,36 +96,6 @@
   );
 </script>
 
-<!-- Config strip: supplier prices -->
-<div class="config-strip">
-  <div class="config-field">
-    <span class="config-label">Kontraktsverdi</span>
-    <input
-      class="config-input"
-      type="text"
-      value={formatNOK(evaluation.data.contractValue)}
-      readonly
-    />
-    <span class="config-unit">kr</span>
-  </div>
-  <div class="config-sep"></div>
-  {#each evaluation.data.suppliers as supplier}
-    <div class="config-field">
-      <span class="config-label">{supplier.name.split(' ')[0]}</span>
-      <input
-        class="config-input"
-        type="text"
-        value={formatNOK(supplier.price ?? 0)}
-        oninput={(e) => {
-          const v = parseInt(e.currentTarget.value.replace(/\s/g, ''), 10);
-          if (!isNaN(v)) evaluation.setSupplierPrice(supplier.id, v);
-        }}
-      />
-      <span class="config-unit">kr</span>
-    </div>
-  {/each}
-</div>
-
 <div class="section-label">Kvalitetsfradrag</div>
 <div class="matrix-wrap">
   <table class="matrix">
@@ -299,18 +269,6 @@
 
       <!-- Summation rows -->
       <tr class="row-pris-sum">
-        <td class="cell-weight"></td>
-        <td class="cell-criteria">Tilbudt pris</td>
-        {#each evaluation.data.suppliers as supplier}
-          {@const prices = evaluation.data.suppliers.map((s) => s.price ?? 0)}
-          {@const minPrice = Math.min(...prices)}
-          <td class="cell-pris" class:fradrag-best={(supplier.price ?? 0) === minPrice}>
-            <span class="pris-value">{formatNOK(supplier.price ?? 0)}</span>
-          </td>
-        {/each}
-      </tr>
-
-      <tr class="row-pris-sum">
         <td class="cell-weight">
           <div class="weight-display">
             <span class="weight-num-small">{formatNOK(totalMaxDed)}</span>
@@ -352,62 +310,6 @@
     color: var(--color-ink-muted);
     margin-bottom: var(--spacing-3);
     margin-top: var(--spacing-6);
-  }
-
-  .config-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-4);
-    align-items: center;
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-6);
-  }
-
-  .config-field {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-  }
-
-  .config-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--color-ink-muted);
-    white-space: nowrap;
-  }
-
-  .config-input {
-    width: 112px;
-    padding: var(--spacing-1) var(--spacing-2);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink);
-    font-family: var(--font-data);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    outline: none;
-    transition: border-color 0.12s;
-  }
-
-  .config-input:focus {
-    border-color: var(--color-wire-focus);
-  }
-
-  .config-unit {
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-ghost);
-  }
-
-  .config-sep {
-    width: 1px;
-    height: 24px;
-    background: var(--color-wire);
   }
 
   .matrix-wrap {
