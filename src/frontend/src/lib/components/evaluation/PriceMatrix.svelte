@@ -67,13 +67,13 @@
   let editingScore: Record<string, boolean> = $state({});
   let editScoreVal: Record<string, string> = $state({});
 
-  function getScore(id: string, supplierId: string, isLeaf: boolean): number {
+  function getPriceScore(id: string, supplierId: string, isLeaf: boolean): number {
     if (isLeaf) {
-      return evaluation.data.criteria.find((c) => c.id === id)?.scores?.[supplierId] ?? 0;
+      return evaluation.data.criteria.find((c) => c.id === id)?.priceScores?.[supplierId] ?? 0;
     }
     for (const c of evaluation.data.criteria) {
       const sub = c.subcriteria.find((s) => s.id === id);
-      if (sub) return sub.scores[supplierId] ?? 0;
+      if (sub) return sub.priceScores?.[supplierId] ?? 0;
     }
     return 0;
   }
@@ -82,8 +82,8 @@
     const key = `${id}:${supplierId}`;
     const num = parseInt((editScoreVal[key] ?? '').trim(), 10);
     if (!isNaN(num) && num >= 0 && num <= 10) {
-      if (isLeaf) evaluation.setCriterionScore(id, supplierId, num);
-      else evaluation.setScore(id, supplierId, num);
+      if (isLeaf) evaluation.setCriterionPriceScore(id, supplierId, num);
+      else evaluation.setSubPriceScore(id, supplierId, num);
     }
     editingScore[key] = false;
   }
@@ -168,7 +168,7 @@
             {:else if isLeaf}
               <!-- Leaf quality criterion: show score + deduction -->
               {@const deduction = groupDeduction(criterion.id, supplier.id)}
-              {@const score = getScore(criterion.id, supplier.id, true)}
+              {@const score = getPriceScore(criterion.id, supplier.id, true)}
               {@const key = `${criterion.id}:${supplier.id}`}
               <td class="cell-pris cell-scoring {groupFradragTier(criterion.id, supplier.id)}">
                 {#if editingScore[key]}
@@ -230,7 +230,7 @@
               <td class="cell-criteria">{sub.name}</td>
               {#each evaluation.data.suppliers as supplier}
                 {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
-                {@const score = getScore(sub.id, supplier.id, false)}
+                {@const score = getPriceScore(sub.id, supplier.id, false)}
                 {@const key = `${sub.id}:${supplier.id}`}
                 <td class="cell-pris cell-scoring {fradragTier(sub.id, supplier.id)}">
                   {#if editingScore[key]}
