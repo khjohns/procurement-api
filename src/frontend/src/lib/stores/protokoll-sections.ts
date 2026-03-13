@@ -4,6 +4,16 @@
  * The rendering engine reads the active registry and renders shared components.
  */
 
+// ── Types shared with protokoll store ──
+
+export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud';
+
+export interface Avvisning {
+  kategori: AvvisningKategori;
+  begrunnelse: string;
+  datoAvvist?: string;
+}
+
 /** Field types the rendering engine supports */
 export type FieldType =
   | 'info-table'
@@ -17,6 +27,18 @@ export type FieldType =
   | 'avvisning-card'
   | 'data-quality-table';
 
+/** Context passed to computeFilled for field status resolution. */
+export interface ComputeFilledContext {
+  suppliers: Array<{ id: string }>;
+  manual: Record<string, unknown>;
+}
+
+/** Result of a field status computation. */
+export interface ComputeFilledResult {
+  filled: number;
+  total: number;
+}
+
 export interface FieldDefinition {
   key: string;
   type: FieldType;
@@ -24,6 +46,70 @@ export interface FieldDefinition {
   hint?: string;
   required?: boolean;
   foaRef?: string;
+  /** Optional co-located status logic. When present, the store delegates to this. */
+  computeFilled?: (value: unknown, context: ComputeFilledContext) => ComputeFilledResult;
+}
+
+// ── computeFilled implementations per field type ──
+
+function computeFilledDate(value: unknown): ComputeFilledResult {
+  const dateStr = typeof value === 'string' ? value.trim() : '';
+  return { total: 1, filled: dateStr.length > 0 ? 1 : 0 };
+}
+
+function computeFilledText(value: unknown): ComputeFilledResult {
+  const text = typeof value === 'string' ? value.replace(/<[^>]*>/g, '').trim() : '';
+  return { total: 1, filled: text.length > 0 ? 1 : 0 };
+}
+
+function computeFilledCheckboxTextarea(
+  value: unknown,
+  context: ComputeFilledContext,
+  key: string
+): ComputeFilledResult {
+  const checked = !!value;
+  if (!checked) return { total: 1, filled: 1 };
+  const begrunnelse =
+    typeof context.manual[`${key}Begrunnelse`] === 'string'
+      ? (context.manual[`${key}Begrunnelse`] as string).trim()
+      : '';
+  return { total: 1, filled: begrunnelse.length > 0 ? 1 : 0 };
+}
+
+function computeFilledPerSupplierText(
+  value: unknown,
+  context: ComputeFilledContext
+): ComputeFilledResult {
+  const record = value as Record<string, string> | undefined;
+  if (!record || context.suppliers.length === 0) {
+    return { total: context.suppliers.length || 1, filled: 0 };
+  }
+  let filled = 0;
+  for (const s of context.suppliers) {
+    const text = (record[s.id] ?? '').replace(/<[^>]*>/g, '').trim();
+    if (text.length > 0) filled++;
+  }
+  return { total: context.suppliers.length, filled };
+}
+
+function computeFilledAvvisningCard(value: unknown): ComputeFilledResult {
+  const record = value as Record<string, Avvisning> | undefined;
+  if (!record) return { total: 1, filled: 0 };
+  const entries = Object.values(record);
+  if (entries.length === 0) return { total: 1, filled: 0 };
+  let filled = 0;
+  for (const entry of entries) {
+    if (entry.kategori && entry.begrunnelse?.trim()) filled++;
+  }
+  return { total: entries.length, filled };
+}
+
+/**
+ * Create a computeFilled function for a checkbox-textarea field.
+ * Needs the field key to look up the companion "Begrunnelse" field.
+ */
+function makeCheckboxTextareaFilled(key: string): FieldDefinition['computeFilled'] {
+  return (value, context) => computeFilledCheckboxTextarea(value, context, key);
 }
 
 export interface SectionContext {
@@ -77,6 +163,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Unntak fra elektronisk kommunikasjon',
         foaRef: 'FOA § 10-5',
         hint: 'Begrunn hvorfor elektronisk kommunikasjon ikke benyttes.',
+        computeFilled: makeCheckboxTextareaFilled('unntakElektronisk'),
       },
       {
         key: 'reservasjonIdeell',
@@ -84,12 +171,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Reservasjon for ideelle organisasjoner',
         foaRef: 'FOA § 2-4',
         hint: 'Begrunn reservasjon for ideelle organisasjoner.',
+        computeFilled: makeCheckboxTextareaFilled('reservasjonIdeell'),
       },
       {
         key: 'prosedyrebegrunnelse',
         type: 'textarea',
         label: 'Begrunnelse for prosedyrevalg',
         hint: 'Valgfritt for standardprosedyrer.',
+        computeFilled: computeFilledText,
       },
     ],
   },
@@ -107,6 +196,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Dialog / forhandlinger gjennomført',
         foaRef: 'FOA § 9-3',
         hint: 'Beskriv eventuelle forhandlinger/dialoger som er gjennomført.',
+        computeFilled: makeCheckboxTextareaFilled('markedsdialog'),
       },
     ],
   },
@@ -132,6 +222,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         type: 'per-supplier-textarea',
         label: 'Kvalifikasjonsvurdering per leverandør',
         hint: 'Vurder hvordan leverandøren oppfyller kvalifikasjonskravene.',
+        computeFilled: computeFilledPerSupplierText,
       },
     ],
   },
@@ -148,6 +239,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Utvelgelsesbegrunnelse per leverandør',
         hint: 'Begrunn utvelgelse av leverandører, jf. FOA § 9-3.',
         required: true,
+        computeFilled: computeFilledPerSupplierText,
       },
     ],
     condition: (ctx) => ctx.procedure === 'RESTRICTED',
@@ -166,6 +258,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Avvisning per leverandør',
         foaRef: 'FOA § 9-4',
         hint: 'Avvisning på grunn av formalfeil.',
+        computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
@@ -182,6 +275,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Avvisning per leverandør',
         foaRef: 'FOA § 9-5',
         hint: 'Avvisning på grunn av kvalifikasjonssvikt.',
+        computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
@@ -198,6 +292,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Forkastede tilbud',
         foaRef: 'FOA § 9-6',
         hint: 'Begrunn eventuell avvisning av tilbud.',
+        computeFilled: makeCheckboxTextareaFilled('forkastedeTilbud'),
       },
     ],
   },
@@ -230,6 +325,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
+        computeFilled: computeFilledText,
       },
     ],
   },
@@ -245,12 +341,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         type: 'date',
         label: 'Dato meddelsesbrev sendt',
         hint: 'Dato da meddelsesbrev ble sendt til leverandørene.',
+        computeFilled: computeFilledDate,
       },
       {
         key: 'klagefrist',
         type: 'date',
         label: 'Klagefrist',
         hint: 'Frist for klage på tildelingsbeslutningen.',
+        computeFilled: computeFilledDate,
       },
     ],
   },
@@ -266,12 +364,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         type: 'textarea',
         label: 'Fordelingsmekanisme',
         hint: 'Beskriv fordelingsmekanismen for rammeavtalen.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'minikonkurranseKriterier',
         type: 'textarea',
         label: 'Ved minikonkurranse; hvilke kriterier',
         hint: 'Oppgi kriterier for minikonkurranser.',
+        computeFilled: computeFilledText,
       },
     ],
     condition: (ctx) => ctx.hasFramework,
@@ -290,6 +390,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Ingen forberedende undersøkelser eller dialog med leverandører før konkurransen',
         foaRef: 'FOA kap. 12',
         hint: 'Beskriv forberedende undersøkelser (§ 12-1), leverandører i dialog (§ 12-2) og avhjelpende tiltak.',
+        computeFilled: makeCheckboxTextareaFilled('markedsdialogForKonkurranse'),
       },
       {
         key: 'inhabilitet',
@@ -297,6 +398,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         label: 'Ingen habilitetskonflikter identifisert',
         foaRef: 'FOA § 7-5',
         hint: 'Beskriv eventuell inhabilitet eller konkurransevridning og avhjelpende tiltak.',
+        computeFilled: makeCheckboxTextareaFilled('inhabilitet'),
       },
     ],
   },
@@ -312,12 +414,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         type: 'textarea',
         label: 'Underleverandører',
         hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'andreOpplysninger',
         type: 'textarea',
         label: 'Andre vesentlige forhold',
         hint: 'Andre opplysninger, vesentlige forhold eller viktige beslutninger.',
+        computeFilled: computeFilledText,
       },
     ],
   },
@@ -365,6 +469,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'textarea',
         label: 'Begrunnelse for prosedyrevalg',
         hint: 'Begrunn valg av prosedyre, jf. FOA § 13-2 flg.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'delingsbegrunnelse',
@@ -372,6 +477,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Begrunnelse for ikke å dele opp',
         foaRef: 'FOA § 19-4',
         hint: 'Forklar hvorfor kontrakten ikke deles i delkontrakter.',
+        computeFilled: computeFilledText,
       },
     ],
   },
@@ -388,6 +494,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'per-supplier-textarea',
         label: 'Foreløpig kvalifikasjonsvurdering per leverandør',
         hint: 'Vurder kvalifisering basert på egenerklæring (ESPD), jf. FOA § 17-1.',
+        computeFilled: computeFilledPerSupplierText,
       },
     ],
     condition: (ctx) => ctx.procedure !== 'Open',
@@ -404,6 +511,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'per-supplier-textarea',
         label: 'Kvalifikasjonsvurdering per leverandør',
         hint: 'Vurder hvordan leverandøren oppfyller kvalifikasjonskravene.',
+        computeFilled: computeFilledPerSupplierText,
       },
     ],
   },
@@ -420,6 +528,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Utvelgelsesbegrunnelse per leverandør',
         hint: 'Begrunn utvelgelse av leverandører.',
         required: true,
+        computeFilled: computeFilledPerSupplierText,
       },
     ],
     condition: (ctx) =>
@@ -444,6 +553,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Avvisning per leverandør',
         foaRef: 'FOA § 24-1',
         hint: 'Avvisning på grunn av formalfeil.',
+        computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
@@ -460,6 +570,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Avvisning per leverandør',
         foaRef: 'FOA § 24-2',
         hint: 'Avvisning på grunn av kvalifikasjonssvikt.',
+        computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
@@ -476,6 +587,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Forkastede tilbud',
         foaRef: 'FOA § 24-8',
         hint: 'Begrunn eventuell avvisning av tilbud.',
+        computeFilled: makeCheckboxTextareaFilled('forkastedeTilbud'),
       },
       {
         key: 'unormaltLavtTilbud',
@@ -483,6 +595,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Unormalt lavt tilbud',
         foaRef: 'FOA § 24-9',
         hint: 'Begrunn vurdering av unormalt lave tilbud.',
+        computeFilled: makeCheckboxTextareaFilled('unormaltLavtTilbud'),
       },
     ],
   },
@@ -508,6 +621,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Forhandlingsreferat',
         hint: 'Dokumenter forhandlingsprosessen. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
+        computeFilled: computeFilledText,
       },
     ],
     condition: (ctx) =>
@@ -525,6 +639,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Dialog gjennomført',
         foaRef: 'FOA § 23-6',
         hint: 'Beskriv eventuell dialog med markedet.',
+        computeFilled: makeCheckboxTextareaFilled('markedsdialog'),
       },
     ],
   },
@@ -557,24 +672,28 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
+        computeFilled: computeFilledText,
       },
       {
         key: 'karensperiode',
         type: 'date',
         label: 'Karensperiodens utløp',
         hint: 'Oppgi dato for karensperiodens utløp.',
+        computeFilled: computeFilledDate,
       },
       {
         key: 'klager',
         type: 'textarea',
         label: 'Eventuelle klager',
         hint: 'Oppgi eventuelle klager mottatt.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'klageutfall',
         type: 'textarea',
         label: 'Resultat av klage',
         hint: 'Beskriv utfallet av klagen.',
+        computeFilled: computeFilledText,
       },
     ],
   },
@@ -590,12 +709,14 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'date',
         label: 'Dato meddelsesbrev sendt',
         hint: 'Dato da meddelsesbrev ble sendt til leverandørene.',
+        computeFilled: computeFilledDate,
       },
       {
         key: 'karensperiodeUtlop',
         type: 'date',
         label: 'Karensperiodens utløp',
         hint: 'Utløpsdato for karensperiode. Bruk +10 dager for automatisk beregning.',
+        computeFilled: computeFilledDate,
       },
     ],
   },
@@ -611,12 +732,14 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'textarea',
         label: 'Fordelingsmekanisme',
         hint: 'Beskriv fordelingsmekanismen for rammeavtalen.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'minikonkurranseKriterier',
         type: 'textarea',
         label: 'Ved minikonkurranse; hvilke kriterier',
         hint: 'Oppgi kriterier for minikonkurranser.',
+        computeFilled: computeFilledText,
       },
     ],
     condition: (ctx) => ctx.hasFramework,
@@ -635,6 +758,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Ingen forberedende undersøkelser eller dialog med leverandører før konkurransen',
         foaRef: 'FOA kap. 12',
         hint: 'Beskriv forberedende undersøkelser (§ 12-1), leverandører i dialog (§ 12-2) og avhjelpende tiltak.',
+        computeFilled: makeCheckboxTextareaFilled('markedsdialogForKonkurranse'),
       },
       {
         key: 'inhabilitet',
@@ -642,6 +766,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Ingen habilitetskonflikter identifisert',
         foaRef: 'FOA § 7-5',
         hint: 'Beskriv eventuell inhabilitet eller konkurransevridning og avhjelpende tiltak.',
+        computeFilled: makeCheckboxTextareaFilled('inhabilitet'),
       },
     ],
   },
@@ -657,12 +782,14 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         type: 'textarea',
         label: 'Underleverandører',
         hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.',
+        computeFilled: computeFilledText,
       },
       {
         key: 'andreOpplysninger',
         type: 'textarea',
         label: 'Andre vesentlige forhold',
         hint: 'Andre opplysninger, vesentlige forhold eller viktige beslutninger.',
+        computeFilled: computeFilledText,
       },
     ],
   },

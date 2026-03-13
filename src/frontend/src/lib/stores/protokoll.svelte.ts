@@ -12,18 +12,14 @@ import {
   type SectionDefinition,
   type SectionContext,
   type FieldDefinition,
+  type ComputeFilledContext,
+  type Avvisning,
+  type AvvisningKategori,
 } from './protokoll-sections';
 import { extractBidders } from '$lib/utils/activities';
 
-// ── Types ──
-
-export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud';
-
-export interface Avvisning {
-  kategori: AvvisningKategori;
-  begrunnelse: string;
-  datoAvvist?: string;
-}
+// Re-export types that were moved to protokoll-sections.ts
+export type { Avvisning, AvvisningKategori } from './protokoll-sections';
 
 export interface ManualFields {
   [key: string]: unknown;
@@ -185,6 +181,16 @@ class ProtokollStore {
   private _fieldFilled(field: FieldDefinition): { filled: number; total: number } {
     const val = this.manual[field.key];
 
+    // Delegate to co-located computeFilled when available
+    if (field.computeFilled) {
+      const context: ComputeFilledContext = {
+        suppliers: this.suppliers,
+        manual: this.manual,
+      };
+      return field.computeFilled(val, context);
+    }
+
+    // Fallback: switch-case for backward compatibility
     switch (field.type) {
       case 'date': {
         const dateStr = typeof val === 'string' ? val.trim() : '';
