@@ -157,7 +157,6 @@ export function weightedAverage(
   return sum / totalWeight;
 }
 
-/** Format number with Norwegian spacing (e.g. 8 000 000). */
 /** Format a score for display: max 2 decimal places, no trailing zeros. */
 export function fmt2(score: number): string {
   return parseFloat(score.toFixed(2)).toString();
@@ -216,18 +215,25 @@ class EvaluationStore {
 
   activeMethod = $state<ActiveMethod>('poeng');
 
+  private readonly _cleanup: () => void;
+
   constructor() {
     // Auto-save to localStorage whenever data or activeMethod changes.
     // $effect.root() lets us use $effect outside component lifecycle.
-    $effect.root(() => {
+    this._cleanup = $effect.root(() => {
+      let timer: ReturnType<typeof setTimeout>;
       $effect(() => {
         const id = this.data.id;
+        const snapshot = $state.snapshot(this.data);
+        const method = this.activeMethod;
         if (!id || typeof localStorage === 'undefined') return;
-        const payload = JSON.stringify({
-          data: $state.snapshot(this.data),
-          activeMethod: this.activeMethod,
-        });
-        localStorage.setItem(LS_PREFIX + id, payload);
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          localStorage.setItem(
+            LS_PREFIX + id,
+            JSON.stringify({ data: snapshot, activeMethod: method })
+          );
+        }, 500);
       });
     });
   }
@@ -288,12 +294,15 @@ class EvaluationStore {
    */
   priceFormulaScores = $derived.by(() => {
     const result: Record<string, number> = {};
-    const prices = this.data.suppliers
-      .filter((s) => s.price != null && s.price > 0)
-      .map((s) => ({ id: s.id, price: s.price as number }));
-    if (prices.length === 0) return result;
-    const pb = Math.min(...prices.map((p) => p.price));
-    for (const { id, price } of prices) {
+    let pb = Infinity;
+    const valid: { id: string; price: number }[] = [];
+    for (const s of this.data.suppliers) {
+      if (s.price != null && s.price > 0) {
+        valid.push({ id: s.id, price: s.price });
+        if (s.price < pb) pb = s.price;
+      }
+    }
+    for (const { id, price } of valid) {
       result[id] = Math.max(0, Math.min(10, 10 - (10 * (price - pb)) / pb));
     }
     return result;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
+  import { evaluation, formatNOK, fmt2 } from '$lib/stores/evaluation.svelte';
   import MethodToggle from '$lib/components/evaluation/MethodToggle.svelte';
   import OverviewMatrix from '$lib/components/evaluation/OverviewMatrix.svelte';
   import CriterionView from '$lib/components/evaluation/CriterionView.svelte';
@@ -62,7 +62,7 @@
       : evaluation.ranking.map((r) => ({
           rank: r.rank,
           name: r.supplier.name,
-          value: r.score.toFixed(2),
+          value: fmt2(r.score),
           unit: '/ 10',
           barWidth: r.score * 10,
         }))

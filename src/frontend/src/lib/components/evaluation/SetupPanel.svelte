@@ -54,13 +54,13 @@
   // ── Supplier price editing ──
   let editingPrice: Record<string, boolean> = $state({});
   let editPriceVal: Record<string, string> = $state({});
+  let priceInputs: Record<string, HTMLInputElement | undefined> = {};
 
   function handlePriceFocus(supplierId: string, currentPrice: number | undefined) {
     editingPrice[supplierId] = true;
     editPriceVal[supplierId] = currentPrice != null && currentPrice > 0 ? String(currentPrice) : '';
     requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLInputElement>(`.price-input-${supplierId}`);
-      el?.select();
+      priceInputs[supplierId]?.select();
     });
   }
 
@@ -166,7 +166,8 @@
             placeholder="Navn"
           />
           <input
-            class="supplier-price-input price-input-{supplier.id}"
+            bind:this={priceInputs[supplier.id]}
+            class="supplier-price-input"
             type="text"
             inputmode="numeric"
             value={supplierPriceDisplay(supplier.id, supplier.price)}
