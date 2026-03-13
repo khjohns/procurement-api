@@ -82,15 +82,28 @@
 	<!-- Main content area -->
 	<div class="eval-main">
 		<div class="eval-context">
-			<span class="context-name">{evaluation.data.procurementName || 'Evaluering'}</span>
-			{#if evaluation.data.reference}
-				<span class="context-sep">·</span>
-				<span class="context-ref">{evaluation.data.reference}</span>
-			{/if}
+			<div class="context-info">
+				<span class="context-name">{evaluation.data.procurementName || 'Evaluering'}</span>
+				{#if evaluation.data.reference}
+					<span class="context-sep">·</span>
+					<span class="context-ref">{evaluation.data.reference}</span>
+				{/if}
+			</div>
+			<div class="context-actions">
+				<MethodToggle />
+				<button
+					class="setup-toggle-btn"
+					class:setup-active={setupToggleOpen}
+					onclick={() => (setupToggleOpen = !setupToggleOpen)}
+					title="Juster oppsett"
+				>
+					&#9881; Oppsett
+				</button>
+			</div>
 		</div>
 
 		<div class="eval-main-content">
-			{#if showEmptyState}
+			{#if showEmptyState || setupToggleOpen}
 				<SetupEmptyState />
 			{:else if isPriceMode}
 				<PriceMatrix />
@@ -119,22 +132,10 @@
 
 	<!-- Right panel (desktop) -->
 	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
-		<MethodToggle />
-
 		{#if setupToggleOpen || evaluation.data.suppliers.length === 0}
 			<!-- Setup panel (open by toggle or when no suppliers) -->
 			<SetupPanel />
-			{#if setupToggleOpen}
-				<button class="setup-toggle-close" onclick={() => (setupToggleOpen = false)}>
-					Lukk oppsett
-				</button>
-			{/if}
 		{:else if showRankingPanel}
-			<!-- Setup toggle button -->
-			<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
-				&#9881; Oppsett
-			</button>
-
 			<!-- Compact ranking -->
 			<div class="panel-section">
 				<div class="panel-label">Rangering</div>
@@ -210,11 +211,6 @@
 				<div class="panel-label">Begrunnelse</div>
 				<JustificationPanel />
 			</div>
-		{:else}
-			<!-- Default: show setup toggle when not in ranking or justification mode -->
-			<button class="setup-toggle-btn" onclick={() => (setupToggleOpen = true)} title="Juster oppsett">
-				&#9881; Oppsett
-			</button>
 		{/if}
 	</aside>
 
@@ -272,6 +268,7 @@
 	.eval-context {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
 		gap: var(--spacing-3);
 		margin-bottom: var(--spacing-5);
 		font-size: 12px;
@@ -279,18 +276,37 @@
 		flex-shrink: 0;
 	}
 
+	.context-info {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+		min-width: 0;
+	}
+
+	.context-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		flex-shrink: 0;
+	}
+
 	.context-name {
 		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.context-sep {
 		color: var(--color-ink-ghost);
+		flex-shrink: 0;
 	}
 
 	.context-ref {
 		font-family: var(--font-data);
 		font-size: 10px;
 		color: var(--color-ink-ghost);
+		white-space: nowrap;
 	}
 
 	/* ── Bottom drawer ── */
@@ -628,6 +644,12 @@
 	.setup-toggle-btn:focus-visible {
 		outline: none;
 		box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+	}
+
+	.setup-toggle-btn.setup-active {
+		color: var(--color-vekt);
+		border-color: var(--color-vekt-bg-strong);
+		background: var(--color-vekt-bg);
 	}
 
 	.setup-toggle-close {

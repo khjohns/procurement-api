@@ -156,7 +156,8 @@ export function weightedAverage(
 }
 
 /** Format number with Norwegian spacing (e.g. 8 000 000). */
-export function formatNOK(value: number): string {
+export function formatNOK(value: number | null | undefined): string {
+	if (value == null || isNaN(value)) return '—';
 	return value.toLocaleString('nb-NO', { maximumFractionDigits: 0 });
 }
 
