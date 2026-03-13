@@ -29,7 +29,7 @@
 
   let editor: Editor | undefined = $state();
   let editorContainer: HTMLDivElement | undefined = $state();
-  let charCount = $derived(editor?.storage.characterCount?.characters() ?? 0);
+  let charCount = $state(0);
 
   onMount(() => {
     if (!editorContainer) return;
@@ -38,28 +38,26 @@
       element: editorContainer,
       extensions: [
         StarterKit.configure({
-          heading: {
-            levels: [2, 3],
-          },
-          history: {
-            depth: 100,
-          },
+          heading: { levels: [2, 3] },
+          history: { depth: 100 },
         }),
         Underline,
         Placeholder.configure({ placeholder }),
-        CharacterCount.configure({
-          limit: null,
-        }),
+        CharacterCount.configure({ limit: null }),
       ],
       content: body,
-      onUpdate: (event: any) => {
-        html = event.editor.getHTML();
-        onchange?.(html);
-      },
-      onCreate: (event: any) => {
-        editor = event.editor;
-      },
-    } as any);
+    });
+
+    editorInstance.on('create', ({ editor: e }) => {
+      editor = e;
+      charCount = e.storage.characterCount?.characters() ?? 0;
+    });
+
+    editorInstance.on('update', ({ editor: e }) => {
+      html = e.getHTML();
+      charCount = e.storage.characterCount?.characters() ?? 0;
+      onchange?.(html);
+    });
 
     return () => {
       editorInstance.destroy();

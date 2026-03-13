@@ -10,6 +10,16 @@
 
   let isVisible = $state(false);
   let menuPosition = $state({ x: 0, y: 0 });
+  let activeStates = $state({
+    h2: false,
+    h3: false,
+    bold: false,
+    italic: false,
+    underline: false,
+    bulletList: false,
+    orderedList: false,
+    blockquote: false,
+  });
 
   function updateMenu() {
     const { state, view } = editor;
@@ -28,11 +38,19 @@
 
     // Position menu above selection, centered
     const centerX = (from.left + to.left) / 2;
-    const topY = from.top - 60; // 60px above selection
+    const topY = from.top - 60;
 
-    menuPosition = {
-      x: centerX,
-      y: topY,
+    menuPosition = { x: centerX, y: topY };
+
+    activeStates = {
+      h2: editor.isActive('heading', { level: 2 }),
+      h3: editor.isActive('heading', { level: 3 }),
+      bold: editor.isActive('bold'),
+      italic: editor.isActive('italic'),
+      underline: editor.isActive('underline'),
+      bulletList: editor.isActive('bulletList'),
+      orderedList: editor.isActive('orderedList'),
+      blockquote: editor.isActive('blockquote'),
     };
   }
 
@@ -58,21 +76,15 @@
     editor.chain().focus().toggleBlockquote().run();
   }
 
-  function isActive(name: string, attrs?: Record<string, any>) {
-    return editor.isActive(name, attrs);
-  }
-
-  // Listen for selection changes
+  // Listen for selection changes only
   $effect(() => {
     const updateHandler = () => {
       tick().then(updateMenu);
     };
 
-    editor.on('update', updateHandler);
     editor.on('selectionUpdate', updateHandler);
 
     return () => {
-      editor.off('update', updateHandler);
       editor.off('selectionUpdate', updateHandler);
     };
   });
@@ -89,7 +101,7 @@
     <div class="menu-row">
       <button
         class="menu-btn"
-        class:active={isActive('heading', { level: 2 })}
+        class:active={activeStates.h2}
         onclick={() => toggleHeading(2)}
         title="Heading 2"
         aria-label="Heading 2"
@@ -98,7 +110,7 @@
       </button>
       <button
         class="menu-btn"
-        class:active={isActive('heading', { level: 3 })}
+        class:active={activeStates.h3}
         onclick={() => toggleHeading(3)}
         title="Heading 3"
         aria-label="Heading 3"
@@ -114,7 +126,7 @@
     <div class="menu-row">
       <button
         class="menu-btn"
-        class:active={isActive('bold')}
+        class:active={activeStates.bold}
         onclick={() => toggleMark('bold')}
         title="Bold"
         aria-label="Bold"
@@ -123,7 +135,7 @@
       </button>
       <button
         class="menu-btn"
-        class:active={isActive('italic')}
+        class:active={activeStates.italic}
         onclick={() => toggleMark('italic')}
         title="Italic"
         aria-label="Italic"
@@ -132,7 +144,7 @@
       </button>
       <button
         class="menu-btn"
-        class:active={isActive('underline')}
+        class:active={activeStates.underline}
         onclick={() => toggleMark('underline')}
         title="Underline"
         aria-label="Underline"
@@ -148,7 +160,7 @@
     <div class="menu-row">
       <button
         class="menu-btn"
-        class:active={isActive('bulletList')}
+        class:active={activeStates.bulletList}
         onclick={() => toggleList('bullet')}
         title="Bullet list"
         aria-label="Bullet list"
@@ -157,7 +169,7 @@
       </button>
       <button
         class="menu-btn"
-        class:active={isActive('orderedList')}
+        class:active={activeStates.orderedList}
         onclick={() => toggleList('ordered')}
         title="Ordered list"
         aria-label="Ordered list"
@@ -166,7 +178,7 @@
       </button>
       <button
         class="menu-btn"
-        class:active={isActive('blockquote')}
+        class:active={activeStates.blockquote}
         onclick={toggleBlockquote}
         title="Blockquote"
         aria-label="Blockquote"
@@ -229,15 +241,15 @@
     margin: var(--spacing-1, 4px) 0;
   }
 
-  :global(strong) {
+  .menu-btn :global(strong) {
     font-weight: 700;
   }
 
-  :global(em) {
+  .menu-btn :global(em) {
     font-style: italic;
   }
 
-  :global(u) {
+  .menu-btn :global(u) {
     text-decoration: underline;
   }
 </style>
