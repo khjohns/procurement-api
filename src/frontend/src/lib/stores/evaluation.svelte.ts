@@ -622,18 +622,12 @@ class EvaluationStore {
 
   /** Set a prismodell deduction amount (NOK) on a leaf/resource criterion. */
   setCriterionPriceDeductionAmount(criterionId: string, supplierId: string, amount: number) {
-    const c = this._findCriterion(criterionId);
-    if (!c) return;
-    if (!c.priceDeductionAmounts) c.priceDeductionAmounts = {};
-    c.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
+    this._setPriceDeduction(this._findCriterion(criterionId), supplierId, amount);
   }
 
   /** Set a prismodell deduction amount (NOK) on a sub-criterion. */
   setSubPriceDeductionAmount(subCriterionId: string, supplierId: string, amount: number) {
-    const sub = this._findSub(subCriterionId);
-    if (!sub) return;
-    if (!sub.priceDeductionAmounts) sub.priceDeductionAmounts = {};
-    sub.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
+    this._setPriceDeduction(this._findSub(subCriterionId), supplierId, amount);
   }
 
   /** Update supplier price. */
@@ -1125,6 +1119,17 @@ class EvaluationStore {
     this.activeView = 'overview';
     this.selectedSupplierId = null;
     this.matrixTransposed = false;
+  }
+
+  /** Write a prismodell deduction amount onto any criterion-like node. */
+  private _setPriceDeduction(
+    node: { priceDeductionAmounts?: Record<string, number> } | undefined,
+    supplierId: string,
+    amount: number
+  ) {
+    if (!node) return;
+    if (!node.priceDeductionAmounts) node.priceDeductionAmounts = {};
+    node.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
   }
 
   /** Find a criterion by id. */

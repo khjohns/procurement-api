@@ -14,25 +14,22 @@
     );
   }
 
+  function deductionTier(val: number, allVals: number[]): string {
+    if (val === Math.max(...allVals)) return 'fradrag-best';
+    if (val === Math.min(...allVals)) return 'fradrag-high';
+    return 'fradrag-mid';
+  }
+
   function fradragTier(subId: string, supplierId: string): string {
     const deductions = evaluation.priceDeductions[subId];
     if (!deductions) return '';
-    const val = deductions[supplierId] ?? 0;
-    const max = Math.max(...Object.values(deductions));
-    if (val === max) return 'fradrag-best';
-    const min = Math.min(...Object.values(deductions));
-    if (val === min) return 'fradrag-high';
-    return 'fradrag-mid';
+    return deductionTier(deductions[supplierId] ?? 0, Object.values(deductions));
   }
 
   function groupFradragTier(criterionId: string, supplierId: string): string {
     const vals = evaluation.data.suppliers.map((s) => groupDeduction(criterionId, s.id));
-    const val = groupDeduction(criterionId, supplierId);
-    const max = Math.max(...vals);
-    if (val === max) return 'fradrag-best';
-    const min = Math.min(...vals);
-    if (val === min) return 'fradrag-high';
-    return 'fradrag-mid';
+    const idx = evaluation.data.suppliers.findIndex((s) => s.id === supplierId);
+    return deductionTier(idx >= 0 ? vals[idx] : 0, vals);
   }
 
   // ── Max deduction editing ──
@@ -64,24 +61,52 @@
     requestAnimationFrame(() => dedInputs[key]?.select());
   }
 
-  function commitCriterionDed(criterionId: string, supplierId: string) {
-    const key = `${criterionId}:${supplierId}`;
+  function commitDed(
+    id: string,
+    supplierId: string,
+    storeFn: (id: string, supplierId: string, amount: number) => void
+  ) {
+    const key = `${id}:${supplierId}`;
     const num = parseInt((editDedVal[key] ?? '').replace(/\s/g, ''), 10);
-    if (!isNaN(num) && num >= 0)
-      evaluation.setCriterionPriceDeductionAmount(criterionId, supplierId, num);
-    editingDed[key] = false;
-  }
-
-  function commitSubDed(subId: string, supplierId: string) {
-    const key = `${subId}:${supplierId}`;
-    const num = parseInt((editDedVal[key] ?? '').replace(/\s/g, ''), 10);
-    if (!isNaN(num) && num >= 0) evaluation.setSubPriceDeductionAmount(subId, supplierId, num);
+    if (!isNaN(num) && num >= 0) storeFn(id, supplierId, num);
     editingDed[key] = false;
   }
 
   /** Total of all quality max deductions. */
   let totalMaxDed = $derived(Object.values(evaluation.maxDeductions).reduce((s, v) => s + v, 0));
+  let minSupplierPrice = $derived(Math.min(...evaluation.data.suppliers.map((s) => s.price ?? 0)));
+  let minEvaluatedPrice = $derived(Math.min(...Object.values(evaluation.evaluatedPrices)));
 </script>
+
+{#snippet dedCell(key: string, deduction: number, tierClass: string, onCommit: () => void)}
+  <td class="cell-pris cell-ded {tierClass}">
+    {#if editingDed[key]}
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        bind:this={dedInputs[key]}
+        type="text"
+        inputmode="numeric"
+        class="ded-input"
+        autofocus
+        value={editDedVal[key]}
+        oninput={(e) => (editDedVal[key] = e.currentTarget.value)}
+        onblur={onCommit}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') onCommit();
+          if (e.key === 'Escape') editingDed[key] = false;
+        }}
+      />
+    {:else}
+      <button
+        class="ded-btn {deduction > 0 ? 'ded-filled' : ''}"
+        onclick={() => startEditDed(key, deduction)}
+        title="Klikk for å angi fratrekk i kr"
+      >
+        <span class="pris-prefix">−</span>{formatNOK(deduction)}
+      </button>
+    {/if}
+  </td>
+{/snippet}
 
 <div class="section-label">Kvalitetsfradrag</div>
 <div class="matrix-wrap">
@@ -150,42 +175,20 @@
           {#each evaluation.data.suppliers as supplier}
             {#if isPriceType}
               <!-- Price criterion: show supplier's price -->
-              {@const prices = evaluation.data.suppliers.map((s) => s.price ?? 0)}
-              {@const minPrice = Math.min(...prices)}
-              <td class="cell-pris" class:fradrag-best={(supplier.price ?? 0) === minPrice}>
+              <td class="cell-pris" class:fradrag-best={(supplier.price ?? 0) === minSupplierPrice}>
                 <span class="pris-value">{formatNOK(supplier.price ?? 0)}</span>
               </td>
             {:else if isLeaf}
               <!-- Leaf quality criterion: directly enter deduction amount -->
               {@const deduction = groupDeduction(criterion.id, supplier.id)}
               {@const key = `${criterion.id}:${supplier.id}`}
-              <td class="cell-pris cell-ded {groupFradragTier(criterion.id, supplier.id)}">
-                {#if editingDed[key]}
-                  <!-- svelte-ignore a11y_autofocus -->
-                  <input
-                    bind:this={dedInputs[key]}
-                    type="text"
-                    inputmode="numeric"
-                    class="ded-input"
-                    autofocus
-                    value={editDedVal[key]}
-                    oninput={(e) => (editDedVal[key] = e.currentTarget.value)}
-                    onblur={() => commitCriterionDed(criterion.id, supplier.id)}
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter') commitCriterionDed(criterion.id, supplier.id);
-                      if (e.key === 'Escape') editingDed[key] = false;
-                    }}
-                  />
-                {:else}
-                  <button
-                    class="ded-btn {deduction > 0 ? 'ded-filled' : ''}"
-                    onclick={() => startEditDed(key, deduction)}
-                    title="Klikk for å angi fratrekk i kr"
-                  >
-                    <span class="pris-prefix">−</span>{formatNOK(deduction)}
-                  </button>
-                {/if}
-              </td>
+              {@render dedCell(key, deduction, groupFradragTier(criterion.id, supplier.id), () =>
+                commitDed(
+                  criterion.id,
+                  supplier.id,
+                  evaluation.setCriterionPriceDeductionAmount.bind(evaluation)
+                )
+              )}
             {:else}
               <!-- Group row for traditional/resource: show aggregated deduction only -->
               {@const deduction = groupDeduction(criterion.id, supplier.id)}
@@ -217,33 +220,13 @@
               {#each evaluation.data.suppliers as supplier}
                 {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
                 {@const key = `${sub.id}:${supplier.id}`}
-                <td class="cell-pris cell-ded {fradragTier(sub.id, supplier.id)}">
-                  {#if editingDed[key]}
-                    <!-- svelte-ignore a11y_autofocus -->
-                    <input
-                      bind:this={dedInputs[key]}
-                      type="text"
-                      inputmode="numeric"
-                      class="ded-input"
-                      autofocus
-                      value={editDedVal[key]}
-                      oninput={(e) => (editDedVal[key] = e.currentTarget.value)}
-                      onblur={() => commitSubDed(sub.id, supplier.id)}
-                      onkeydown={(e) => {
-                        if (e.key === 'Enter') commitSubDed(sub.id, supplier.id);
-                        if (e.key === 'Escape') editingDed[key] = false;
-                      }}
-                    />
-                  {:else}
-                    <button
-                      class="ded-btn {deduction > 0 ? 'ded-filled' : ''}"
-                      onclick={() => startEditDed(key, deduction)}
-                      title="Klikk for å angi fratrekk i kr"
-                    >
-                      <span class="pris-prefix">−</span>{formatNOK(deduction)}
-                    </button>
-                  {/if}
-                </td>
+                {@render dedCell(key, deduction, fradragTier(sub.id, supplier.id), () =>
+                  commitDed(
+                    sub.id,
+                    supplier.id,
+                    evaluation.setSubPriceDeductionAmount.bind(evaluation)
+                  )
+                )}
               {/each}
             </tr>
           {/each}
@@ -274,8 +257,7 @@
         <td class="cell-criteria">Evaluert pris</td>
         {#each evaluation.data.suppliers as supplier}
           {@const price = evaluation.evaluatedPrices[supplier.id]}
-          {@const minPrice = Math.min(...Object.values(evaluation.evaluatedPrices))}
-          <td class="cell-pris" class:fradrag-best={price === minPrice}>
+          <td class="cell-pris" class:fradrag-best={price === minEvaluatedPrice}>
             <span class="pris-value">{formatNOK(price)}</span>
           </td>
         {/each}
