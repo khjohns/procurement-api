@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scoreTier } from '$lib/stores/evaluation.svelte';
+	import { scoreTier, fmt2 } from '$lib/stores/evaluation.svelte';
 
 	interface Props {
 		score: number;
@@ -31,9 +31,7 @@
 	let editing = $state(false);
 	let editValue = $state('');
 
-	let displayValue = $derived(
-		typeof score === 'number' && !Number.isInteger(score) ? score.toFixed(1) : score
-	);
+	let displayValue = $derived(fmt2(score));
 
 	function startEdit() {
 		if (!oncommit) return;

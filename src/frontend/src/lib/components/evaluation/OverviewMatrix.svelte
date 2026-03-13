@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { evaluation, scoreTier, criterionMode } from '$lib/stores/evaluation.svelte';
+	import { evaluation, scoreTier, criterionMode, fmt2 } from '$lib/stores/evaluation.svelte';
 	import PillToggle from './PillToggle.svelte';
 
 	let bestTotal = $derived(
@@ -81,7 +81,7 @@
 						{@const isBest = score === best && score > 0}
 						<td class="cell-score score-{tier}" class:score-best={isBest}>
 							<span class="score-value">
-								{score > 0 ? (isLeaf ? String(score) : score.toFixed(1)) : '—'}
+								{score > 0 ? fmt2(score) : '—'}
 							</span>
 						</td>
 					{/each}
@@ -103,7 +103,7 @@
 					{@const isBest = score === bestTotal && score > 0}
 					{@const tier = scoreTier(score)}
 					<td class="cell-score cell-total score-{tier}" class:score-best={isBest}>
-						<span class="score-value">{score > 0 ? score.toFixed(1) : '—'}</span>
+						<span class="score-value">{score > 0 ? fmt2(score) : '—'}</span>
 					</td>
 				{/each}
 			</tr>
@@ -165,12 +165,12 @@
 						{@const isBest = score === best && score > 0}
 						<td class="cell-score score-{tier}" class:score-best={isBest}>
 							<span class="score-value">
-								{score > 0 ? (isLeaf ? String(score) : score.toFixed(1)) : '—'}
+								{score > 0 ? fmt2(score) : '—'}
 							</span>
 						</td>
 					{/each}
 					<td class="cell-score cell-total score-{totalTier}" class:score-best={isBestTotal}>
-						<span class="score-value">{total > 0 ? total.toFixed(1) : '—'}</span>
+						<span class="score-value">{total > 0 ? fmt2(total) : '—'}</span>
 					</td>
 				</tr>
 			{/each}

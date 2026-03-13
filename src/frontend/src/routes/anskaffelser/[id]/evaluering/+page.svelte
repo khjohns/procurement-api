@@ -66,6 +66,9 @@
 	/** Mobile panel state. */
 	let mobilePanelOpen = $state(false);
 
+	/** Desktop panel collapsed state. */
+	let panelCollapsed = $state(false);
+
 	/** Sync quality/price weights from criteria when data is ready. */
 	$effect(() => {
 		if (evaluation.isReady && evaluation.data.status === 'Oppsett') {
@@ -131,7 +134,15 @@
 	</div>
 
 	<!-- Right panel (desktop) -->
-	<aside class="eval-panel" class:panel-open={mobilePanelOpen}>
+	<aside class="eval-panel" class:panel-open={mobilePanelOpen} class:panel-collapsed={panelCollapsed}>
+		<button
+			class="panel-collapse-btn"
+			onclick={() => (panelCollapsed = !panelCollapsed)}
+			title={panelCollapsed ? 'Vis panel' : 'Skjul panel'}
+			aria-label={panelCollapsed ? 'Vis panel' : 'Skjul panel'}
+		>
+			<span class="panel-collapse-icon" class:panel-collapse-icon-flipped={panelCollapsed}>‹</span>
+		</button>
 		{#if setupToggleOpen || evaluation.data.suppliers.length === 0}
 			<!-- Setup panel (open by toggle or when no suppliers) -->
 			<SetupPanel />
@@ -362,14 +373,58 @@
 
 	/* ── Right panel ── */
 	.eval-panel {
-		width: 300px;
+		width: 340px;
 		flex-shrink: 0;
 		overflow-y: auto;
 		border-left: 1px solid var(--color-wire);
 		padding: var(--spacing-4);
+		padding-left: calc(var(--spacing-4) + 16px);
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-5);
+		transition: width 0.2s ease-out;
+		position: relative;
+	}
+
+	.eval-panel.panel-collapsed {
+		width: 24px;
+		overflow: hidden;
+		padding: 0;
+	}
+
+	/* ── Panel collapse button ── */
+	.panel-collapse-btn {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 16px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: none;
+		border: none;
+		border-right: 1px solid var(--color-wire);
+		cursor: pointer;
+		color: var(--color-ink-ghost);
+		transition: color 0.12s, background 0.12s;
+		z-index: 1;
+	}
+
+	.panel-collapse-btn:hover {
+		color: var(--color-ink-muted);
+		background: var(--color-felt-hover);
+	}
+
+	.panel-collapse-icon {
+		font-size: 14px;
+		line-height: 1;
+		display: block;
+		transition: transform 0.2s;
+	}
+
+	.panel-collapse-icon-flipped {
+		transform: rotate(180deg);
 	}
 
 	/* ── Panel sections ── */
@@ -687,6 +742,10 @@
 	}
 
 	@media (max-width: 1023px) {
+		.panel-collapse-btn {
+			display: none;
+		}
+
 		.eval-panel {
 			position: fixed;
 			top: var(--header-height);
@@ -697,6 +756,12 @@
 			z-index: 100;
 			transform: translateX(100%);
 			transition: transform 0.2s ease-out;
+			padding-left: var(--spacing-4);
+		}
+
+		.eval-panel.panel-collapsed {
+			width: 320px;
+			overflow-y: auto;
 		}
 
 		.eval-panel.panel-open {

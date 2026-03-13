@@ -156,6 +156,11 @@ export function weightedAverage(
 }
 
 /** Format number with Norwegian spacing (e.g. 8 000 000). */
+/** Format a score for display: max 2 decimal places, no trailing zeros. */
+export function fmt2(score: number): string {
+	return parseFloat(score.toFixed(2)).toString();
+}
+
 export function formatNOK(value: number | null | undefined): string {
 	if (value == null || isNaN(value)) return '—';
 	return value.toLocaleString('nb-NO', { maximumFractionDigits: 0 });
@@ -254,12 +259,37 @@ class EvaluationStore {
 		return result;
 	});
 
+	/**
+	 * Price formula scores for poengmodell: score = 10 - 10*(Pe-Pb)/Pb
+	 * Pb = lowest supplier price. Clamped to [0, 10].
+	 * Only computed when at least one supplier has a price.
+	 */
+	priceFormulaScores = $derived.by(() => {
+		const result: Record<string, number> = {};
+		const prices = this.data.suppliers
+			.filter((s) => s.price != null && s.price > 0)
+			.map((s) => ({ id: s.id, price: s.price as number }));
+		if (prices.length === 0) return result;
+		const pb = Math.min(...prices.map((p) => p.price));
+		for (const { id, price } of prices) {
+			result[id] = Math.max(0, Math.min(10, 10 - 10 * (price - pb) / pb));
+		}
+		return result;
+	});
+
 	/** Computed group averages per supplier (handles all three modes). */
 	groupScores = $derived.by(() => {
 		const result: Record<string, Record<string, number>> = {};
 		for (const criterion of this.data.criteria) {
 			result[criterion.id] = {};
 			const mode = criterionMode(criterion);
+			// Price criteria in poengmodell: auto-score from supplier prices
+			if (criterion.type === 'price' && this.activeMethod === 'poeng') {
+				for (const supplier of this.data.suppliers) {
+					result[criterion.id][supplier.id] = this.priceFormulaScores[supplier.id] ?? 0;
+				}
+				continue;
+			}
 			for (const supplier of this.data.suppliers) {
 				if (mode === 'resource') {
 					// Mode 3: roles × moments (subcriteria as dimensions)

@@ -5,6 +5,7 @@
 		criterionMode,
 		resourceMomentScore,
 		itemScore,
+		fmt2,
 		type Role,
 		type EvaluationItem,
 		type ItemCriterion
@@ -190,12 +191,13 @@
 					<tr class="row-sub">
 						<td class="cell-criteria">{criterion.name}</td>
 						{#each evaluation.data.suppliers as supplier}
-							{@const score = criterion.scores?.[supplier.id] ?? 0}
+							{@const score = evaluation.groupScores[criterionId]?.[supplier.id] ?? 0}
+							{@const isPriceAuto = criterion.type === 'price' && evaluation.activeMethod === 'poeng'}
 							<ScoreCell
 								{score}
 								isSelected={evaluation.selectedSupplierId === supplier.id}
 								onclick={() => evaluation.selectSupplier(supplier.id)}
-								oncommit={(v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
+								oncommit={isPriceAuto ? undefined : (v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
 							/>
 						{/each}
 					</tr>
@@ -216,7 +218,8 @@
 				</thead>
 				<tbody>
 					{#each evaluation.data.suppliers as supplier}
-						{@const score = criterion.scores?.[supplier.id] ?? 0}
+						{@const score = evaluation.groupScores[criterionId]?.[supplier.id] ?? 0}
+						{@const isPriceAuto = criterion.type === 'price' && evaluation.activeMethod === 'poeng'}
 						<tr
 							class="row-sub row-clickable-t"
 							class:row-selected-t={evaluation.selectedSupplierId === supplier.id}
@@ -230,7 +233,7 @@
 								{score}
 								isSelected={evaluation.selectedSupplierId === supplier.id}
 								onclick={() => evaluation.selectSupplier(supplier.id)}
-								oncommit={(v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
+								oncommit={isPriceAuto ? undefined : (v) => evaluation.setCriterionScore(criterionId, supplier.id, v)}
 								stopPropagation
 							/>
 						</tr>
@@ -290,7 +293,7 @@
 								<span class="supplier-group-name">{supplier.name}</span>
 								<span class="supplier-group-agg">
 									<span class="agg-score tier-{scoreTier(supplierScore)}">
-										{supplierScore.toFixed(1)}
+										{fmt2(supplierScore)}
 									</span>
 								</span>
 							</th>
@@ -391,7 +394,7 @@
 								{@const rs = getRoleScore(supplier.id, role.id)}
 								<td class="cell-role-score" class:resource-cell-first={roleIdx === 0}>
 									<span class="role-score-value tier-{scoreTier(rs)}">
-										{rs.toFixed(1)}
+										{fmt2(rs)}
 									</span>
 								</td>
 							{/each}
@@ -404,7 +407,7 @@
 							{@const ss = getSupplierResourceScore(supplier.id)}
 							<td class="cell-supplier-score" colspan={roles.length}>
 								<span class="supplier-score-value tier-{scoreTier(ss)}">
-									{ss.toFixed(1)}
+									{fmt2(ss)}
 								</span>
 							</td>
 						{/each}
@@ -470,7 +473,7 @@
 									<th class="th-supplier-group" colspan={items.length + 1}>
 										<span class="supplier-group-name">{supplier.name}</span>
 										<span class="supplier-group-agg">
-											<span class="agg-score tier-{scoreTier(aggScore)}">{aggScore.toFixed(1)}</span>
+											<span class="agg-score tier-{scoreTier(aggScore)}">{fmt2(aggScore)}</span>
 										</span>
 									</th>
 								{:else}
@@ -528,7 +531,7 @@
 										{@const colAvg = items.length > 0 ? items.reduce((s, i) => s + (i.scores[ic.id] ?? 0), 0) / items.length : 0}
 										<td class="cell-col-avg">
 											<span class="col-avg-value tier-{scoreTier(colAvg)}">
-												{colAvg.toFixed(1)}
+												{fmt2(colAvg)}
 											</span>
 										</td>
 									{:else}
@@ -550,14 +553,14 @@
 										{@const isItemBest = avg === bestAvg && avg > 0}
 										<td class="cell-item-avg">
 											<span class="item-avg-value tier-{scoreTier(avg)}" class:avg-best={isItemBest}>
-												{avg.toFixed(1)}
+												{fmt2(avg)}
 											</span>
 										</td>
 									{/each}
 									{@const aggScore = evaluation.itemScores[sub.id]?.[supplier.id] ?? 0}
 									<td class="cell-col-avg cell-agg-final">
 										<span class="col-avg-value tier-{scoreTier(aggScore)} agg-final">
-											{aggScore.toFixed(1)}
+											{fmt2(aggScore)}
 										</span>
 									</td>
 								{:else}
