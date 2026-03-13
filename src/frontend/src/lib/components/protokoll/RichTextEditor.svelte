@@ -2,10 +2,10 @@
   import { onMount } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import Underline from '@tiptap/extension-underline';
   import Placeholder from '@tiptap/extension-placeholder';
   import CharacterCount from '@tiptap/extension-character-count';
   import EditorMenu from './EditorMenu.svelte';
-  import type { EditorOptions } from '@tiptap/core';
 
   interface Props {
     body?: string;
@@ -45,20 +45,21 @@
             depth: 100,
           },
         }),
+        Underline,
         Placeholder.configure({ placeholder }),
         CharacterCount.configure({
           limit: null,
         }),
       ],
       content: body,
-      onUpdate: ({ editor: e }) => {
-        html = e.getHTML();
+      onUpdate: (event: any) => {
+        html = event.editor.getHTML();
         onchange?.(html);
       },
-      onCreate: ({ editor: e }) => {
-        editor = e;
+      onCreate: (event: any) => {
+        editor = event.editor;
       },
-    } as EditorOptions);
+    } as any);
 
     return () => {
       editorInstance.destroy();
@@ -76,7 +77,7 @@
       <EditorMenu {editor} />
     {/if}
 
-    <div bind:this={editorContainer} class="rte-editor" />
+    <div bind:this={editorContainer} class="rte-editor"></div>
   </div>
 
   <div class="rte-footer">

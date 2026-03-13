@@ -90,7 +90,7 @@
       <button
         class="menu-btn"
         class:active={isActive('heading', { level: 2 })}
-        on:click={() => toggleHeading(2)}
+        onclick={() => toggleHeading(2)}
         title="Heading 2"
         aria-label="Heading 2"
       >
@@ -99,7 +99,7 @@
       <button
         class="menu-btn"
         class:active={isActive('heading', { level: 3 })}
-        on:click={() => toggleHeading(3)}
+        onclick={() => toggleHeading(3)}
         title="Heading 3"
         aria-label="Heading 3"
       >
@@ -108,14 +108,14 @@
     </div>
 
     <!-- Separator -->
-    <div class="menu-separator" />
+    <div class="menu-separator"></div>
 
     <!-- Text Formatting Row -->
     <div class="menu-row">
       <button
         class="menu-btn"
         class:active={isActive('bold')}
-        on:click={() => toggleMark('bold')}
+        onclick={() => toggleMark('bold')}
         title="Bold"
         aria-label="Bold"
       >
@@ -124,7 +124,7 @@
       <button
         class="menu-btn"
         class:active={isActive('italic')}
-        on:click={() => toggleMark('italic')}
+        onclick={() => toggleMark('italic')}
         title="Italic"
         aria-label="Italic"
       >
@@ -133,7 +133,7 @@
       <button
         class="menu-btn"
         class:active={isActive('underline')}
-        on:click={() => toggleMark('underline')}
+        onclick={() => toggleMark('underline')}
         title="Underline"
         aria-label="Underline"
       >
@@ -142,14 +142,14 @@
     </div>
 
     <!-- Separator -->
-    <div class="menu-separator" />
+    <div class="menu-separator"></div>
 
     <!-- Lists & Quote Row -->
     <div class="menu-row">
       <button
         class="menu-btn"
         class:active={isActive('bulletList')}
-        on:click={() => toggleList('bullet')}
+        onclick={() => toggleList('bullet')}
         title="Bullet list"
         aria-label="Bullet list"
       >
@@ -158,7 +158,7 @@
       <button
         class="menu-btn"
         class:active={isActive('orderedList')}
-        on:click={() => toggleList('ordered')}
+        onclick={() => toggleList('ordered')}
         title="Ordered list"
         aria-label="Ordered list"
       >
@@ -167,7 +167,7 @@
       <button
         class="menu-btn"
         class:active={isActive('blockquote')}
-        on:click={toggleBlockquote}
+        onclick={toggleBlockquote}
         title="Blockquote"
         aria-label="Blockquote"
       >

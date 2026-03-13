@@ -62,13 +62,6 @@
 
   /* Layout */
   --header-height: 48px;
-
-  /* Tipex editor overrides */
-  --color-tipex-bg: #ffffff;
-  --color-tipex-text: #1a1d26;
-  --color-tipex-toolbar-bg: #f4f5f8;
-  --color-tipex-toolbar-text: #555b6e;
-  --color-tipex-accent: #996510;
 }
 
 /* ── Dark theme ── */
@@ -100,12 +93,6 @@
   --color-score-low-bg: rgba(196, 88, 88, 0.1);
 
   --color-overlay: rgba(0, 0, 0, 0.6);
-
-  --color-tipex-bg: #0c0e14;
-  --color-tipex-text: #e2e5ef;
-  --color-tipex-toolbar-bg: #181c28;
-  --color-tipex-toolbar-text: #8890a4;
-  --color-tipex-accent: #e8a838;
 }
 
 /* ── Reset ── */
