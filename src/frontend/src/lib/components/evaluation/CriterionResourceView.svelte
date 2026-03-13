@@ -50,7 +50,7 @@
           class="role-chip-input"
           type="text"
           value={role.name}
-          oninput={(e) => evaluation.renameRole(criterionId, role.id, e.currentTarget.value)}
+          onchange={(e) => evaluation.renameRole(criterionId, role.id, e.currentTarget.value)}
           placeholder="Rollenavn..."
         />
         <button
@@ -113,7 +113,7 @@
                   class="resource-person-input"
                   type="text"
                   value={item?.label ?? ''}
-                  oninput={(e) =>
+                  onchange={(e) =>
                     evaluation.setRoleLabel(
                       criterionId,
                       supplier.id,
