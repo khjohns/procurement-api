@@ -305,7 +305,7 @@
 				if (protokoll.eforms?.award_criteria) {
 					return protokoll.eforms.award_criteria.map((c: any) => ({
 						label: c.name ?? c.description ?? 'Kriterium',
-						value: c.weight ? `${c.weight}%` : '—',
+						value: c.weight_percent != null ? `${c.weight_percent}%` : '—',
 						mono: true
 					}));
 				}

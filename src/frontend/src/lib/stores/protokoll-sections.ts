@@ -569,7 +569,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 			},
 			{
 				key: 'karensperiode',
-				type: 'textarea',
+				type: 'date',
 				label: 'Karensperiodens utløp',
 				hint: 'Oppgi dato for karensperiodens utløp.'
 			},

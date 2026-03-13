@@ -15,4 +15,4 @@ export VENDOR_API_KEY=$(gcloud secrets versions access latest --secret=vendor-ap
 export DOFFIN_API_KEY=$(gcloud secrets versions access latest --secret=doffin-api-key --project="$PROJECT")
 
 echo "Starting Flask dev server on http://localhost:8080"
-exec python -m flask --app "app:create_app()" run --host 0.0.0.0 --port 8080
+exec python -m flask --app "app:create_app()" run --host 0.0.0.0 --port 8080 --debug

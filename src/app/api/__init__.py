@@ -454,7 +454,12 @@ def get_procurement(procurement_id: int):
     all_procs = _cached_list_procurements()
     for p in all_procs:
         if p.get("id") == procurement_id:
-            return jsonify(p)
+            result = dict(p)
+            activities = _cached_activities(_client(), procurement_id)
+            doffin_id = _extract_doffin_id(activities)
+            if doffin_id:
+                result["doffinId"] = doffin_id
+            return jsonify(result)
     return jsonify({"error": "Not found"}), 404
 
 

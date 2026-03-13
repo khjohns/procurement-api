@@ -10,7 +10,7 @@ export async function load({ params, fetch }) {
 	// API always returns a bare array
 	const activities = activitiesRes.ok ? await activitiesRes.json() : [];
 
-	const doffinId = proc?.doffinReferenceId || proc?.doffin_id;
+	const doffinId = proc?.doffinId || proc?.doffinReferenceId || proc?.doffin_id;
 	const eforms = doffinId
 		? await fetch(`/api/eforms/${doffinId}`)
 			.then((r) => (r.ok ? r.json() : null))
