@@ -47,8 +47,8 @@ export interface SubCriterion {
   weight: number;
   scores: Record<string, number>;
   notes: Record<string, string>;
-  /** Prismodell-specific scores — independent from poengmodell scores. */
-  priceScores?: Record<string, number>;
+  /** Prismodell: direct deduction amounts in NOK per supplier. */
+  priceDeductionAmounts?: Record<string, number>;
   // Item-level evaluation (optional, sub-criterion level)
   evaluationType?: 'simple' | 'item';
   itemLabel?: string; // "Ressurs", "Prosjekt", "Tiltak"
@@ -73,8 +73,8 @@ export interface Criterion {
   aggregation?: AggregationMethod;
   /** Prismodell: explicit max deduction in NOK (e.g. 300_000). When set, overrides weight-derived amount. */
   maxPriceDeduction?: number;
-  /** Prismodell-specific scores for leaf criteria — independent from poengmodell scores. */
-  priceScores?: Record<string, number>;
+  /** Prismodell: direct deduction amounts in NOK per supplier for leaf criteria. */
+  priceDeductionAmounts?: Record<string, number>;
 }
 
 export interface Supplier {
@@ -377,6 +377,18 @@ class EvaluationStore {
       .map((entry, i) => ({ ...entry, rank: i + 1 }));
   });
 
+  /** Effective max deduction per quality criterion (explicit or weight-derived). Single source of truth for prismodell display. */
+  maxDeductions = $derived.by(() => {
+    const result: Record<string, number> = {};
+    const qb = this.qualityBudget;
+    const tw = this.totalWeight;
+    for (const c of this.data.criteria) {
+      if (c.type !== 'quality') continue;
+      result[c.id] = c.maxPriceDeduction ?? (tw > 0 ? qb * (c.weight / tw) : 0);
+    }
+    return result;
+  });
+
   /** Price model: quality deduction per scoring unit per supplier. */
   priceDeductions = $derived.by(() => {
     const result: Record<string, Record<string, number>> = {};
@@ -389,17 +401,11 @@ class EvaluationStore {
       // Use explicit maxPriceDeduction if set, otherwise derive from weights
       const maxDed = criterion.maxPriceDeduction ?? (tw > 0 ? qb * (criterion.weight / tw) : 0);
 
-      if (mode === 'leaf') {
+      if (mode === 'leaf' || mode === 'resource') {
         result[criterion.id] = {};
         for (const supplier of this.data.suppliers) {
-          const score = criterion.priceScores?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDed * (score / 10);
-        }
-      } else if (mode === 'resource') {
-        result[criterion.id] = {};
-        for (const supplier of this.data.suppliers) {
-          const score = criterion.priceScores?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDed * (score / 10);
+          const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
+          result[criterion.id][supplier.id] = Math.min(entered, maxDed);
         }
       } else {
         // Traditional: split maxDed proportionally across subcriteria by sub-weight
@@ -408,8 +414,8 @@ class EvaluationStore {
           result[sub.id] = {};
           const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
           for (const supplier of this.data.suppliers) {
-            const score = sub.priceScores?.[supplier.id] ?? 0;
-            result[sub.id][supplier.id] = subMaxDed * (score / 10);
+            const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
+            result[sub.id][supplier.id] = Math.min(entered, subMaxDed);
           }
         }
       }
@@ -614,20 +620,20 @@ class EvaluationStore {
     if (c) c.maxPriceDeduction = Math.max(0, Math.round(value));
   }
 
-  /** Set a prismodell-specific score on a leaf criterion (independent of poengmodell). */
-  setCriterionPriceScore(criterionId: string, supplierId: string, value: number) {
+  /** Set a prismodell deduction amount (NOK) on a leaf/resource criterion. */
+  setCriterionPriceDeductionAmount(criterionId: string, supplierId: string, amount: number) {
     const c = this._findCriterion(criterionId);
     if (!c) return;
-    if (!c.priceScores) c.priceScores = {};
-    c.priceScores[supplierId] = clampScore(value);
+    if (!c.priceDeductionAmounts) c.priceDeductionAmounts = {};
+    c.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
   }
 
-  /** Set a prismodell-specific score on a sub-criterion (independent of poengmodell). */
-  setSubPriceScore(subCriterionId: string, supplierId: string, value: number) {
+  /** Set a prismodell deduction amount (NOK) on a sub-criterion. */
+  setSubPriceDeductionAmount(subCriterionId: string, supplierId: string, amount: number) {
     const sub = this._findSub(subCriterionId);
     if (!sub) return;
-    if (!sub.priceScores) sub.priceScores = {};
-    sub.priceScores[supplierId] = clampScore(value);
+    if (!sub.priceDeductionAmounts) sub.priceDeductionAmounts = {};
+    sub.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
   }
 
   /** Update supplier price. */
@@ -1036,12 +1042,12 @@ class EvaluationStore {
     for (const c of this.data.criteria) {
       if (c.notes) delete c.notes[supplierId];
       if (c.scores) delete c.scores[supplierId];
-      if (c.priceScores) delete c.priceScores[supplierId];
+      if (c.priceDeductionAmounts) delete c.priceDeductionAmounts[supplierId];
       if (c.items) delete c.items[supplierId];
       for (const sub of c.subcriteria) {
         delete sub.scores[supplierId];
         delete sub.notes[supplierId];
-        if (sub.priceScores) delete sub.priceScores[supplierId];
+        if (sub.priceDeductionAmounts) delete sub.priceDeductionAmounts[supplierId];
         if (sub.items) delete sub.items[supplierId];
       }
     }

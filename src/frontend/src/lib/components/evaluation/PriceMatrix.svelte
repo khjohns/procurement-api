@@ -1,15 +1,6 @@
 <script lang="ts">
   import { evaluation, formatNOK, criterionMode } from '$lib/stores/evaluation.svelte';
 
-  /** Effective max deduction for a criterion (explicit or weight-derived). */
-  function effectiveMaxDed(criterionId: string): number {
-    const c = evaluation.data.criteria.find((c) => c.id === criterionId);
-    if (!c) return 0;
-    if (c.maxPriceDeduction != null) return c.maxPriceDeduction;
-    const tw = evaluation.totalWeight;
-    return tw > 0 ? (evaluation.qualityBudget * c.weight) / tw : 0;
-  }
-
   /** Total group deduction: leaf deduction or sum of sub-deductions. */
   function groupDeduction(criterionId: string, supplierId: string): number {
     const criterion = evaluation.data.criteria.find((c) => c.id === criterionId);
@@ -27,10 +18,9 @@
     const deductions = evaluation.priceDeductions[subId];
     if (!deductions) return '';
     const val = deductions[supplierId] ?? 0;
-    const values = Object.values(deductions);
-    const max = Math.max(...values);
+    const max = Math.max(...Object.values(deductions));
     if (val === max) return 'fradrag-best';
-    const min = Math.min(...values);
+    const min = Math.min(...Object.values(deductions));
     if (val === min) return 'fradrag-high';
     return 'fradrag-mid';
   }
@@ -63,37 +53,34 @@
     editingMaxDed[criterionId] = false;
   }
 
-  // ── Score editing ──
-  let editingScore: Record<string, boolean> = $state({});
-  let editScoreVal: Record<string, string> = $state({});
+  // ── Deduction amount editing ──
+  let editingDed: Record<string, boolean> = $state({});
+  let editDedVal: Record<string, string> = $state({});
+  let dedInputs: Record<string, HTMLInputElement | undefined> = {};
 
-  function getPriceScore(id: string, supplierId: string, isLeaf: boolean): number {
-    if (isLeaf) {
-      return evaluation.data.criteria.find((c) => c.id === id)?.priceScores?.[supplierId] ?? 0;
-    }
-    for (const c of evaluation.data.criteria) {
-      const sub = c.subcriteria.find((s) => s.id === id);
-      if (sub) return sub.priceScores?.[supplierId] ?? 0;
-    }
-    return 0;
+  function startEditDed(key: string, current: number) {
+    editingDed[key] = true;
+    editDedVal[key] = current > 0 ? String(current) : '';
+    requestAnimationFrame(() => dedInputs[key]?.select());
   }
 
-  function commitScore(id: string, supplierId: string, isLeaf: boolean) {
-    const key = `${id}:${supplierId}`;
-    const num = parseInt((editScoreVal[key] ?? '').trim(), 10);
-    if (!isNaN(num) && num >= 0 && num <= 10) {
-      if (isLeaf) evaluation.setCriterionPriceScore(id, supplierId, num);
-      else evaluation.setSubPriceScore(id, supplierId, num);
-    }
-    editingScore[key] = false;
+  function commitCriterionDed(criterionId: string, supplierId: string) {
+    const key = `${criterionId}:${supplierId}`;
+    const num = parseInt((editDedVal[key] ?? '').replace(/\s/g, ''), 10);
+    if (!isNaN(num) && num >= 0)
+      evaluation.setCriterionPriceDeductionAmount(criterionId, supplierId, num);
+    editingDed[key] = false;
+  }
+
+  function commitSubDed(subId: string, supplierId: string) {
+    const key = `${subId}:${supplierId}`;
+    const num = parseInt((editDedVal[key] ?? '').replace(/\s/g, ''), 10);
+    if (!isNaN(num) && num >= 0) evaluation.setSubPriceDeductionAmount(subId, supplierId, num);
+    editingDed[key] = false;
   }
 
   /** Total of all quality max deductions. */
-  let totalMaxDed = $derived(
-    evaluation.data.criteria
-      .filter((c) => c.type === 'quality')
-      .reduce((s, c) => s + effectiveMaxDed(c.id), 0)
-  );
+  let totalMaxDed = $derived(Object.values(evaluation.maxDeductions).reduce((s, v) => s + v, 0));
 </script>
 
 <div class="section-label">Kvalitetsfradrag</div>
@@ -146,10 +133,13 @@
             {:else}
               <button
                 class="maxded-btn"
-                onclick={() => startEditMaxDed(criterion.id, effectiveMaxDed(criterion.id))}
+                onclick={() =>
+                  startEditMaxDed(criterion.id, evaluation.maxDeductions[criterion.id] ?? 0)}
                 title="Klikk for å sette maksimalt fratrekk"
               >
-                <span class="weight-num-small">{formatNOK(effectiveMaxDed(criterion.id))}</span>
+                <span class="weight-num-small"
+                  >{formatNOK(evaluation.maxDeductions[criterion.id] ?? 0)}</span
+                >
                 <span class="edit-hint">kr ✎</span>
               </button>
             {/if}
@@ -166,41 +156,35 @@
                 <span class="pris-value">{formatNOK(supplier.price ?? 0)}</span>
               </td>
             {:else if isLeaf}
-              <!-- Leaf quality criterion: show score + deduction -->
+              <!-- Leaf quality criterion: directly enter deduction amount -->
               {@const deduction = groupDeduction(criterion.id, supplier.id)}
-              {@const score = getPriceScore(criterion.id, supplier.id, true)}
               {@const key = `${criterion.id}:${supplier.id}`}
-              <td class="cell-pris cell-scoring {groupFradragTier(criterion.id, supplier.id)}">
-                {#if editingScore[key]}
+              <td class="cell-pris cell-ded {groupFradragTier(criterion.id, supplier.id)}">
+                {#if editingDed[key]}
                   <!-- svelte-ignore a11y_autofocus -->
                   <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    class="score-input"
+                    bind:this={dedInputs[key]}
+                    type="text"
+                    inputmode="numeric"
+                    class="ded-input"
                     autofocus
-                    bind:value={editScoreVal[key]}
-                    onblur={() => commitScore(criterion.id, supplier.id, true)}
+                    value={editDedVal[key]}
+                    oninput={(e) => (editDedVal[key] = e.currentTarget.value)}
+                    onblur={() => commitCriterionDed(criterion.id, supplier.id)}
                     onkeydown={(e) => {
-                      if (e.key === 'Enter') commitScore(criterion.id, supplier.id, true);
-                      if (e.key === 'Escape') editingScore[key] = false;
+                      if (e.key === 'Enter') commitCriterionDed(criterion.id, supplier.id);
+                      if (e.key === 'Escape') editingDed[key] = false;
                     }}
-                    onclick={(e) => e.stopPropagation()}
                   />
                 {:else}
                   <button
-                    class="score-chip"
-                    onclick={() => {
-                      editScoreVal[`${criterion.id}:${supplier.id}`] =
-                        score > 0 ? String(score) : '';
-                      editingScore[`${criterion.id}:${supplier.id}`] = true;
-                    }}
-                    title="Klikk for å sette poeng (0–10)">{score}/10</button
+                    class="ded-btn {deduction > 0 ? 'ded-filled' : ''}"
+                    onclick={() => startEditDed(key, deduction)}
+                    title="Klikk for å angi fratrekk i kr"
                   >
+                    <span class="pris-prefix">−</span>{formatNOK(deduction)}
+                  </button>
                 {/if}
-                <span class="pris-value"
-                  ><span class="pris-prefix">−</span>{formatNOK(deduction)}</span
-                >
               </td>
             {:else}
               <!-- Group row for traditional/resource: show aggregated deduction only -->
@@ -220,7 +204,9 @@
           {#each criterion.subcriteria as sub, si}
             {@const isLast = si === criterion.subcriteria.length - 1}
             {@const subMaxDed =
-              subSum > 0 ? effectiveMaxDed(criterion.id) * (sub.weight / subSum) : 0}
+              subSum > 0
+                ? (evaluation.maxDeductions[criterion.id] ?? 0) * (sub.weight / subSum)
+                : 0}
             <tr class="row-sub" class:row-group-last={isLast}>
               <td class="cell-weight">
                 <div class="weight-display">
@@ -230,36 +216,33 @@
               <td class="cell-criteria">{sub.name}</td>
               {#each evaluation.data.suppliers as supplier}
                 {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
-                {@const score = getPriceScore(sub.id, supplier.id, false)}
                 {@const key = `${sub.id}:${supplier.id}`}
-                <td class="cell-pris cell-scoring {fradragTier(sub.id, supplier.id)}">
-                  {#if editingScore[key]}
+                <td class="cell-pris cell-ded {fradragTier(sub.id, supplier.id)}">
+                  {#if editingDed[key]}
                     <!-- svelte-ignore a11y_autofocus -->
                     <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      class="score-input"
+                      bind:this={dedInputs[key]}
+                      type="text"
+                      inputmode="numeric"
+                      class="ded-input"
                       autofocus
-                      bind:value={editScoreVal[key]}
-                      onblur={() => commitScore(sub.id, supplier.id, false)}
+                      value={editDedVal[key]}
+                      oninput={(e) => (editDedVal[key] = e.currentTarget.value)}
+                      onblur={() => commitSubDed(sub.id, supplier.id)}
                       onkeydown={(e) => {
-                        if (e.key === 'Enter') commitScore(sub.id, supplier.id, false);
-                        if (e.key === 'Escape') editingScore[key] = false;
+                        if (e.key === 'Enter') commitSubDed(sub.id, supplier.id);
+                        if (e.key === 'Escape') editingDed[key] = false;
                       }}
-                      onclick={(e) => e.stopPropagation()}
                     />
                   {:else}
                     <button
-                      class="score-chip"
-                      onclick={() => {
-                        editScoreVal[`${sub.id}:${supplier.id}`] = score > 0 ? String(score) : '';
-                        editingScore[`${sub.id}:${supplier.id}`] = true;
-                      }}
-                      title="Klikk for å sette poeng (0–10)">{score}/10</button
+                      class="ded-btn {deduction > 0 ? 'ded-filled' : ''}"
+                      onclick={() => startEditDed(key, deduction)}
+                      title="Klikk for å angi fratrekk i kr"
                     >
+                      <span class="pris-prefix">−</span>{formatNOK(deduction)}
+                    </button>
                   {/if}
-                  <span class="pris-value">{formatNOK(deduction)}</span>
                 </td>
               {/each}
             </tr>
@@ -473,54 +456,54 @@
     padding: var(--spacing-2) var(--spacing-3);
   }
 
-  /* Score + deduction stacked cell */
-  .cell-scoring {
-    padding: var(--spacing-1) var(--spacing-3);
+  /* Deduction cell */
+  .cell-ded {
+    padding: var(--spacing-1) var(--spacing-2);
     vertical-align: middle;
   }
 
-  .score-chip {
-    display: inline-block;
+  .ded-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
+    font-weight: 500;
     color: var(--color-ink-ghost);
     background: none;
-    border: none;
-    cursor: pointer;
-    padding: 2px 4px;
+    border: 1px dashed transparent;
     border-radius: var(--radius-sm);
-    margin-bottom: 2px;
+    padding: var(--spacing-1) var(--spacing-2);
+    cursor: pointer;
     transition: all 0.1s;
     line-height: 1;
   }
 
-  .score-chip:hover {
+  .ded-btn:hover {
+    border-color: var(--color-wire);
     color: var(--color-ink-muted);
     background: var(--color-felt-hover);
   }
 
-  .score-input {
-    width: 36px;
-    padding: 2px 4px;
+  .ded-btn.ded-filled {
+    color: var(--color-ink);
+  }
+
+  .ded-input {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-1) var(--spacing-2);
     font-family: var(--font-data);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
     color: var(--color-ink);
     background: var(--color-canvas);
     border: 1px solid var(--color-wire-focus);
     border-radius: var(--radius-sm);
-    text-align: center;
     outline: none;
-    display: block;
-    margin: 0 auto var(--spacing-1);
-    -moz-appearance: textfield;
-  }
-
-  .score-input::-webkit-inner-spin-button,
-  .score-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
   }
 
   .pris-value {
@@ -548,6 +531,19 @@
     color: var(--color-ink);
   }
   .fradrag-high .pris-value {
+    color: var(--color-score-low);
+  }
+
+  .fradrag-best .ded-btn {
+    background: var(--color-score-high-bg);
+    color: var(--color-score-high);
+    font-weight: 600;
+    border-color: transparent;
+  }
+  .fradrag-mid .ded-btn {
+    color: var(--color-ink);
+  }
+  .fradrag-high .ded-btn {
     color: var(--color-score-low);
   }
 
