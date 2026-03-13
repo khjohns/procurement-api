@@ -5,6 +5,12 @@
 	import QualificationStatusPanel from '$lib/components/qualification/QualificationStatusPanel.svelte';
 	import QualificationAssessmentPanel from '$lib/components/qualification/QualificationAssessmentPanel.svelte';
 
+	let { data } = $props();
+
+	if (data?.proc?.id) {
+		qualification.initializeSuppliersIfNeeded(data.proc.id, data.activities ?? []);
+	}
+
 	let isOverview = $derived(qualification.activeView === 'overview');
 
 	let mobilePanelOpen = $state(false);

@@ -13,6 +13,7 @@ import {
 	type SectionContext,
 	type FieldDefinition
 } from './protokoll-sections';
+import { extractBidders } from '$lib/utils/activities';
 
 // ── Types ──
 
@@ -100,23 +101,7 @@ class ProtokollStore {
 	);
 
 	// Derived: suppliers from activities
-	suppliers = $derived.by(() => {
-		const seen = new Map<string, { id: string; name: string }>();
-		for (const a of this.activities) {
-			if (a.action === 'SUBMIT_BID') {
-				const org = a.organization ?? a.supplier;
-				if (!org) continue;
-				const key = String(org.id ?? org.name);
-				if (!seen.has(key)) {
-					seen.set(key, {
-						id: key,
-						name: org.name ?? `Leverandør ${key}`
-					});
-				}
-			}
-		}
-		return [...seen.values()];
-	});
+	suppliers = $derived(extractBidders(this.activities));
 
 	// Derived: section context for condition evaluation
 	sectionContext = $derived<SectionContext>({
@@ -329,6 +314,18 @@ class ProtokollStore {
 	}
 
 	// ── Data loading ──
+
+	/** Load from pre-fetched route data. Skips if same procurement is already loaded. */
+	loadFromData(proc: any, activities: any[], eforms: any | null) {
+		if (!proc || this.procurement?.id === proc.id) return;
+		this.procurement = proc;
+		this.activities = Array.isArray(activities) ? activities : [];
+		this.eforms = eforms;
+		this.manual = {};
+		this._lastSavedJson = '';
+		this.lastSavedAt = null;
+		this._restoreFromStorage(proc.id);
+	}
 
 	async loadProcurement(procurementId: number) {
 		this.loading = true;

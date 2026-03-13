@@ -10,6 +10,8 @@
  *   Mode 3 (resource):    evaluationType === 'item' → roles × moments (subcriteria as moments)
  */
 
+import { extractBidders } from '$lib/utils/activities';
+
 // ── Item-level types ──
 
 export interface ItemCriterion {
@@ -959,6 +961,37 @@ class EvaluationStore {
 	renameSupplier(supplierId: string, name: string) {
 		const s = this.data.suppliers.find((s) => s.id === supplierId);
 		if (s) s.name = name;
+	}
+
+	/** Initialize from route data if the procurement has changed. Preserves existing work for the same procurement. */
+	initializeIfNeeded(procId: number, proc: any, activities: any[], eforms: any | null) {
+		if (this.data.id === String(procId)) return;
+
+		const suppliers = extractBidders(activities);
+
+		this.initialize({
+			id: String(procId),
+			title: proc?.name || proc?.title || '',
+			procurementName: proc?.name || proc?.title || '',
+			reference: proc?.sequenceId || String(procId),
+			status: 'Oppsett',
+			qualityWeight: 0,
+			priceWeight: 0,
+			contractValue: eforms?.estimated_value ?? 0,
+			suppliers,
+			criteria: []
+		});
+
+		if (eforms?.award_criteria?.length) {
+			for (const ac of eforms.award_criteria) {
+				const type = ac.type === 'price' ? 'price' as const : 'quality' as const;
+				const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
+				const criterionId = this.addCriterion(name, type);
+				if (ac.weight_percent) {
+					this.setCriterionWeight(criterionId, Math.round(ac.weight_percent));
+				}
+			}
+		}
 	}
 
 	/** Initialize or reset the evaluation with new data. */

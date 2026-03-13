@@ -6,6 +6,8 @@
  * Binary pass/fail assessments, not weighted scores.
  */
 
+import { extractBidders } from '$lib/utils/activities';
+
 // ── Types ──
 
 export type QualificationBasis = 'own' | 'supported';
@@ -306,6 +308,18 @@ class QualificationStore {
 	updateSupportEntity(reqId: string, supplierId: string, entityId: string, patch: Partial<Omit<SupportEntity, 'id'>>) {
 		const entity = this.getAssessment(reqId, supplierId)?.supportEntities.find((e) => e.id === entityId);
 		if (entity) Object.assign(entity, patch);
+	}
+
+	/** Replace suppliers with real ones from activities if the procurement has changed. */
+	initializeSuppliersIfNeeded(procId: number, activities: any[]) {
+		if (this.data.id === String(procId)) return;
+
+		const suppliers: QualificationSupplier[] = extractBidders(activities);
+		const requirements = this.data.requirements.map((req) => ({
+			...req,
+			assessments: Object.fromEntries(suppliers.map((s) => [s.id, emptyAssessment()]))
+		}));
+		this.data = { ...this.data, id: String(procId), suppliers, requirements };
 	}
 
 	initialize(newData: QualificationData) {

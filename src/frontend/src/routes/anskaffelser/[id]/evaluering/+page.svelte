@@ -9,6 +9,12 @@
 	import SetupPanel from '$lib/components/evaluation/SetupPanel.svelte';
 	import SetupEmptyState from '$lib/components/evaluation/SetupEmptyState.svelte';
 
+	let { data } = $props();
+
+	if (data?.proc?.id) {
+		evaluation.initializeIfNeeded(data.proc.id, data.proc, data.activities ?? [], data.eforms ?? null);
+	}
+
 	let isOverview = $derived(evaluation.activeView === 'overview');
 	let activeCriterion = $derived(
 		!isOverview ? evaluation.data.criteria.find((c) => c.id === evaluation.activeView) : null

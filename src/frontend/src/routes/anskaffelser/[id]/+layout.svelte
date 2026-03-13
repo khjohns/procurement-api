@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { themeStore } from '$lib/stores/theme.svelte';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	const id = $derived(page.params.id);
 
@@ -22,7 +22,7 @@
 			<a href="/anskaffelser" class="crumb">Anskaffelser</a>
 			<span class="sep">/</span>
 			{#if subRoute}
-				<a href="/anskaffelser/{id}" class="crumb">{id}</a>
+				<a href="/anskaffelser/{id}" class="crumb">{data?.proc?.name || data?.proc?.title || id}</a>
 				<span class="sep">/</span>
 				<span class="current">{subRoute}</span>
 			{:else}

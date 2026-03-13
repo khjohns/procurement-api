@@ -1,51 +1,6 @@
 <script lang="ts">
 	import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
-	import { onMount } from 'svelte';
 	const fmt = new Intl.NumberFormat('nb-NO');
-
-	// ── Search state ──
-	let searchQuery = $state('');
-	let searchOpen = $state(false);
-
-	interface MatureProc {
-		id: number;
-		sequenceId: string;
-		name: string;
-		description: string;
-		procedure: string;
-		threshold: string;
-		deadline: string;
-		doffinId?: string;
-	}
-
-	let allMature = $state<MatureProc[]>([]);
-	let matureLoading = $state(true);
-
-	onMount(() => {
-		fetch('/api/procurements/mature')
-			.then((r) => (r.ok ? r.json() : Promise.reject('Feil ved henting')))
-			.then((data: MatureProc[]) => {
-				allMature = data;
-				matureLoading = false;
-			})
-			.catch(() => {
-				matureLoading = false;
-			});
-	});
-
-	let searchResults = $derived.by(() => {
-		const q = searchQuery.trim().toLowerCase();
-		if (q.length < 1) return allMature.slice(0, 20);
-		return allMature.filter(
-			(p) =>
-				p.name.toLowerCase().includes(q) ||
-				p.sequenceId?.toLowerCase().includes(q) ||
-				p.procedure.toLowerCase().includes(q)
-		);
-	});
-
-	// ── Import state ──
-	let importing = $state(false);
 
 	// ── Supplier input ──
 	let addingSupplier = $state(false);
@@ -84,86 +39,12 @@
 	let qualityWeight = $derived(evaluation.qualityWeightDerived);
 	let priceWeight = $derived(evaluation.priceWeightDerived);
 
-	// ── Import ──
-	async function importProcurement(proc: MatureProc) {
-		const hasData = evaluation.data.criteria.length > 0 || evaluation.data.suppliers.length > 0;
-		if (hasData && !confirm('Importering vil overskrive eksisterende kriterier og leverandører. Fortsett?')) {
-			return;
-		}
-
-		importing = true;
-		searchQuery = '';
-		searchOpen = false;
-
-		// Fetch activities (suppliers) and eForms (criteria, contract value) in parallel
-		const [activitiesResult, eformsResult] = await Promise.allSettled([
-			fetch(`/api/procurements/${proc.id}/activities`).then((r) => r.ok ? r.json() : []),
-			proc.doffinId ? fetch(`/api/eforms/${proc.doffinId}`).then((r) => r.ok ? r.json() : null) : Promise.resolve(null)
-		]);
-
-		const activities: any[] = activitiesResult.status === 'fulfilled' ? activitiesResult.value : [];
-		const eforms: any | null = eformsResult.status === 'fulfilled' ? eformsResult.value : null;
-
-		// Extract suppliers from SUBMIT_BID activities
-		const supplierMap = new Map<string, string>();
-		for (const a of activities) {
-			if (a.action === 'SUBMIT_BID') {
-				const org = a.organization ?? a.supplier;
-				if (!org) continue;
-				const key = String(org.id ?? org.name);
-				if (!supplierMap.has(key)) {
-					supplierMap.set(key, org.name ?? `Leverandør ${key}`);
-				}
-			}
-		}
-
-		// Determine contract value from eForms or procurement
-		const contractValue = eforms?.estimated_value ?? evaluation.data.contractValue;
-
-		// Build suppliers array
-		const suppliers = [...supplierMap.entries()].map(([id, name]) => ({ id, name }));
-
-		evaluation.initialize({
-			id: String(proc.id),
-			title: proc.name,
-			procurementName: proc.name,
-			reference: proc.sequenceId || String(proc.id),
-			status: 'Oppsett',
-			qualityWeight: 0,
-			priceWeight: 0,
-			contractValue: contractValue ?? 0,
-			suppliers,
-			criteria: []
-		});
-
-		// Populate criteria from eForms award_criteria
-		if (eforms?.award_criteria?.length) {
-			for (const ac of eforms.award_criteria) {
-				const type = ac.type === 'price' ? 'price' as const : 'quality' as const;
-				const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
-				const criterionId = evaluation.addCriterion(name, type);
-				if (ac.weight_percent) {
-					const criterion = evaluation.data.criteria.find((cr) => cr.id === criterionId);
-					if (criterion?.subcriteria[0]) {
-						evaluation.setSubCriterionWeight(criterion.subcriteria[0].id, Math.round(ac.weight_percent));
-					}
-				}
-			}
-		}
-
-		importing = false;
-	}
-
 	// ── Supplier CRUD ──
 	function addSupplier() {
 		if (!newSupplierName.trim()) return;
 		evaluation.addSupplier(newSupplierName.trim());
 		newSupplierName = '';
 		addingSupplier = false;
-	}
-
-	function handleWindowClick() {
-		if (searchOpen) searchOpen = false;
 	}
 
 	// ── Validation ──
@@ -177,53 +58,7 @@
 	});
 </script>
 
-<svelte:window onclick={handleWindowClick} />
-
 <div class="setup-panel">
-	<!-- Import search -->
-	<div class="panel-section">
-		<div class="panel-label">Importer</div>
-		<div class="picker-wrap">
-			<input
-				class="picker-input"
-				type="text"
-				placeholder={matureLoading ? 'Laster anskaffelser...' : `Søk blant ${allMature.length} anskaffelser...`}
-				bind:value={searchQuery}
-				disabled={matureLoading || importing}
-				onfocus={() => { searchOpen = true; }}
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => { if (e.key === 'Escape') searchOpen = false; }}
-				oninput={() => { searchOpen = true; }}
-			/>
-			{#if importing}
-				<div class="picker-results" onclick={(e) => e.stopPropagation()}>
-					<div class="picker-empty">Importerer...</div>
-				</div>
-			{:else if searchOpen && searchResults.length > 0}
-				<div class="picker-results" onclick={(e) => e.stopPropagation()}>
-					{#each searchResults as result}
-						<button class="picker-result" onclick={() => importProcurement(result)}>
-							<div class="picker-result-title">{result.name}</div>
-							<div class="picker-result-meta">
-								{result.sequenceId}
-								{#if result.procedure}· {result.procedure}{/if}
-								{#if result.deadline}· {result.deadline}{/if}
-							</div>
-							<div class="picker-result-criteria">
-								{#if result.threshold}<span class="picker-chip">{result.threshold}</span>{/if}
-								{#if result.doffinId}<span class="picker-chip">Doffin</span>{/if}
-							</div>
-						</button>
-					{/each}
-				</div>
-			{:else if searchOpen && searchQuery.trim().length >= 1 && searchResults.length === 0}
-				<div class="picker-results" onclick={(e) => e.stopPropagation()}>
-					<div class="picker-empty">Ingen treff</div>
-				</div>
-			{/if}
-		</div>
-	</div>
-
 	<!-- Config fields -->
 	<div class="panel-section">
 		<div class="panel-label">Oppsett</div>
@@ -347,106 +182,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-ink-ghost);
-	}
-
-	/* ── Picker ── */
-	.picker-wrap {
-		position: relative;
-	}
-
-	.picker-input {
-		width: 100%;
-		padding: var(--spacing-2) var(--spacing-3);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		color: var(--color-ink);
-		font-family: var(--font-ui);
-		font-size: 11px;
-		outline: none;
-		transition: border-color 0.12s;
-	}
-
-	.picker-input:focus {
-		border-color: var(--color-wire-focus);
-	}
-
-	.picker-input::placeholder {
-		color: var(--color-ink-ghost);
-	}
-
-	.picker-results {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		right: 0;
-		z-index: 30;
-		margin-top: var(--spacing-1);
-		background: var(--color-felt-raised);
-		border: 1px solid var(--color-wire-strong);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		max-height: 280px;
-		overflow-y: auto;
-	}
-
-	.picker-result {
-		display: block;
-		width: 100%;
-		text-align: left;
-		padding: var(--spacing-2) var(--spacing-3);
-		background: none;
-		border: none;
-		border-bottom: 1px solid var(--color-wire);
-		cursor: pointer;
-		transition: background 0.08s;
-	}
-
-	.picker-result:last-child {
-		border-bottom: none;
-	}
-
-	.picker-result:hover {
-		background: var(--color-felt-hover);
-	}
-
-	.picker-result-title {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--color-ink);
-		margin-bottom: 2px;
-	}
-
-	.picker-result-meta {
-		font-size: 10px;
-		color: var(--color-ink-muted);
-		margin-bottom: var(--spacing-1);
-	}
-
-	.picker-result-criteria {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 2px;
-	}
-
-	.picker-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		padding: 1px var(--spacing-1);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: 2px;
-		font-size: 9px;
-		color: var(--color-ink-secondary);
-	}
-
-
-	.picker-empty {
-		padding: var(--spacing-3);
-		text-align: center;
-		font-size: 11px;
-		color: var(--color-ink-muted);
 	}
 
 	/* ── Fields ── */

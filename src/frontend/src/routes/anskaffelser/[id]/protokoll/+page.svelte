@@ -16,40 +16,12 @@
 	import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
 	import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
 
-	// ── Procurement picker state ──
+	let { data } = $props();
 
-	interface MatureProc {
-		id: number;
-		sequenceId: string;
-		name: string;
-		procedure: string;
-		threshold: string;
-		deadline: string;
+	// Auto-load from route data (proc + activities + eforms fetched by +page.ts)
+	if (data?.proc) {
+		protokoll.loadFromData(data.proc, data.activities ?? [], data.eforms ?? null);
 	}
-
-	let searchQuery = $state('');
-	let searchOpen = $state(false);
-	let allMature = $state<MatureProc[]>([]);
-	let matureLoading = $state(true);
-	let matureError = $state<string | null>(null);
-
-	let searchResults = $derived.by(() => {
-		const q = searchQuery.trim().toLowerCase();
-		if (q.length < 1) return allMature;
-		return allMature.filter(p =>
-			p.name.toLowerCase().includes(q) ||
-			p.sequenceId?.toLowerCase().includes(q) ||
-			p.procedure.toLowerCase().includes(q)
-		);
-	});
-
-	// Load mature procurements on mount
-	$effect(() => {
-		fetch('/api/procurements/mature')
-			.then(r => r.ok ? r.json() : Promise.reject('Feil ved henting'))
-			.then(data => { allMature = data; matureLoading = false; })
-			.catch(e => { matureError = String(e); matureLoading = false; });
-	});
 
 	// ── Navigation guard ──
 
@@ -161,20 +133,7 @@
 		}
 	}
 
-	// ── Procurement search ──
-
-	function handleSearch() {
-		searchOpen = true;
-	}
-
-	async function selectProcurement(proc: MatureProc) {
-		searchOpen = false;
-		searchQuery = '';
-		await protokoll.loadProcurement(proc.id);
-	}
-
 	function handleWindowClick() {
-		if (searchOpen) searchOpen = false;
 		if (navPopupOpen) navPopupOpen = false;
 	}
 
@@ -547,67 +506,7 @@
 <svelte:window onclick={handleWindowClick} />
 
 <div class="protokoll-page">
-	{#if !protokoll.hasData && !protokoll.loading}
-		<!-- ── Picker view ── -->
-		<header class="page-header">
-			<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-			<h1 class="page-title">Velg anskaffelse</h1>
-		</header>
-
-		<div class="picker-wrap">
-			{#if matureLoading}
-				<div class="picker-status">Henter anskaffelser...</div>
-			{:else if matureError}
-				<div class="picker-status picker-error">{matureError}</div>
-			{:else}
-				<div class="picker-input-wrap">
-					<svg class="picker-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/>
-						<path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-					</svg>
-					<input
-						class="picker-input"
-						type="text"
-						placeholder="Filtrer {allMature.length} anskaffelser..."
-						bind:value={searchQuery}
-						oninput={handleSearch}
-						onfocus={handleSearch}
-						onclick={(e) => e.stopPropagation()}
-						onkeydown={(e) => { if (e.key === 'Escape') searchOpen = false; }}
-						role="combobox"
-						aria-controls="picker-listbox"
-						aria-expanded={searchOpen && searchResults.length > 0}
-						aria-haspopup="listbox"
-					/>
-				</div>
-				{#if searchOpen && searchResults.length > 0}
-					<div class="picker-results" id="picker-listbox" role="listbox" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
-						{#each searchResults as result}
-							<button class="picker-result" role="option" aria-selected="false" onclick={() => selectProcurement(result)}>
-								<div class="picker-result-main">
-									<span class="picker-result-title">{result.name}</span>
-									<span class="picker-ref">{result.sequenceId}</span>
-								</div>
-								<div class="picker-result-meta">
-									<span class="picker-tag">{result.procedure}</span>
-									<span class="picker-tag picker-tag--threshold">{result.threshold}</span>
-									{#if result.deadline}
-										<span class="picker-tag picker-tag--date">{result.deadline}</span>
-									{/if}
-								</div>
-							</button>
-						{/each}
-					</div>
-				{/if}
-				{#if searchOpen && searchQuery.trim().length >= 1 && searchResults.length === 0}
-					<div class="picker-results" id="picker-listbox" role="listbox" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
-						<div class="picker-empty" role="status">Ingen treff for &laquo;{searchQuery}&raquo;</div>
-					</div>
-				{/if}
-			{/if}
-		</div>
-
-	{:else if protokoll.loading}
+	{#if protokoll.loading}
 		<!-- ── Loading state ── -->
 		<header class="page-header">
 			<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
@@ -1204,151 +1103,6 @@
 	.shortcut-btn:focus-visible {
 		outline: none;
 		border-color: var(--color-wire-focus);
-	}
-
-	/* ── Picker ── */
-	.picker-wrap {
-		position: relative;
-		margin-top: var(--spacing-8);
-	}
-
-	.picker-input-wrap {
-		position: relative;
-	}
-
-	.picker-icon {
-		position: absolute;
-		left: var(--spacing-4);
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--color-ink-ghost);
-		pointer-events: none;
-	}
-
-	.picker-input {
-		width: 100%;
-		padding: var(--spacing-4);
-		padding-left: 44px;
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-md);
-		color: var(--color-ink);
-		font-family: var(--font-ui);
-		font-size: 14px;
-		outline: none;
-		transition: border-color 0.12s;
-	}
-
-	.picker-input:focus {
-		border-color: var(--color-wire-focus);
-	}
-
-	.picker-input::placeholder {
-		color: var(--color-ink-ghost);
-	}
-
-	.picker-results {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		right: 0;
-		z-index: 30;
-		margin-top: var(--spacing-1);
-		background: var(--color-felt-raised);
-		border: 1px solid var(--color-wire-strong);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-		max-height: 480px;
-		overflow-y: auto;
-	}
-
-	.picker-status {
-		padding: var(--spacing-4);
-		font-size: 13px;
-		color: var(--color-ink-muted);
-	}
-
-	.picker-error {
-		color: var(--color-score-low);
-	}
-
-	.picker-result {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-1);
-		width: 100%;
-		text-align: left;
-		padding: var(--spacing-3) var(--spacing-4);
-		background: none;
-		border: none;
-		border-bottom: 1px solid var(--color-wire);
-		cursor: pointer;
-		transition: background-color 0.08s;
-	}
-
-	.picker-result:last-child {
-		border-bottom: none;
-	}
-
-	.picker-result:hover {
-		background: var(--color-felt-hover);
-	}
-
-	.picker-result:focus-visible {
-		outline: none;
-		background: var(--color-felt-hover);
-	}
-
-	.picker-result-main {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--spacing-3);
-	}
-
-	.picker-result-title {
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--color-ink);
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.picker-ref {
-		font-family: var(--font-data);
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		font-variant-numeric: tabular-nums;
-		flex-shrink: 0;
-	}
-
-	.picker-result-meta {
-		display: flex;
-		gap: var(--spacing-2);
-	}
-
-	.picker-tag {
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		font-family: var(--font-data);
-	}
-
-	.picker-tag--threshold {
-		color: var(--color-vekt);
-	}
-
-	.picker-tag--date {
-		font-variant-numeric: tabular-nums;
-	}
-
-	.picker-empty {
-		padding: var(--spacing-4);
-		text-align: center;
-		font-size: 12px;
-		color: var(--color-ink-muted);
 	}
 
 	/* ── Skeleton ── */
