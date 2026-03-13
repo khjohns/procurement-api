@@ -7,6 +7,7 @@
     type Role,
     type EvaluationItem,
   } from '$lib/stores/evaluation.svelte';
+  import InlineNumberEditor from './InlineNumberEditor.svelte';
 
   interface Props {
     criterionId: string;
@@ -15,78 +16,6 @@
   let { criterionId }: Props = $props();
 
   let criterion = $derived(evaluation.data.criteria.find((c) => c.id === criterionId)!);
-
-  /** Inline weight editing state. */
-  let editingWeight = $state<string | null>(null);
-  let editValue = $state('');
-
-  function startEdit(id: string, currentWeight: number) {
-    editingWeight = id;
-    editValue = String(currentWeight);
-  }
-
-  function commitEdit(type: 'criterion' | 'sub', id: string) {
-    const num = parseInt(editValue, 10);
-    if (!isNaN(num) && num >= 0 && num <= 100) {
-      if (type === 'criterion') {
-        evaluation.setCriterionWeight(id, num);
-      } else {
-        evaluation.setSubCriterionWeight(id, num);
-      }
-    }
-    editingWeight = null;
-  }
-
-  function cancelEdit() {
-    editingWeight = null;
-  }
-
-  function handleWeightKeydown(e: KeyboardEvent, type: 'criterion' | 'sub', id: string) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commitEdit(type, id);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEdit();
-    }
-  }
-
-  /** Resource mode: role score editing. */
-  let editingRoleScore = $state<string | null>(null);
-  let roleScoreEditValue = $state('');
-
-  function startRoleScoreEdit(
-    supplierId: string,
-    roleId: string,
-    momentId: string,
-    currentScore: number
-  ) {
-    editingRoleScore = `${supplierId}:${roleId}:${momentId}`;
-    roleScoreEditValue = currentScore > 0 ? String(currentScore) : '';
-  }
-
-  function commitRoleScoreEdit(supplierId: string, roleId: string, momentId: string) {
-    const num = parseInt(roleScoreEditValue, 10);
-    if (!isNaN(num) && num >= 0 && num <= 10) {
-      evaluation.setRoleScore(criterionId, supplierId, roleId, momentId, num);
-    }
-    editingRoleScore = null;
-  }
-
-  function handleRoleScoreKeydown(
-    e: KeyboardEvent,
-    supplierId: string,
-    roleId: string,
-    momentId: string
-  ) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commitRoleScoreEdit(supplierId, roleId, momentId);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      editingRoleScore = null;
-    }
-  }
 
   /** Resource mode: get item (resource) for a supplier+role. */
   function getRoleItem(supplierId: string, roleId: string): EvaluationItem | undefined {
@@ -205,69 +134,35 @@
             <td class="cell-ic-name">
               <span class="ic-name">{moment.name}</span>
               <span class="ic-weight">
-                {#if editingWeight === moment.id}
-                  <span class="weight-edit-inline">
-                    <!-- svelte-ignore a11y_autofocus -->
-                    <input
-                      type="number"
-                      class="weight-input"
-                      min="0"
-                      max="100"
-                      bind:value={editValue}
-                      onkeydown={(e) => handleWeightKeydown(e, 'sub', moment.id)}
-                      onblur={() => commitEdit('sub', moment.id)}
-                      autofocus
-                    />%
-                  </span>
-                {:else}
-                  <button
-                    class="weight-clickable"
-                    onclick={() => startEdit(moment.id, moment.weight)}
-                  >
-                    {moment.weight}%
-                  </button>
-                {/if}
+                <InlineNumberEditor
+                  value={moment.weight}
+                  min={0}
+                  max={100}
+                  suffix="%"
+                  variant="weight"
+                  oncommit={(v) => evaluation.setSubCriterionWeight(moment.id, v)}
+                />
               </span>
             </td>
             {#each evaluation.data.suppliers as supplier}
               {#each roles as role, roleIdx}
                 {@const item = getRoleItem(supplier.id, role.id)}
                 {@const score = item?.scores[moment.id] ?? 0}
-                {@const cellKey = `${supplier.id}:${role.id}:${moment.id}`}
                 <td
                   class="cell-score resource-cell"
                   class:resource-cell-first={roleIdx === 0}
                   class:score-high={scoreTier(score) === 'high'}
                   class:score-mid={scoreTier(score) === 'mid'}
                   class:score-low={scoreTier(score) === 'low'}
-                  onclick={() => {
-                    if (editingRoleScore !== cellKey)
-                      startRoleScoreEdit(supplier.id, role.id, moment.id, score);
-                  }}
-                  role="button"
-                  tabindex={0}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ')
-                      startRoleScoreEdit(supplier.id, role.id, moment.id, score);
-                  }}
                 >
-                  {#if editingRoleScore === cellKey}
-                    <!-- svelte-ignore a11y_autofocus -->
-                    <input
-                      type="number"
-                      class="score-input"
-                      min="0"
-                      max="10"
-                      bind:value={roleScoreEditValue}
-                      onkeydown={(e) =>
-                        handleRoleScoreKeydown(e, supplier.id, role.id, moment.id)}
-                      onblur={() => commitRoleScoreEdit(supplier.id, role.id, moment.id)}
-                      onclick={(e) => e.stopPropagation()}
-                      autofocus
-                    />
-                  {:else}
-                    <span class="score-value">{score > 0 ? score : '—'}</span>
-                  {/if}
+                  <InlineNumberEditor
+                    value={score}
+                    min={0}
+                    max={10}
+                    variant="score"
+                    oncommit={(v) =>
+                      evaluation.setRoleScore(criterionId, supplier.id, role.id, moment.id, v)}
+                  />
                 </td>
               {/each}
             {/each}
@@ -507,42 +402,14 @@
     box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
   }
 
-  .score-value {
-    display: inline-block;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-sm);
-    line-height: 1;
-  }
-
-  .score-high .score-value {
+  .score-high {
     color: var(--color-score-high);
   }
-  .score-mid .score-value {
+  .score-mid {
     color: var(--color-ink-secondary);
   }
-  .score-low .score-value {
+  .score-low {
     color: var(--color-score-low);
-  }
-
-  .score-input {
-    width: 36px;
-    padding: 2px 4px;
-    font-family: var(--font-data);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-ink);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-wire-focus);
-    border-radius: var(--radius-sm);
-    text-align: center;
-    outline: none;
-    -moz-appearance: textfield;
-  }
-
-  .score-input::-webkit-inner-spin-button,
-  .score-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
   }
 
   .section-label {
@@ -552,64 +419,6 @@
     letter-spacing: 0.08em;
     color: var(--color-ink-muted);
     margin-bottom: var(--spacing-3);
-  }
-
-  /* Weight editing */
-  .weight-edit-inline {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-ghost);
-  }
-
-  .weight-input {
-    width: 36px;
-    padding: 2px 4px;
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-vekt);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-vekt-dim);
-    border-radius: var(--radius-sm);
-    text-align: center;
-    outline: none;
-    -moz-appearance: textfield;
-  }
-
-  .weight-input::-webkit-inner-spin-button,
-  .weight-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .weight-input:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 1px var(--color-vekt-bg-strong);
-  }
-
-  .weight-clickable {
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-vekt-dim);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-sm);
-    transition: background 0.12s;
-  }
-
-  .weight-clickable:hover {
-    background: var(--color-vekt-bg);
-  }
-  .weight-clickable:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
   }
 
   /* ── Role config strip ── */

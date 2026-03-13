@@ -9,6 +9,7 @@
   } from '$lib/stores/evaluation.svelte';
   import ItemScoreCell from './ItemScoreCell.svelte';
   import ScoreCell from './ScoreCell.svelte';
+  import InlineNumberEditor from './InlineNumberEditor.svelte';
 
   interface Props {
     criterionId: string;
@@ -24,41 +25,6 @@
   );
 
   let simpleSubs = $derived(criterion.subcriteria.filter((s) => s.evaluationType !== 'item'));
-
-  /** Inline weight editing state. */
-  let editingWeight = $state<string | null>(null);
-  let editValue = $state('');
-
-  function startEdit(id: string, currentWeight: number) {
-    editingWeight = id;
-    editValue = String(currentWeight);
-  }
-
-  function commitEdit(type: 'criterion' | 'sub', id: string) {
-    const num = parseInt(editValue, 10);
-    if (!isNaN(num) && num >= 0 && num <= 100) {
-      if (type === 'criterion') {
-        evaluation.setCriterionWeight(id, num);
-      } else {
-        evaluation.setSubCriterionWeight(id, num);
-      }
-    }
-    editingWeight = null;
-  }
-
-  function cancelEdit() {
-    editingWeight = null;
-  }
-
-  function handleWeightKeydown(e: KeyboardEvent, type: 'criterion' | 'sub', id: string) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commitEdit(type, id);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEdit();
-    }
-  }
 
   /** Adding items to item-level sub-criteria. */
   let addingItem = $state<string | null>(null); // subId:supplierId
@@ -94,25 +60,14 @@
     <div class="item-section-header">
       <span class="item-section-name">{sub.name}</span>
       <span class="item-section-weight">
-        {#if editingWeight === sub.id}
-          <span class="weight-edit-inline">
-            <!-- svelte-ignore a11y_autofocus -->
-            <input
-              type="number"
-              class="weight-input"
-              min="0"
-              max="100"
-              bind:value={editValue}
-              onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
-              onblur={() => commitEdit('sub', sub.id)}
-              autofocus
-            />%
-          </span>
-        {:else}
-          <button class="weight-clickable" onclick={() => startEdit(sub.id, sub.weight)}>
-            {sub.weight}%
-          </button>
-        {/if}
+        <InlineNumberEditor
+          value={sub.weight}
+          min={0}
+          max={100}
+          suffix="%"
+          variant="weight"
+          oncommit={(v) => evaluation.setSubCriterionWeight(sub.id, v)}
+        />
       </span>
       <div class="item-section-agg">
         <span class="agg-label">Aggregering:</span>
@@ -325,29 +280,14 @@
             {#each simpleSubs as sub}
               <tr class="row-sub">
                 <td class="cell-weight">
-                  {#if editingWeight === sub.id}
-                    <div class="weight-edit">
-                      <!-- svelte-ignore a11y_autofocus -->
-                      <input
-                        type="number"
-                        class="weight-input"
-                        min="0"
-                        max="100"
-                        bind:value={editValue}
-                        onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
-                        onblur={() => commitEdit('sub', sub.id)}
-                        autofocus
-                      /><span class="weight-pct-edit">%</span>
-                    </div>
-                  {:else}
-                    <button
-                      class="weight-display weight-btn"
-                      onclick={() => startEdit(sub.id, sub.weight)}
-                    >
-                      <span class="weight-num">{sub.weight}<span class="weight-pct">%</span></span
-                      >
-                    </button>
-                  {/if}
+                  <InlineNumberEditor
+                    value={sub.weight}
+                    min={0}
+                    max={100}
+                    suffix="%"
+                    variant="weight-column"
+                    oncommit={(v) => evaluation.setSubCriterionWeight(sub.id, v)}
+                  />
                 </td>
                 <td class="cell-criteria">{sub.name}</td>
                 {#each evaluation.data.suppliers as supplier}
@@ -368,30 +308,14 @@
             <!-- Sub-total row -->
             <tr class="row-total">
               <td class="cell-weight">
-                {#if editingWeight === criterion.id}
-                  <div class="weight-edit">
-                    <!-- svelte-ignore a11y_autofocus -->
-                    <input
-                      type="number"
-                      class="weight-input"
-                      min="0"
-                      max="100"
-                      bind:value={editValue}
-                      onkeydown={(e) => handleWeightKeydown(e, 'criterion', criterion.id)}
-                      onblur={() => commitEdit('criterion', criterion.id)}
-                      autofocus
-                    /><span class="weight-pct-edit">%</span>
-                  </div>
-                {:else}
-                  <button
-                    class="weight-display weight-btn"
-                    onclick={() => startEdit(criterion.id, criterion.weight)}
-                  >
-                    <span class="weight-num"
-                      >{criterion.weight}<span class="weight-pct">%</span></span
-                    >
-                  </button>
-                {/if}
+                <InlineNumberEditor
+                  value={criterion.weight}
+                  min={0}
+                  max={100}
+                  suffix="%"
+                  variant="weight-column"
+                  oncommit={(v) => evaluation.setCriterionWeight(criterion.id, v)}
+                />
               </td>
               <td class="cell-criteria cell-total-name">Samlet</td>
               {#each evaluation.data.suppliers as supplier}
@@ -419,32 +343,14 @@
                 <th class="th-sub-t">
                   <span class="th-sub-name">{sub.name}</span>
                   <span class="th-sub-weight">
-                    {#if editingWeight === sub.id}
-                      <span class="weight-edit-inline-t">
-                        <!-- svelte-ignore a11y_autofocus -->
-                        <input
-                          type="number"
-                          class="weight-input weight-input-t"
-                          min="0"
-                          max="100"
-                          bind:value={editValue}
-                          onkeydown={(e) => handleWeightKeydown(e, 'sub', sub.id)}
-                          onblur={() => commitEdit('sub', sub.id)}
-                          onclick={(e) => e.stopPropagation()}
-                          autofocus
-                        />%
-                      </span>
-                    {:else}
-                      <button
-                        class="weight-clickable-t"
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          startEdit(sub.id, sub.weight);
-                        }}
-                      >
-                        {sub.weight}%
-                      </button>
-                    {/if}
+                    <InlineNumberEditor
+                      value={sub.weight}
+                      min={0}
+                      max={100}
+                      suffix="%"
+                      variant="weight-transposed"
+                      oncommit={(v) => evaluation.setSubCriterionWeight(sub.id, v)}
+                    />
                   </span>
                 </th>
               {/each}
@@ -932,107 +838,6 @@
     border-left: 3px solid rgba(232, 168, 56, 0.15);
   }
 
-  .weight-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .weight-num {
-    font-family: var(--font-data);
-    font-size: 12px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-vekt-dim);
-  }
-
-  .weight-pct {
-    font-size: 9px;
-    font-weight: 400;
-    color: var(--color-ink-ghost);
-  }
-
-  .weight-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--spacing-1);
-    border-radius: var(--radius-sm);
-    transition: background 0.12s;
-  }
-
-  .weight-btn:hover {
-    background: var(--color-vekt-bg);
-  }
-  .weight-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
-  }
-
-  .weight-clickable {
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-vekt-dim);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-sm);
-    transition: background 0.12s;
-  }
-
-  .weight-clickable:hover {
-    background: var(--color-vekt-bg);
-  }
-  .weight-clickable:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
-  }
-
-  .weight-edit,
-  .weight-edit-inline {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-ghost);
-  }
-
-  .weight-input {
-    width: 36px;
-    padding: 2px 4px;
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-vekt);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-vekt-dim);
-    border-radius: var(--radius-sm);
-    text-align: center;
-    outline: none;
-    -moz-appearance: textfield;
-  }
-
-  .weight-input::-webkit-inner-spin-button,
-  .weight-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .weight-input:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 1px var(--color-vekt-bg-strong);
-  }
-
-  .weight-pct-edit {
-    font-family: var(--font-data);
-    font-size: 9px;
-    color: var(--color-ink-ghost);
-  }
-
   /* Criteria column */
   .cell-criteria {
     padding: var(--spacing-2) var(--spacing-3);
@@ -1128,38 +933,6 @@
   .th-total-t {
     text-align: center;
     font-weight: 700;
-  }
-
-  .weight-edit-inline-t {
-    font-family: var(--font-data);
-    font-size: 10px;
-    color: var(--color-vekt-dim);
-  }
-
-  .weight-input-t {
-    width: 32px;
-    font-size: 10px;
-  }
-
-  .weight-clickable-t {
-    font-family: var(--font-data);
-    font-size: 9px;
-    font-weight: 500;
-    color: var(--color-vekt-dim);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .weight-clickable-t:hover {
-    color: var(--color-vekt);
-  }
-
-  .weight-clickable-t:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
-    border-radius: var(--radius-sm);
   }
 
   .cell-supplier-name-t {
