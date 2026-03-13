@@ -209,10 +209,28 @@ function uid(prefix: string): string {
   return `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const LS_PREFIX = 'eval-';
+
 class EvaluationStore {
   data = $state<EvaluationData>(structuredClone(emptyData));
 
   activeMethod = $state<ActiveMethod>('poeng');
+
+  constructor() {
+    // Auto-save to localStorage whenever data or activeMethod changes.
+    // $effect.root() lets us use $effect outside component lifecycle.
+    $effect.root(() => {
+      $effect(() => {
+        const id = this.data.id;
+        if (!id || typeof localStorage === 'undefined') return;
+        const payload = JSON.stringify({
+          data: $state.snapshot(this.data),
+          activeMethod: this.activeMethod,
+        });
+        localStorage.setItem(LS_PREFIX + id, payload);
+      });
+    });
+  }
 
   /** Current matrix view: 'overview' or a criterion ID. */
   activeView = $state<string>('overview');
@@ -1000,6 +1018,22 @@ class EvaluationStore {
   /** Initialize from route data if the procurement has changed. Preserves existing work for the same procurement. */
   initializeIfNeeded(procId: number, proc: any, activities: any[], eforms: any | null) {
     if (this.data.id === String(procId)) return;
+
+    // Try to restore previously saved work for this procurement.
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(LS_PREFIX + procId);
+      if (saved) {
+        try {
+          const { data, activeMethod } = JSON.parse(saved);
+          this.initialize(data);
+          if (activeMethod) this.activeMethod = activeMethod;
+          return;
+        } catch {
+          // Corrupt entry — fall through to fresh init.
+          localStorage.removeItem(LS_PREFIX + procId);
+        }
+      }
+    }
 
     const suppliers = extractBidders(activities);
 
