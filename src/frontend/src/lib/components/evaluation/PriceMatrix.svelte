@@ -10,10 +10,10 @@
     if (!deductions) return '';
     const val = deductions[supplierId] ?? 0;
     const values = Object.values(deductions);
-    const min = Math.min(...values);
-    if (val === min) return 'fradrag-best';
     const max = Math.max(...values);
-    if (val === max) return 'fradrag-high';
+    if (val === max) return 'fradrag-best';
+    const min = Math.min(...values);
+    if (val === min) return 'fradrag-high';
     return 'fradrag-mid';
   }
 
@@ -29,10 +29,10 @@
   function groupFradragTier(criterionId: string, supplierId: string): string {
     const vals = evaluation.data.suppliers.map((s) => groupDeduction(criterionId, s.id));
     const val = groupDeduction(criterionId, supplierId);
-    const min = Math.min(...vals);
-    if (val === min) return 'fradrag-best';
     const max = Math.max(...vals);
-    if (val === max) return 'fradrag-high';
+    if (val === max) return 'fradrag-best';
+    const min = Math.min(...vals);
+    if (val === min) return 'fradrag-high';
     return 'fradrag-mid';
   }
 </script>
@@ -102,7 +102,7 @@
             {@const deduction = groupDeduction(criterion.id, supplier.id)}
             <td class="cell-pris {groupFradragTier(criterion.id, supplier.id)}">
               <span class="pris-value"
-                ><span class="pris-prefix">+</span>{formatNOK(deduction)}</span
+                ><span class="pris-prefix">−</span>{formatNOK(deduction)}</span
               >
             </td>
           {/each}
@@ -157,7 +157,7 @@
         {#each evaluation.data.suppliers as supplier}
           <td class="cell-pris fradrag-mid">
             <span class="pris-value"
-              ><span class="pris-prefix">+</span>{formatNOK(
+              ><span class="pris-prefix">−</span>{formatNOK(
                 evaluation.totalDeductions[supplier.id]
               )}</span
             >

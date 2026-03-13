@@ -376,7 +376,7 @@ class EvaluationStore {
         const maxDeduction = qb * (criterion.weight / tw);
         for (const supplier of this.data.suppliers) {
           const score = criterion.scores?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+          result[criterion.id][supplier.id] = maxDeduction * (score / 10);
         }
       } else if (mode === 'resource') {
         // Resource criteria: deduction based on aggregated resource score
@@ -384,7 +384,7 @@ class EvaluationStore {
         const maxDeduction = qb * (criterion.weight / tw);
         for (const supplier of this.data.suppliers) {
           const score = this.groupScores[criterion.id]?.[supplier.id] ?? 0;
-          result[criterion.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+          result[criterion.id][supplier.id] = maxDeduction * (score / 10);
         }
       } else {
         // Traditional: per-subcriterion deductions
@@ -396,7 +396,7 @@ class EvaluationStore {
           const maxDeduction = qb * (subEffectiveWeight(criterion.weight, sub.weight, subSum) / tw);
           for (const supplier of this.data.suppliers) {
             const score = this.itemScores[sub.id]?.[supplier.id] ?? sub.scores[supplier.id] ?? 0;
-            result[sub.id][supplier.id] = maxDeduction * ((10 - score) / 10);
+            result[sub.id][supplier.id] = maxDeduction * (score / 10);
           }
         }
       }
@@ -417,12 +417,12 @@ class EvaluationStore {
     return result;
   });
 
-  /** Evaluated price per supplier = offered price + deduction. Only includes suppliers with a price. */
+  /** Evaluated price per supplier = offered price − earned quality deductions. Only includes suppliers with a price. */
   evaluatedPrices = $derived.by(() => {
     const result: Record<string, number> = {};
     for (const supplier of this.data.suppliers) {
       if (supplier.price == null) continue;
-      result[supplier.id] = supplier.price + this.totalDeductions[supplier.id];
+      result[supplier.id] = supplier.price - this.totalDeductions[supplier.id];
     }
     return result;
   });
