@@ -1,157 +1,157 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-	/* ── Light theme (standard) ── */
+  /* ── Light theme (standard) ── */
 
-	/* Canvas & surfaces */
-	--color-canvas: #f4f5f8;
-	--color-felt: #ffffff;
-	--color-felt-raised: #ffffff;
-	--color-felt-hover: #eef0f5;
-	--color-felt-active: #e4e7ee;
+  /* Canvas & surfaces */
+  --color-canvas: #f4f5f8;
+  --color-felt: #ffffff;
+  --color-felt-raised: #ffffff;
+  --color-felt-hover: #eef0f5;
+  --color-felt-active: #e4e7ee;
 
-	/* Ink hierarchy */
-	--color-ink: #1a1d26;
-	--color-ink-secondary: #555b6e;
-	--color-ink-muted: #666c82;
-	--color-ink-ghost: #9ba1b4;
+  /* Ink hierarchy */
+  --color-ink: #1a1d26;
+  --color-ink-secondary: #555b6e;
+  --color-ink-muted: #666c82;
+  --color-ink-ghost: #9ba1b4;
 
-	/* Wire — borders */
-	--color-wire: rgba(0, 0, 0, 0.07);
-	--color-wire-strong: rgba(0, 0, 0, 0.13);
-	--color-wire-focus: rgba(153, 101, 16, 0.35);
+  /* Wire — borders */
+  --color-wire: rgba(0, 0, 0, 0.07);
+  --color-wire-strong: rgba(0, 0, 0, 0.13);
+  --color-wire-focus: rgba(153, 101, 16, 0.35);
 
-	/* Vekt — weight accent */
-	--color-vekt: #996510;
-	--color-vekt-dim: #7a5210;
-	--color-vekt-bg: rgba(153, 101, 16, 0.06);
-	--color-vekt-bg-strong: rgba(153, 101, 16, 0.10);
+  /* Vekt — weight accent */
+  --color-vekt: #996510;
+  --color-vekt-dim: #7a5210;
+  --color-vekt-bg: rgba(153, 101, 16, 0.06);
+  --color-vekt-bg-strong: rgba(153, 101, 16, 0.1);
 
-	/* Score semantics */
-	--color-score-high: #2d7a54;
-	--color-score-high-bg: rgba(45, 122, 84, 0.08);
-	--color-score-mid: #555b6e;
-	--color-score-low: #b04040;
-	--color-score-low-bg: rgba(176, 64, 64, 0.08);
+  /* Score semantics */
+  --color-score-high: #2d7a54;
+  --color-score-high-bg: rgba(45, 122, 84, 0.08);
+  --color-score-mid: #555b6e;
+  --color-score-low: #b04040;
+  --color-score-low-bg: rgba(176, 64, 64, 0.08);
 
-	/* Typography */
-	--font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-	--font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Typography */
+  --font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-	/* Spacing (4px grid) */
-	--spacing-1: 4px;
-	--spacing-2: 8px;
-	--spacing-3: 12px;
-	--spacing-4: 16px;
-	--spacing-5: 20px;
-	--spacing-6: 24px;
-	--spacing-8: 32px;
-	--spacing-10: 40px;
-	--spacing-12: 48px;
+  /* Spacing (4px grid) */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
 
-	/* Radius */
-	--radius-sm: 4px;
-	--radius-md: 6px;
-	--radius-lg: 8px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
-	/* Overlay */
-	--color-overlay: rgba(0, 0, 0, 0.4);
+  /* Overlay */
+  --color-overlay: rgba(0, 0, 0, 0.4);
 
-	/* Layout */
-	--header-height: 48px;
+  /* Layout */
+  --header-height: 48px;
 
-	/* Tipex editor overrides */
-	--color-tipex-bg: #ffffff;
-	--color-tipex-text: #1a1d26;
-	--color-tipex-toolbar-bg: #f4f5f8;
-	--color-tipex-toolbar-text: #555b6e;
-	--color-tipex-accent: #996510;
+  /* Tipex editor overrides */
+  --color-tipex-bg: #ffffff;
+  --color-tipex-text: #1a1d26;
+  --color-tipex-toolbar-bg: #f4f5f8;
+  --color-tipex-toolbar-text: #555b6e;
+  --color-tipex-accent: #996510;
 }
 
 /* ── Dark theme ── */
 .dark {
-	--color-canvas: #0c0e14;
-	--color-felt: #12151e;
-	--color-felt-raised: #181c28;
-	--color-felt-hover: #1e2233;
-	--color-felt-active: #242840;
+  --color-canvas: #0c0e14;
+  --color-felt: #12151e;
+  --color-felt-raised: #181c28;
+  --color-felt-hover: #1e2233;
+  --color-felt-active: #242840;
 
-	--color-ink: #e2e5ef;
-	--color-ink-secondary: #8890a4;
-	--color-ink-muted: #7b829b;
-	--color-ink-ghost: #5a6178;
+  --color-ink: #e2e5ef;
+  --color-ink-secondary: #8890a4;
+  --color-ink-muted: #7b829b;
+  --color-ink-ghost: #5a6178;
 
-	--color-wire: rgba(255, 255, 255, 0.06);
-	--color-wire-strong: rgba(255, 255, 255, 0.10);
-	--color-wire-focus: rgba(232, 168, 56, 0.35);
+  --color-wire: rgba(255, 255, 255, 0.06);
+  --color-wire-strong: rgba(255, 255, 255, 0.1);
+  --color-wire-focus: rgba(232, 168, 56, 0.35);
 
-	--color-vekt: #e8a838;
-	--color-vekt-dim: #c49030;
-	--color-vekt-bg: rgba(232, 168, 56, 0.08);
-	--color-vekt-bg-strong: rgba(232, 168, 56, 0.14);
+  --color-vekt: #e8a838;
+  --color-vekt-dim: #c49030;
+  --color-vekt-bg: rgba(232, 168, 56, 0.08);
+  --color-vekt-bg-strong: rgba(232, 168, 56, 0.14);
 
-	--color-score-high: #3d9a6e;
-	--color-score-high-bg: rgba(61, 154, 110, 0.10);
-	--color-score-mid: #8890a4;
-	--color-score-low: #c45858;
-	--color-score-low-bg: rgba(196, 88, 88, 0.10);
+  --color-score-high: #3d9a6e;
+  --color-score-high-bg: rgba(61, 154, 110, 0.1);
+  --color-score-mid: #8890a4;
+  --color-score-low: #c45858;
+  --color-score-low-bg: rgba(196, 88, 88, 0.1);
 
-	--color-overlay: rgba(0, 0, 0, 0.6);
+  --color-overlay: rgba(0, 0, 0, 0.6);
 
-	--color-tipex-bg: #0c0e14;
-	--color-tipex-text: #e2e5ef;
-	--color-tipex-toolbar-bg: #181c28;
-	--color-tipex-toolbar-text: #8890a4;
-	--color-tipex-accent: #e8a838;
+  --color-tipex-bg: #0c0e14;
+  --color-tipex-text: #e2e5ef;
+  --color-tipex-toolbar-bg: #181c28;
+  --color-tipex-toolbar-text: #8890a4;
+  --color-tipex-accent: #e8a838;
 }
 
 /* ── Reset ── */
 *,
 *::before,
 *::after {
-	box-sizing: border-box;
-	margin: 0;
-	padding: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-	font-family: var(--font-ui);
-	background: var(--color-canvas);
-	color: var(--color-ink);
-	line-height: 1.5;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	overflow-x: hidden;
+  font-family: var(--font-ui);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 /* ── Utility ── */
 .visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
 
 /* ── Node colors (hendelsestyper U/K/F/S/T/E/P) ── */
 :root {
-	--node-u: var(--color-ink-ghost);
-	--node-k: var(--color-ink-secondary);
-	--node-f: var(--color-vekt);
-	--node-s: var(--color-score-high);
-	--node-t: var(--color-vekt);
-	--node-e: var(--color-score-high);
-	--node-p: var(--color-ink);
+  --node-u: var(--color-ink-ghost);
+  --node-k: var(--color-ink-secondary);
+  --node-f: var(--color-vekt);
+  --node-s: var(--color-score-high);
+  --node-t: var(--color-vekt);
+  --node-e: var(--color-score-high);
+  --node-p: var(--color-ink);
 }
 
 /* ── Section label ── */
 .section-label {
-	font-family: var(--font-data);
-	font-size: 10px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--color-ink-muted);
-	margin-bottom: 12px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  margin-bottom: 12px;
 }

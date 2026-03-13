@@ -1,1398 +1,1528 @@
 <script lang="ts">
-	import { beforeNavigate } from '$app/navigation';
-	import { protokoll, type Avvisning } from '$lib/stores/protokoll.svelte';
-	import { formatDato, formatDatoTid } from '$lib/utils/format';
-	import SectionAccordion from '$lib/components/protokoll/SectionAccordion.svelte';
-	import InfoTable from '$lib/components/protokoll/InfoTable.svelte';
-	import SupplierList from '$lib/components/protokoll/SupplierList.svelte';
-	import CheckboxTextarea from '$lib/components/protokoll/CheckboxTextarea.svelte';
-	import AvvisningCard from '$lib/components/protokoll/AvvisningCard.svelte';
-	import PerSupplierCards from '$lib/components/protokoll/PerSupplierCards.svelte';
-	import DataQualityTable from '$lib/components/protokoll/DataQualityTable.svelte';
-	import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
-	import DateInput from '$lib/components/protokoll/DateInput.svelte';
-	import { tick } from 'svelte';
-	import { slide } from 'svelte/transition';
-	import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
-	import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
-
-	let { data } = $props();
-
-	// Auto-load from route data (proc + activities + eforms fetched by +page.ts)
-	if (data?.proc) {
-		protokoll.loadFromData(data.proc, data.activities ?? [], data.eforms ?? null);
-	}
-
-	// ── Navigation guard ──
-
-	let isDirty = $derived(Object.keys(protokoll.manual).length > 0);
-
-	beforeNavigate(({ cancel }) => {
-		if (isDirty && !confirm('Du har ulagrede endringer. Vil du forlate siden?')) {
-			cancel();
-		}
-	});
-
-	// ── Generate state ──
-
-	let generating = $state(false);
-	let generateError = $state<string | null>(null);
-
-	// ── Chapter grouping ──
-
-	interface ChapterGroup {
-		chapter: string;
-		sections: ResolvedSection[];
-	}
-
-	let chapters = $derived.by<ChapterGroup[]>(() => {
-		const groups: ChapterGroup[] = [];
-		let current: ChapterGroup | null = null;
-
-		for (const section of protokoll.visibleSections) {
-			if (!current || current.chapter !== section.chapter) {
-				current = { chapter: section.chapter, sections: [] };
-				groups.push(current);
-			}
-			current.sections.push(section);
-		}
-
-		return groups;
-	});
-
-	// ── Progress bar color ──
-
-	let progressColor = $derived(
-		protokoll.completeness.percent >= 80
-			? 'var(--color-score-high)'
-			: protokoll.completeness.percent >= 40
-				? 'var(--color-vekt)'
-				: 'var(--color-score-low)'
-	);
-
-	// ── Shared scroll helper ──
-
-	function scrollToSection(sectionId: string) {
-		tick().then(() => {
-			document.getElementById(`section-header-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		});
-	}
-
-	// ── Section nav popup ──
-
-	let navPopupOpen = $state(false);
-	let lastVisitedSectionId = $state<string | null>(null);
-
-	function handleNavJump(sectionId: string) {
-		if (!protokoll.isSectionOpen(sectionId)) {
-			protokoll.toggleSection(sectionId);
-		}
-		navPopupOpen = false;
-		lastVisitedSectionId = sectionId;
-		scrollToSection(sectionId);
-	}
-
-	function handleNextMissing() {
-		const id = protokoll.nextMissingSectionAfter(lastVisitedSectionId);
-		if (!id) return;
-		handleNavJump(id);
-	}
-
-	// ── Auto-save indicator ──
-
-	let showSaved = $state(false);
-
-	$effect(() => {
-		const ts = protokoll.lastSavedAt;
-		if (!ts) return;
-		showSaved = true;
-		const timer = setTimeout(() => { showSaved = false; }, 1500);
-		return () => clearTimeout(timer);
-	});
-
-	// ── scrollIntoView after section toggle ──
-
-	function handleSectionToggle(sectionId: string) {
-		const wasOpen = protokoll.isSectionOpen(sectionId);
-		protokoll.toggleSection(sectionId);
-		if (!wasOpen) {
-			lastVisitedSectionId = sectionId;
-			scrollToSection(sectionId);
-		}
-	}
-
-	// ── Vis/Lukk alle ──
-
-	let allOpen = $derived(protokoll.openCount === protokoll.visibleSections.length && protokoll.visibleSections.length > 0);
-
-	function handleToggleAll() {
-		if (allOpen) {
-			protokoll.closeAllSections();
-		} else {
-			protokoll.openAllSections();
-		}
-	}
-
-	function handleWindowClick() {
-		if (navPopupOpen) navPopupOpen = false;
-	}
-
-	// ── Generate docx ──
-
-	async function handleGenerate() {
-		generating = true;
-		generateError = null;
-
-		const blob = await protokoll.generateDocx();
-		if (blob) {
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `protokoll-${protokoll.procurement?.sequenceId ?? 'dokument'}.docx`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-		} else {
-			generateError = protokoll.error;
-		}
-
-		generating = false;
-	}
-
-	// ── Helpers ──
-
-	function stripHtml(text: string): string {
-		if (!text) return '';
-		return text
-			.replace(/<br\s*\/?>/gi, '\n')
-			.replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
-			.replace(/<[^>]+>/g, '')
-			.replace(/&nbsp;/g, ' ')
-			.replace(/&amp;/g, '&')
-			.replace(/&lt;/g, '<')
-			.replace(/&gt;/g, '>')
-			.replace(/&quot;/g, '"')
-			.replace(/&#39;/g, "'")
-			.replace(/[ \t]+/g, ' ')
-			.split('\n')
-			.map(l => l.trim())
-			.filter((l, i, arr) => l || (i > 0 && arr[i - 1]))
-			.join('\n')
-			.trim();
-	}
-
-	function getTimelineDate(proc: any, type: string): string | null {
-		if (!proc?.timeline) return null;
-		for (const entry of Object.values(proc.timeline) as any[]) {
-			if (entry?.type === type && entry?.date) {
-				return entry.date;
-			}
-		}
-		return null;
-	}
-
-	function getProcName(proc: any): string {
-		const raw = proc?.name || proc?.title || '';
-		return stripHtml(raw) || `Anskaffelse ${proc?.id ?? ''}`;
-	}
-
-	function getOrgName(activity: any): string {
-		const org = activity?.organization ?? activity?.supplier;
-		return org?.name ?? `Leverandør ${org?.id ?? '?'}`;
-	}
-
-	/** Build org-id → name lookup from all activities (for REJECT_PARTICIPATION fallback). */
-	function buildOrgLookup(): Map<string, string> {
-		const lookup = new Map<string, string>();
-		for (const a of protokoll.activities) {
-			const org = a.organization ?? a.supplier;
-			if (org?.id && org?.name) lookup.set(org.id, org.name);
-		}
-		return lookup;
-	}
-
-	function getOrgNameWithLookup(activity: any, lookup: Map<string, string>): string {
-		const org = activity?.organization ?? activity?.supplier;
-		if (org?.name) return org.name;
-		if (org?.id && lookup.has(org.id)) return lookup.get(org.id)!;
-		return `Leverandør ${org?.id ?? '?'}`;
-	}
-
-	function fmtCurrency(value: number | null | undefined, currency?: string): string | null {
-		if (value == null) return null;
-		return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
-	}
-
-	// ── Field rendering helpers ──
-
-	function getInfoRows(section: ResolvedSection): { label: string; value: any; mono?: boolean }[] {
-		const proc = protokoll.procurement;
-		if (!proc) return [];
-
-		switch (section.id) {
-			case 'generell-info': {
-				const procurer = proc.about_procurer ?? {};
-				const procurerStr = procurer.name
-					? (procurer.national_id ? `${procurer.name} (org.nr. ${procurer.national_id})` : procurer.name)
-					: proc.buyerName ?? proc.buyer?.name;
-
-				const name = stripHtml(proc.name ?? '');
-				const desc = stripHtml(proc.description ?? '').replace(/\s*\n\s*/g, ' ');
-				const descStr = name && desc && desc.toLowerCase() !== name.toLowerCase()
-					? `${name}. ${desc}` : (name || desc);
-
-				const durationMonths = proc.duration_months;
-				const duration = proc.duration;
-				const durationStr = durationMonths ? `${durationMonths} måneder` : duration ? String(duration) : null;
-
-				const seqId = proc.sequenceId ?? '';
-				const extId = proc.externalId;
-				const refStr = extId ? `${seqId} (ekstern ref: ${extId})` : seqId;
-
-				return [
-					{ label: 'Saksnummer', value: refStr, mono: true },
-					{ label: 'Oppdragsgiver', value: procurerStr },
-					{ label: 'Protokollfører', value: procurer.contact_person },
-					{ label: 'Beskrivelse', value: descStr },
-					{ label: 'Estimert verdi', value: fmtCurrency(proc.estimated_value, proc.currency), mono: true },
-					{ label: 'Kontraktens varighet', value: durationStr },
-					{ label: 'Tilbudsfrist', value: formatDateTime(getTimelineDate(proc, 'submission')) },
-				];
-			}
-			case 'mottak-tilbud':
-				return getSubmissionRows();
-			case 'prosedyre': {
-				const procedure = proc.procedure ?? '';
-				const procedureMap: Record<string, string> = {
-					'Open': 'Åpen anbudskonkurranse',
-					'Limited': 'Begrenset anbudskonkurranse',
-					'Competitive negotiated': 'Konkurranse med forhandling etter forutgående kunngjøring',
-					'Competitive dialogue': 'Konkurransepreget dialog',
-					'Innovation partnership': 'Innovasjonspartnerskap',
-					'Negotiated without publication': 'Konkurranse med forhandling uten forutgående kunngjøring',
-					'Direct award': 'Anskaffelse uten konkurranse',
-				};
-
-				const rows: { label: string; value: any; mono?: boolean }[] = [
-					{ label: 'Prosedyre', value: procedureMap[procedure] ?? procedure },
-				];
-
-				// Kontraktstype fra eForms
-				if (protokoll.eforms?.contract_nature) {
-					const natureLabels: Record<string, string> = { services: 'Tjeneste', supplies: 'Varer', works: 'Bygg og anlegg' };
-					rows.push({ label: 'Kontraktstype', value: natureLabels[protokoll.eforms.contract_nature] ?? protokoll.eforms.contract_nature });
-				}
-
-				// Kunngjøring
-				const kunngj = getKunngjoring();
-				if (kunngj) rows.push({ label: 'Kunngjøring', value: kunngj });
-
-				// Direct award justification
-				if (['Negotiated without publication', 'Direct award'].includes(procedure)) {
-					const code = proc.direct_award_justification_code ?? '';
-					const reason = proc.direct_award_justification_reason ?? '';
-					const justification = code && reason ? `Hjemmel: ${code}. ${reason}` : code || reason || null;
-					rows.push({ label: 'Hjemmel for direkteanskaffelse', value: justification });
-				}
-
-				rows.push({ label: 'Terskel', value: formatThreshold(proc.threshold) });
-				return rows;
-			}
-			case 'ettersending-avklaring':
-				return getConversationRows();
-			case 'tildelingskriterier':
-				if (protokoll.eforms?.award_criteria) {
-					return protokoll.eforms.award_criteria.map((c: any) => ({
-						label: c.name ?? c.description ?? 'Kriterium',
-						value: c.weight_percent != null ? `${c.weight_percent}%` : '—',
-						mono: true
-					}));
-				}
-				return [{ label: 'Tildelingskriterier', value: 'Ikke tilgjengelig fra eForms' }];
-			case 'valgt-tilbud': {
-				const totalValue = proc.contracts_total_value_amount;
-				const estimated = proc.estimated_value;
-				const currency = proc.currency ?? 'NOK';
-				let valueStr: string | null = null;
-				if (totalValue) valueStr = fmtCurrency(totalValue, currency);
-				else if (estimated) valueStr = `${fmtCurrency(estimated, currency)} (estimert verdi)`;
-
-				let awardDate = getTimelineDate(proc, 'award decision');
-				if (!awardDate) {
-					const awardAct = protokoll.activities.find((a: any) => a.action === 'AWARDING_PARTICIPANTS');
-					awardDate = awardAct?.date ?? null;
-				}
-
-				return [
-					{ label: 'Kontraktsverdi', value: valueStr ?? '—', mono: true },
-					{ label: 'Tildelingsbeslutning', value: formatDate(awardDate) },
-					{ label: 'Meddelelsesbrev sendt', value: proc.areAwardLettersSent ? 'Sendt (dato ikke tilgjengelig i API)' : 'Nei' },
-				];
-			}
-			case 'meddelelse-klagefrist':
-			case 'meddelelse-karens':
-				return [
-					{ label: 'Meddelelse sendt', value: proc.areAwardLettersSent ? 'Ja' : 'Nei' },
-				];
-			case 'rammeavtaler': {
-				const maxPart = proc.framework_agreement_maximum_participants ?? proc.frameworkAgreementMaximumParticipants;
-				const rows: { label: string; value: any; mono?: boolean }[] = [];
-				if (maxPart && Number(maxPart) === 1) {
-					rows.push({ label: 'Rammeavtale med én leverandør', value: 'Ja' });
-					rows.push({ label: 'Rammeavtale med flere leverandører', value: 'Nei' });
-				} else if (maxPart && Number(maxPart) > 1) {
-					rows.push({ label: 'Rammeavtale med én leverandør', value: 'Nei' });
-					rows.push({ label: 'Rammeavtale med flere leverandører', value: `Ja (maks ${maxPart} deltakere)` });
-				} else {
-					rows.push({ label: 'Rammeavtale', value: proc.framework_agreement_involved ? 'Ja' : '—' });
-				}
-				if (protokoll.eforms?.framework_max_value) {
-					rows.push({ label: 'Maksimal verdi', value: fmtCurrency(protokoll.eforms.framework_max_value, protokoll.eforms.currency), mono: true });
-				}
-				return rows;
-			}
-			case 'andre-opplysninger': {
-				const rows: { label: string; value: any; mono?: boolean }[] = [];
-				if (proc.isCancelled) {
-					rows.push({ label: 'Avlysning', value: proc.cancelingReason ? stripHtml(proc.cancelingReason) : '(ingen begrunnelse oppgitt)' });
-				} else {
-					rows.push({ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' });
-				}
-				return rows;
-			}
-			default:
-				return [];
-		}
-	}
-
-	/** Tidspunkt for mottak av tilbud — SUBMIT_BID activities with supplier + timestamp. */
-	function getSubmissionRows(): { label: string; value: any; mono?: boolean }[] {
-		const submissions = protokoll.activities.filter((a: any) => a.action === 'SUBMIT_BID');
-		if (!submissions.length) return [{ label: 'Mottak av tilbud', value: 'Ingen tilbud registrert' }];
-		return submissions.map((s: any) => ({
-			label: getOrgName(s),
-			value: formatDateTime(s.date),
-			mono: true
-		}));
-	}
-
-	/** Kunngjøring — Doffin/TED ref from activities. */
-	function getKunngjoring(): string | null {
-		const proc = protokoll.procurement;
-		const doffinActs = protokoll.activities.filter((a: any) => a.action === 'DOFFIN_NOTICE_STATUS_PUBLISHED');
-		const publishActs = protokoll.activities.filter((a: any) => a.action === 'PUBLISH_TO_DOFFIN');
-
-		let announcementDate = '';
-		let doffinRef = '';
-		let tedRef = '';
-
-		if (publishActs.length) announcementDate = formatDate(publishActs[0].date);
-		if (doffinActs.length) {
-			const desc = doffinActs[0].description ?? {};
-			const notice = desc.doffinNotice ?? {};
-			doffinRef = notice.ngoj ?? '';
-			tedRef = notice.publicationId ?? '';
-			if (!announcementDate) {
-				announcementDate = formatDate(notice.publicationDate ?? doffinActs[0].date);
-			}
-		}
-
-		if (announcementDate) {
-			const parts = [`Kunngjort ${announcementDate} på Doffin`];
-			if (doffinRef) parts.push(`ref. ${doffinRef} (NGOJ)`);
-			if (tedRef) parts.push(`TED ${tedRef}`);
-			return parts.join(', ');
-		}
-
-		const pubDate = proc?.publicationDate;
-		return pubDate ? `Kunngjort ${formatDate(pubDate)}` : null;
-	}
-
-	/** Ettersending/avklaring — post-deadline conversations. */
-	function getConversationRows(): { label: string; value: any; mono?: boolean }[] {
-		const proc = protokoll.procurement;
-		const submissionDate = getTimelineDate(proc, 'submission');
-		const conversations = protokoll.activities.filter((a: any) => a.action === 'CONVERSATION_MARKED_COMPLETED');
-		const orgLookup = buildOrgLookup();
-
-		if (!submissionDate || !conversations.length) {
-			return [{ label: 'Status', value: 'Ingen avklaringer registrert' }];
-		}
-
-		const deadline = new Date(submissionDate);
-		const postDeadline = conversations.filter((c: any) => {
-			try { return new Date(c.date) > deadline; } catch { return false; }
-		});
-
-		if (!postDeadline.length) {
-			return [{ label: 'Status', value: 'Ingen avklaringer etter tilbudsfrist (meldinger finnes, men alle er Q&A før frist)' }];
-		}
-
-		return postDeadline.map((c: any) => {
-			const name = getOrgNameWithLookup(c, orgLookup);
-			const title = c.description?.conversationTitle ?? '';
-			const how = title ? `Melding i KGV: «${title}»` : 'Melding i KGV';
-			return { label: name, value: `${formatDate(c.date)} — ${how}` };
-		});
-	}
-
-	function getSuppliers(section: ResolvedSection): { id: string; name: string }[] {
-		if (section.id === 'tilbud-vurdering') return getEvaluatedSuppliers();
-		return protokoll.suppliers;
-	}
-
-	/** Suppliers that have been evaluated (excludes rejected and withdrawn). */
-	function getEvaluatedSuppliers(): { id: string; name: string }[] {
-		const orgLookup = buildOrgLookup();
-		const rejected = new Set(
-			protokoll.activities
-				.filter((a: any) => a.action === 'REJECT_PARTICIPATION')
-				.map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
-		);
-		const withdrawn = new Set(
-			protokoll.activities
-				.filter((a: any) => a.action === 'WITHDRAW_PARTICIPATION')
-				.map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
-		);
-		const excluded = new Set([...rejected, ...withdrawn]);
-		return protokoll.suppliers.filter(s => !excluded.has(s.name.toLowerCase()));
-	}
-
-	function getRejectedSuppliers(): { id: string; name: string }[] {
-		const orgLookup = buildOrgLookup();
-		const seen = new Map<string, { id: string; name: string }>();
-		for (const a of protokoll.activities) {
-			if (a.action === 'REJECT_PARTICIPATION') {
-				const name = getOrgNameWithLookup(a, orgLookup);
-				const org = a.organization ?? a.supplier;
-				const key = String(org?.id ?? name);
-				if (!seen.has(key)) {
-					seen.set(key, { id: key, name });
-				}
-			}
-		}
-		return [...seen.values()];
-	}
-
-	const formatDate = formatDato;
-	const formatDateTime = formatDatoTid;
-
-	/** Add calendar days to an ISO date string and return new ISO date. */
-	function addDays(isoDate: string, days: number): string {
-		const dt = new Date(isoDate + 'T00:00:00');
-		dt.setDate(dt.getDate() + days);
-		return dt.toISOString().slice(0, 10);
-	}
-
-	function handleKarensShortcut() {
-		const meddelelse = protokoll.manual.meddelelseDato;
-		if (meddelelse) {
-			protokoll.setManualField('karensperiodeUtlop', addDays(meddelelse, 10));
-		}
-	}
-
-	function formatThreshold(t: string | null | undefined): string {
-		const map: Record<string, string> = {
-			over_eea_threshold_value: 'Over EØS-terskel',
-			below_eea_threshold_value: 'Under EØS-terskel',
-			national_threshold: 'Nasjonal terskel',
-			below_national_threshold: 'Under nasjonal terskel',
-		};
-		return t ? map[t] ?? t : '—';
-	}
+  import { beforeNavigate } from '$app/navigation';
+  import { protokoll, type Avvisning } from '$lib/stores/protokoll.svelte';
+  import { formatDato, formatDatoTid } from '$lib/utils/format';
+  import SectionAccordion from '$lib/components/protokoll/SectionAccordion.svelte';
+  import InfoTable from '$lib/components/protokoll/InfoTable.svelte';
+  import SupplierList from '$lib/components/protokoll/SupplierList.svelte';
+  import CheckboxTextarea from '$lib/components/protokoll/CheckboxTextarea.svelte';
+  import AvvisningCard from '$lib/components/protokoll/AvvisningCard.svelte';
+  import PerSupplierCards from '$lib/components/protokoll/PerSupplierCards.svelte';
+  import DataQualityTable from '$lib/components/protokoll/DataQualityTable.svelte';
+  import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
+  import DateInput from '$lib/components/protokoll/DateInput.svelte';
+  import { tick } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
+  import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
+
+  let { data } = $props();
+
+  // Auto-load from route data (proc + activities + eforms fetched by +page.ts)
+  if (data?.proc) {
+    protokoll.loadFromData(data.proc, data.activities ?? [], data.eforms ?? null);
+  }
+
+  // ── Navigation guard ──
+
+  let isDirty = $derived(Object.keys(protokoll.manual).length > 0);
+
+  beforeNavigate(({ cancel }) => {
+    if (isDirty && !confirm('Du har ulagrede endringer. Vil du forlate siden?')) {
+      cancel();
+    }
+  });
+
+  // ── Generate state ──
+
+  let generating = $state(false);
+  let generateError = $state<string | null>(null);
+
+  // ── Chapter grouping ──
+
+  interface ChapterGroup {
+    chapter: string;
+    sections: ResolvedSection[];
+  }
+
+  let chapters = $derived.by<ChapterGroup[]>(() => {
+    const groups: ChapterGroup[] = [];
+    let current: ChapterGroup | null = null;
+
+    for (const section of protokoll.visibleSections) {
+      if (!current || current.chapter !== section.chapter) {
+        current = { chapter: section.chapter, sections: [] };
+        groups.push(current);
+      }
+      current.sections.push(section);
+    }
+
+    return groups;
+  });
+
+  // ── Progress bar color ──
+
+  let progressColor = $derived(
+    protokoll.completeness.percent >= 80
+      ? 'var(--color-score-high)'
+      : protokoll.completeness.percent >= 40
+        ? 'var(--color-vekt)'
+        : 'var(--color-score-low)'
+  );
+
+  // ── Shared scroll helper ──
+
+  function scrollToSection(sectionId: string) {
+    tick().then(() => {
+      document
+        .getElementById(`section-header-${sectionId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  // ── Section nav popup ──
+
+  let navPopupOpen = $state(false);
+  let lastVisitedSectionId = $state<string | null>(null);
+
+  function handleNavJump(sectionId: string) {
+    if (!protokoll.isSectionOpen(sectionId)) {
+      protokoll.toggleSection(sectionId);
+    }
+    navPopupOpen = false;
+    lastVisitedSectionId = sectionId;
+    scrollToSection(sectionId);
+  }
+
+  function handleNextMissing() {
+    const id = protokoll.nextMissingSectionAfter(lastVisitedSectionId);
+    if (!id) return;
+    handleNavJump(id);
+  }
+
+  // ── Auto-save indicator ──
+
+  let showSaved = $state(false);
+
+  $effect(() => {
+    const ts = protokoll.lastSavedAt;
+    if (!ts) return;
+    showSaved = true;
+    const timer = setTimeout(() => {
+      showSaved = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+  });
+
+  // ── scrollIntoView after section toggle ──
+
+  function handleSectionToggle(sectionId: string) {
+    const wasOpen = protokoll.isSectionOpen(sectionId);
+    protokoll.toggleSection(sectionId);
+    if (!wasOpen) {
+      lastVisitedSectionId = sectionId;
+      scrollToSection(sectionId);
+    }
+  }
+
+  // ── Vis/Lukk alle ──
+
+  let allOpen = $derived(
+    protokoll.openCount === protokoll.visibleSections.length && protokoll.visibleSections.length > 0
+  );
+
+  function handleToggleAll() {
+    if (allOpen) {
+      protokoll.closeAllSections();
+    } else {
+      protokoll.openAllSections();
+    }
+  }
+
+  function handleWindowClick() {
+    if (navPopupOpen) navPopupOpen = false;
+  }
+
+  // ── Generate docx ──
+
+  async function handleGenerate() {
+    generating = true;
+    generateError = null;
+
+    const blob = await protokoll.generateDocx();
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `protokoll-${protokoll.procurement?.sequenceId ?? 'dokument'}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      generateError = protokoll.error;
+    }
+
+    generating = false;
+  }
+
+  // ── Helpers ──
+
+  function stripHtml(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ \t]+/g, ' ')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l, i, arr) => l || (i > 0 && arr[i - 1]))
+      .join('\n')
+      .trim();
+  }
+
+  function getTimelineDate(proc: any, type: string): string | null {
+    if (!proc?.timeline) return null;
+    for (const entry of Object.values(proc.timeline) as any[]) {
+      if (entry?.type === type && entry?.date) {
+        return entry.date;
+      }
+    }
+    return null;
+  }
+
+  function getProcName(proc: any): string {
+    const raw = proc?.name || proc?.title || '';
+    return stripHtml(raw) || `Anskaffelse ${proc?.id ?? ''}`;
+  }
+
+  function getOrgName(activity: any): string {
+    const org = activity?.organization ?? activity?.supplier;
+    return org?.name ?? `Leverandør ${org?.id ?? '?'}`;
+  }
+
+  /** Build org-id → name lookup from all activities (for REJECT_PARTICIPATION fallback). */
+  function buildOrgLookup(): Map<string, string> {
+    const lookup = new Map<string, string>();
+    for (const a of protokoll.activities) {
+      const org = a.organization ?? a.supplier;
+      if (org?.id && org?.name) lookup.set(org.id, org.name);
+    }
+    return lookup;
+  }
+
+  function getOrgNameWithLookup(activity: any, lookup: Map<string, string>): string {
+    const org = activity?.organization ?? activity?.supplier;
+    if (org?.name) return org.name;
+    if (org?.id && lookup.has(org.id)) return lookup.get(org.id)!;
+    return `Leverandør ${org?.id ?? '?'}`;
+  }
+
+  function fmtCurrency(value: number | null | undefined, currency?: string): string | null {
+    if (value == null) return null;
+    return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
+  }
+
+  // ── Field rendering helpers ──
+
+  function getInfoRows(section: ResolvedSection): { label: string; value: any; mono?: boolean }[] {
+    const proc = protokoll.procurement;
+    if (!proc) return [];
+
+    switch (section.id) {
+      case 'generell-info': {
+        const procurer = proc.about_procurer ?? {};
+        const procurerStr = procurer.name
+          ? procurer.national_id
+            ? `${procurer.name} (org.nr. ${procurer.national_id})`
+            : procurer.name
+          : (proc.buyerName ?? proc.buyer?.name);
+
+        const name = stripHtml(proc.name ?? '');
+        const desc = stripHtml(proc.description ?? '').replace(/\s*\n\s*/g, ' ');
+        const descStr =
+          name && desc && desc.toLowerCase() !== name.toLowerCase()
+            ? `${name}. ${desc}`
+            : name || desc;
+
+        const durationMonths = proc.duration_months;
+        const duration = proc.duration;
+        const durationStr = durationMonths
+          ? `${durationMonths} måneder`
+          : duration
+            ? String(duration)
+            : null;
+
+        const seqId = proc.sequenceId ?? '';
+        const extId = proc.externalId;
+        const refStr = extId ? `${seqId} (ekstern ref: ${extId})` : seqId;
+
+        return [
+          { label: 'Saksnummer', value: refStr, mono: true },
+          { label: 'Oppdragsgiver', value: procurerStr },
+          { label: 'Protokollfører', value: procurer.contact_person },
+          { label: 'Beskrivelse', value: descStr },
+          {
+            label: 'Estimert verdi',
+            value: fmtCurrency(proc.estimated_value, proc.currency),
+            mono: true,
+          },
+          { label: 'Kontraktens varighet', value: durationStr },
+          { label: 'Tilbudsfrist', value: formatDateTime(getTimelineDate(proc, 'submission')) },
+        ];
+      }
+      case 'mottak-tilbud':
+        return getSubmissionRows();
+      case 'prosedyre': {
+        const procedure = proc.procedure ?? '';
+        const procedureMap: Record<string, string> = {
+          Open: 'Åpen anbudskonkurranse',
+          Limited: 'Begrenset anbudskonkurranse',
+          'Competitive negotiated': 'Konkurranse med forhandling etter forutgående kunngjøring',
+          'Competitive dialogue': 'Konkurransepreget dialog',
+          'Innovation partnership': 'Innovasjonspartnerskap',
+          'Negotiated without publication':
+            'Konkurranse med forhandling uten forutgående kunngjøring',
+          'Direct award': 'Anskaffelse uten konkurranse',
+        };
+
+        const rows: { label: string; value: any; mono?: boolean }[] = [
+          { label: 'Prosedyre', value: procedureMap[procedure] ?? procedure },
+        ];
+
+        // Kontraktstype fra eForms
+        if (protokoll.eforms?.contract_nature) {
+          const natureLabels: Record<string, string> = {
+            services: 'Tjeneste',
+            supplies: 'Varer',
+            works: 'Bygg og anlegg',
+          };
+          rows.push({
+            label: 'Kontraktstype',
+            value:
+              natureLabels[protokoll.eforms.contract_nature] ?? protokoll.eforms.contract_nature,
+          });
+        }
+
+        // Kunngjøring
+        const kunngj = getKunngjoring();
+        if (kunngj) rows.push({ label: 'Kunngjøring', value: kunngj });
+
+        // Direct award justification
+        if (['Negotiated without publication', 'Direct award'].includes(procedure)) {
+          const code = proc.direct_award_justification_code ?? '';
+          const reason = proc.direct_award_justification_reason ?? '';
+          const justification =
+            code && reason ? `Hjemmel: ${code}. ${reason}` : code || reason || null;
+          rows.push({ label: 'Hjemmel for direkteanskaffelse', value: justification });
+        }
+
+        rows.push({ label: 'Terskel', value: formatThreshold(proc.threshold) });
+        return rows;
+      }
+      case 'ettersending-avklaring':
+        return getConversationRows();
+      case 'tildelingskriterier':
+        if (protokoll.eforms?.award_criteria) {
+          return protokoll.eforms.award_criteria.map((c: any) => ({
+            label: c.name ?? c.description ?? 'Kriterium',
+            value: c.weight_percent != null ? `${c.weight_percent}%` : '—',
+            mono: true,
+          }));
+        }
+        return [{ label: 'Tildelingskriterier', value: 'Ikke tilgjengelig fra eForms' }];
+      case 'valgt-tilbud': {
+        const totalValue = proc.contracts_total_value_amount;
+        const estimated = proc.estimated_value;
+        const currency = proc.currency ?? 'NOK';
+        let valueStr: string | null = null;
+        if (totalValue) valueStr = fmtCurrency(totalValue, currency);
+        else if (estimated) valueStr = `${fmtCurrency(estimated, currency)} (estimert verdi)`;
+
+        let awardDate = getTimelineDate(proc, 'award decision');
+        if (!awardDate) {
+          const awardAct = protokoll.activities.find(
+            (a: any) => a.action === 'AWARDING_PARTICIPANTS'
+          );
+          awardDate = awardAct?.date ?? null;
+        }
+
+        return [
+          { label: 'Kontraktsverdi', value: valueStr ?? '—', mono: true },
+          { label: 'Tildelingsbeslutning', value: formatDate(awardDate) },
+          {
+            label: 'Meddelelsesbrev sendt',
+            value: proc.areAwardLettersSent ? 'Sendt (dato ikke tilgjengelig i API)' : 'Nei',
+          },
+        ];
+      }
+      case 'meddelelse-klagefrist':
+      case 'meddelelse-karens':
+        return [{ label: 'Meddelelse sendt', value: proc.areAwardLettersSent ? 'Ja' : 'Nei' }];
+      case 'rammeavtaler': {
+        const maxPart =
+          proc.framework_agreement_maximum_participants ??
+          proc.frameworkAgreementMaximumParticipants;
+        const rows: { label: string; value: any; mono?: boolean }[] = [];
+        if (maxPart && Number(maxPart) === 1) {
+          rows.push({ label: 'Rammeavtale med én leverandør', value: 'Ja' });
+          rows.push({ label: 'Rammeavtale med flere leverandører', value: 'Nei' });
+        } else if (maxPart && Number(maxPart) > 1) {
+          rows.push({ label: 'Rammeavtale med én leverandør', value: 'Nei' });
+          rows.push({
+            label: 'Rammeavtale med flere leverandører',
+            value: `Ja (maks ${maxPart} deltakere)`,
+          });
+        } else {
+          rows.push({
+            label: 'Rammeavtale',
+            value: proc.framework_agreement_involved ? 'Ja' : '—',
+          });
+        }
+        if (protokoll.eforms?.framework_max_value) {
+          rows.push({
+            label: 'Maksimal verdi',
+            value: fmtCurrency(protokoll.eforms.framework_max_value, protokoll.eforms.currency),
+            mono: true,
+          });
+        }
+        return rows;
+      }
+      case 'andre-opplysninger': {
+        const rows: { label: string; value: any; mono?: boolean }[] = [];
+        if (proc.isCancelled) {
+          rows.push({
+            label: 'Avlysning',
+            value: proc.cancelingReason
+              ? stripHtml(proc.cancelingReason)
+              : '(ingen begrunnelse oppgitt)',
+          });
+        } else {
+          rows.push({ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' });
+        }
+        return rows;
+      }
+      default:
+        return [];
+    }
+  }
+
+  /** Tidspunkt for mottak av tilbud — SUBMIT_BID activities with supplier + timestamp. */
+  function getSubmissionRows(): { label: string; value: any; mono?: boolean }[] {
+    const submissions = protokoll.activities.filter((a: any) => a.action === 'SUBMIT_BID');
+    if (!submissions.length)
+      return [{ label: 'Mottak av tilbud', value: 'Ingen tilbud registrert' }];
+    return submissions.map((s: any) => ({
+      label: getOrgName(s),
+      value: formatDateTime(s.date),
+      mono: true,
+    }));
+  }
+
+  /** Kunngjøring — Doffin/TED ref from activities. */
+  function getKunngjoring(): string | null {
+    const proc = protokoll.procurement;
+    const doffinActs = protokoll.activities.filter(
+      (a: any) => a.action === 'DOFFIN_NOTICE_STATUS_PUBLISHED'
+    );
+    const publishActs = protokoll.activities.filter((a: any) => a.action === 'PUBLISH_TO_DOFFIN');
+
+    let announcementDate = '';
+    let doffinRef = '';
+    let tedRef = '';
+
+    if (publishActs.length) announcementDate = formatDate(publishActs[0].date);
+    if (doffinActs.length) {
+      const desc = doffinActs[0].description ?? {};
+      const notice = desc.doffinNotice ?? {};
+      doffinRef = notice.ngoj ?? '';
+      tedRef = notice.publicationId ?? '';
+      if (!announcementDate) {
+        announcementDate = formatDate(notice.publicationDate ?? doffinActs[0].date);
+      }
+    }
+
+    if (announcementDate) {
+      const parts = [`Kunngjort ${announcementDate} på Doffin`];
+      if (doffinRef) parts.push(`ref. ${doffinRef} (NGOJ)`);
+      if (tedRef) parts.push(`TED ${tedRef}`);
+      return parts.join(', ');
+    }
+
+    const pubDate = proc?.publicationDate;
+    return pubDate ? `Kunngjort ${formatDate(pubDate)}` : null;
+  }
+
+  /** Ettersending/avklaring — post-deadline conversations. */
+  function getConversationRows(): { label: string; value: any; mono?: boolean }[] {
+    const proc = protokoll.procurement;
+    const submissionDate = getTimelineDate(proc, 'submission');
+    const conversations = protokoll.activities.filter(
+      (a: any) => a.action === 'CONVERSATION_MARKED_COMPLETED'
+    );
+    const orgLookup = buildOrgLookup();
+
+    if (!submissionDate || !conversations.length) {
+      return [{ label: 'Status', value: 'Ingen avklaringer registrert' }];
+    }
+
+    const deadline = new Date(submissionDate);
+    const postDeadline = conversations.filter((c: any) => {
+      try {
+        return new Date(c.date) > deadline;
+      } catch {
+        return false;
+      }
+    });
+
+    if (!postDeadline.length) {
+      return [
+        {
+          label: 'Status',
+          value:
+            'Ingen avklaringer etter tilbudsfrist (meldinger finnes, men alle er Q&A før frist)',
+        },
+      ];
+    }
+
+    return postDeadline.map((c: any) => {
+      const name = getOrgNameWithLookup(c, orgLookup);
+      const title = c.description?.conversationTitle ?? '';
+      const how = title ? `Melding i KGV: «${title}»` : 'Melding i KGV';
+      return { label: name, value: `${formatDate(c.date)} — ${how}` };
+    });
+  }
+
+  function getSuppliers(section: ResolvedSection): { id: string; name: string }[] {
+    if (section.id === 'tilbud-vurdering') return getEvaluatedSuppliers();
+    return protokoll.suppliers;
+  }
+
+  /** Suppliers that have been evaluated (excludes rejected and withdrawn). */
+  function getEvaluatedSuppliers(): { id: string; name: string }[] {
+    const orgLookup = buildOrgLookup();
+    const rejected = new Set(
+      protokoll.activities
+        .filter((a: any) => a.action === 'REJECT_PARTICIPATION')
+        .map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
+    );
+    const withdrawn = new Set(
+      protokoll.activities
+        .filter((a: any) => a.action === 'WITHDRAW_PARTICIPATION')
+        .map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
+    );
+    const excluded = new Set([...rejected, ...withdrawn]);
+    return protokoll.suppliers.filter((s) => !excluded.has(s.name.toLowerCase()));
+  }
+
+  function getRejectedSuppliers(): { id: string; name: string }[] {
+    const orgLookup = buildOrgLookup();
+    const seen = new Map<string, { id: string; name: string }>();
+    for (const a of protokoll.activities) {
+      if (a.action === 'REJECT_PARTICIPATION') {
+        const name = getOrgNameWithLookup(a, orgLookup);
+        const org = a.organization ?? a.supplier;
+        const key = String(org?.id ?? name);
+        if (!seen.has(key)) {
+          seen.set(key, { id: key, name });
+        }
+      }
+    }
+    return [...seen.values()];
+  }
+
+  const formatDate = formatDato;
+  const formatDateTime = formatDatoTid;
+
+  /** Add calendar days to an ISO date string and return new ISO date. */
+  function addDays(isoDate: string, days: number): string {
+    const dt = new Date(isoDate + 'T00:00:00');
+    dt.setDate(dt.getDate() + days);
+    return dt.toISOString().slice(0, 10);
+  }
+
+  function handleKarensShortcut() {
+    const meddelelse = protokoll.manual.meddelelseDato;
+    if (meddelelse) {
+      protokoll.setManualField('karensperiodeUtlop', addDays(meddelelse, 10));
+    }
+  }
+
+  function formatThreshold(t: string | null | undefined): string {
+    const map: Record<string, string> = {
+      over_eea_threshold_value: 'Over EØS-terskel',
+      below_eea_threshold_value: 'Under EØS-terskel',
+      national_threshold: 'Nasjonal terskel',
+      below_national_threshold: 'Under nasjonal terskel',
+    };
+    return t ? (map[t] ?? t) : '—';
+  }
 </script>
 
 <svelte:window onclick={handleWindowClick} />
 
 <div class="protokoll-page">
-	{#if protokoll.loading}
-		<!-- ── Loading state ── -->
-		<header class="page-header">
-			<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-			<h1 class="page-title">Henter data...</h1>
-		</header>
-		<div class="progress-strip">
-			<div class="progress-bar-track">
-				<div class="progress-bar-fill progress-bar-loading"></div>
-			</div>
-			<span class="progress-text">Henter data fra Artifik...</span>
-		</div>
-		<div class="skeleton-sections">
-			{#each Array(6) as _, i}
-				<div class="skeleton-row">
-					<span class="skeleton-num">{i + 1}</span>
-					<div class="skeleton-line" style="width: {120 + Math.random() * 200}px"></div>
-				</div>
-			{/each}
-		</div>
+  {#if protokoll.loading}
+    <!-- ── Loading state ── -->
+    <header class="page-header">
+      <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
+      <h1 class="page-title">Henter data...</h1>
+    </header>
+    <div class="progress-strip">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill progress-bar-loading"></div>
+      </div>
+      <span class="progress-text">Henter data fra Artifik...</span>
+    </div>
+    <div class="skeleton-sections">
+      {#each Array(6) as _, i}
+        <div class="skeleton-row">
+          <span class="skeleton-num">{i + 1}</span>
+          <div class="skeleton-line" style="width: {120 + Math.random() * 200}px"></div>
+        </div>
+      {/each}
+    </div>
+  {:else if protokoll.error}
+    <!-- ── Error state ── -->
+    <header class="page-header">
+      <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
+      <h1 class="page-title">Feil ved lasting</h1>
+    </header>
+    <div class="error-banner">
+      <span class="error-icon">&#9888;</span>
+      <span>{protokoll.error}</span>
+      <button class="error-retry" onclick={() => protokoll.reset()}>Tilbake</button>
+    </div>
+  {:else}
+    <!-- ── Document view ── -->
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
+        <h1 class="page-title">{getProcName(protokoll.procurement)}</h1>
+        <div class="page-meta">
+          Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
+          &middot; {protokoll.delLabel}
+        </div>
+      </div>
+    </header>
 
-	{:else if protokoll.error}
-		<!-- ── Error state ── -->
-		<header class="page-header">
-			<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-			<h1 class="page-title">Feil ved lasting</h1>
-		</header>
-		<div class="error-banner">
-			<span class="error-icon">&#9888;</span>
-			<span>{protokoll.error}</span>
-			<button class="error-retry" onclick={() => protokoll.reset()}>Tilbake</button>
-		</div>
+    <!-- Progress strip -->
+    <div class="progress-strip">
+      <div
+        class="progress-bar-track"
+        role="progressbar"
+        aria-valuenow={protokoll.completeness.done}
+        aria-valuemin={0}
+        aria-valuemax={protokoll.completeness.total}
+        aria-label="Seksjoner fullført: {protokoll.completeness.done} av {protokoll.completeness
+          .total}"
+      >
+        <div
+          class="progress-bar-fill"
+          style="width: {protokoll.completeness.percent}%; background: {progressColor}"
+        ></div>
+      </div>
+      <div class="progress-info">
+        {#if protokoll.completeness.percent >= 100}
+          <span class="progress-complete">Fullstendig — klar for generering</span>
+        {:else}
+          <span class="progress-fraction"
+            >{protokoll.completeness.done} av {protokoll.completeness.total} seksjoner</span
+          >
+          {#if protokoll.completeness.missing.length > 0}
+            <span class="progress-missing"
+              >{protokoll.completeness.missing.length} mangler begrunnelse</span
+            >
+          {/if}
+        {/if}
+      </div>
+    </div>
 
-	{:else}
-		<!-- ── Document view ── -->
-		<header class="page-header">
-			<div class="page-header-left">
-				<div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-				<h1 class="page-title">{getProcName(protokoll.procurement)}</h1>
-				<div class="page-meta">
-					Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
-					&middot; {protokoll.delLabel}
-				</div>
-			</div>
-		</header>
+    {#if generateError}
+      <div class="error-banner error-banner-inline">
+        <span class="error-icon">&#9888;</span>
+        <span>{generateError}</span>
+      </div>
+    {/if}
 
-		<!-- Progress strip -->
-		<div class="progress-strip">
-			<div
-				class="progress-bar-track"
-				role="progressbar"
-				aria-valuenow={protokoll.completeness.done}
-				aria-valuemin={0}
-				aria-valuemax={protokoll.completeness.total}
-				aria-label="Seksjoner fullført: {protokoll.completeness.done} av {protokoll.completeness.total}"
-			>
-				<div
-					class="progress-bar-fill"
-					style="width: {protokoll.completeness.percent}%; background: {progressColor}"
-				></div>
-			</div>
-			<div class="progress-info">
-				{#if protokoll.completeness.percent >= 100}
-					<span class="progress-complete">Fullstendig — klar for generering</span>
-				{:else}
-					<span class="progress-fraction">{protokoll.completeness.done} av {protokoll.completeness.total} seksjoner</span>
-					{#if protokoll.completeness.missing.length > 0}
-						<span class="progress-missing">{protokoll.completeness.missing.length} mangler begrunnelse</span>
-					{/if}
-				{/if}
-			</div>
-		</div>
+    <!-- Sections -->
+    <div class="sections">
+      {#each chapters as group}
+        <div class="chapter-label" role="separator" aria-label={group.chapter}>
+          <span class="chapter-text">{group.chapter}</span>
+        </div>
 
-		{#if generateError}
-			<div class="error-banner error-banner-inline">
-				<span class="error-icon">&#9888;</span>
-				<span>{generateError}</span>
-			</div>
-		{/if}
+        {#each group.sections as section (section.id)}
+          <SectionAccordion
+            {section}
+            open={protokoll.isSectionOpen(section.id)}
+            ontoggle={() => handleSectionToggle(section.id)}
+          >
+            {#each section.fields as field (field.key)}
+              {@const fieldKey = field.key}
+              {#if field.type === 'info-table'}
+                <InfoTable rows={getInfoRows(section)} label={field.label} />
+              {:else if field.type === 'supplier-list'}
+                <SupplierList suppliers={getSuppliers(section)} label={field.label} />
+              {:else if field.type === 'textarea'}
+                <div class="manual-field">
+                  <div class="field-label">{field.label}</div>
+                  <textarea
+                    class="field-textarea"
+                    value={(protokoll.manual[fieldKey] as string) ?? ''}
+                    oninput={(e) =>
+                      protokoll.setManualField(fieldKey, (e.target as HTMLTextAreaElement).value)}
+                    placeholder="Skriv her..."
+                    rows="3"
+                  ></textarea>
+                  <div class="field-footer">
+                    <span class="char-count"
+                      >{((protokoll.manual[fieldKey] as string) ?? '').length} tegn</span
+                    >
+                    {#if field.hint}
+                      <span class="field-hint">{field.hint}</span>
+                    {/if}
+                  </div>
+                </div>
+              {:else if field.type === 'date'}
+                <div class="manual-field">
+                  <DateInput
+                    value={(protokoll.manual[fieldKey] as string) ?? ''}
+                    label={field.label}
+                    hint={field.hint}
+                    onchange={(v) => protokoll.setManualField(fieldKey, v)}
+                  />
+                  {#if fieldKey === 'karensperiodeUtlop'}
+                    <button
+                      class="shortcut-btn"
+                      disabled={!protokoll.manual.meddelelseDato}
+                      onclick={handleKarensShortcut}
+                      title={protokoll.manual.meddelelseDato
+                        ? `Beregn ${addDays(protokoll.manual.meddelelseDato, 10)} (meddelelse + 10 dager)`
+                        : 'Angi dato for meddelsesbrev først'}
+                    >
+                      +10 dager
+                    </button>
+                  {/if}
+                </div>
+              {:else if field.type === 'tipex'}
+                <div class="manual-field">
+                  <div class="field-label">{field.label}</div>
+                  <RichTextEditor
+                    body={(protokoll.manual[fieldKey] as string) || '<p></p>'}
+                    placeholder="Skriv her..."
+                    hint={field.hint ?? ''}
+                    onchange={(html) => protokoll.setManualField(fieldKey, html)}
+                  />
+                </div>
+              {:else if field.type === 'checkbox-textarea'}
+                <CheckboxTextarea
+                  checked={!!protokoll.manual[fieldKey]}
+                  begrunnelse={(protokoll.manual[`${fieldKey}Begrunnelse`] as string) ?? ''}
+                  label={field.label}
+                  foaRef={field.foaRef}
+                  hint={field.hint}
+                  onchange={(c, b) => {
+                    protokoll.setManualField(fieldKey, c);
+                    protokoll.setManualField(`${fieldKey}Begrunnelse`, b);
+                  }}
+                />
+              {:else if field.type === 'per-supplier-textarea'}
+                <PerSupplierCards
+                  suppliers={getSuppliers(section)}
+                  values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
+                  label={field.label}
+                  hint={field.hint}
+                  onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
+                />
+              {:else if field.type === 'per-supplier-tipex'}
+                <PerSupplierCards
+                  suppliers={getSuppliers(section)}
+                  values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
+                  useTipex={true}
+                  label={field.label}
+                  hint={field.hint}
+                  onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
+                />
+              {:else if field.type === 'avvisning-card'}
+                <AvvisningCard
+                  suppliers={getRejectedSuppliers()}
+                  avvisninger={(protokoll.manual[fieldKey] as Record<string, Avvisning>) ?? {}}
+                  isDel2={protokoll.isDel2}
+                  foaRef={field.foaRef}
+                  hint={field.hint}
+                  onchange={(sid, avv) => protokoll.setAvvisning(fieldKey, sid, avv)}
+                />
+              {:else if field.type === 'data-quality-table'}
+                <DataQualityTable sections={protokoll.sections} />
+              {/if}
+            {/each}
+          </SectionAccordion>
+        {/each}
+      {/each}
+    </div>
 
-		<!-- Sections -->
-		<div class="sections">
-			{#each chapters as group}
-				<div class="chapter-label" role="separator" aria-label={group.chapter}>
-					<span class="chapter-text">{group.chapter}</span>
-				</div>
+    <!-- Sticky footer -->
+    <div class="sticky-footer">
+      <div class="footer-inner">
+        <div class="footer-progress">
+          <div class="footer-bar-track">
+            <div
+              class="footer-bar-fill"
+              style="width: {protokoll.completeness.percent}%; background: {progressColor}"
+            ></div>
+          </div>
+          <span class="footer-fraction">
+            {#if protokoll.completeness.percent >= 100}
+              <span class="footer-complete">Klar</span>
+            {:else}
+              {protokoll.completeness.done}/{protokoll.completeness.total}
+            {/if}
+          </span>
+          {#if protokoll.completeness.missing.length > 0}
+            <span class="footer-missing"
+              >&middot; {protokoll.completeness.missing.length} mangler</span
+            >
+          {/if}
+        </div>
 
-				{#each group.sections as section (section.id)}
-					<SectionAccordion
-						{section}
-						open={protokoll.isSectionOpen(section.id)}
-						ontoggle={() => handleSectionToggle(section.id)}
-					>
-						{#each section.fields as field (field.key)}
-							{@const fieldKey = field.key}
-							{#if field.type === 'info-table'}
-								<InfoTable rows={getInfoRows(section)} label={field.label} />
+        {#if showSaved}
+          <span class="footer-saved">Lagret</span>
+        {/if}
 
-							{:else if field.type === 'supplier-list'}
-								<SupplierList suppliers={getSuppliers(section)} label={field.label} />
+        {#if protokoll.nextMissingSectionId}
+          <button
+            class="footer-action footer-action-stacked footer-action-responsive"
+            onclick={handleNextMissing}
+            title="Gå til neste ufullstendige seksjon"
+          >
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
+              ><path
+                d="M1 6h9M7 3l3 3-3 3"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+            >
+            <span>Neste</span>
+          </button>
+        {/if}
 
-							{:else if field.type === 'textarea'}
-								<div class="manual-field">
-									<div class="field-label">{field.label}</div>
-									<textarea
-										class="field-textarea"
-										value={(protokoll.manual[fieldKey] as string) ?? ''}
-										oninput={(e) => protokoll.setManualField(fieldKey, (e.target as HTMLTextAreaElement).value)}
-										placeholder="Skriv her..."
-										rows="3"
-									></textarea>
-									<div class="field-footer">
-										<span class="char-count">{((protokoll.manual[fieldKey] as string) ?? '').length} tegn</span>
-										{#if field.hint}
-											<span class="field-hint">{field.hint}</span>
-										{/if}
-									</div>
-								</div>
+        <button
+          class="footer-action footer-action-stacked footer-action-responsive"
+          onclick={handleToggleAll}
+        >
+          {#if allOpen}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+              ><path
+                d="M3 5.5L7 9.5L11 5.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+            >
+            <span>Lukk alle</span>
+          {:else}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+              ><path
+                d="M3 8.5L7 4.5L11 8.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+            >
+            <span>Vis alle</span>
+          {/if}
+        </button>
 
-							{:else if field.type === 'date'}
-								<div class="manual-field">
-									<DateInput
-										value={(protokoll.manual[fieldKey] as string) ?? ''}
-										label={field.label}
-										hint={field.hint}
-										onchange={(v) => protokoll.setManualField(fieldKey, v)}
-									/>
-									{#if fieldKey === 'karensperiodeUtlop'}
-										<button
-											class="shortcut-btn"
-											disabled={!protokoll.manual.meddelelseDato}
-											onclick={handleKarensShortcut}
-											title={protokoll.manual.meddelelseDato
-												? `Beregn ${addDays(protokoll.manual.meddelelseDato, 10)} (meddelelse + 10 dager)`
-												: 'Angi dato for meddelsesbrev først'}
-										>
-											+10 dager
-										</button>
-									{/if}
-								</div>
+        <!-- Section nav popup -->
+        <div class="footer-nav-wrap">
+          <button
+            class="footer-action footer-action-stacked"
+            onclick={(e) => {
+              e.stopPropagation();
+              navPopupOpen = !navPopupOpen;
+            }}
+            aria-expanded={navPopupOpen}
+            aria-controls="section-nav-popup"
+          >
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
+              ><path
+                d="M1 3h10M1 6h10M1 9h10"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /></svg
+            >
+            <span>Seksjoner</span>
+          </button>
+          {#if navPopupOpen}
+            <div
+              class="section-nav-popup"
+              id="section-nav-popup"
+              transition:slide={{ duration: 150 }}
+            >
+              {#each chapters as group}
+                <div class="nav-chapter">{group.chapter}</div>
+                {#each group.sections as section}
+                  <button class="nav-item" onclick={() => handleNavJump(section.id)}>
+                    <span class="nav-num">{section.sectionNumber}</span>
+                    <span class="nav-title">{section.title}</span>
+                    <span class="nav-badge nav-badge-{section.status}">
+                      {section.status === 'complete'
+                        ? '✓'
+                        : section.status === 'partial'
+                          ? '◐'
+                          : '○'}
+                    </span>
+                  </button>
+                {/each}
+              {/each}
+            </div>
+          {/if}
+        </div>
 
-							{:else if field.type === 'tipex'}
-								<div class="manual-field">
-									<div class="field-label">{field.label}</div>
-									<RichTextEditor
-										body={(protokoll.manual[fieldKey] as string) || '<p></p>'}
-										placeholder="Skriv her..."
-										hint={field.hint ?? ''}
-										onchange={(html) => protokoll.setManualField(fieldKey, html)}
-									/>
-								</div>
-
-							{:else if field.type === 'checkbox-textarea'}
-								<CheckboxTextarea
-									checked={!!protokoll.manual[fieldKey]}
-									begrunnelse={(protokoll.manual[`${fieldKey}Begrunnelse`] as string) ?? ''}
-									label={field.label}
-									foaRef={field.foaRef}
-									hint={field.hint}
-									onchange={(c, b) => {
-										protokoll.setManualField(fieldKey, c);
-										protokoll.setManualField(`${fieldKey}Begrunnelse`, b);
-									}}
-								/>
-
-							{:else if field.type === 'per-supplier-textarea'}
-								<PerSupplierCards
-									suppliers={getSuppliers(section)}
-									values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
-									label={field.label}
-									hint={field.hint}
-									onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
-								/>
-
-							{:else if field.type === 'per-supplier-tipex'}
-								<PerSupplierCards
-									suppliers={getSuppliers(section)}
-									values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
-									useTipex={true}
-									label={field.label}
-									hint={field.hint}
-									onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
-								/>
-
-							{:else if field.type === 'avvisning-card'}
-								<AvvisningCard
-									suppliers={getRejectedSuppliers()}
-									avvisninger={(protokoll.manual[fieldKey] as Record<string, Avvisning>) ?? {}}
-									isDel2={protokoll.isDel2}
-									foaRef={field.foaRef}
-									hint={field.hint}
-									onchange={(sid, avv) => protokoll.setAvvisning(fieldKey, sid, avv)}
-								/>
-
-							{:else if field.type === 'data-quality-table'}
-								<DataQualityTable sections={protokoll.sections} />
-							{/if}
-						{/each}
-					</SectionAccordion>
-				{/each}
-			{/each}
-		</div>
-
-		<!-- Sticky footer -->
-		<div class="sticky-footer">
-			<div class="footer-inner">
-				<div class="footer-progress">
-					<div class="footer-bar-track">
-						<div
-							class="footer-bar-fill"
-							style="width: {protokoll.completeness.percent}%; background: {progressColor}"
-						></div>
-					</div>
-					<span class="footer-fraction">
-						{#if protokoll.completeness.percent >= 100}
-							<span class="footer-complete">Klar</span>
-						{:else}
-							{protokoll.completeness.done}/{protokoll.completeness.total}
-						{/if}
-					</span>
-					{#if protokoll.completeness.missing.length > 0}
-						<span class="footer-missing">&middot; {protokoll.completeness.missing.length} mangler</span>
-					{/if}
-				</div>
-
-				{#if showSaved}
-					<span class="footer-saved">Lagret</span>
-				{/if}
-
-				{#if protokoll.nextMissingSectionId}
-					<button class="footer-action footer-action-stacked footer-action-responsive" onclick={handleNextMissing} title="Gå til neste ufullstendige seksjon">
-						<svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M1 6h9M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-						<span>Neste</span>
-					</button>
-				{/if}
-
-				<button class="footer-action footer-action-stacked footer-action-responsive" onclick={handleToggleAll}>
-					{#if allOpen}
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5.5L7 9.5L11 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-						<span>Lukk alle</span>
-					{:else}
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 8.5L7 4.5L11 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-						<span>Vis alle</span>
-					{/if}
-				</button>
-
-				<!-- Section nav popup -->
-				<div class="footer-nav-wrap">
-					<button
-						class="footer-action footer-action-stacked"
-						onclick={(e) => { e.stopPropagation(); navPopupOpen = !navPopupOpen; }}
-						aria-expanded={navPopupOpen}
-						aria-controls="section-nav-popup"
-					>
-						<svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-						<span>Seksjoner</span>
-					</button>
-					{#if navPopupOpen}
-						<div class="section-nav-popup" id="section-nav-popup" transition:slide={{ duration: 150 }}>
-							{#each chapters as group}
-								<div class="nav-chapter">{group.chapter}</div>
-								{#each group.sections as section}
-									<button
-										class="nav-item"
-										onclick={() => handleNavJump(section.id)}
-									>
-										<span class="nav-num">{section.sectionNumber}</span>
-										<span class="nav-title">{section.title}</span>
-										<span class="nav-badge nav-badge-{section.status}">
-											{section.status === 'complete' ? '✓' : section.status === 'partial' ? '◐' : '○'}
-										</span>
-									</button>
-								{/each}
-							{/each}
-						</div>
-					{/if}
-				</div>
-
-				<button
-					class="generate-btn generate-btn-footer"
-					class:generate-btn-draft={protokoll.completeness.percent < 100}
-					disabled={generating}
-					onclick={handleGenerate}
-				>
-					{#if generating}
-						<span class="spinner"></span> Genererer...
-					{:else if protokoll.completeness.percent < 100}
-						&#8595; Generer utkast
-					{:else}
-						&#8595; Generer .docx
-					{/if}
-				</button>
-			</div>
-		</div>
-	{/if}
+        <button
+          class="generate-btn generate-btn-footer"
+          class:generate-btn-draft={protokoll.completeness.percent < 100}
+          disabled={generating}
+          onclick={handleGenerate}
+        >
+          {#if generating}
+            <span class="spinner"></span> Genererer...
+          {:else if protokoll.completeness.percent < 100}
+            &#8595; Generer utkast
+          {:else}
+            &#8595; Generer .docx
+          {/if}
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
-	.protokoll-page {
-		max-width: 800px;
-		margin: 0 auto;
-		padding-bottom: 72px;
-	}
-
-	/* ── Page header ── */
-	.page-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--spacing-4);
-		margin-bottom: var(--spacing-6);
-	}
-
-	.page-header-left {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.page-label {
-		font-size: 11px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		color: var(--color-ink-ghost);
-		margin-bottom: var(--spacing-2);
-	}
-
-	.page-title {
-		font-size: 20px;
-		font-weight: 700;
-		letter-spacing: -0.025em;
-		color: var(--color-ink);
-		line-height: 1.2;
-	}
-
-	.page-meta {
-		font-size: 13px;
-		color: var(--color-ink-secondary);
-		margin-top: var(--spacing-1);
-	}
-
-	.page-meta-ref {
-		font-family: var(--font-data);
-	}
-
-	/* ── Generate button ── */
-	.generate-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		padding: var(--spacing-2) var(--spacing-4);
-		background: var(--color-vekt);
-		color: var(--color-canvas);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		font-family: var(--font-ui);
-		font-size: 13px;
-		font-weight: 600;
-		cursor: pointer;
-		transition: background-color 0.12s, filter 0.12s;
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-
-	.generate-btn:hover:not(:disabled) {
-		filter: brightness(1.1);
-	}
-
-	.generate-btn:disabled {
-		background: var(--color-felt-active);
-		color: var(--color-ink-muted);
-		cursor: not-allowed;
-	}
-
-	.generate-btn:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-vekt);
-	}
-
-	.generate-btn-draft {
-		background: var(--color-felt-active);
-		color: var(--color-ink-secondary);
-		border: 1px solid var(--color-wire);
-	}
-
-	.generate-btn-draft:hover:not(:disabled) {
-		background: var(--color-felt-hover);
-		filter: none;
-	}
-
-	.generate-btn-footer {
-		margin-left: auto;
-	}
-
-	.spinner {
-		display: inline-block;
-		width: 14px;
-		height: 14px;
-		border: 2px solid currentColor;
-		border-right-color: transparent;
-		border-radius: 50%;
-		animation: spin 0.6s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
-
-	/* ── Progress strip ── */
-	.progress-strip {
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-md);
-		padding: var(--spacing-3) var(--spacing-4);
-		margin-bottom: var(--spacing-6);
-	}
-
-	.progress-bar-track {
-		height: 4px;
-		background: var(--color-felt-active);
-		border-radius: 2px;
-		overflow: hidden;
-		margin-bottom: var(--spacing-2);
-	}
-
-	.progress-bar-fill {
-		height: 100%;
-		border-radius: 2px;
-		transition: width 0.3s ease-out;
-	}
-
-	.progress-bar-loading {
-		width: 30%;
-		background: var(--color-vekt);
-		animation: loading-pulse 1.5s ease-in-out infinite;
-	}
-
-	@keyframes loading-pulse {
-		0%, 100% { opacity: 0.4; }
-		50% { opacity: 1; }
-	}
-
-	.progress-info {
-		display: flex;
-		align-items: baseline;
-		gap: var(--spacing-3);
-	}
-
-	.progress-fraction {
-		font-family: var(--font-data);
-		font-size: 13px;
-		color: var(--color-ink);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.progress-missing {
-		font-size: 13px;
-		color: var(--color-ink-secondary);
-	}
-
-	.progress-complete {
-		font-size: 13px;
-		color: var(--color-score-high);
-		font-weight: 500;
-	}
-
-	.progress-text {
-		font-size: 13px;
-		color: var(--color-ink-muted);
-	}
-
-	/* ── Chapters ── */
-	.chapter-label {
-		display: flex;
-		align-items: center;
-		padding: var(--spacing-3) 0;
-		margin-top: var(--spacing-6);
-	}
-
-	.chapter-label:first-child {
-		margin-top: 0;
-	}
-
-	.chapter-label::before,
-	.chapter-label::after {
-		content: '';
-		flex: 1;
-		height: 1px;
-		background: var(--color-wire);
-	}
-
-	.chapter-text {
-		padding: 0 var(--spacing-4);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		color: var(--color-ink-ghost);
-		white-space: nowrap;
-	}
-
-	/* ── Sections ── */
-	.sections {
-		margin-bottom: var(--spacing-8);
-	}
-
-	/* ── Manual fields (textarea) ── */
-	.manual-field {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-2);
-	}
-
-	.field-label {
-		font-size: 11px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-ink-muted);
-	}
-
-	.field-textarea {
-		width: 100%;
-		min-height: 80px;
-		padding: var(--spacing-3);
-		background: var(--color-canvas);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		color: var(--color-ink);
-		font-family: var(--font-ui);
-		font-size: 13px;
-		line-height: 1.5;
-		outline: none;
-		resize: vertical;
-		transition: border-color 0.12s;
-		field-sizing: content;
-	}
-
-	.field-textarea:focus {
-		border-color: var(--color-wire-focus);
-	}
-
-	.field-textarea::placeholder {
-		color: var(--color-ink-ghost);
-		font-style: italic;
-	}
-
-	.field-footer {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--spacing-2);
-	}
-
-	.char-count {
-		font-family: var(--font-data);
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.field-hint {
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		text-align: right;
-	}
-
-	/* ── Shortcut button (karensperiode +10 dager) ── */
-	.shortcut-btn {
-		align-self: flex-start;
-		display: inline-flex;
-		align-items: center;
-		padding: var(--spacing-1) var(--spacing-3);
-		background: var(--color-felt);
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		color: var(--color-vekt);
-		font-family: var(--font-data);
-		font-size: 12px;
-		font-weight: 600;
-		cursor: pointer;
-		transition: background-color 0.12s, border-color 0.12s;
-	}
-
-	.shortcut-btn:hover:not(:disabled) {
-		background: var(--color-vekt-bg);
-		border-color: var(--color-vekt-bg-strong);
-	}
-
-	.shortcut-btn:disabled {
-		color: var(--color-ink-ghost);
-		cursor: not-allowed;
-	}
-
-	.shortcut-btn:focus-visible {
-		outline: none;
-		border-color: var(--color-wire-focus);
-	}
-
-	/* ── Skeleton ── */
-	.skeleton-sections {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-1);
-		margin-top: var(--spacing-4);
-	}
-
-	.skeleton-row {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-3);
-		padding: var(--spacing-3) var(--spacing-4);
-		border-bottom: 1px solid var(--color-wire);
-	}
-
-	.skeleton-num {
-		font-family: var(--font-data);
-		font-size: 13px;
-		color: var(--color-ink-ghost);
-		min-width: 20px;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.skeleton-line {
-		height: 12px;
-		background: var(--color-felt-active);
-		border-radius: var(--radius-sm);
-		animation: loading-pulse 1.5s ease-in-out infinite;
-	}
-
-	/* ── Error ── */
-	.error-banner {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-3);
-		padding: var(--spacing-3) var(--spacing-4);
-		background: var(--color-vekt-bg);
-		border-left: 3px solid var(--color-vekt);
-		border-radius: var(--radius-sm);
-		font-size: 13px;
-		color: var(--color-vekt-dim);
-		margin-bottom: var(--spacing-4);
-	}
-
-	.error-banner-inline {
-		margin-top: 0;
-	}
-
-	.error-icon {
-		flex-shrink: 0;
-	}
-
-	.error-retry {
-		margin-left: auto;
-		padding: var(--spacing-1) var(--spacing-3);
-		background: none;
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		color: var(--color-ink-secondary);
-		font-family: var(--font-ui);
-		font-size: 12px;
-		cursor: pointer;
-		transition: background-color 0.12s, color 0.12s;
-	}
-
-	.error-retry:hover {
-		background: var(--color-felt);
-		color: var(--color-ink);
-	}
-
-	.error-retry:focus-visible {
-		outline: none;
-		border-color: var(--color-wire-focus);
-	}
-
-	/* ── Sticky footer ── */
-	.sticky-footer {
-		position: sticky;
-		bottom: 0;
-		max-width: 800px;
-		margin: 0 auto;
-		background: var(--color-felt);
-		border-top: 1px solid var(--color-wire);
-		z-index: 20;
-	}
-
-	.footer-inner {
-		padding: var(--spacing-3) var(--spacing-4);
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-4);
-	}
-
-	.footer-progress {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-2);
-	}
-
-	.footer-bar-track {
-		width: 80px;
-		height: 3px;
-		background: var(--color-felt-active);
-		border-radius: 2px;
-		overflow: hidden;
-	}
-
-	.footer-bar-fill {
-		height: 100%;
-		border-radius: 2px;
-		transition: width 0.3s ease-out;
-	}
-
-	.footer-fraction {
-		font-family: var(--font-data);
-		font-size: 12px;
-		color: var(--color-ink);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.footer-complete {
-		color: var(--color-score-high);
-	}
-
-	.footer-missing {
-		font-size: 12px;
-		color: var(--color-ink-secondary);
-	}
-
-	.footer-saved {
-		font-size: 11px;
-		color: var(--color-ink-ghost);
-		font-family: var(--font-ui);
-		animation: fade-saved 1.5s ease-out forwards;
-	}
-
-	@keyframes fade-saved {
-		0%, 60% { opacity: 1; }
-		100% { opacity: 0; }
-	}
-
-	.footer-action {
-		padding: var(--spacing-1) var(--spacing-3);
-		background: none;
-		border: 1px solid var(--color-wire);
-		border-radius: var(--radius-sm);
-		color: var(--color-ink-secondary);
-		font-size: 12px;
-		font-family: var(--font-ui);
-		cursor: pointer;
-		transition: background-color 0.12s, color 0.12s;
-		white-space: nowrap;
-	}
-
-	.footer-action:hover {
-		background: var(--color-felt-hover);
-		color: var(--color-ink);
-	}
-
-	.footer-action:focus-visible {
-		outline: none;
-		border-color: var(--color-wire-focus);
-	}
-
-	.footer-action-stacked {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-1);
-	}
-
-	/* ── Section nav popup ── */
-	.footer-nav-wrap {
-		position: relative;
-	}
-
-	.section-nav-popup {
-		position: absolute;
-		bottom: calc(100% + var(--spacing-2));
-		right: 0;
-		width: 320px;
-		max-height: 480px;
-		overflow-y: auto;
-		overflow-x: hidden;
-		background: var(--color-felt-raised);
-		border: 1px solid var(--color-wire-strong);
-		border-radius: var(--radius-md);
-		padding: var(--spacing-2) 0;
-		z-index: 30;
-	}
-
-	.nav-chapter {
-		padding: var(--spacing-2) var(--spacing-4);
-		font-size: 10px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		color: var(--color-ink-ghost);
-	}
-
-	.nav-chapter:not(:first-child) {
-		margin-top: var(--spacing-1);
-		border-top: 1px solid var(--color-wire);
-		padding-top: var(--spacing-3);
-	}
-
-	.nav-item {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-2);
-		width: 100%;
-		padding: var(--spacing-1) var(--spacing-4);
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		font-family: var(--font-ui);
-		transition: background-color 0.08s;
-	}
-
-	.nav-item:hover {
-		background: var(--color-felt-hover);
-	}
-
-	.nav-item:focus-visible {
-		outline: none;
-		background: var(--color-felt-hover);
-	}
-
-	.nav-num {
-		font-family: var(--font-data);
-		font-size: 11px;
-		color: var(--color-ink-muted);
-		font-variant-numeric: tabular-nums;
-		min-width: 18px;
-		flex-shrink: 0;
-	}
-
-	.nav-title {
-		font-size: 12px;
-		color: var(--color-ink);
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.nav-badge {
-		font-size: 10px;
-		flex-shrink: 0;
-	}
-
-	.nav-badge-complete {
-		color: var(--color-score-high);
-	}
-
-	.nav-badge-partial {
-		color: var(--color-vekt);
-	}
-
-	.nav-badge-empty {
-		color: var(--color-score-low);
-	}
-
-	/* ── Responsive ── */
-	@media (max-width: 1024px) {
-		.section-nav-popup {
-			width: 280px;
-		}
-	}
-
-	@media (max-width: 768px) {
-		.page-header {
-			flex-direction: column;
-		}
-
-		.footer-bar-track,
-		.footer-fraction {
-			display: none;
-		}
-
-		.footer-missing {
-			display: none;
-		}
-
-		.footer-action-responsive {
-			display: none;
-		}
-	}
+  .protokoll-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding-bottom: 72px;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+    margin-bottom: var(--spacing-6);
+  }
+
+  .page-header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .page-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-ink-ghost);
+    margin-bottom: var(--spacing-2);
+  }
+
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--color-ink);
+    line-height: 1.2;
+  }
+
+  .page-meta {
+    font-size: 13px;
+    color: var(--color-ink-secondary);
+    margin-top: var(--spacing-1);
+  }
+
+  .page-meta-ref {
+    font-family: var(--font-data);
+  }
+
+  /* ── Generate button ── */
+  .generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-vekt);
+    color: var(--color-canvas);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 0.12s,
+      filter 0.12s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .generate-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  .generate-btn:disabled {
+    background: var(--color-felt-active);
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
+  }
+
+  .generate-btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-canvas),
+      0 0 0 4px var(--color-vekt);
+  }
+
+  .generate-btn-draft {
+    background: var(--color-felt-active);
+    color: var(--color-ink-secondary);
+    border: 1px solid var(--color-wire);
+  }
+
+  .generate-btn-draft:hover:not(:disabled) {
+    background: var(--color-felt-hover);
+    filter: none;
+  }
+
+  .generate-btn-footer {
+    margin-left: auto;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ── Progress strip ── */
+  .progress-strip {
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3) var(--spacing-4);
+    margin-bottom: var(--spacing-6);
+  }
+
+  .progress-bar-track {
+    height: 4px;
+    background: var(--color-felt-active);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-2);
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease-out;
+  }
+
+  .progress-bar-loading {
+    width: 30%;
+    background: var(--color-vekt);
+    animation: loading-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes loading-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .progress-info {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-3);
+  }
+
+  .progress-fraction {
+    font-family: var(--font-data);
+    font-size: 13px;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-missing {
+    font-size: 13px;
+    color: var(--color-ink-secondary);
+  }
+
+  .progress-complete {
+    font-size: 13px;
+    color: var(--color-score-high);
+    font-weight: 500;
+  }
+
+  .progress-text {
+    font-size: 13px;
+    color: var(--color-ink-muted);
+  }
+
+  /* ── Chapters ── */
+  .chapter-label {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-3) 0;
+    margin-top: var(--spacing-6);
+  }
+
+  .chapter-label:first-child {
+    margin-top: 0;
+  }
+
+  .chapter-label::before,
+  .chapter-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-wire);
+  }
+
+  .chapter-text {
+    padding: 0 var(--spacing-4);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-ink-ghost);
+    white-space: nowrap;
+  }
+
+  /* ── Sections ── */
+  .sections {
+    margin-bottom: var(--spacing-8);
+  }
+
+  /* ── Manual fields (textarea) ── */
+  .manual-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-muted);
+  }
+
+  .field-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: var(--spacing-3);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.5;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.12s;
+    field-sizing: content;
+  }
+
+  .field-textarea:focus {
+    border-color: var(--color-wire-focus);
+  }
+
+  .field-textarea::placeholder {
+    color: var(--color-ink-ghost);
+    font-style: italic;
+  }
+
+  .field-footer {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+  }
+
+  .char-count {
+    font-family: var(--font-data);
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    text-align: right;
+  }
+
+  /* ── Shortcut button (karensperiode +10 dager) ── */
+  .shortcut-btn {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-1) var(--spacing-3);
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-vekt);
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 0.12s,
+      border-color 0.12s;
+  }
+
+  .shortcut-btn:hover:not(:disabled) {
+    background: var(--color-vekt-bg);
+    border-color: var(--color-vekt-bg-strong);
+  }
+
+  .shortcut-btn:disabled {
+    color: var(--color-ink-ghost);
+    cursor: not-allowed;
+  }
+
+  .shortcut-btn:focus-visible {
+    outline: none;
+    border-color: var(--color-wire-focus);
+  }
+
+  /* ── Skeleton ── */
+  .skeleton-sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    margin-top: var(--spacing-4);
+  }
+
+  .skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--color-wire);
+  }
+
+  .skeleton-num {
+    font-family: var(--font-data);
+    font-size: 13px;
+    color: var(--color-ink-ghost);
+    min-width: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .skeleton-line {
+    height: 12px;
+    background: var(--color-felt-active);
+    border-radius: var(--radius-sm);
+    animation: loading-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* ── Error ── */
+  .error-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--color-vekt-bg);
+    border-left: 3px solid var(--color-vekt);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--color-vekt-dim);
+    margin-bottom: var(--spacing-4);
+  }
+
+  .error-banner-inline {
+    margin-top: 0;
+  }
+
+  .error-icon {
+    flex-shrink: 0;
+  }
+
+  .error-retry {
+    margin-left: auto;
+    padding: var(--spacing-1) var(--spacing-3);
+    background: none;
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-secondary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color 0.12s,
+      color 0.12s;
+  }
+
+  .error-retry:hover {
+    background: var(--color-felt);
+    color: var(--color-ink);
+  }
+
+  .error-retry:focus-visible {
+    outline: none;
+    border-color: var(--color-wire-focus);
+  }
+
+  /* ── Sticky footer ── */
+  .sticky-footer {
+    position: sticky;
+    bottom: 0;
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--color-felt);
+    border-top: 1px solid var(--color-wire);
+    z-index: 20;
+  }
+
+  .footer-inner {
+    padding: var(--spacing-3) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+  }
+
+  .footer-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .footer-bar-track {
+    width: 80px;
+    height: 3px;
+    background: var(--color-felt-active);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .footer-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease-out;
+  }
+
+  .footer-fraction {
+    font-family: var(--font-data);
+    font-size: 12px;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer-complete {
+    color: var(--color-score-high);
+  }
+
+  .footer-missing {
+    font-size: 12px;
+    color: var(--color-ink-secondary);
+  }
+
+  .footer-saved {
+    font-size: 11px;
+    color: var(--color-ink-ghost);
+    font-family: var(--font-ui);
+    animation: fade-saved 1.5s ease-out forwards;
+  }
+
+  @keyframes fade-saved {
+    0%,
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .footer-action {
+    padding: var(--spacing-1) var(--spacing-3);
+    background: none;
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-secondary);
+    font-size: 12px;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    transition:
+      background-color 0.12s,
+      color 0.12s;
+    white-space: nowrap;
+  }
+
+  .footer-action:hover {
+    background: var(--color-felt-hover);
+    color: var(--color-ink);
+  }
+
+  .footer-action:focus-visible {
+    outline: none;
+    border-color: var(--color-wire-focus);
+  }
+
+  .footer-action-stacked {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+
+  /* ── Section nav popup ── */
+  .footer-nav-wrap {
+    position: relative;
+  }
+
+  .section-nav-popup {
+    position: absolute;
+    bottom: calc(100% + var(--spacing-2));
+    right: 0;
+    width: 320px;
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--color-felt-raised);
+    border: 1px solid var(--color-wire-strong);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-2) 0;
+    z-index: 30;
+  }
+
+  .nav-chapter {
+    padding: var(--spacing-2) var(--spacing-4);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-ink-ghost);
+  }
+
+  .nav-chapter:not(:first-child) {
+    margin-top: var(--spacing-1);
+    border-top: 1px solid var(--color-wire);
+    padding-top: var(--spacing-3);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding: var(--spacing-1) var(--spacing-4);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font-ui);
+    transition: background-color 0.08s;
+  }
+
+  .nav-item:hover {
+    background: var(--color-felt-hover);
+  }
+
+  .nav-item:focus-visible {
+    outline: none;
+    background: var(--color-felt-hover);
+  }
+
+  .nav-num {
+    font-family: var(--font-data);
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 18px;
+    flex-shrink: 0;
+  }
+
+  .nav-title {
+    font-size: 12px;
+    color: var(--color-ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nav-badge {
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .nav-badge-complete {
+    color: var(--color-score-high);
+  }
+
+  .nav-badge-partial {
+    color: var(--color-vekt);
+  }
+
+  .nav-badge-empty {
+    color: var(--color-score-low);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .section-nav-popup {
+      width: 280px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-header {
+      flex-direction: column;
+    }
+
+    .footer-bar-track,
+    .footer-fraction {
+      display: none;
+    }
+
+    .footer-missing {
+      display: none;
+    }
+
+    .footer-action-responsive {
+      display: none;
+    }
+  }
 </style>
