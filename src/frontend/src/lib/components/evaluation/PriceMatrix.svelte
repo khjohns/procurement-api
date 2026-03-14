@@ -142,7 +142,7 @@
       <tr>
         <th class="th-weight">Maks fradrag</th>
         <th>Tildelingskriterier</th>
-        {#each evaluation.data.suppliers as supplier}
+        {#each evaluation.data.suppliers as supplier (supplier.id)}
           <th class="th-supplier">{supplier.name}</th>
         {/each}
       </tr>
@@ -192,7 +192,7 @@
 
           <td class="cell-criteria">{criterion.name}</td>
 
-          {#each evaluation.data.suppliers as supplier}
+          {#each evaluation.data.suppliers as supplier (supplier.id)}
             {#if isPriceType}
               <!-- Price criterion: editable supplier price -->
               <td
@@ -265,7 +265,7 @@
                 </div>
               </td>
               <td class="cell-criteria">{sub.name}</td>
-              {#each evaluation.data.suppliers as supplier}
+              {#each evaluation.data.suppliers as supplier (supplier.id)}
                 {@const deduction = evaluation.priceDeductions[sub.id]?.[supplier.id] ?? 0}
                 {@const key = `${sub.id}:${supplier.id}`}
                 {@render dedCell(key, deduction, fradragTier(sub.id, supplier.id), () =>
@@ -289,7 +289,7 @@
           </div>
         </td>
         <td class="cell-criteria">Sum kvalitetsfradrag</td>
-        {#each evaluation.data.suppliers as supplier}
+        {#each evaluation.data.suppliers as supplier (supplier.id)}
           <td class="cell-pris fradrag-mid">
             <span class="pris-value"
               ><span class="pris-prefix">−</span>{formatNOK(
@@ -303,7 +303,7 @@
       <tr class="row-pris-result">
         <td class="cell-weight"></td>
         <td class="cell-criteria">Evaluert pris</td>
-        {#each evaluation.data.suppliers as supplier}
+        {#each evaluation.data.suppliers as supplier (supplier.id)}
           {@const price = evaluation.evaluatedPrices[supplier.id]}
           <td class="cell-pris" class:fradrag-best={price === minEvaluatedPrice}>
             <span class="pris-value">{formatNOK(price)}</span>

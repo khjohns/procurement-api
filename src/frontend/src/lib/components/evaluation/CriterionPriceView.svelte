@@ -21,11 +21,12 @@
   }
 
   function commitPrice(supplierId: string) {
+    if (!editingPrice[supplierId]) return; // guard against double-fire (Enter + blur)
+    editingPrice[supplierId] = false;
     const raw = (editPriceVal[supplierId] ?? '').replace(/\s/g, '');
     const num = parseInt(raw, 10);
-    if (!isNaN(num) && num >= 0) evaluation.setSupplierPrice(supplierId, num);
-    else if (raw === '') evaluation.setSupplierPrice(supplierId, 0);
-    editingPrice[supplierId] = false;
+    if (!isNaN(num) && num > 0) evaluation.setSupplierPrice(supplierId, num);
+    else evaluation.setSupplierPrice(supplierId, undefined);
   }
 
   let minPrice = $derived.by(() => {
@@ -49,7 +50,7 @@
       <thead>
         <tr>
           <th></th>
-          {#each evaluation.data.suppliers as supplier}
+          {#each evaluation.data.suppliers as supplier (supplier.id)}
             <th class="th-supplier">{supplier.name}</th>
           {/each}
         </tr>
@@ -58,7 +59,7 @@
         <!-- Price input row -->
         <tr class="row-price">
           <td class="cell-label">Tilbudspris</td>
-          {#each evaluation.data.suppliers as supplier}
+          {#each evaluation.data.suppliers as supplier (supplier.id)}
             <td
               class="cell-price"
               class:cell-best={(supplier.price ?? 0) === minPrice && (supplier.price ?? 0) > 0}
@@ -71,7 +72,8 @@
                   inputmode="numeric"
                   class="price-input"
                   autofocus
-                  bind:value={editPriceVal[supplier.id]}
+                  value={editPriceVal[supplier.id]}
+                  oninput={(e) => (editPriceVal[supplier.id] = e.currentTarget.value)}
                   onblur={() => commitPrice(supplier.id)}
                   onkeydown={(e) => {
                     if (e.key === 'Enter') commitPrice(supplier.id);
@@ -94,7 +96,7 @@
         <!-- Unweighted score row (0-10) -->
         <tr class="row-score">
           <td class="cell-label">Poeng (uvektet)</td>
-          {#each evaluation.data.suppliers as supplier}
+          {#each evaluation.data.suppliers as supplier (supplier.id)}
             {@const score = evaluation.priceFormulaScores[supplier.id] ?? 0}
             {@const tier = scoreTier(score)}
             {@const isBest = score === bestFormulaScore && score > 0}
@@ -107,7 +109,7 @@
         <!-- Weighted score row -->
         <tr class="row-score row-total">
           <td class="cell-label cell-label-total">Poeng (vektet {criterion.weight}%)</td>
-          {#each evaluation.data.suppliers as supplier}
+          {#each evaluation.data.suppliers as supplier (supplier.id)}
             {@const rawScore = evaluation.priceFormulaScores[supplier.id] ?? 0}
             {@const weighted = rawScore * (criterion.weight / evaluation.totalWeight)}
             {@const tier = scoreTier(weighted)}
