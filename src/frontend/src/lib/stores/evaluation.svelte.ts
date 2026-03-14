@@ -493,7 +493,7 @@ class EvaluationStore {
   }
 
   /** Update supplier price. */
-  setSupplierPrice(supplierId: string, price: number) {
+  setSupplierPrice(supplierId: string, price: number | undefined) {
     const supplier = this.data.suppliers.find((s) => s.id === supplierId);
     if (supplier) supplier.price = price;
   }
