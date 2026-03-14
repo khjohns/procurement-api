@@ -575,6 +575,11 @@
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   }
 
+  .method-switch-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+  }
+
   .method-switch-btn.active {
     background: var(--color-vekt-bg);
     color: var(--color-vekt);
@@ -629,6 +634,7 @@
   .bv-weight {
     font-family: var(--font-data);
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
     color: var(--color-vekt-dim);
     text-align: right;
   }
@@ -704,6 +710,10 @@
     background: var(--color-felt-raised);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
+    transition: background 0.12s;
+  }
+  .robusthet-item:hover {
+    background: var(--color-felt-hover);
   }
   .robusthet-item.leader {
     border-color: var(--color-vekt-bg-strong);
@@ -736,7 +746,7 @@
     font-family: var(--font-data);
     font-size: 11px;
     color: var(--color-ink-muted);
-    width: 72px;
+    white-space: nowrap;
     text-align: right;
   }
 
@@ -803,6 +813,10 @@
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border-bottom: 1px solid var(--color-wire);
+    transition: background 0.12s;
+  }
+  .mk-row:hover {
+    background: var(--color-felt-hover);
   }
   .mk-row:last-child {
     border-bottom: none;

@@ -285,6 +285,10 @@
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border-bottom: 1px solid var(--color-wire);
+    transition: background 0.12s;
+  }
+  .ranking-row:hover {
+    background: var(--color-felt-hover);
   }
 
   .ranking-row:last-child {
