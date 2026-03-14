@@ -1,6 +1,7 @@
 <script lang="ts">
   import { evaluation, criterionMode } from '$lib/stores/evaluation.svelte';
   import CriterionLeafView from './CriterionLeafView.svelte';
+  import CriterionPriceView from './CriterionPriceView.svelte';
   import CriterionResourceView from './CriterionResourceView.svelte';
   import CriterionTraditionalView from './CriterionTraditionalView.svelte';
 
@@ -60,7 +61,9 @@
   <div class="nav-spacer"></div>
 </div>
 
-{#if mode === 'leaf'}
+{#if criterion.type === 'price'}
+  <CriterionPriceView {criterionId} />
+{:else if mode === 'leaf'}
   <CriterionLeafView {criterionId} />
 {:else if mode === 'resource'}
   <CriterionResourceView {criterionId} />

@@ -50,6 +50,25 @@
     editingMaxDed[criterionId] = false;
   }
 
+  // ── Supplier price editing (inline in matrix) ──
+  let editingPrice: Record<string, boolean> = $state({});
+  let editPriceVal: Record<string, string> = $state({});
+  let priceInputs: Record<string, HTMLInputElement | undefined> = {};
+
+  function startEditPrice(supplierId: string, currentPrice: number | undefined) {
+    editingPrice[supplierId] = true;
+    editPriceVal[supplierId] = currentPrice != null && currentPrice > 0 ? String(currentPrice) : '';
+    requestAnimationFrame(() => priceInputs[supplierId]?.select());
+  }
+
+  function commitPrice(supplierId: string) {
+    const raw = (editPriceVal[supplierId] ?? '').replace(/\s/g, '');
+    const num = parseInt(raw, 10);
+    if (!isNaN(num) && num >= 0) evaluation.setSupplierPrice(supplierId, num);
+    else if (raw === '') evaluation.setSupplierPrice(supplierId, 0);
+    editingPrice[supplierId] = false;
+  }
+
   // ── Deduction amount editing ──
   let editingDed: Record<string, boolean> = $state({});
   let editDedVal: Record<string, string> = $state({});
@@ -174,9 +193,33 @@
 
           {#each evaluation.data.suppliers as supplier}
             {#if isPriceType}
-              <!-- Price criterion: show supplier's price -->
-              <td class="cell-pris" class:fradrag-best={(supplier.price ?? 0) === minSupplierPrice}>
-                <span class="pris-value">{formatNOK(supplier.price ?? 0)}</span>
+              <!-- Price criterion: editable supplier price -->
+              <td class="cell-pris cell-price-edit" class:fradrag-best={(supplier.price ?? 0) === minSupplierPrice && (supplier.price ?? 0) > 0}>
+                {#if editingPrice[supplier.id]}
+                  <!-- svelte-ignore a11y_autofocus -->
+                  <input
+                    bind:this={priceInputs[supplier.id]}
+                    type="text"
+                    inputmode="numeric"
+                    class="price-input"
+                    autofocus
+                    value={editPriceVal[supplier.id]}
+                    oninput={(e) => (editPriceVal[supplier.id] = e.currentTarget.value)}
+                    onblur={() => commitPrice(supplier.id)}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') commitPrice(supplier.id);
+                      if (e.key === 'Escape') editingPrice[supplier.id] = false;
+                    }}
+                  />
+                {:else}
+                  <button
+                    class="price-btn {(supplier.price ?? 0) > 0 ? 'price-filled' : ''}"
+                    onclick={() => startEditPrice(supplier.id, supplier.price)}
+                    title="Klikk for å angi tilbudspris"
+                  >
+                    {(supplier.price ?? 0) > 0 ? formatNOK(supplier.price!) : 'Angi pris'}
+                  </button>
+                {/if}
               </td>
             {:else if isLeaf}
               <!-- Leaf quality criterion: directly enter deduction amount -->
@@ -527,6 +570,57 @@
   }
   .fradrag-high .ded-btn {
     color: var(--color-score-low);
+  }
+
+  /* ── Inline price editing ── */
+  .cell-price-edit {
+    padding: var(--spacing-1) var(--spacing-2);
+    vertical-align: middle;
+  }
+
+  .price-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    color: var(--color-ink-ghost);
+    background: none;
+    border: 1px dashed transparent;
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-1) var(--spacing-2);
+    cursor: pointer;
+    transition: all 0.1s;
+    line-height: 1;
+  }
+
+  .price-btn:hover {
+    border-color: var(--color-wire);
+    color: var(--color-ink-muted);
+    background: var(--color-felt-hover);
+  }
+
+  .price-btn.price-filled {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .price-input {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-1) var(--spacing-2);
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-wire-focus);
+    border-radius: var(--radius-sm);
+    outline: none;
   }
 
   .row-pris-sum td {

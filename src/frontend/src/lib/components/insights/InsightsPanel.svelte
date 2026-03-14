@@ -2,7 +2,6 @@
   import { evaluation, formatNOK, subEffectiveWeight } from '$lib/stores/evaluation.svelte';
   import SensitivityPane from './SensitivityPane.svelte';
 
-  let collapsed = $state(false);
   let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll' | 'sensitivitet'>(
     'betalingsvilje'
   );
@@ -51,28 +50,22 @@
   });
 </script>
 
-<div class="innsikt" class:collapsed>
-  <button class="innsikt-toggle" onclick={() => (collapsed = !collapsed)}>
-    <span class="innsikt-toggle-icon">&#9662;</span>
-    Innsikt
-  </button>
+<div class="innsikt">
+  <div class="innsikt-body">
+    <div class="innsikt-tabs">
+      {#each tabs as tab}
+        <button
+          class="innsikt-tab"
+          class:active={activeTab === tab.id}
+          onclick={() => (activeTab = tab.id)}
+        >
+          {tab.label}
+        </button>
+      {/each}
+    </div>
 
-  {#if !collapsed}
-    <div class="innsikt-body">
-      <div class="innsikt-tabs">
-        {#each tabs as tab}
-          <button
-            class="innsikt-tab"
-            class:active={activeTab === tab.id}
-            onclick={() => (activeTab = tab.id)}
-          >
-            {tab.label}
-          </button>
-        {/each}
-      </div>
-
-      <!-- Betalingsvilje -->
-      {#if activeTab === 'betalingsvilje'}
+    <!-- Betalingsvilje -->
+    {#if activeTab === 'betalingsvilje'}
         <div class="innsikt-pane">
           <table class="bv-table">
             <thead>
@@ -225,50 +218,18 @@
           <SensitivityPane />
         </div>
       {/if}
-    </div>
-  {/if}
+  </div>
 </div>
 
 <style>
   .innsikt {
-    margin-top: var(--spacing-8);
-  }
-
-  .innsikt-toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    padding: var(--spacing-2) 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: var(--font-ui);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-ink-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    transition: color 0.12s;
-  }
-
-  .innsikt-toggle:hover {
-    color: var(--color-ink-secondary);
-  }
-
-  .innsikt-toggle-icon {
-    font-size: 10px;
-    transition: transform 0.2s;
-  }
-
-  .collapsed .innsikt-toggle-icon {
-    transform: rotate(-90deg);
+    height: 100%;
   }
 
   .innsikt-body {
-    margin-top: var(--spacing-3);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-lg);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
@@ -304,6 +265,9 @@
 
   .innsikt-pane {
     padding: var(--spacing-5);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   /* ── Betalingsvilje ── */
