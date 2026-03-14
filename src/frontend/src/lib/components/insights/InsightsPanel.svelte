@@ -66,158 +66,158 @@
 
     <!-- Betalingsvilje -->
     {#if activeTab === 'betalingsvilje'}
-        <div class="innsikt-pane">
-          <table class="bv-table">
-            <thead>
-              <tr>
-                <th>Kriterium</th>
-                <th class="num">Vekt</th>
-                <th class="num">Implisitt maks fradrag</th>
-                <th class="num">Per poeng</th>
+      <div class="innsikt-pane">
+        <table class="bv-table">
+          <thead>
+            <tr>
+              <th>Kriterium</th>
+              <th class="num">Vekt</th>
+              <th class="num">Implisitt maks fradrag</th>
+              <th class="num">Per poeng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each evaluation.data.criteria as criterion}
+              {@const maxDeduction = qualityBudget * (criterion.weight / totalWeight)}
+              <tr class:bv-row-price={criterion.type === 'price'}>
+                <td class="bv-criterion">
+                  {criterion.name}
+                  {#if criterion.type === 'price'}
+                    <span class="bv-type-badge bv-type-price">Pris</span>
+                  {/if}
+                </td>
+                <td class="bv-weight">{criterion.weight} %</td>
+                <td class="bv-value">{formatNOK(maxDeduction)} kr</td>
+                <td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
               </tr>
-            </thead>
-            <tbody>
-              {#each evaluation.data.criteria as criterion}
-                {@const maxDeduction = qualityBudget * (criterion.weight / totalWeight)}
+              {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
+              {#each criterion.subcriteria as sub}
+                {@const subMaxDeduction =
+                  qualityBudget *
+                  (subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}
                 <tr class:bv-row-price={criterion.type === 'price'}>
-                  <td class="bv-criterion">
-                    {criterion.name}
-                    {#if criterion.type === 'price'}
-                      <span class="bv-type-badge bv-type-price">Pris</span>
-                    {/if}
-                  </td>
-                  <td class="bv-weight">{criterion.weight} %</td>
-                  <td class="bv-value">{formatNOK(maxDeduction)} kr</td>
-                  <td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
+                  <td class="bv-sub">{sub.name}</td>
+                  <td class="bv-weight">{sub.weight} %</td>
+                  <td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
+                  <td class="bv-per-point">{formatNOK(subMaxDeduction / 10)} kr</td>
                 </tr>
-                {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
-                {#each criterion.subcriteria as sub}
-                  {@const subMaxDeduction =
-                    qualityBudget *
-                    (subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}
-                  <tr class:bv-row-price={criterion.type === 'price'}>
-                    <td class="bv-sub">{sub.name}</td>
-                    <td class="bv-weight">{sub.weight} %</td>
-                    <td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
-                    <td class="bv-per-point">{formatNOK(subMaxDeduction / 10)} kr</td>
-                  </tr>
-                {/each}
               {/each}
-              <tr class="bv-total">
-                <td class="bv-criterion">Sum kvalitetskriterier</td>
-                <td class="bv-weight">{evaluation.data.qualityWeight} %</td>
-                <td class="bv-value">{formatNOK(qualityBudget)} kr</td>
-                <td class="bv-per-point"></td>
-              </tr>
-            </tbody>
-          </table>
+            {/each}
+            <tr class="bv-total">
+              <td class="bv-criterion">Sum kvalitetskriterier</td>
+              <td class="bv-weight">{evaluation.data.qualityWeight} %</td>
+              <td class="bv-value">{formatNOK(qualityBudget)} kr</td>
+              <td class="bv-per-point"></td>
+            </tr>
+          </tbody>
+        </table>
 
-          <div class="bv-summary">
-            Med kontraktsverdi <span class="bv-highlight"
-              >{formatNOK(evaluation.data.contractValue)} kr</span
-            >
-            og kvalitetsvekt <strong>{evaluation.data.qualityWeight} %</strong>, er total
-            betalingsvilje <span class="bv-highlight">{formatNOK(qualityBudget)} kr</span>.
+        <div class="bv-summary">
+          Med kontraktsverdi <span class="bv-highlight"
+            >{formatNOK(evaluation.data.contractValue)} kr</span
+          >
+          og kvalitetsvekt <strong>{evaluation.data.qualityWeight} %</strong>, er total
+          betalingsvilje <span class="bv-highlight">{formatNOK(qualityBudget)} kr</span>.
+        </div>
+      </div>
+    {/if}
+
+    <!-- Robusthet -->
+    {#if activeTab === 'robusthet'}
+      <div class="innsikt-pane">
+        <div class="robusthet-ranking">
+          {#each evaluation.ranking as entry}
+            <div class="robusthet-item" class:leader={entry.rank === 1}>
+              <span class="robusthet-rank">#{entry.rank}</span>
+              <span class="robusthet-name">{entry.supplier.name}</span>
+              <span class="robusthet-score">{entry.score.toFixed(1)}</span>
+              <span class="robusthet-margin">
+                {entry.rank === 1
+                  ? 'leder'
+                  : `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(1)}`}
+              </span>
+            </div>
+          {/each}
+        </div>
+
+        <div class="robusthet-insights">
+          <div class="robusthet-insight">
+            <div class="robusthet-insight-label">Margin</div>
+            <div class="robusthet-insight-text">
+              Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
+              <span class="mono">{evaluation.margin.toFixed(1)}</span> poeng. Resultatet er
+              <strong
+                >{evaluation.margin >= 0.5
+                  ? 'robust'
+                  : evaluation.margin >= 0.2
+                    ? 'moderat robust'
+                    : 'sårbart'}</strong
+              >.
+            </div>
+          </div>
+          <div class="robusthet-insight">
+            <div class="robusthet-insight-label">Størst påvirkning</div>
+            <div class="robusthet-insight-text">
+              <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst innvirkning
+              på resultatet.
+            </div>
+          </div>
+          <div class="robusthet-insight">
+            <div class="robusthet-insight-label">Størst spredning</div>
+            <div class="robusthet-insight-text">
+              <strong>{largestSpread.name}</strong> har størst spredning mellom leverandørene (fra
+              <span class="mono">{largestSpread.low.toFixed(1)}</span>
+              til <span class="mono">{largestSpread.high.toFixed(1)}</span>).
+              {largestSpread.leader} skiller seg positivt ut her.
+            </div>
           </div>
         </div>
-      {/if}
+      </div>
+    {/if}
 
-      <!-- Robusthet -->
-      {#if activeTab === 'robusthet'}
-        <div class="innsikt-pane">
-          <div class="robusthet-ranking">
+    <!-- Metodekontroll -->
+    {#if activeTab === 'metodekontroll'}
+      <div class="innsikt-pane">
+        <div class="mk-comparison">
+          <div class="mk-column">
+            <div class="mk-column-header">Poengmodell</div>
             {#each evaluation.ranking as entry}
-              <div class="robusthet-item" class:leader={entry.rank === 1}>
-                <span class="robusthet-rank">#{entry.rank}</span>
-                <span class="robusthet-name">{entry.supplier.name}</span>
-                <span class="robusthet-score">{entry.score.toFixed(1)}</span>
-                <span class="robusthet-margin">
-                  {entry.rank === 1
-                    ? 'leder'
-                    : `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(1)}`}
-                </span>
+              <div class="mk-row">
+                <span class="mk-rank">#{entry.rank}</span>
+                <span class="mk-name">{entry.supplier.name}</span>
+                <span class="mk-value">{entry.score.toFixed(1)}</span>
               </div>
             {/each}
           </div>
-
-          <div class="robusthet-insights">
-            <div class="robusthet-insight">
-              <div class="robusthet-insight-label">Margin</div>
-              <div class="robusthet-insight-text">
-                Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-                <span class="mono">{evaluation.margin.toFixed(1)}</span> poeng. Resultatet er
-                <strong
-                  >{evaluation.margin >= 0.5
-                    ? 'robust'
-                    : evaluation.margin >= 0.2
-                      ? 'moderat robust'
-                      : 'sårbart'}</strong
-                >.
+          <div class="mk-column">
+            <div class="mk-column-header">Prismodell</div>
+            {#each evaluation.priceRanking as entry}
+              <div class="mk-row">
+                <span class="mk-rank">#{entry.rank}</span>
+                <span class="mk-name">{entry.supplier.name}</span>
+                <span class="mk-value">{formatNOK(entry.evaluatedPrice)}</span>
               </div>
-            </div>
-            <div class="robusthet-insight">
-              <div class="robusthet-insight-label">Størst påvirkning</div>
-              <div class="robusthet-insight-text">
-                <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst innvirkning
-                på resultatet.
-              </div>
-            </div>
-            <div class="robusthet-insight">
-              <div class="robusthet-insight-label">Størst spredning</div>
-              <div class="robusthet-insight-text">
-                <strong>{largestSpread.name}</strong> har størst spredning mellom leverandørene (fra
-                <span class="mono">{largestSpread.low.toFixed(1)}</span>
-                til <span class="mono">{largestSpread.high.toFixed(1)}</span>).
-                {largestSpread.leader} skiller seg positivt ut her.
-              </div>
-            </div>
+            {/each}
           </div>
         </div>
-      {/if}
 
-      <!-- Metodekontroll -->
-      {#if activeTab === 'metodekontroll'}
-        <div class="innsikt-pane">
-          <div class="mk-comparison">
-            <div class="mk-column">
-              <div class="mk-column-header">Poengmodell</div>
-              {#each evaluation.ranking as entry}
-                <div class="mk-row">
-                  <span class="mk-rank">#{entry.rank}</span>
-                  <span class="mk-name">{entry.supplier.name}</span>
-                  <span class="mk-value">{entry.score.toFixed(1)}</span>
-                </div>
-              {/each}
-            </div>
-            <div class="mk-column">
-              <div class="mk-column-header">Prismodell</div>
-              {#each evaluation.priceRanking as entry}
-                <div class="mk-row">
-                  <span class="mk-rank">#{entry.rank}</span>
-                  <span class="mk-name">{entry.supplier.name}</span>
-                  <span class="mk-value">{formatNOK(entry.evaluatedPrice)}</span>
-                </div>
-              {/each}
-            </div>
-          </div>
-
-          <div class="mk-verdict" class:match={sameWinner}>
-            <span class="mk-verdict-icon">{sameWinner ? '✓' : '⚠'}</span>
-            <span class="mk-verdict-text">
-              {sameWinner
-                ? `Begge metoder gir samme vinner: ${evaluation.ranking[0]?.supplier.name}`
-                : 'Metodene gir ulik rangering — vurder årsaken'}
-            </span>
-          </div>
+        <div class="mk-verdict" class:match={sameWinner}>
+          <span class="mk-verdict-icon">{sameWinner ? '✓' : '⚠'}</span>
+          <span class="mk-verdict-text">
+            {sameWinner
+              ? `Begge metoder gir samme vinner: ${evaluation.ranking[0]?.supplier.name}`
+              : 'Metodene gir ulik rangering — vurder årsaken'}
+          </span>
         </div>
-      {/if}
+      </div>
+    {/if}
 
-      <!-- Sensitivitet -->
-      {#if activeTab === 'sensitivitet'}
-        <div class="innsikt-pane">
-          <SensitivityPane />
-        </div>
-      {/if}
+    <!-- Sensitivitet -->
+    {#if activeTab === 'sensitivitet'}
+      <div class="innsikt-pane">
+        <SensitivityPane />
+      </div>
+    {/if}
   </div>
 </div>
 

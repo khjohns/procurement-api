@@ -194,7 +194,11 @@
           {#each evaluation.data.suppliers as supplier}
             {#if isPriceType}
               <!-- Price criterion: editable supplier price -->
-              <td class="cell-pris cell-price-edit" class:fradrag-best={(supplier.price ?? 0) === minSupplierPrice && (supplier.price ?? 0) > 0}>
+              <td
+                class="cell-pris cell-price-edit"
+                class:fradrag-best={(supplier.price ?? 0) === minSupplierPrice &&
+                  (supplier.price ?? 0) > 0}
+              >
                 {#if editingPrice[supplier.id]}
                   <!-- svelte-ignore a11y_autofocus -->
                   <input

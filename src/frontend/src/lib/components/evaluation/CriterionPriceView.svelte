@@ -59,7 +59,10 @@
         <tr class="row-price">
           <td class="cell-label">Tilbudspris</td>
           {#each evaluation.data.suppliers as supplier}
-            <td class="cell-price" class:cell-best={(supplier.price ?? 0) === minPrice && (supplier.price ?? 0) > 0}>
+            <td
+              class="cell-price"
+              class:cell-best={(supplier.price ?? 0) === minPrice && (supplier.price ?? 0) > 0}
+            >
               {#if editingPrice[supplier.id]}
                 <!-- svelte-ignore a11y_autofocus -->
                 <input
@@ -121,8 +124,8 @@
   </div>
 
   <div class="formula-info">
-    Poeng = 10 − 10 × (P − P<sub>min</sub>) / P<sub>min</sub>, avgrenset til [0, 10].
-    Laveste pris gir 10 poeng.
+    Poeng = 10 − 10 × (P − P<sub>min</sub>) / P<sub>min</sub>, avgrenset til [0, 10]. Laveste pris
+    gir 10 poeng.
   </div>
 </div>
 
