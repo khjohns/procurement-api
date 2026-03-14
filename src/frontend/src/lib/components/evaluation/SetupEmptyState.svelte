@@ -2,6 +2,12 @@
   import { evaluation, DEFAULT_ITEM_LABEL, criterionMode } from '$lib/stores/evaluation.svelte';
   import PillToggle from './PillToggle.svelte';
 
+  interface Props {
+    onstart?: () => void;
+  }
+
+  let { onstart }: Props = $props();
+
   // ── Criteria CRUD (delegates to store) ──
 
   function addCriterion() {
@@ -355,6 +361,10 @@
         {/if}
       </div>
     </div>
+
+    {#if evaluation.isReady && onstart}
+      <button class="start-btn" onclick={onstart}>Start evaluering</button>
+    {/if}
   {/if}
 </div>
 
@@ -765,6 +775,26 @@
   .add-criterion-btn:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
+  }
+
+  /* Start evaluation button */
+  .start-btn {
+    margin-top: var(--spacing-4);
+    padding: var(--spacing-3) var(--spacing-5);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-canvas);
+    background: var(--color-vekt);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.12s;
+    align-self: flex-start;
+  }
+
+  .start-btn:hover {
+    opacity: 0.85;
   }
 
   /* Total row */

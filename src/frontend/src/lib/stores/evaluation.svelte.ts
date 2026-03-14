@@ -646,6 +646,12 @@ class EvaluationStore {
     this.data.priceWeight = price;
   }
 
+  /** Transition from setup to active evaluation. */
+  startEvaluation() {
+    this.data.status = 'Under evaluering';
+    this.setQualityPriceWeights(this.qualityWeightDerived, this.priceWeightDerived);
+  }
+
   addCriterion(name: string, type: 'quality' | 'price'): string {
     return structureMutations.addCriterion(this.data, name, type);
   }
