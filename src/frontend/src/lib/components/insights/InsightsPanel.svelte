@@ -569,8 +569,8 @@
   }
 
   .method-switch-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+    outline: 1.5px solid var(--color-wire-focus);
+    outline-offset: -1.5px;
   }
 
   .method-switch-btn:hover:not(.active) {
@@ -863,12 +863,12 @@
     gap: var(--spacing-3);
     font-size: 12px;
     background: var(--color-score-low-bg);
-    border: 1px solid var(--color-score-low-bg);
+    border: 1px solid var(--color-wire);
     color: var(--color-score-low);
   }
   .mk-verdict.match {
     background: var(--color-score-high-bg);
-    border: 1px solid var(--color-score-high-bg);
+    border: 1px solid var(--color-wire);
     color: var(--color-score-high);
   }
   .mk-verdict-icon {

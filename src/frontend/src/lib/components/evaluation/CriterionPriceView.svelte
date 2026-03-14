@@ -252,6 +252,11 @@
     background: var(--color-felt-hover);
   }
 
+  .price-btn:focus-visible {
+    outline: 1.5px solid var(--color-wire-focus);
+    outline-offset: -1.5px;
+  }
+
   .price-btn.price-filled {
     color: var(--color-ink);
     font-weight: 600;
