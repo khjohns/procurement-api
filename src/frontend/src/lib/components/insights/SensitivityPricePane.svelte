@@ -1,67 +1,85 @@
 <script lang="ts">
-  import { evaluation } from '$lib/stores/evaluation.svelte';
+  import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
   import { sensitivity } from '$lib/stores/sensitivity.svelte';
 
-  function tierClass(margin: number): string {
-    if (margin >= 0.5) return 'tier-stable';
-    if (margin >= 0.2) return 'tier-moderate';
-    return 'tier-vulnerable';
-  }
+  /** Recompute evaluated prices using the sensitivity store's simulated weights.
+   *  Weight changes affect max deductions (when not explicitly set),
+   *  which clamps the entered deductions, changing evaluated prices. */
+  let simulatedPriceData = $derived.by(() => {
+    const simWeightMap = new Map(sensitivity.simulatedWeights.map((w) => [w.id, w.weight]));
+    const simTotal = sensitivity.simulatedSum;
+    if (simTotal === 0)
+      return {
+        prices: {} as Record<string, number>,
+        ranking: [] as Array<{ id: string; name: string; price: number; rank: number }>,
+      };
+
+    const qb = evaluation.data.contractValue * (evaluation.data.qualityWeight / 100);
+
+    // Recalculate total deductions per supplier with simulated weights
+    const totalDed: Record<string, number> = {};
+    for (const supplier of evaluation.data.suppliers) {
+      totalDed[supplier.id] = 0;
+    }
+
+    for (const criterion of evaluation.data.criteria) {
+      if (criterion.type === 'price') continue;
+      const simWeight = simWeightMap.get(criterion.id) ?? criterion.weight;
+      const maxDed =
+        criterion.maxPriceDeduction ?? (simTotal > 0 ? qb * (simWeight / simTotal) : 0);
+
+      if (criterion.subcriteria.length === 0 || criterion.evaluationType === 'item') {
+        // Leaf/resource: direct deduction
+        for (const supplier of evaluation.data.suppliers) {
+          const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
+          totalDed[supplier.id] += Math.min(entered, maxDed);
+        }
+      } else {
+        // Traditional: sub-criterion deductions
+        const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
+        for (const sub of criterion.subcriteria) {
+          const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
+          for (const supplier of evaluation.data.suppliers) {
+            const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
+            totalDed[supplier.id] += Math.min(entered, subMaxDed);
+          }
+        }
+      }
+    }
+
+    const prices: Record<string, number> = {};
+    for (const supplier of evaluation.data.suppliers) {
+      if (supplier.price == null) continue;
+      prices[supplier.id] = supplier.price - totalDed[supplier.id];
+    }
+
+    const ranking = evaluation.data.suppliers
+      .filter((s) => s.price != null)
+      .map((s) => ({ id: s.id, name: s.name, price: prices[s.id] }))
+      .sort((a, b) => a.price - b.price)
+      .map((entry, i) => ({ ...entry, rank: i + 1 }));
+
+    return { prices, ranking };
+  });
+
+  let winnerChanged = $derived(
+    evaluation.priceRanking.length > 0 &&
+      simulatedPriceData.ranking.length > 0 &&
+      evaluation.priceRanking[0].supplier.id !== simulatedPriceData.ranking[0]?.id
+  );
+
+  let rankingChanged = $derived.by(() => {
+    if (evaluation.priceRanking.length !== simulatedPriceData.ranking.length) return true;
+    return evaluation.priceRanking.some(
+      (entry, i) => entry.supplier.id !== simulatedPriceData.ranking[i]?.id
+    );
+  });
 </script>
 
 <div class="sensitivity">
-  <!-- Vippepunkter -->
-  <div class="section">
-    <div class="section-header">Vippepunkter</div>
-
-    {#each sensitivity.pairAnalyses as pair}
-      <div class="pair-block">
-        <div class="pair-header">
-          <span class="pair-names">{pair.winnerName} &rarr; {pair.challengerName}</span>
-          <span class="pair-margin {tierClass(pair.totalMargin)}">
-            {pair.totalMargin.toFixed(1)} p margin
-          </span>
-        </div>
-
-        <div class="pair-tipping-points">
-          {#each pair.tippingPoints as tp}
-            {#if tp.type === 'score'}
-              <div class="tp-line">
-                <span class="tp-criterion">{tp.criterionName}:</span>
-                <span class="tp-value {tierClass(Math.abs(tp.delta))}">
-                  {tp.delta >= 0
-                    ? `\u2212${tp.delta.toFixed(1)}`
-                    : `+${Math.abs(tp.delta).toFixed(1)}`} poeng margin
-                </span>
-              </div>
-            {:else}
-              <div class="tp-line tp-weight">
-                <span class="tp-criterion">{tp.criterionName}:</span>
-                <span class="tp-value tier-vulnerable">
-                  {tp.criterionName} &gt; {Math.round(tp.delta)} % flipper rangering
-                </span>
-              </div>
-            {/if}
-          {/each}
-        </div>
-
-        {#if pair.stable}
-          <div class="pair-verdict stable">Stabil &mdash; krever endring i 2+ kriterier</div>
-        {/if}
-      </div>
-    {/each}
-
-    {#if sensitivity.pairAnalyses.length > 0}
-      <div class="robustness-summary">
-        Resultatet er <strong>{sensitivity.robustnessLabel}</strong>. Vekten p&aring; {sensitivity
-          .mostSensitive.criterionName} ({sensitivity.mostSensitive.weight} %) er den mest sensitive parameteren.
-      </div>
-    {/if}
-  </div>
-
   <!-- Simulator -->
   <div class="section">
-    <div class="section-header">Simulator</div>
+    <div class="section-header">Simulator — maks fradrag</div>
 
     <div class="simulator-sliders">
       {#each sensitivity.simulatedWeights as sw}
@@ -93,34 +111,35 @@
     <div class="ranking-comparison">
       <div class="ranking-col">
         <div class="ranking-col-header">Faktisk</div>
-        {#each evaluation.ranking as entry}
+        {#each evaluation.priceRanking as entry}
           <div class="ranking-row">
             <span class="ranking-rank">#{entry.rank}</span>
             <span class="ranking-name">{entry.supplier.name}</span>
-            <span class="ranking-score">{entry.score.toFixed(1)}</span>
+            <span class="ranking-score">{formatNOK(entry.evaluatedPrice)}</span>
           </div>
         {/each}
       </div>
       <div class="ranking-col">
         <div class="ranking-col-header">Simulert</div>
-        {#each sensitivity.simulatedRanking as entry, i}
-          {@const actualRank = evaluation.ranking.findIndex((r) => r.supplier.id === entry.id) + 1}
+        {#each simulatedPriceData.ranking as entry}
+          {@const actualRank =
+            evaluation.priceRanking.findIndex((r) => r.supplier.id === entry.id) + 1}
           {@const moved = actualRank !== entry.rank}
           <div class="ranking-row" class:ranking-moved={moved}>
             <span class="ranking-rank">#{entry.rank}</span>
             <span class="ranking-name">{entry.name}</span>
-            <span class="ranking-score">{entry.score.toFixed(1)}</span>
+            <span class="ranking-score">{formatNOK(entry.price)}</span>
           </div>
         {/each}
       </div>
     </div>
 
-    {#if sensitivity.winnerChanged}
+    {#if winnerChanged}
       <div class="ranking-alert">
-        Rangeringen endres! {sensitivity.simulatedRanking[0]?.name} g&aring;r forbi {evaluation
-          .ranking[0]?.supplier.name}.
+        Rangeringen endres! {simulatedPriceData.ranking[0]?.name} går forbi {evaluation
+          .priceRanking[0]?.supplier.name}.
       </div>
-    {:else if sensitivity.rankingChanged}
+    {:else if rankingChanged}
       <div class="ranking-alert ranking-alert-minor">Rangeringen endres (samme vinner).</div>
     {/if}
 
@@ -144,101 +163,6 @@
     letter-spacing: 0.08em;
     color: var(--color-ink-muted);
     margin-bottom: var(--spacing-3);
-  }
-
-  /* ── Vippepunkter ── */
-  .pair-block {
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-felt-raised);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--spacing-3);
-  }
-
-  .pair-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-2);
-  }
-
-  .pair-names {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-ink);
-  }
-
-  .pair-margin {
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .pair-tipping-points {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-1);
-  }
-
-  .tp-line {
-    display: flex;
-    gap: var(--spacing-2);
-    font-size: 12px;
-    padding-left: var(--spacing-3);
-    border-left: 3px solid var(--color-vekt);
-    line-height: 1.6;
-  }
-
-  .tp-weight {
-    border-left-color: var(--color-score-low);
-  }
-
-  .tp-criterion {
-    color: var(--color-ink-muted);
-  }
-
-  .tp-value {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-  }
-
-  .tier-stable {
-    color: var(--color-score-high);
-  }
-  .tier-moderate {
-    color: var(--color-vekt);
-  }
-  .tier-vulnerable {
-    color: var(--color-score-low);
-  }
-
-  .pair-verdict {
-    margin-top: var(--spacing-2);
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    font-style: italic;
-  }
-
-  .pair-verdict.stable {
-    color: var(--color-score-high);
-  }
-
-  .robustness-summary {
-    margin-top: var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-vekt-bg);
-    border-left: 3px solid var(--color-vekt);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    color: var(--color-ink-secondary);
-    line-height: 1.6;
-  }
-
-  .robustness-summary strong {
-    color: var(--color-ink);
-    font-weight: 600;
   }
 
   /* ── Simulator ── */

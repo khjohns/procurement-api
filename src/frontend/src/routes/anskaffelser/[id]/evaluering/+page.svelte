@@ -71,6 +71,14 @@
   /** Bottom drawer state. */
   let drawerOpen = $state(false);
 
+  /** Drawer height level: 0=30%, 1=50%, 2=85%. */
+  let drawerLevel = $state(1);
+  const drawerHeights = ['30%', '50%', '85%'];
+
+  function cycleDrawerLevel() {
+    drawerLevel = (drawerLevel + 1) % 3;
+  }
+
   /** Mobile panel state. */
   let mobilePanelOpen = $state(false);
 
@@ -125,13 +133,24 @@
       {/if}
     </div>
 
-    <!-- Bottom drawer for full insights -->
+    <!-- Bottom drawer for insights/analysis -->
     {#if drawerOpen}
-      <div class="insights-drawer">
+      <div class="insights-drawer" style="max-height: {drawerHeights[drawerLevel]}">
         <div class="drawer-handle">
-          <button class="drawer-close" onclick={() => (drawerOpen = false)}>
-            <span class="drawer-close-icon">&#9662;</span>
-            Lukk analyse
+          <div class="drawer-handle-left">
+            <button class="drawer-close" onclick={() => (drawerOpen = false)} title="Lukk">
+              <span class="drawer-close-icon">&#9662;</span>
+              Analyse
+            </button>
+          </div>
+          <button class="drawer-resize" onclick={cycleDrawerLevel} title="Endre størrelse">
+            {#if drawerLevel === 0}
+              &#9650;
+            {:else if drawerLevel === 2}
+              &#9660;
+            {:else}
+              &#11021;
+            {/if}
           </button>
         </div>
         <div class="drawer-content">
@@ -141,6 +160,18 @@
     {/if}
   </div>
 
+  <!-- Right panel expand button (visible when collapsed) -->
+  {#if panelCollapsed}
+    <button
+      class="panel-expand-btn"
+      onclick={() => (panelCollapsed = false)}
+      title="Vis panel"
+      aria-label="Vis panel"
+    >
+      ‹
+    </button>
+  {/if}
+
   <!-- Right panel (desktop) -->
   <aside
     class="eval-panel"
@@ -148,12 +179,12 @@
     class:panel-collapsed={panelCollapsed}
   >
     <button
-      class="panel-collapse-btn"
-      onclick={() => (panelCollapsed = !panelCollapsed)}
-      title={panelCollapsed ? 'Vis panel' : 'Skjul panel'}
-      aria-label={panelCollapsed ? 'Vis panel' : 'Skjul panel'}
+      class="panel-close-btn"
+      onclick={() => (panelCollapsed = true)}
+      title="Skjul panel"
+      aria-label="Skjul panel"
     >
-      <span class="panel-collapse-icon" class:panel-collapse-icon-flipped={panelCollapsed}>‹</span>
+      ×
     </button>
     {#if setupToggleOpen || evaluation.data.suppliers.length === 0}
       <!-- Setup panel (open by toggle or when no suppliers) -->
@@ -348,11 +379,21 @@
     max-height: 50%;
     display: flex;
     flex-direction: column;
+    transition: max-height 0.2s ease-out;
   }
 
   .drawer-handle {
     padding: var(--spacing-2) var(--spacing-3);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .drawer-handle-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
   }
 
   .drawer-close {
@@ -386,6 +427,27 @@
     font-size: 10px;
   }
 
+  .drawer-resize {
+    font-size: 10px;
+    color: var(--color-ink-ghost);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    transition: all 0.12s;
+  }
+
+  .drawer-resize:hover {
+    color: var(--color-ink-muted);
+    background: var(--color-felt-hover);
+  }
+
+  .drawer-resize:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+  }
+
   .drawer-content {
     flex: 1;
     min-height: 0;
@@ -399,55 +461,87 @@
     overflow-y: auto;
     border-left: 1px solid var(--color-wire);
     padding: var(--spacing-4);
-    padding-left: calc(var(--spacing-4) + 16px);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-5);
-    transition: width 0.2s ease-out;
+    transition:
+      width 0.2s ease-out,
+      padding 0.2s ease-out,
+      border-width 0.2s ease-out;
     position: relative;
   }
 
   .eval-panel.panel-collapsed {
-    width: 24px;
-    overflow: hidden;
+    width: 0;
     padding: 0;
+    border-left-width: 0;
+    overflow: hidden;
   }
 
-  /* ── Panel collapse button ── */
-  .panel-collapse-btn {
+  /* ── Panel close button (inside panel) ── */
+  .panel-close-btn {
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 16px;
+    top: var(--spacing-2);
+    right: var(--spacing-2);
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
-    border-right: 1px solid var(--color-wire);
     cursor: pointer;
     color: var(--color-ink-ghost);
+    font-size: 14px;
+    border-radius: var(--radius-sm);
     transition:
       color 0.12s,
       background 0.12s;
     z-index: 1;
   }
 
-  .panel-collapse-btn:hover {
+  .panel-close-btn:hover {
     color: var(--color-ink-muted);
     background: var(--color-felt-hover);
   }
 
-  .panel-collapse-icon {
-    font-size: 14px;
-    line-height: 1;
-    display: block;
-    transition: transform 0.2s;
+  .panel-close-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
   }
 
-  .panel-collapse-icon-flipped {
-    transform: rotate(180deg);
+  /* ── Panel expand button (floating, visible when collapsed) ── */
+  .panel-expand-btn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    cursor: pointer;
+    color: var(--color-ink-ghost);
+    font-size: 12px;
+    z-index: 10;
+    transition:
+      color 0.12s,
+      background 0.12s;
+  }
+
+  .panel-expand-btn:hover {
+    color: var(--color-ink-muted);
+    background: var(--color-felt-hover);
+  }
+
+  .panel-expand-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
   }
 
   /* ── Panel sections ── */
@@ -730,31 +824,6 @@
     background: var(--color-vekt-bg);
   }
 
-  .setup-toggle-close {
-    padding: var(--spacing-2) var(--spacing-3);
-    font-family: var(--font-ui);
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-ink-muted);
-    background: none;
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-
-  .setup-toggle-close:hover {
-    color: var(--color-ink);
-    border-color: var(--color-wire-strong);
-  }
-
-  .setup-toggle-close:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 1.5px var(--color-wire-focus);
-  }
-
   /* ── Mobile panel toggle ── */
   .mobile-panel-toggle {
     display: none;
@@ -765,7 +834,8 @@
   }
 
   @media (max-width: 1023px) {
-    .panel-collapse-btn {
+    .panel-close-btn,
+    .panel-expand-btn {
       display: none;
     }
 
@@ -780,11 +850,14 @@
       transform: translateX(100%);
       transition: transform 0.2s ease-out;
       padding-left: var(--spacing-4);
+      border-left-width: 1px;
     }
 
     .eval-panel.panel-collapsed {
       width: 320px;
+      padding: var(--spacing-4);
       overflow-y: auto;
+      border-left-width: 1px;
     }
 
     .eval-panel.panel-open {

@@ -70,10 +70,12 @@
             <td class="cell-criteria">
               <div class="criteria-content">
                 <span class="criteria-name">{criterion.name}</span>
-                {#if isResource}
+                {#if !isQuality}
+                  <span class="criteria-badge badge-price">Pris</span>
+                {:else if isResource}
                   <span class="criteria-badge badge-resource">Ressurs</span>
                   <span class="criteria-sub-count">{criterion.subcriteria.length} momenter</span>
-                {:else if !isLeaf && isQuality}
+                {:else if !isLeaf}
                   <span class="criteria-sub-count"
                     >{criterion.subcriteria.length} underkriterier</span
                   >
@@ -539,5 +541,11 @@
     color: var(--color-vekt-dim);
     background: var(--color-vekt-bg);
     border: 1px solid var(--color-vekt-bg-strong);
+  }
+
+  .badge-price {
+    color: var(--color-ink-muted);
+    background: var(--color-felt-active);
+    border: 1px solid var(--color-wire);
   }
 </style>
