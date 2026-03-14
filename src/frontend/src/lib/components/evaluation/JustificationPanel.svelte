@@ -88,6 +88,35 @@
   });
 </script>
 
+{#snippet resourceCard(name: string, label: string | undefined, scores: {name: string; score: number}[], avg: number, note: string, onNoteChange: (v: string) => void, placeholder: string)}
+  <div class="resource-note">
+    <div class="resource-header">
+      <span class="resource-name">{name}</span>
+      {#if label}
+        <span class="resource-role">{label}</span>
+      {/if}
+    </div>
+    <div class="resource-scores">
+      {#each scores as s}
+        <span class="resource-score-badge tier-{scoreTier(s.score)}">
+          <span class="badge-label">{s.name}</span>
+          <span class="badge-value">{s.score}</span>
+        </span>
+      {/each}
+      <span class="resource-score-avg tier-{scoreTier(avg)}">
+        Snitt {avg.toFixed(1)}
+      </span>
+    </div>
+    <textarea
+      class="note-textarea note-textarea-sm"
+      value={note}
+      oninput={(e) => onNoteChange(e.currentTarget.value)}
+      {placeholder}
+      rows="2"
+    ></textarea>
+  </div>
+{/snippet}
+
 {#if criterion && supplier}
   <div class="panel">
     <!-- Supplier selector -->
@@ -155,7 +184,6 @@
 
       <!-- Resource mode: per-role notes -->
       {#if mode === 'resource' && criterion.roles?.length}
-        {@const roles = criterion.roles}
         {@const items = criterion.items?.[supplier.id] ?? []}
         <div class="note-group">
           <div class="note-group-header">
@@ -169,43 +197,18 @@
             </span>
           </div>
 
-          {#each roles as role}
+          {#each criterion.roles as role}
             {@const item = items.find((i) => i.roleId === role.id)}
             {#if item}
-              {@const total = resourceMomentScore(item, criterion.subcriteria)}
-              <div class="resource-note">
-                <div class="resource-header">
-                  <span class="resource-name">{role.name}</span>
-                  {#if item.label}
-                    <span class="resource-role">{item.label}</span>
-                  {/if}
-                </div>
-                <div class="resource-scores">
-                  {#each criterion.subcriteria as moment}
-                    {@const score = item.scores[moment.id] ?? 0}
-                    <span class="resource-score-badge tier-{scoreTier(score)}">
-                      <span class="badge-label">{moment.name}</span>
-                      <span class="badge-value">{score}</span>
-                    </span>
-                  {/each}
-                  <span class="resource-score-avg tier-{scoreTier(total)}">
-                    Snitt {total.toFixed(1)}
-                  </span>
-                </div>
-                <textarea
-                  class="note-textarea note-textarea-sm"
-                  value={item.note ?? ''}
-                  oninput={(e) =>
-                    evaluation.setRoleResourceNote(
-                      criterion.id,
-                      supplier.id,
-                      role.id,
-                      e.currentTarget.value
-                    )}
-                  placeholder="Vurdering av {role.name}..."
-                  rows="2"
-                ></textarea>
-              </div>
+              {@render resourceCard(
+                role.name,
+                item.label,
+                criterion.subcriteria.map(m => ({ name: m.name, score: item.scores[m.id] ?? 0 })),
+                resourceMomentScore(item, criterion.subcriteria),
+                item.note ?? '',
+                (v) => evaluation.setRoleResourceNote(criterion.id, supplier.id, role.id, v),
+                `Vurdering av ${role.name}...`
+              )}
             {/if}
           {/each}
         </div>
@@ -226,40 +229,15 @@
               </div>
 
               {#each items as item}
-                {@const avg = itemScore(item, sub.itemCriteria ?? [])}
-                <div class="resource-note">
-                  <div class="resource-header">
-                    <span class="resource-name">{item.name}</span>
-                    {#if item.label}
-                      <span class="resource-role">{item.label}</span>
-                    {/if}
-                  </div>
-                  <div class="resource-scores">
-                    {#each sub.itemCriteria ?? [] as ic}
-                      {@const score = item.scores[ic.id] ?? 0}
-                      <span class="resource-score-badge tier-{scoreTier(score)}">
-                        <span class="badge-label">{ic.name}</span>
-                        <span class="badge-value">{score}</span>
-                      </span>
-                    {/each}
-                    <span class="resource-score-avg tier-{scoreTier(avg)}">
-                      Snitt {avg.toFixed(1)}
-                    </span>
-                  </div>
-                  <textarea
-                    class="note-textarea note-textarea-sm"
-                    value={item.note ?? ''}
-                    oninput={(e) =>
-                      evaluation.setItemResourceNote(
-                        sub.id,
-                        supplier.id,
-                        item.id,
-                        e.currentTarget.value
-                      )}
-                    placeholder="Vurdering av {item.name}..."
-                    rows="2"
-                  ></textarea>
-                </div>
+                {@render resourceCard(
+                  item.name,
+                  item.label,
+                  (sub.itemCriteria ?? []).map(ic => ({ name: ic.name, score: item.scores[ic.id] ?? 0 })),
+                  itemScore(item, sub.itemCriteria ?? []),
+                  item.note ?? '',
+                  (v) => evaluation.setItemResourceNote(sub.id, supplier.id, item.id, v),
+                  `Vurdering av ${item.name}...`
+                )}
               {/each}
             </div>
           {/if}

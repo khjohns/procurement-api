@@ -1,21 +1,13 @@
 <script lang="ts">
   import { beforeNavigate } from '$app/navigation';
-  import { protokoll, type Avvisning } from '$lib/stores/protokoll.svelte';
+  import { protokoll } from '$lib/stores/protokoll.svelte';
   import SectionAccordion from '$lib/components/protokoll/SectionAccordion.svelte';
-  import InfoTable from '$lib/components/protokoll/InfoTable.svelte';
-  import SupplierList from '$lib/components/protokoll/SupplierList.svelte';
-  import CheckboxTextarea from '$lib/components/protokoll/CheckboxTextarea.svelte';
-  import AvvisningCard from '$lib/components/protokoll/AvvisningCard.svelte';
-  import PerSupplierCards from '$lib/components/protokoll/PerSupplierCards.svelte';
-  import DataQualityTable from '$lib/components/protokoll/DataQualityTable.svelte';
-  import RichTextEditor from '$lib/components/protokoll/RichTextEditor.svelte';
-  import DateInput from '$lib/components/protokoll/DateInput.svelte';
+  import ProtokollField from '$lib/components/protokoll/ProtokollField.svelte';
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
   import {
     getProcName,
-    addDays,
     buildOrgLookup,
     getOrgNameWithLookup,
   } from '$lib/utils/protokoll-helpers';
@@ -237,12 +229,6 @@
     return [...seen.values()];
   }
 
-  function handleKarensShortcut() {
-    const meddelelse = protokoll.manual.meddelelseDato;
-    if (meddelelse) {
-      protokoll.setManualField('karensperiodeUtlop', addDays(meddelelse, 10));
-    }
-  }
 </script>
 
 <svelte:window onclick={handleWindowClick} />
@@ -339,109 +325,21 @@
         </div>
 
         {#each group.sections as section (section.id)}
+          {@const sectionInfoRows = getInfoRows(section)}
+          {@const sectionSuppliers = getSuppliers(section)}
+          {@const sectionRejected = getRejectedSuppliers()}
           <SectionAccordion
             {section}
             open={protokoll.isSectionOpen(section.id)}
             ontoggle={() => handleSectionToggle(section.id)}
           >
             {#each section.fields as field (field.key)}
-              {@const fieldKey = field.key}
-              {#if field.type === 'info-table'}
-                <InfoTable rows={getInfoRows(section)} label={field.label} />
-              {:else if field.type === 'supplier-list'}
-                <SupplierList suppliers={getSuppliers(section)} label={field.label} />
-              {:else if field.type === 'textarea'}
-                <div class="manual-field">
-                  <div class="field-label">{field.label}</div>
-                  <textarea
-                    class="field-textarea"
-                    value={(protokoll.manual[fieldKey] as string) ?? ''}
-                    oninput={(e) =>
-                      protokoll.setManualField(fieldKey, (e.target as HTMLTextAreaElement).value)}
-                    placeholder="Skriv her..."
-                    rows="3"
-                  ></textarea>
-                  <div class="field-footer">
-                    <span class="char-count"
-                      >{((protokoll.manual[fieldKey] as string) ?? '').length} tegn</span
-                    >
-                    {#if field.hint}
-                      <span class="field-hint">{field.hint}</span>
-                    {/if}
-                  </div>
-                </div>
-              {:else if field.type === 'date'}
-                <div class="manual-field">
-                  <DateInput
-                    value={(protokoll.manual[fieldKey] as string) ?? ''}
-                    label={field.label}
-                    hint={field.hint}
-                    onchange={(v) => protokoll.setManualField(fieldKey, v)}
-                  />
-                  {#if fieldKey === 'karensperiodeUtlop'}
-                    <button
-                      class="shortcut-btn"
-                      disabled={!protokoll.manual.meddelelseDato}
-                      onclick={handleKarensShortcut}
-                      title={protokoll.manual.meddelelseDato
-                        ? `Beregn ${addDays(protokoll.manual.meddelelseDato, 10)} (meddelelse + 10 dager)`
-                        : 'Angi dato for meddelsesbrev først'}
-                    >
-                      +10 dager
-                    </button>
-                  {/if}
-                </div>
-              {:else if field.type === 'tipex'}
-                <div class="manual-field">
-                  <div class="field-label">{field.label}</div>
-                  <RichTextEditor
-                    body={(protokoll.manual[fieldKey] as string) || '<p></p>'}
-                    placeholder="Skriv her..."
-                    hint={field.hint ?? ''}
-                    onchange={(html) => protokoll.setManualField(fieldKey, html)}
-                  />
-                </div>
-              {:else if field.type === 'checkbox-textarea'}
-                <CheckboxTextarea
-                  checked={!!protokoll.manual[fieldKey]}
-                  begrunnelse={(protokoll.manual[`${fieldKey}Begrunnelse`] as string) ?? ''}
-                  label={field.label}
-                  foaRef={field.foaRef}
-                  hint={field.hint}
-                  onchange={(c, b) => {
-                    protokoll.setManualField(fieldKey, c);
-                    protokoll.setManualField(`${fieldKey}Begrunnelse`, b);
-                  }}
-                />
-              {:else if field.type === 'per-supplier-textarea'}
-                <PerSupplierCards
-                  suppliers={getSuppliers(section)}
-                  values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
-                  label={field.label}
-                  hint={field.hint}
-                  onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
-                />
-              {:else if field.type === 'per-supplier-tipex'}
-                <PerSupplierCards
-                  suppliers={getSuppliers(section)}
-                  values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
-                  useTipex={true}
-                  label={field.label}
-                  hint={field.hint}
-                  onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
-                />
-              {:else if field.type === 'avvisning-card'}
-                <AvvisningCard
-                  suppliers={getRejectedSuppliers()}
-                  avvisninger={(protokoll.manual[fieldKey] as Record<string, Avvisning>) ?? {}}
-                  isDel2={protokoll.isDel2}
-                  foaRef={field.foaRef}
-                  hint={field.hint}
-                  onchange={(sid, avv) => protokoll.setAvvisning(fieldKey, sid, avv)}
-                />
-              {:else if field.type === 'data-quality-table'}
-                <DataQualityTable sections={protokoll.sections} />
-              {/if}
+              <ProtokollField
+                {field}
+                infoRows={sectionInfoRows}
+                suppliers={sectionSuppliers}
+                rejectedSuppliers={sectionRejected}
+              />
             {/each}
           </SectionAccordion>
         {/each}
@@ -808,101 +706,6 @@
   /* ── Sections ── */
   .sections {
     margin-bottom: var(--spacing-8);
-  }
-
-  /* ── Manual fields (textarea) ── */
-  .manual-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-  }
-
-  .field-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-ink-muted);
-  }
-
-  .field-textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: var(--spacing-3);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    line-height: 1.5;
-    outline: none;
-    resize: vertical;
-    transition: border-color 0.12s;
-    field-sizing: content;
-  }
-
-  .field-textarea:focus {
-    border-color: var(--color-wire-focus);
-  }
-
-  .field-textarea::placeholder {
-    color: var(--color-ink-ghost);
-    font-style: italic;
-  }
-
-  .field-footer {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--spacing-2);
-  }
-
-  .char-count {
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .field-hint {
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    text-align: right;
-  }
-
-  /* ── Shortcut button (karensperiode +10 dager) ── */
-  .shortcut-btn {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    padding: var(--spacing-1) var(--spacing-3);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-vekt);
-    font-family: var(--font-data);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition:
-      background-color 0.12s,
-      border-color 0.12s;
-  }
-
-  .shortcut-btn:hover:not(:disabled) {
-    background: var(--color-vekt-bg);
-    border-color: var(--color-vekt-bg-strong);
-  }
-
-  .shortcut-btn:disabled {
-    color: var(--color-ink-ghost);
-    cursor: not-allowed;
-  }
-
-  .shortcut-btn:focus-visible {
-    outline: none;
-    border-color: var(--color-wire-focus);
   }
 
   /* ── Skeleton ── */

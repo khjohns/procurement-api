@@ -20,40 +20,43 @@ import {
 
 export type InfoRow = { label: string; value: any; mono?: boolean };
 
+// ── Formatting helpers ──
+
+function procurerStr(proc: any): string | undefined {
+  const p = proc.about_procurer ?? {};
+  if (p.name) {
+    return p.national_id ? `${p.name} (org.nr. ${p.national_id})` : p.name;
+  }
+  return proc.buyerName ?? proc.buyer?.name;
+}
+
+function descriptionStr(proc: any): string {
+  const name = stripHtml(proc.name ?? '');
+  const desc = stripHtml(proc.description ?? '').replace(/\s*\n\s*/g, ' ');
+  if (name && desc && desc.toLowerCase() !== name.toLowerCase()) return `${name}. ${desc}`;
+  return name || desc;
+}
+
+function durationStr(proc: any): string | null {
+  if (proc.duration_months) return `${proc.duration_months} måneder`;
+  return proc.duration ? String(proc.duration) : null;
+}
+
+function refStr(proc: any): string {
+  const seqId = proc.sequenceId ?? '';
+  return proc.externalId ? `${seqId} (ekstern ref: ${proc.externalId})` : seqId;
+}
+
 // ── Section row builders ──
 
 export function generellInfoRows(proc: any): InfoRow[] {
-  const procurer = proc.about_procurer ?? {};
-  const procurerStr = procurer.name
-    ? procurer.national_id
-      ? `${procurer.name} (org.nr. ${procurer.national_id})`
-      : procurer.name
-    : (proc.buyerName ?? proc.buyer?.name);
-
-  const name = stripHtml(proc.name ?? '');
-  const desc = stripHtml(proc.description ?? '').replace(/\s*\n\s*/g, ' ');
-  const descStr =
-    name && desc && desc.toLowerCase() !== name.toLowerCase() ? `${name}. ${desc}` : name || desc;
-
-  const durationMonths = proc.duration_months;
-  const duration = proc.duration;
-  const durationStr = durationMonths
-    ? `${durationMonths} måneder`
-    : duration
-      ? String(duration)
-      : null;
-
-  const seqId = proc.sequenceId ?? '';
-  const extId = proc.externalId;
-  const refStr = extId ? `${seqId} (ekstern ref: ${extId})` : seqId;
-
   return [
-    { label: 'Saksnummer', value: refStr, mono: true },
-    { label: 'Oppdragsgiver', value: procurerStr },
-    { label: 'Protokollfører', value: procurer.contact_person },
-    { label: 'Beskrivelse', value: descStr },
+    { label: 'Saksnummer', value: refStr(proc), mono: true },
+    { label: 'Oppdragsgiver', value: procurerStr(proc) },
+    { label: 'Protokollfører', value: (proc.about_procurer ?? {}).contact_person },
+    { label: 'Beskrivelse', value: descriptionStr(proc) },
     { label: 'Estimert verdi', value: fmtCurrency(proc.estimated_value, proc.currency), mono: true },
-    { label: 'Kontraktens varighet', value: durationStr },
+    { label: 'Kontraktens varighet', value: durationStr(proc) },
     { label: 'Tilbudsfrist', value: formatDatoTid(getTimelineDate(proc, 'submission')) },
   ];
 }
@@ -66,6 +69,13 @@ export function mottakTilbudRows(activities: any[]): InfoRow[] {
     value: formatDatoTid(s.date),
     mono: true,
   }));
+}
+
+function directAwardJustification(proc: any): string | null {
+  const code = proc.direct_award_justification_code ?? '';
+  const reason = proc.direct_award_justification_reason ?? '';
+  if (code && reason) return `Hjemmel: ${code}. ${reason}`;
+  return code || reason || null;
 }
 
 export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRow[] {
@@ -85,43 +95,42 @@ export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRo
   if (kunngj) rows.push({ label: 'Kunngjøring', value: kunngj });
 
   if (['Negotiated without publication', 'Direct award'].includes(procedure)) {
-    const code = proc.direct_award_justification_code ?? '';
-    const reason = proc.direct_award_justification_reason ?? '';
-    const justification =
-      code && reason ? `Hjemmel: ${code}. ${reason}` : code || reason || null;
-    rows.push({ label: 'Hjemmel for direkteanskaffelse', value: justification });
+    rows.push({ label: 'Hjemmel for direkteanskaffelse', value: directAwardJustification(proc) });
   }
 
   rows.push({ label: 'Terskel', value: formatThreshold(proc.threshold) });
   return rows;
 }
 
-/** Kunngjøring — Doffin/TED ref from activities. */
-export function kunngjoringStr(proc: any, activities: any[]): string | null {
+/** Extract Doffin notice details from activities. */
+function doffinDetails(activities: any[]): { date: string; ref: string; ted: string } {
   const doffinActs = activities.filter(
     (a: any) => a.action === 'DOFFIN_NOTICE_STATUS_PUBLISHED'
   );
   const publishActs = activities.filter((a: any) => a.action === 'PUBLISH_TO_DOFFIN');
 
-  let announcementDate = '';
-  let doffinRef = '';
-  let tedRef = '';
+  let date = publishActs.length ? formatDato(publishActs[0].date) : '';
+  let ref = '';
+  let ted = '';
 
-  if (publishActs.length) announcementDate = formatDato(publishActs[0].date);
   if (doffinActs.length) {
-    const desc = doffinActs[0].description ?? {};
-    const notice = desc.doffinNotice ?? {};
-    doffinRef = notice.ngoj ?? '';
-    tedRef = notice.publicationId ?? '';
-    if (!announcementDate) {
-      announcementDate = formatDato(notice.publicationDate ?? doffinActs[0].date);
-    }
+    const notice = (doffinActs[0].description ?? {}).doffinNotice ?? {};
+    ref = notice.ngoj ?? '';
+    ted = notice.publicationId ?? '';
+    if (!date) date = formatDato(notice.publicationDate ?? doffinActs[0].date);
   }
 
-  if (announcementDate) {
-    const parts = [`Kunngjort ${announcementDate} på Doffin`];
-    if (doffinRef) parts.push(`ref. ${doffinRef} (NGOJ)`);
-    if (tedRef) parts.push(`TED ${tedRef}`);
+  return { date, ref, ted };
+}
+
+/** Kunngjøring — Doffin/TED ref from activities. */
+export function kunngjoringStr(proc: any, activities: any[]): string | null {
+  const d = doffinDetails(activities);
+
+  if (d.date) {
+    const parts = [`Kunngjort ${d.date} på Doffin`];
+    if (d.ref) parts.push(`ref. ${d.ref} (NGOJ)`);
+    if (d.ted) parts.push(`TED ${d.ted}`);
     return parts.join(', ');
   }
 

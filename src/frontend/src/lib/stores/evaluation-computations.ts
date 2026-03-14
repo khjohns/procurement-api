@@ -65,37 +65,61 @@ function progressResource(
   return [cells, filledCells, notes, filledNotes];
 }
 
+function progressItemSub(
+  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
+  cells: number, filledCells: number
+): [number, number] {
+  const nCriteria = sub.itemCriteria!.length;
+  for (const supplier of suppliers) {
+    const items = sub.items?.[supplier.id] ?? [];
+    if (items.length === 0) {
+      cells += nCriteria;
+    } else {
+      for (const item of items) {
+        for (const ic of sub.itemCriteria!) {
+          cells++;
+          if (item.scores[ic.id] !== undefined) filledCells++;
+        }
+      }
+    }
+  }
+  return [cells, filledCells];
+}
+
+function progressSimpleSub(
+  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
+  cells: number, filledCells: number, notes: number, filledNotes: number
+): [number, number, number, number] {
+  for (const supplier of suppliers) {
+    cells++;
+    if (sub.scores[supplier.id] !== undefined) filledCells++;
+    notes++;
+    if (sub.notes[supplier.id]) filledNotes++;
+  }
+  return [cells, filledCells, notes, filledNotes];
+}
+
+function countNotes(
+  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
+  notes: number, filledNotes: number
+): [number, number] {
+  for (const supplier of suppliers) {
+    notes++;
+    if (sub.notes[supplier.id]) filledNotes++;
+  }
+  return [notes, filledNotes];
+}
+
 function progressTraditional(
   criterion: Criterion, suppliers: Supplier[],
   cells: number, filledCells: number, notes: number, filledNotes: number
 ): [number, number, number, number] {
   for (const sub of criterion.subcriteria) {
     if (sub.evaluationType === 'item' && sub.itemCriteria) {
-      const nCriteria = sub.itemCriteria.length;
-      for (const supplier of suppliers) {
-        const items = sub.items?.[supplier.id] ?? [];
-        if (items.length === 0) {
-          cells += nCriteria;
-        } else {
-          for (const item of items) {
-            for (const ic of sub.itemCriteria) {
-              cells++;
-              if (item.scores[ic.id] !== undefined) filledCells++;
-            }
-          }
-        }
-      }
-      for (const supplier of suppliers) {
-        notes++;
-        if (sub.notes[supplier.id]) filledNotes++;
-      }
+      [cells, filledCells] = progressItemSub(sub, suppliers, cells, filledCells);
+      [notes, filledNotes] = countNotes(sub, suppliers, notes, filledNotes);
     } else {
-      for (const supplier of suppliers) {
-        cells++;
-        if (sub.scores[supplier.id] !== undefined) filledCells++;
-        notes++;
-        if (sub.notes[supplier.id]) filledNotes++;
-      }
+      [cells, filledCells, notes, filledNotes] = progressSimpleSub(sub, suppliers, cells, filledCells, notes, filledNotes);
     }
   }
   return [cells, filledCells, notes, filledNotes];
@@ -178,6 +202,27 @@ export function computePriceDeductions(
 
 // ── Group scores ──
 
+function groupScoreForMode(
+  criterion: Criterion,
+  suppliers: Supplier[],
+  mode: string,
+  itemScores: Record<string, Record<string, number>>
+): Record<string, number> {
+  if (mode === 'resource') {
+    return mapSuppliers(suppliers, (s) =>
+      supplierResourceScore(
+        criterion.items?.[s.id] ?? [],
+        criterion.subcriteria,
+        criterion.aggregation ?? 'average'
+      )
+    );
+  }
+  if (mode === 'leaf') {
+    return mapSuppliers(suppliers, (s) => criterion.scores?.[s.id] ?? 0);
+  }
+  return mapSuppliers(suppliers, (s) => weightedAverage(criterion.subcriteria, s.id, itemScores));
+}
+
 /** Compute group averages per criterion per supplier (handles all three modes). */
 export function computeGroupScores(
   criteria: Criterion[],
@@ -192,17 +237,7 @@ export function computeGroupScores(
       result[criterion.id] = mapSuppliers(suppliers, (s) => priceFormulaScores[s.id] ?? 0);
       continue;
     }
-    const mode = criterionMode(criterion);
-    result[criterion.id] =
-      mode === 'resource' ? mapSuppliers(suppliers, (s) =>
-        supplierResourceScore(
-          criterion.items?.[s.id] ?? [],
-          criterion.subcriteria,
-          criterion.aggregation ?? 'average'
-        )
-      ) :
-      mode === 'leaf' ? mapSuppliers(suppliers, (s) => criterion.scores?.[s.id] ?? 0) :
-      mapSuppliers(suppliers, (s) => weightedAverage(criterion.subcriteria, s.id, itemScores));
+    result[criterion.id] = groupScoreForMode(criterion, suppliers, criterionMode(criterion), itemScores);
   }
   return result;
 }
