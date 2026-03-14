@@ -89,11 +89,7 @@
 
   /** Start evaluation explicitly — called from SetupEmptyState button. */
   function startEvaluation() {
-    evaluation.data.status = 'Under evaluering';
-    evaluation.setQualityPriceWeights(
-      evaluation.qualityWeightDerived,
-      evaluation.priceWeightDerived
-    );
+    evaluation.startEvaluation();
     setupToggleOpen = false;
   }
 </script>
