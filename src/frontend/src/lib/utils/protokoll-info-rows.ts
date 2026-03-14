@@ -141,13 +141,9 @@ export function ettersendingRows(proc: any, activities: any[]): InfoRow[] {
   }
 
   const deadline = new Date(submissionDate);
-  const postDeadline = conversations.filter((c: any) => {
-    try {
-      return new Date(c.date) > deadline;
-    } catch {
-      return false;
-    }
-  });
+  const postDeadline = conversations.filter(
+    (c: any) => new Date(c.date) > deadline
+  );
 
   if (!postDeadline.length) {
     return [

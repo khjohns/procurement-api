@@ -12,7 +12,6 @@
   import DateInput from '$lib/components/protokoll/DateInput.svelte';
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
-  import type { FieldDefinition, SectionDefinition } from '$lib/stores/protokoll-sections';
   import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
   import {
     getProcName,

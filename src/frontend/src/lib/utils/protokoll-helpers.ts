@@ -65,15 +65,17 @@ export function fmtCurrency(value: number | null | undefined, currency?: string)
   return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
 }
 
+/** Threshold code → Norwegian label. */
+const THRESHOLD_LABELS: Record<string, string> = {
+  over_eea_threshold_value: 'Over EØS-terskel',
+  below_eea_threshold_value: 'Under EØS-terskel',
+  national_threshold: 'Nasjonal terskel',
+  below_national_threshold: 'Under nasjonal terskel',
+};
+
 /** Format threshold code to Norwegian label. */
 export function formatThreshold(t: string | null | undefined): string {
-  const map: Record<string, string> = {
-    over_eea_threshold_value: 'Over EØS-terskel',
-    below_eea_threshold_value: 'Under EØS-terskel',
-    national_threshold: 'Nasjonal terskel',
-    below_national_threshold: 'Under nasjonal terskel',
-  };
-  return t ? (map[t] ?? t) : '—';
+  return t ? (THRESHOLD_LABELS[t] ?? t) : '—';
 }
 
 /** Procurement display name with HTML stripping. */
