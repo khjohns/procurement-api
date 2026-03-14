@@ -350,6 +350,8 @@
 
 <style>
   .setup-main {
+    --weight-col: 72px;
+    --criterion-indent: calc(var(--weight-col) + var(--spacing-3) + var(--spacing-4) + 3px);
     max-width: 800px;
   }
 
@@ -458,7 +460,7 @@
   }
 
   .criterion-weight {
-    width: 72px;
+    width: var(--weight-col);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -712,7 +714,7 @@
   }
 
   .add-sub-spacer {
-    width: 72px;
+    width: var(--weight-col);
     flex-shrink: 0;
   }
 
@@ -799,7 +801,7 @@
     border-left: 3px solid rgba(232, 168, 56, 0.15);
     background: var(--color-felt);
     padding: var(--spacing-3) var(--spacing-4);
-    padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+    padding-left: var(--criterion-indent);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-3);
@@ -1017,7 +1019,7 @@
     border-left: 3px solid rgba(232, 168, 56, 0.15);
     background: var(--color-felt);
     padding: var(--spacing-3) var(--spacing-4);
-    padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+    padding-left: var(--criterion-indent);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
@@ -1114,13 +1116,14 @@
   }
 
   @media (max-width: 1023px) {
+    .setup-main {
+      --weight-col: 52px;
+      --criterion-indent: calc(var(--weight-col) + var(--spacing-2) + var(--spacing-2) + 3px);
+    }
+
     .criterion-row {
       gap: var(--spacing-2);
       padding: var(--spacing-2);
-    }
-
-    .criterion-weight {
-      width: 52px;
     }
 
     .weight-bar {
@@ -1139,20 +1142,8 @@
       opacity: 1;
     }
 
-    .add-sub-spacer {
-      width: 52px;
-    }
-
     .add-sub-label {
       padding-left: var(--spacing-2);
-    }
-
-    .item-config {
-      padding-left: calc(52px + var(--spacing-2) + var(--spacing-2) + 3px);
-    }
-
-    .roles-config {
-      padding-left: calc(52px + var(--spacing-2) + var(--spacing-2) + 3px);
     }
   }
 </style>
