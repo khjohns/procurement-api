@@ -1139,10 +1139,6 @@
       opacity: 1;
     }
 
-    .criterion-remove-sub {
-      opacity: 1;
-    }
-
     .add-sub-spacer {
       width: 52px;
     }
