@@ -325,6 +325,9 @@
         </div>
 
         {#each group.sections as section (section.id)}
+          {@const sectionInfoRows = getInfoRows(section)}
+          {@const sectionSuppliers = getSuppliers(section)}
+          {@const sectionRejected = getRejectedSuppliers()}
           <SectionAccordion
             {section}
             open={protokoll.isSectionOpen(section.id)}
@@ -333,9 +336,9 @@
             {#each section.fields as field (field.key)}
               <ProtokollField
                 {field}
-                infoRows={getInfoRows(section)}
-                suppliers={getSuppliers(section)}
-                rejectedSuppliers={getRejectedSuppliers()}
+                infoRows={sectionInfoRows}
+                suppliers={sectionSuppliers}
+                rejectedSuppliers={sectionRejected}
               />
             {/each}
           </SectionAccordion>

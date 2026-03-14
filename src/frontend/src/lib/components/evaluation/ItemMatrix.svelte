@@ -139,9 +139,7 @@
                 {/each}
                 <!-- Column average -->
                 {@const colAvg =
-                  items.length > 0
-                    ? items.reduce((s, i) => s + (i.scores[ic.id] ?? 0), 0) / items.length
-                    : 0}
+                  items.reduce((s, i) => s + (i.scores[ic.id] ?? 0), 0) / items.length}
                 <td class="cell-col-avg">
                   <span class="col-avg-value tier-{scoreTier(colAvg)}">
                     {fmt2(colAvg)}

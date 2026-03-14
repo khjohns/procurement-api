@@ -21,8 +21,6 @@
 
   let { field, infoRows, suppliers, rejectedSuppliers }: Props = $props();
 
-  let fieldKey = $derived(field.key);
-
   function handleKarensShortcut() {
     const meddelelse = protokoll.manual.meddelelseDato;
     if (meddelelse) {
@@ -40,15 +38,15 @@
     <div class="field-label">{field.label}</div>
     <textarea
       class="field-textarea"
-      value={(protokoll.manual[fieldKey] as string) ?? ''}
+      value={(protokoll.manual[field.key] as string) ?? ''}
       oninput={(e) =>
-        protokoll.setManualField(fieldKey, (e.target as HTMLTextAreaElement).value)}
+        protokoll.setManualField(field.key, (e.target as HTMLTextAreaElement).value)}
       placeholder="Skriv her..."
       rows="3"
     ></textarea>
     <div class="field-footer">
       <span class="char-count"
-        >{((protokoll.manual[fieldKey] as string) ?? '').length} tegn</span
+        >{((protokoll.manual[field.key] as string) ?? '').length} tegn</span
       >
       {#if field.hint}
         <span class="field-hint">{field.hint}</span>
@@ -58,12 +56,12 @@
 {:else if field.type === 'date'}
   <div class="manual-field">
     <DateInput
-      value={(protokoll.manual[fieldKey] as string) ?? ''}
+      value={(protokoll.manual[field.key] as string) ?? ''}
       label={field.label}
       hint={field.hint}
-      onchange={(v) => protokoll.setManualField(fieldKey, v)}
+      onchange={(v) => protokoll.setManualField(field.key, v)}
     />
-    {#if fieldKey === 'karensperiodeUtlop'}
+    {#if field.key === 'karensperiodeUtlop'}
       <button
         class="shortcut-btn"
         disabled={!protokoll.manual.meddelelseDato}
@@ -80,49 +78,41 @@
   <div class="manual-field">
     <div class="field-label">{field.label}</div>
     <RichTextEditor
-      body={(protokoll.manual[fieldKey] as string) || '<p></p>'}
+      body={(protokoll.manual[field.key] as string) || '<p></p>'}
       placeholder="Skriv her..."
       hint={field.hint ?? ''}
-      onchange={(html) => protokoll.setManualField(fieldKey, html)}
+      onchange={(html) => protokoll.setManualField(field.key, html)}
     />
   </div>
 {:else if field.type === 'checkbox-textarea'}
   <CheckboxTextarea
-    checked={!!protokoll.manual[fieldKey]}
-    begrunnelse={(protokoll.manual[`${fieldKey}Begrunnelse`] as string) ?? ''}
+    checked={!!protokoll.manual[field.key]}
+    begrunnelse={(protokoll.manual[`${field.key}Begrunnelse`] as string) ?? ''}
     label={field.label}
     foaRef={field.foaRef}
     hint={field.hint}
     onchange={(c, b) => {
-      protokoll.setManualField(fieldKey, c);
-      protokoll.setManualField(`${fieldKey}Begrunnelse`, b);
+      protokoll.setManualField(field.key, c);
+      protokoll.setManualField(`${field.key}Begrunnelse`, b);
     }}
   />
-{:else if field.type === 'per-supplier-textarea'}
+{:else if field.type === 'per-supplier-textarea' || field.type === 'per-supplier-tipex'}
   <PerSupplierCards
     {suppliers}
-    values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
+    values={(protokoll.manual[field.key] as Record<string, string>) ?? {}}
+    useTipex={field.type === 'per-supplier-tipex'}
     label={field.label}
     hint={field.hint}
-    onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
-  />
-{:else if field.type === 'per-supplier-tipex'}
-  <PerSupplierCards
-    {suppliers}
-    values={(protokoll.manual[fieldKey] as Record<string, string>) ?? {}}
-    useTipex={true}
-    label={field.label}
-    hint={field.hint}
-    onchange={(sid, val) => protokoll.setPerSupplierField(fieldKey, sid, val)}
+    onchange={(sid, val) => protokoll.setPerSupplierField(field.key, sid, val)}
   />
 {:else if field.type === 'avvisning-card'}
   <AvvisningCard
     suppliers={rejectedSuppliers}
-    avvisninger={(protokoll.manual[fieldKey] as Record<string, Avvisning>) ?? {}}
+    avvisninger={(protokoll.manual[field.key] as Record<string, Avvisning>) ?? {}}
     isDel2={protokoll.isDel2}
     foaRef={field.foaRef}
     hint={field.hint}
-    onchange={(sid, avv) => protokoll.setAvvisning(fieldKey, sid, avv)}
+    onchange={(sid, avv) => protokoll.setAvvisning(field.key, sid, avv)}
   />
 {:else if field.type === 'data-quality-table'}
   <DataQualityTable sections={protokoll.sections} />
