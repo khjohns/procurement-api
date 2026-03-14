@@ -143,8 +143,10 @@
             <tr>
               <th>Kriterium</th>
               <th class="num">Vekt</th>
-              <th class="num">Implisitt maks fradrag</th>
-              <th class="num">Per poeng</th>
+              <th class="num">Maks fradrag</th>
+              {#if !isPris}
+                <th class="num">Per poeng</th>
+              {/if}
             </tr>
           </thead>
           <tbody>
@@ -159,7 +161,9 @@
                 </td>
                 <td class="bv-weight">{criterion.weight} %</td>
                 <td class="bv-value">{formatNOK(maxDeduction)} kr</td>
-                <td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
+                {#if !isPris}
+                  <td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
+                {/if}
               </tr>
               {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
               {#each criterion.subcriteria as sub}
@@ -170,7 +174,9 @@
                   <td class="bv-sub">{sub.name}</td>
                   <td class="bv-weight">{sub.weight} %</td>
                   <td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
-                  <td class="bv-per-point">{formatNOK(subMaxDeduction / 10)} kr</td>
+                  {#if !isPris}
+                    <td class="bv-per-point">{formatNOK(subMaxDeduction / 10)} kr</td>
+                  {/if}
                 </tr>
               {/each}
             {/each}
@@ -178,7 +184,9 @@
               <td class="bv-criterion">Sum kvalitetskriterier</td>
               <td class="bv-weight">{evaluation.data.qualityWeight} %</td>
               <td class="bv-value">{formatNOK(qualityBudget)} kr</td>
-              <td class="bv-per-point"></td>
+              {#if !isPris}
+                <td class="bv-per-point"></td>
+              {/if}
             </tr>
           </tbody>
         </table>
@@ -198,64 +206,68 @@
       <div class="innsikt-pane">
         {#if isPris}
           <!-- Prismodell robusthet -->
-          <div class="robusthet-ranking">
-            {#each evaluation.priceRanking as entry}
-              {@const marginToWinner =
-                entry.evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice}
-              <div class="robusthet-item" class:leader={entry.rank === 1}>
-                <span class="robusthet-rank">#{entry.rank}</span>
-                <span class="robusthet-name">{entry.supplier.name}</span>
-                <span class="robusthet-score">{formatNOK(entry.evaluatedPrice)} kr</span>
-                <span class="robusthet-margin">
-                  {entry.rank === 1 ? 'leder' : `+${formatNOK(marginToWinner)} kr`}
-                </span>
-              </div>
-            {/each}
-          </div>
+          {#if evaluation.priceRanking.length < 2}
+            <div class="empty-state">Minst to leverandører med pris kreves.</div>
+          {:else}
+            <div class="robusthet-ranking">
+              {#each evaluation.priceRanking as entry}
+                {@const marginToWinner =
+                  entry.evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice}
+                <div class="robusthet-item" class:leader={entry.rank === 1}>
+                  <span class="robusthet-rank">#{entry.rank}</span>
+                  <span class="robusthet-name">{entry.supplier.name}</span>
+                  <span class="robusthet-score">{formatNOK(entry.evaluatedPrice)} kr</span>
+                  <span class="robusthet-margin">
+                    {entry.rank === 1 ? 'leder' : `+${formatNOK(marginToWinner)} kr`}
+                  </span>
+                </div>
+              {/each}
+            </div>
 
-          <div class="robusthet-insights">
-            <div class="robusthet-insight">
-              <div class="robusthet-insight-label">Prismargin</div>
-              <div class="robusthet-insight-text">
-                Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-                <span class="mono">{formatNOK(priceMargin)} kr</span>.
-                {#if evaluation.data.contractValue > 0}
-                  Det utgjør <span class="mono"
-                    >{((priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
-                  > av kontraktsverdien.
-                {/if}
-                Resultatet er
-                <strong>
-                  {#if priceMargin > evaluation.data.contractValue * 0.05}
-                    robust
-                  {:else if priceMargin > evaluation.data.contractValue * 0.01}
-                    moderat robust
-                  {:else}
-                    sårbart
-                  {/if}
-                </strong>.
-              </div>
-            </div>
-            <div class="robusthet-insight">
-              <div class="robusthet-insight-label">Størst påvirkning</div>
-              <div class="robusthet-insight-text">
-                <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst maksimalt
-                fradrag og dermed størst innvirkning på evaluert pris.
-              </div>
-            </div>
-            {#if largestDeductionSpread.spread > 0}
+            <div class="robusthet-insights">
               <div class="robusthet-insight">
-                <div class="robusthet-insight-label">Størst fradragsspredning</div>
+                <div class="robusthet-insight-label">Prismargin</div>
                 <div class="robusthet-insight-text">
-                  <strong>{largestDeductionSpread.name}</strong> har størst spredning i fradrag
-                  mellom leverandørene (<span class="mono"
-                    >{formatNOK(largestDeductionSpread.spread)} kr</span
-                  >).
-                  {largestDeductionSpread.leader} får størst fradrag her.
+                  Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
+                  <span class="mono">{formatNOK(priceMargin)} kr</span>.
+                  {#if evaluation.data.contractValue > 0}
+                    Det utgjør <span class="mono"
+                      >{((priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
+                    > av kontraktsverdien.
+                  {/if}
+                  Resultatet er
+                  <strong>
+                    {#if priceMargin > evaluation.data.contractValue * 0.05}
+                      robust
+                    {:else if priceMargin > evaluation.data.contractValue * 0.01}
+                      moderat robust
+                    {:else}
+                      sårbart
+                    {/if}
+                  </strong>.
                 </div>
               </div>
-            {/if}
-          </div>
+              <div class="robusthet-insight">
+                <div class="robusthet-insight-label">Størst påvirkning</div>
+                <div class="robusthet-insight-text">
+                  <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst
+                  maksimalt fradrag og dermed størst innvirkning på evaluert pris.
+                </div>
+              </div>
+              {#if largestDeductionSpread.spread > 0}
+                <div class="robusthet-insight">
+                  <div class="robusthet-insight-label">Størst fradragsspredning</div>
+                  <div class="robusthet-insight-text">
+                    <strong>{largestDeductionSpread.name}</strong> har størst spredning i fradrag
+                    mellom leverandørene (<span class="mono"
+                      >{formatNOK(largestDeductionSpread.spread)} kr</span
+                    >).
+                    {largestDeductionSpread.leader} får størst fradrag her.
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {/if}
         {:else}
           <!-- Poengmodell robusthet -->
           <div class="robusthet-ranking">
@@ -415,6 +427,13 @@
   }
 
   /* ── Method switch ── */
+  .empty-state {
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    padding: var(--spacing-4);
+    text-align: center;
+  }
+
   .method-switch {
     display: flex;
     align-items: center;

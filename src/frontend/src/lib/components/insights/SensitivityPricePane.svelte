@@ -8,7 +8,11 @@
   let simulatedPriceData = $derived.by(() => {
     const simWeightMap = new Map(sensitivity.simulatedWeights.map((w) => [w.id, w.weight]));
     const simTotal = sensitivity.simulatedSum;
-    if (simTotal === 0) return { prices: {} as Record<string, number>, ranking: [] as Array<{ id: string; name: string; price: number; rank: number }> };
+    if (simTotal === 0)
+      return {
+        prices: {} as Record<string, number>,
+        ranking: [] as Array<{ id: string; name: string; price: number; rank: number }>,
+      };
 
     const qb = evaluation.data.contractValue * (evaluation.data.qualityWeight / 100);
 
@@ -21,7 +25,8 @@
     for (const criterion of evaluation.data.criteria) {
       if (criterion.type === 'price') continue;
       const simWeight = simWeightMap.get(criterion.id) ?? criterion.weight;
-      const maxDed = criterion.maxPriceDeduction ?? (simTotal > 0 ? qb * (simWeight / simTotal) : 0);
+      const maxDed =
+        criterion.maxPriceDeduction ?? (simTotal > 0 ? qb * (simWeight / simTotal) : 0);
 
       if (criterion.subcriteria.length === 0 || criterion.evaluationType === 'item') {
         // Leaf/resource: direct deduction
@@ -72,49 +77,6 @@
 </script>
 
 <div class="sensitivity">
-  <!-- Marginer -->
-  <div class="section">
-    <div class="section-header">Prismarginer</div>
-
-    {#if evaluation.priceRanking.length >= 2}
-      {@const winner = evaluation.priceRanking[0]}
-      {@const runnerUp = evaluation.priceRanking[1]}
-      {@const margin = runnerUp.evaluatedPrice - winner.evaluatedPrice}
-
-      {#each evaluation.priceRanking as entry, i}
-        {@const marginToWinner = entry.evaluatedPrice - winner.evaluatedPrice}
-        <div class="pair-block">
-          <div class="pair-header">
-            <span class="pair-rank">#{entry.rank}</span>
-            <span class="pair-names">{entry.supplier.name}</span>
-            <span class="pair-price">{formatNOK(entry.evaluatedPrice)} kr</span>
-            <span class="pair-margin">
-              {#if i === 0}
-                leder
-              {:else}
-                +{formatNOK(marginToWinner)} kr
-              {/if}
-            </span>
-          </div>
-        </div>
-      {/each}
-
-      <div class="robustness-summary">
-        Marginen mellom <strong>#{1}</strong> og <strong>#{2}</strong> er
-        <span class="mono">{formatNOK(margin)} kr</span>.
-        {#if margin > evaluation.data.contractValue * 0.05}
-          Resultatet er <strong>robust</strong>.
-        {:else if margin > evaluation.data.contractValue * 0.01}
-          Resultatet er <strong>moderat robust</strong>.
-        {:else}
-          Resultatet er <strong>sårbart</strong> — marginen er under 1 % av kontraktsverdien.
-        {/if}
-      </div>
-    {:else}
-      <div class="empty-state">Minst to leverandører med pris kreves.</div>
-    {/if}
-  </div>
-
   <!-- Simulator -->
   <div class="section">
     <div class="section-header">Simulator — maks fradrag</div>
@@ -160,7 +122,8 @@
       <div class="ranking-col">
         <div class="ranking-col-header">Simulert</div>
         {#each simulatedPriceData.ranking as entry}
-          {@const actualRank = evaluation.priceRanking.findIndex((r) => r.supplier.id === entry.id) + 1}
+          {@const actualRank =
+            evaluation.priceRanking.findIndex((r) => r.supplier.id === entry.id) + 1}
           {@const moved = actualRank !== entry.rank}
           <div class="ranking-row" class:ranking-moved={moved}>
             <span class="ranking-rank">#{entry.rank}</span>
@@ -200,91 +163,6 @@
     letter-spacing: 0.08em;
     color: var(--color-ink-muted);
     margin-bottom: var(--spacing-3);
-  }
-
-  /* ── Marginer ── */
-  .pair-block {
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-felt-raised);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--spacing-2);
-  }
-
-  .pair-block:first-of-type {
-    border-color: var(--color-vekt-bg-strong);
-  }
-
-  .pair-header {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-  }
-
-  .pair-rank {
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-ink-ghost);
-    width: 20px;
-  }
-
-  .pair-block:first-of-type .pair-rank {
-    color: var(--color-vekt-dim);
-  }
-
-  .pair-names {
-    font-size: 12px;
-    font-weight: 500;
-    flex: 1;
-  }
-
-  .pair-price {
-    font-family: var(--font-data);
-    font-size: 12px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .pair-block:first-of-type .pair-price {
-    color: var(--color-vekt);
-  }
-
-  .pair-margin {
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    width: 100px;
-    text-align: right;
-  }
-
-  .robustness-summary {
-    margin-top: var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-vekt-bg);
-    border-left: 3px solid var(--color-vekt);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    color: var(--color-ink-secondary);
-    line-height: 1.6;
-  }
-
-  .robustness-summary strong {
-    color: var(--color-ink);
-    font-weight: 600;
-  }
-
-  .mono {
-    font-family: var(--font-data);
-    color: var(--color-vekt);
-    font-weight: 600;
-  }
-
-  .empty-state {
-    font-size: 12px;
-    color: var(--color-ink-muted);
-    padding: var(--spacing-4);
-    text-align: center;
   }
 
   /* ── Simulator ── */
