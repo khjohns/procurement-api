@@ -277,45 +277,6 @@ class ProtokollStore {
     this._restoreFromStorage(proc.id);
   }
 
-  async loadProcurement(procurementId: number) {
-    this.loading = true;
-    this.error = null;
-
-    try {
-      const [procRes, actRes] = await Promise.all([
-        fetch(`/api/procurements/${procurementId}`),
-        fetch(`/api/procurements/${procurementId}/activities`),
-      ]);
-
-      if (!procRes.ok) throw new Error(`Kunne ikke hente anskaffelse: ${procRes.status}`);
-      if (!actRes.ok) throw new Error(`Kunne ikke hente aktiviteter: ${actRes.status}`);
-
-      const [proc, acts] = await Promise.all([procRes.json(), actRes.json()]);
-      this.procurement = proc;
-      this.activities = Array.isArray(acts) ? acts : (acts.activities ?? []);
-
-      // Try to fetch eForms data if doffin_id available
-      const doffinId = proc.doffinReferenceId || proc.doffin_id;
-      if (doffinId) {
-        try {
-          const eformsRes = await fetch(`/api/eforms/${doffinId}`);
-          if (eformsRes.ok) {
-            this.eforms = await eformsRes.json();
-          }
-        } catch {
-          // eForms is optional — silently ignore
-        }
-      }
-
-      // Restore saved manual fields
-      this._restoreFromStorage(procurementId);
-    } catch (e) {
-      this.error = e instanceof Error ? e.message : String(e);
-    } finally {
-      this.loading = false;
-    }
-  }
-
   async generateDocx(): Promise<Blob | null> {
     try {
       const res = await fetch('/api/protokoll/generate', {
