@@ -215,46 +215,72 @@
       <div class="panel-section">
         <div class="panel-label">Nøkkeltall</div>
         <div class="key-metrics">
-          <div class="metric">
-            <span class="metric-label">Margin #1 → #2</span>
-            <span class="metric-value">
-              <span class="metric-num">{evaluation.margin.toFixed(1)}</span>
-              <span
-                class="metric-verdict"
-                class:metric-robust={evaluation.margin >= 0.5}
-                class:metric-vulnerable={evaluation.margin < 0.2}
-              >
-                {evaluation.margin >= 0.5
-                  ? 'robust'
-                  : evaluation.margin >= 0.2
-                    ? 'moderat'
-                    : 'sårbart'}
+          {#if isPriceMode}
+            <div class="metric">
+              <span class="metric-label">Margin #1 → #2</span>
+              <span class="metric-value">
+                <span class="metric-num">{formatNOK(evaluation.priceMargin)}</span>
+                <span class="metric-unit">kr</span>
               </span>
-            </span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Metodekontroll</span>
-            <span class="metric-value">
-              <span class="metric-icon" class:metric-match={evaluation.sameWinner}
-                >{evaluation.sameWinner ? '✓' : '⚠'}</span
-              >
-              <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
-            </span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Kvalitetsbudsjett</span>
-            <span class="metric-value">
-              <span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
-              <span class="metric-unit">kr</span>
-            </span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Kvalitet / pris</span>
-            <span class="metric-value">
-              <span class="metric-num">{evaluation.data.qualityWeight}</span>
-              <span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
-            </span>
-          </div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Metodekontroll</span>
+              <span class="metric-value">
+                <span class="metric-icon" class:metric-match={evaluation.sameWinner}
+                  >{evaluation.sameWinner ? '✓' : '⚠'}</span
+                >
+                <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+              </span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Kvalitetsbudsjett</span>
+              <span class="metric-value">
+                <span class="metric-num">{formatNOK(evaluation.totalMaxDeductions)}</span>
+                <span class="metric-unit">kr</span>
+              </span>
+            </div>
+          {:else}
+            <div class="metric">
+              <span class="metric-label">Margin #1 → #2</span>
+              <span class="metric-value">
+                <span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+                <span
+                  class="metric-verdict"
+                  class:metric-robust={evaluation.margin >= 0.5}
+                  class:metric-vulnerable={evaluation.margin < 0.2}
+                >
+                  {evaluation.margin >= 0.5
+                    ? 'robust'
+                    : evaluation.margin >= 0.2
+                      ? 'moderat'
+                      : 'sårbart'}
+                </span>
+              </span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Metodekontroll</span>
+              <span class="metric-value">
+                <span class="metric-icon" class:metric-match={evaluation.sameWinner}
+                  >{evaluation.sameWinner ? '✓' : '⚠'}</span
+                >
+                <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+              </span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Kvalitetsbudsjett</span>
+              <span class="metric-value">
+                <span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
+                <span class="metric-unit">kr</span>
+              </span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Kvalitet / pris</span>
+              <span class="metric-value">
+                <span class="metric-num">{evaluation.data.qualityWeight}</span>
+                <span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+              </span>
+            </div>
+          {/if}
         </div>
         <button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
           {drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}
