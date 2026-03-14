@@ -1,10 +1,26 @@
 /**
  * Pure computation functions extracted from EvaluationStore.
  * No runes, no side effects — just data in, data out.
+ *
+ * NOTE (Svelte 5 / $derived): These functions are called from $derived.by() in
+ * the store. $derived is shallow-reactive, so all reactive dependencies must be
+ * passed as explicit arguments — never access store state via closure.
  */
 
 import type { Criterion, Supplier, ActiveMethod } from './evaluation.svelte';
 import { criterionMode, supplierResourceScore, weightedAverage } from './evaluation.svelte';
+
+// ── Shared helpers ──
+
+/** Map each supplier to a computed value, keyed by supplier id. */
+function mapSuppliers(
+  suppliers: Supplier[],
+  fn: (supplier: Supplier) => number
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const s of suppliers) result[s.id] = fn(s);
+  return result;
+}
 
 // ── Progress ──
 
@@ -13,83 +29,126 @@ export interface ProgressResult {
   notes: { filled: number; total: number };
 }
 
-/** Count filled vs total score cells and notes across all criteria/suppliers. */
-export function computeProgress(criteria: Criterion[], suppliers: Supplier[]): ProgressResult {
-  let totalCells = 0;
-  let filledCells = 0;
-  let totalNotes = 0;
-  let filledNotes = 0;
+function progressLeaf(
+  criterion: Criterion, suppliers: Supplier[],
+  cells: number, filledCells: number, notes: number, filledNotes: number
+): [number, number, number, number] {
+  for (const supplier of suppliers) {
+    cells++;
+    if (criterion.scores?.[supplier.id] !== undefined) filledCells++;
+    notes++;
+    if (criterion.notes?.[supplier.id]) filledNotes++;
+  }
+  return [cells, filledCells, notes, filledNotes];
+}
 
-  for (const criterion of criteria) {
-    const mode = criterionMode(criterion);
-
-    if (mode === 'leaf') {
-      // Mode 1: one cell per supplier on the criterion
-      for (const supplier of suppliers) {
-        totalCells++;
-        if (criterion.scores?.[supplier.id] !== undefined) filledCells++;
-        totalNotes++;
-        if (criterion.notes?.[supplier.id]) filledNotes++;
-      }
-    } else if (mode === 'resource') {
-      // Mode 3: roles × moments per supplier
-      const nMoments = criterion.subcriteria.length;
-      for (const supplier of suppliers) {
-        const items = criterion.items?.[supplier.id] ?? [];
-        if (items.length === 0) {
-          totalCells += Math.max(1, nMoments);
-        } else {
-          for (const item of items) {
-            for (const sub of criterion.subcriteria) {
-              totalCells++;
-              if (item.scores[sub.id] !== undefined) filledCells++;
-            }
-          }
-        }
-        totalNotes++;
-        if (criterion.notes?.[supplier.id]) filledNotes++;
-      }
+function progressResource(
+  criterion: Criterion, suppliers: Supplier[],
+  cells: number, filledCells: number, notes: number, filledNotes: number
+): [number, number, number, number] {
+  const nMoments = criterion.subcriteria.length;
+  for (const supplier of suppliers) {
+    const items = criterion.items?.[supplier.id] ?? [];
+    if (items.length === 0) {
+      cells += Math.max(1, nMoments);
     } else {
-      // Mode 2: traditional subcriteria
-      for (const sub of criterion.subcriteria) {
-        if (sub.evaluationType === 'item' && sub.itemCriteria) {
-          const nCriteria = sub.itemCriteria.length;
-          for (const supplier of suppliers) {
-            const items = sub.items?.[supplier.id] ?? [];
-            if (items.length === 0) {
-              totalCells += nCriteria;
-            } else {
-              for (const item of items) {
-                for (const ic of sub.itemCriteria) {
-                  totalCells++;
-                  if (item.scores[ic.id] !== undefined) filledCells++;
-                }
-              }
-            }
-          }
-          for (const supplier of suppliers) {
-            totalNotes++;
-            if (sub.notes[supplier.id]) filledNotes++;
-          }
-        } else {
-          for (const supplier of suppliers) {
-            totalCells++;
-            if (sub.scores[supplier.id] !== undefined) filledCells++;
-            totalNotes++;
-            if (sub.notes[supplier.id]) filledNotes++;
-          }
+      for (const item of items) {
+        for (const sub of criterion.subcriteria) {
+          cells++;
+          if (item.scores[sub.id] !== undefined) filledCells++;
         }
       }
     }
+    notes++;
+    if (criterion.notes?.[supplier.id]) filledNotes++;
+  }
+  return [cells, filledCells, notes, filledNotes];
+}
+
+function progressTraditional(
+  criterion: Criterion, suppliers: Supplier[],
+  cells: number, filledCells: number, notes: number, filledNotes: number
+): [number, number, number, number] {
+  for (const sub of criterion.subcriteria) {
+    if (sub.evaluationType === 'item' && sub.itemCriteria) {
+      const nCriteria = sub.itemCriteria.length;
+      for (const supplier of suppliers) {
+        const items = sub.items?.[supplier.id] ?? [];
+        if (items.length === 0) {
+          cells += nCriteria;
+        } else {
+          for (const item of items) {
+            for (const ic of sub.itemCriteria) {
+              cells++;
+              if (item.scores[ic.id] !== undefined) filledCells++;
+            }
+          }
+        }
+      }
+      for (const supplier of suppliers) {
+        notes++;
+        if (sub.notes[supplier.id]) filledNotes++;
+      }
+    } else {
+      for (const supplier of suppliers) {
+        cells++;
+        if (sub.scores[supplier.id] !== undefined) filledCells++;
+        notes++;
+        if (sub.notes[supplier.id]) filledNotes++;
+      }
+    }
+  }
+  return [cells, filledCells, notes, filledNotes];
+}
+
+/** Count filled vs total score cells and notes across all criteria/suppliers. */
+export function computeProgress(criteria: Criterion[], suppliers: Supplier[]): ProgressResult {
+  let cells = 0, filledCells = 0, notes = 0, filledNotes = 0;
+
+  for (const criterion of criteria) {
+    const mode = criterionMode(criterion);
+    const fn = mode === 'leaf' ? progressLeaf : mode === 'resource' ? progressResource : progressTraditional;
+    [cells, filledCells, notes, filledNotes] = fn(criterion, suppliers, cells, filledCells, notes, filledNotes);
   }
 
   return {
-    scores: { filled: filledCells, total: totalCells },
-    notes: { filled: filledNotes, total: totalNotes },
+    scores: { filled: filledCells, total: cells },
+    notes: { filled: filledNotes, total: notes },
   };
 }
 
 // ── Price deductions (prismodell) ──
+
+function deductionsDirect(
+  criterion: Criterion,
+  suppliers: Supplier[],
+  maxDed: number,
+  result: Record<string, Record<string, number>>
+): void {
+  const perSupplier: Record<string, number> = {};
+  for (const supplier of suppliers) {
+    const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
+    perSupplier[supplier.id] = Math.min(entered, maxDed);
+  }
+  result[criterion.id] = perSupplier;
+}
+
+function deductionsTraditional(
+  criterion: Criterion,
+  suppliers: Supplier[],
+  maxDed: number,
+  result: Record<string, Record<string, number>>
+): void {
+  const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
+  for (const sub of criterion.subcriteria) {
+    result[sub.id] = {};
+    const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
+    for (const supplier of suppliers) {
+      const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
+      result[sub.id][supplier.id] = Math.min(entered, subMaxDed);
+    }
+  }
+}
 
 /** Compute quality deductions per criterion/sub-criterion per supplier. */
 export function computePriceDeductions(
@@ -103,29 +162,15 @@ export function computePriceDeductions(
   const qb = contractValue * (qualityWeight / 100);
 
   for (const criterion of criteria) {
-    if (criterion.type === 'price') continue; // price criteria have no deduction
+    if (criterion.type === 'price') continue;
     const mode = criterionMode(criterion);
-    // Use explicit maxPriceDeduction if set, otherwise derive from weights
     const maxDed =
       criterion.maxPriceDeduction ?? (totalWeight > 0 ? qb * (criterion.weight / totalWeight) : 0);
 
     if (mode === 'leaf' || mode === 'resource') {
-      result[criterion.id] = {};
-      for (const supplier of suppliers) {
-        const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
-        result[criterion.id][supplier.id] = Math.min(entered, maxDed);
-      }
+      deductionsDirect(criterion, suppliers, maxDed, result);
     } else {
-      // Traditional: split maxDed proportionally across subcriteria by sub-weight
-      const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
-      for (const sub of criterion.subcriteria) {
-        result[sub.id] = {};
-        const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
-        for (const supplier of suppliers) {
-          const entered = sub.priceDeductionAmounts?.[supplier.id] ?? 0;
-          result[sub.id][supplier.id] = Math.min(entered, subMaxDed);
-        }
-      }
+      deductionsTraditional(criterion, suppliers, maxDed, result);
     }
   }
   return result;
@@ -143,36 +188,21 @@ export function computeGroupScores(
 ): Record<string, Record<string, number>> {
   const result: Record<string, Record<string, number>> = {};
   for (const criterion of criteria) {
-    result[criterion.id] = {};
-    const mode = criterionMode(criterion);
-    // Price criteria in poengmodell: auto-score from supplier prices
     if (criterion.type === 'price' && activeMethod === 'poeng') {
-      for (const supplier of suppliers) {
-        result[criterion.id][supplier.id] = priceFormulaScores[supplier.id] ?? 0;
-      }
+      result[criterion.id] = mapSuppliers(suppliers, (s) => priceFormulaScores[s.id] ?? 0);
       continue;
     }
-    for (const supplier of suppliers) {
-      if (mode === 'resource') {
-        // Mode 3: roles × moments (subcriteria as dimensions)
-        const items = criterion.items?.[supplier.id] ?? [];
-        result[criterion.id][supplier.id] = supplierResourceScore(
-          items,
+    const mode = criterionMode(criterion);
+    result[criterion.id] =
+      mode === 'resource' ? mapSuppliers(suppliers, (s) =>
+        supplierResourceScore(
+          criterion.items?.[s.id] ?? [],
           criterion.subcriteria,
           criterion.aggregation ?? 'average'
-        );
-      } else if (mode === 'leaf') {
-        // Mode 1: direct scores on criterion
-        result[criterion.id][supplier.id] = criterion.scores?.[supplier.id] ?? 0;
-      } else {
-        // Mode 2: traditional weighted subcriteria
-        result[criterion.id][supplier.id] = weightedAverage(
-          criterion.subcriteria,
-          supplier.id,
-          itemScores
-        );
-      }
-    }
+        )
+      ) :
+      mode === 'leaf' ? mapSuppliers(suppliers, (s) => criterion.scores?.[s.id] ?? 0) :
+      mapSuppliers(suppliers, (s) => weightedAverage(criterion.subcriteria, s.id, itemScores));
   }
   return result;
 }
@@ -186,7 +216,6 @@ export function computeBestScores(
 ): Record<string, number> {
   const result: Record<string, number> = {};
   for (const criterion of criteria) {
-    // For leaf criteria, best score at criterion level
     if (criterionMode(criterion) === 'leaf' && criterion.scores) {
       const vals = Object.values(criterion.scores);
       result[criterion.id] = vals.length > 0 ? Math.max(...vals) : 0;
@@ -208,8 +237,7 @@ export function computeWeightWarnings(
 ): Record<string, { expected: number; subSum: number }> {
   const result: Record<string, { expected: number; subSum: number }> = {};
   for (const criterion of criteria) {
-    const mode = criterionMode(criterion);
-    if (mode === 'traditional') {
+    if (criterionMode(criterion) === 'traditional') {
       const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
       if (subSum !== 100) {
         result[criterion.id] = { expected: 100, subSum };

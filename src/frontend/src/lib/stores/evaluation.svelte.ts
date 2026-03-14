@@ -694,45 +694,54 @@ class EvaluationStore {
   initializeIfNeeded(procId: number, proc: any, activities: any[], eforms: any | null) {
     if (this.data.id === String(procId)) return;
 
-    // Try to restore previously saved work for this procurement.
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(LS_PREFIX + procId);
-      if (saved) {
-        try {
-          const { data, activeMethod } = JSON.parse(saved);
-          this.initialize(data);
-          if (activeMethod) this.activeMethod = activeMethod;
-          return;
-        } catch {
-          // Corrupt entry — fall through to fresh init.
-          localStorage.removeItem(LS_PREFIX + procId);
-        }
-      }
+    if (this._tryRestoreFromStorage(procId)) return;
+
+    this.initialize(this._buildFreshData(procId, proc, activities, eforms));
+    this._importEformsCriteria(eforms);
+  }
+
+  /** Try to restore previously saved evaluation state from localStorage. Returns true if restored. */
+  private _tryRestoreFromStorage(procId: number): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    const saved = localStorage.getItem(LS_PREFIX + procId);
+    if (!saved) return false;
+    try {
+      const { data, activeMethod } = JSON.parse(saved);
+      this.initialize(data);
+      if (activeMethod) this.activeMethod = activeMethod;
+      return true;
+    } catch {
+      localStorage.removeItem(LS_PREFIX + procId);
+      return false;
     }
+  }
 
-    const suppliers = extractBidders(activities);
-
-    this.initialize({
+  /** Build initial EvaluationData from route parameters. */
+  private _buildFreshData(procId: number, proc: any, activities: any[], eforms: any | null): EvaluationData {
+    const title = proc?.name || proc?.title || '';
+    return {
       id: String(procId),
-      title: proc?.name || proc?.title || '',
-      procurementName: proc?.name || proc?.title || '',
+      title,
+      procurementName: title,
       reference: proc?.sequenceId || String(procId),
       status: 'Oppsett',
       qualityWeight: 0,
       priceWeight: 0,
       contractValue: eforms?.estimated_value ?? 0,
-      suppliers,
+      suppliers: extractBidders(activities),
       criteria: [],
-    });
+    };
+  }
 
-    if (eforms?.award_criteria?.length) {
-      for (const ac of eforms.award_criteria) {
-        const type = ac.type === 'price' ? ('price' as const) : ('quality' as const);
-        const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
-        const criterionId = this.addCriterion(name, type);
-        if (ac.weight_percent) {
-          this.setCriterionWeight(criterionId, Math.round(ac.weight_percent));
-        }
+  /** Import award criteria from eForms data, if available. */
+  private _importEformsCriteria(eforms: any | null) {
+    if (!eforms?.award_criteria?.length) return;
+    for (const ac of eforms.award_criteria) {
+      const type = ac.type === 'price' ? ('price' as const) : ('quality' as const);
+      const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
+      const criterionId = this.addCriterion(name, type);
+      if (ac.weight_percent) {
+        this.setCriterionWeight(criterionId, Math.round(ac.weight_percent));
       }
     }
   }
