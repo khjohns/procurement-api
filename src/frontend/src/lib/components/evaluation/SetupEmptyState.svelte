@@ -60,9 +60,19 @@
         <div class="criterion-group" data-criterion-id={criterion.id}>
           <div class="criterion-row criterion-row-group">
             <div class="criterion-weight">
-              <span class="weight-value weight-value-group"
-                >{criterion.weight}<span class="weight-pct">%</span></span
-              >
+              <input
+                class="weight-input weight-input-group"
+                type="number"
+                min="0"
+                max="100"
+                value={criterion.weight}
+                oninput={(e) =>
+                  evaluation.setCriterionWeight(
+                    criterion.id,
+                    parseInt((e.target as HTMLInputElement).value) || 0
+                  )}
+              />
+              <span class="weight-pct-input">%</span>
               <div class="weight-bar">
                 <div
                   class="weight-bar-fill"
@@ -476,9 +486,9 @@
     color: var(--color-vekt-dim);
   }
 
-  .weight-value-group {
-    font-size: 13px;
+  .weight-input-group {
     color: var(--color-vekt);
+    font-size: 13px;
   }
 
   .weight-pct {
