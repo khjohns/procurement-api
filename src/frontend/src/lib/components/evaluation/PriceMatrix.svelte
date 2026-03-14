@@ -157,7 +157,7 @@
           <!-- Max deduction cell -->
           <td class="cell-weight">
             {#if isPriceType}
-              <!-- empty — no deduction for price -->
+              <span class="na-label">—</span>
             {:else if editingMaxDed[criterion.id]}
               <!-- svelte-ignore a11y_autofocus -->
               <input
@@ -391,11 +391,10 @@
   }
 
   /* Max deduction editing */
-  .ingen-label {
+  .na-label {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 12px;
     color: var(--color-ink-ghost);
-    font-style: italic;
   }
 
   .maxded-btn {
