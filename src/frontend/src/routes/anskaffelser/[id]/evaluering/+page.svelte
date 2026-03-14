@@ -218,18 +218,23 @@
           <div class="metric">
             <span class="metric-label">Margin #1 → #2</span>
             <span class="metric-value">
-              <span class="metric-num">{evaluation.margin.toFixed(1)}</span>
-              <span
-                class="metric-verdict"
-                class:metric-robust={evaluation.margin >= 0.5}
-                class:metric-vulnerable={evaluation.margin < 0.2}
-              >
-                {evaluation.margin >= 0.5
-                  ? 'robust'
-                  : evaluation.margin >= 0.2
-                    ? 'moderat'
-                    : 'sårbart'}
-              </span>
+              {#if isPriceMode}
+                <span class="metric-num">{formatNOK(evaluation.priceMargin)}</span>
+                <span class="metric-unit">kr</span>
+              {:else}
+                <span class="metric-num">{evaluation.margin.toFixed(1)}</span>
+                <span
+                  class="metric-verdict"
+                  class:metric-robust={evaluation.margin >= 0.5}
+                  class:metric-vulnerable={evaluation.margin < 0.2}
+                >
+                  {evaluation.margin >= 0.5
+                    ? 'robust'
+                    : evaluation.margin >= 0.2
+                      ? 'moderat'
+                      : 'sårbart'}
+                </span>
+              {/if}
             </span>
           </div>
           <div class="metric">
@@ -244,17 +249,19 @@
           <div class="metric">
             <span class="metric-label">Kvalitetsbudsjett</span>
             <span class="metric-value">
-              <span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
+              <span class="metric-num">{formatNOK(isPriceMode ? evaluation.totalMaxDeductions : evaluation.qualityBudget)}</span>
               <span class="metric-unit">kr</span>
             </span>
           </div>
-          <div class="metric">
-            <span class="metric-label">Kvalitet / pris</span>
-            <span class="metric-value">
-              <span class="metric-num">{evaluation.data.qualityWeight}</span>
-              <span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
-            </span>
-          </div>
+          {#if !isPriceMode}
+            <div class="metric">
+              <span class="metric-label">Kvalitet / pris</span>
+              <span class="metric-value">
+                <span class="metric-num">{evaluation.data.qualityWeight}</span>
+                <span class="metric-unit">/ {evaluation.data.priceWeight} %</span>
+              </span>
+            </div>
+          {/if}
         </div>
         <button class="insights-btn" onclick={() => (drawerOpen = !drawerOpen)}>
           {drawerOpen ? 'Lukk analyse' : 'Åpne analyse'}

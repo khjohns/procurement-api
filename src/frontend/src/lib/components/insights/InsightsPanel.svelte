@@ -65,14 +65,18 @@
     return best;
   });
 
-  // ── Prismodell robusthet ──
+  /** Criterion with largest max deduction (for prismodell). */
+  let largestDeductionCriterion = $derived.by(() => {
+    let best = { name: '', amount: 0 };
+    for (const c of evaluation.data.criteria) {
+      if (c.type === 'price') continue;
+      const amount = evaluation.maxDeductions[c.id] ?? 0;
+      if (amount > best.amount) best = { name: c.name, amount };
+    }
+    return best;
+  });
 
-  /** Price margin between #1 and #2 in NOK. */
-  let priceMargin = $derived(
-    evaluation.priceRanking.length >= 2
-      ? evaluation.priceRanking[1].evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice
-      : 0
-  );
+  // ── Prismodell robusthet ──
 
   /** Criterion with largest deduction spread across suppliers (prismodell). */
   let largestDeductionSpread = $derived.by(() => {
@@ -212,7 +216,9 @@
           <thead>
             <tr>
               <th>Kriterium</th>
-              <th class="num">Vekt</th>
+              {#if !isPris}
+                <th class="num">Vekt</th>
+              {/if}
               <th class="num">Maks fradrag</th>
               {#if !isPris}
                 <th class="num">Per poeng</th>
@@ -221,7 +227,9 @@
           </thead>
           <tbody>
             {#each evaluation.data.criteria as criterion}
-              {@const maxDeduction = qualityBudget * (criterion.weight / totalWeight)}
+              {@const maxDeduction = isPris
+                ? (criterion.type === 'price' ? 0 : (evaluation.maxDeductions[criterion.id] ?? 0))
+                : qualityBudget * (criterion.weight / totalWeight)}
               <tr class:bv-row-price={criterion.type === 'price'}>
                 <td class="bv-criterion">
                   {criterion.name}
@@ -229,31 +237,35 @@
                     <span class="bv-type-badge bv-type-price">Pris</span>
                   {/if}
                 </td>
-                <td class="bv-weight">{criterion.weight} %</td>
+                {#if !isPris}
+                  <td class="bv-weight">{criterion.weight} %</td>
+                {/if}
                 <td class="bv-value">{formatNOK(maxDeduction)} kr</td>
                 {#if !isPris}
                   <td class="bv-per-point">{formatNOK(maxDeduction / 10)} kr</td>
                 {/if}
               </tr>
-              {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
-              {#each criterion.subcriteria as sub}
-                {@const subMaxDeduction =
-                  qualityBudget *
-                  (subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}
-                <tr class:bv-row-price={criterion.type === 'price'}>
-                  <td class="bv-sub">{sub.name}</td>
-                  <td class="bv-weight">{sub.weight} %</td>
-                  <td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
-                  {#if !isPris}
+              {#if !isPris}
+                {@const subSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0)}
+                {#each criterion.subcriteria as sub}
+                  {@const subMaxDeduction =
+                    qualityBudget *
+                    (subEffectiveWeight(criterion.weight, sub.weight, subSum) / totalWeight)}
+                  <tr class:bv-row-price={criterion.type === 'price'}>
+                    <td class="bv-sub">{sub.name}</td>
+                    <td class="bv-weight">{sub.weight} %</td>
+                    <td class="bv-value">{formatNOK(subMaxDeduction)} kr</td>
                     <td class="bv-per-point">{formatNOK(subMaxDeduction / 10)} kr</td>
-                  {/if}
-                </tr>
-              {/each}
+                  </tr>
+                {/each}
+              {/if}
             {/each}
             <tr class="bv-total">
               <td class="bv-criterion">Sum kvalitetskriterier</td>
-              <td class="bv-weight">{evaluation.data.qualityWeight} %</td>
-              <td class="bv-value">{formatNOK(qualityBudget)} kr</td>
+              {#if !isPris}
+                <td class="bv-weight">{evaluation.data.qualityWeight} %</td>
+              {/if}
+              <td class="bv-value">{formatNOK(isPris ? evaluation.totalMaxDeductions : qualityBudget)} kr</td>
               {#if !isPris}
                 <td class="bv-per-point"></td>
               {/if}
@@ -262,11 +274,16 @@
         </table>
 
         <div class="bv-summary">
-          Med kontraktsverdi <span class="bv-highlight"
-            >{formatNOK(evaluation.data.contractValue)} kr</span
-          >
-          og kvalitetsvekt <strong>{evaluation.data.qualityWeight} %</strong>, er total
-          betalingsvilje <span class="bv-highlight">{formatNOK(qualityBudget)} kr</span>.
+          {#if isPris}
+            Total betalingsvilje er <span class="bv-highlight">{formatNOK(evaluation.totalMaxDeductions)} kr</span>
+            — summen av maks fradrag på hvert kvalitetskriterium.
+          {:else}
+            Med kontraktsverdi <span class="bv-highlight"
+              >{formatNOK(evaluation.data.contractValue)} kr</span
+            >
+            og kvalitetsvekt <strong>{evaluation.data.qualityWeight} %</strong>, er total
+            betalingsvilje <span class="bv-highlight">{formatNOK(qualityBudget)} kr</span>.
+          {/if}
         </div>
       </div>
     {/if}
@@ -299,17 +316,17 @@
                 <div class="robusthet-insight-label">Prismargin</div>
                 <div class="robusthet-insight-text">
                   Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-                  <span class="mono">{formatNOK(priceMargin)} kr</span>.
+                  <span class="mono">{formatNOK(evaluation.priceMargin)} kr</span>.
                   {#if evaluation.data.contractValue > 0}
                     Det utgjør <span class="mono"
-                      >{((priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
+                      >{((evaluation.priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
                     > av kontraktsverdien.
                   {/if}
                   Resultatet er
                   <strong>
-                    {#if priceMargin > evaluation.data.contractValue * 0.05}
+                    {#if evaluation.priceMargin > evaluation.data.contractValue * 0.05}
                       robust
-                    {:else if priceMargin > evaluation.data.contractValue * 0.01}
+                    {:else if evaluation.priceMargin > evaluation.data.contractValue * 0.01}
                       moderat robust
                     {:else}
                       sårbart
@@ -320,8 +337,8 @@
               <div class="robusthet-insight">
                 <div class="robusthet-insight-label">Størst påvirkning</div>
                 <div class="robusthet-insight-text">
-                  <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst
-                  maksimalt fradrag og dermed størst innvirkning på evaluert pris.
+                  <strong>{largestDeductionCriterion.name}</strong> har størst
+                  maksimalt fradrag (<span class="mono">{formatNOK(largestDeductionCriterion.amount)} kr</span>) og dermed størst innvirkning på evaluert pris.
                 </div>
               </div>
               {#if largestDeductionSpread.spread > 0}

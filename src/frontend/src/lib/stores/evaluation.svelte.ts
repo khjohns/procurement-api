@@ -427,6 +427,18 @@ class EvaluationStore {
   /** Margin between #1 and #2 in quality ranking. */
   margin = $derived(this.ranking.length >= 2 ? this.ranking[0].score - this.ranking[1].score : 0);
 
+  /** Price margin between #1 and #2 evaluated prices (NOK). */
+  priceMargin = $derived(
+    this.priceRanking.length >= 2
+      ? this.priceRanking[1].evaluatedPrice - this.priceRanking[0].evaluatedPrice
+      : 0
+  );
+
+  /** Sum of max deductions across all quality criteria (the real quality budget in prismodell). */
+  totalMaxDeductions = $derived(
+    Object.values(this.maxDeductions).reduce((sum, d) => sum + d, 0)
+  );
+
   /** Whether both evaluation methods agree on winner. */
   sameWinner = $derived(this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id);
 

@@ -1,22 +1,44 @@
 <script lang="ts">
   import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
-  import { sensitivity } from '$lib/stores/sensitivity.svelte';
 
-  /** Recompute evaluated prices using the sensitivity store's simulated weights.
-   *  Weight changes affect max deductions (when not explicitly set),
-   *  which clamps the entered deductions, changing evaluated prices. */
+  interface SimulatedDeduction {
+    id: string;
+    name: string;
+    original: number;
+    simulated: number;
+  }
+
+  /** Local overrides: criterionId → simulated max deduction in NOK. */
+  let overrides = $state<Record<string, number>>({});
+
+  let simDeductions: SimulatedDeduction[] = $derived(
+    evaluation.data.criteria
+      .filter((c) => c.type !== 'price')
+      .map((c) => {
+        const original = evaluation.maxDeductions[c.id] ?? 0;
+        return {
+          id: c.id,
+          name: c.name,
+          original,
+          simulated: overrides[c.id] ?? original,
+        };
+      })
+  );
+
+  let simTotal = $derived(simDeductions.reduce((s, d) => s + d.simulated, 0));
+  let hasChanges = $derived(simDeductions.some((d) => d.simulated !== d.original));
+
+  /** Upper bound for sliders — 2× the largest max deduction or quality budget, whichever is larger. */
+  let sliderMax = $derived(
+    Math.max(
+      evaluation.totalMaxDeductions * 1.5,
+      Math.max(...simDeductions.map((d) => d.original)) * 3,
+      1000
+    )
+  );
+
+  /** Recompute evaluated prices using simulated max deductions. */
   let simulatedPriceData = $derived.by(() => {
-    const simWeightMap = new Map(sensitivity.simulatedWeights.map((w) => [w.id, w.weight]));
-    const simTotal = sensitivity.simulatedSum;
-    if (simTotal === 0)
-      return {
-        prices: {} as Record<string, number>,
-        ranking: [] as Array<{ id: string; name: string; price: number; rank: number }>,
-      };
-
-    const qb = evaluation.data.contractValue * (evaluation.data.qualityWeight / 100);
-
-    // Recalculate total deductions per supplier with simulated weights
     const totalDed: Record<string, number> = {};
     for (const supplier of evaluation.data.suppliers) {
       totalDed[supplier.id] = 0;
@@ -24,18 +46,14 @@
 
     for (const criterion of evaluation.data.criteria) {
       if (criterion.type === 'price') continue;
-      const simWeight = simWeightMap.get(criterion.id) ?? criterion.weight;
-      const maxDed =
-        criterion.maxPriceDeduction ?? (simTotal > 0 ? qb * (simWeight / simTotal) : 0);
+      const maxDed = overrides[criterion.id] ?? (evaluation.maxDeductions[criterion.id] ?? 0);
 
       if (criterion.subcriteria.length === 0 || criterion.evaluationType === 'item') {
-        // Leaf/resource: direct deduction
         for (const supplier of evaluation.data.suppliers) {
           const entered = criterion.priceDeductionAmounts?.[supplier.id] ?? 0;
           totalDed[supplier.id] += Math.min(entered, maxDed);
         }
       } else {
-        // Traditional: sub-criterion deductions
         const subSum = criterion.subcriteria.reduce((s, sub) => s + sub.weight, 0);
         for (const sub of criterion.subcriteria) {
           const subMaxDed = subSum > 0 ? maxDed * (sub.weight / subSum) : 0;
@@ -74,37 +92,45 @@
       (entry, i) => entry.supplier.id !== simulatedPriceData.ranking[i]?.id
     );
   });
+
+  function setDeduction(criterionId: string, value: number) {
+    overrides = { ...overrides, [criterionId]: Math.max(0, Math.round(value)) };
+  }
+
+  function reset() {
+    overrides = {};
+  }
 </script>
 
 <div class="sensitivity">
-  <!-- Simulator -->
   <div class="section">
     <div class="section-header">Simulator — maks fradrag</div>
 
     <div class="simulator-sliders">
-      {#each sensitivity.simulatedWeights as sw}
-        {@const changed = sw.weight !== sw.original}
+      {#each simDeductions as sd}
+        {@const changed = sd.simulated !== sd.original}
         <div class="slider-row">
-          <span class="slider-label">{sw.name}</span>
+          <span class="slider-label">{sd.name}</span>
           <input
             type="range"
             class="slider-input"
             min="0"
-            max="100"
-            value={sw.weight}
-            oninput={(e) => sensitivity.setWeight(sw.id, Number(e.currentTarget.value))}
+            max={sliderMax}
+            step="1000"
+            value={sd.simulated}
+            oninput={(e) => setDeduction(sd.id, Number(e.currentTarget.value))}
           />
           <span class="slider-value" class:slider-changed={changed}>
             {#if changed}
-              <span class="slider-original">{sw.original}</span>
+              <span class="slider-original">{formatNOK(sd.original)}</span>
               <span class="slider-arrow">&rarr;</span>
             {/if}
-            {sw.weight} %
+            {formatNOK(sd.simulated)} kr
           </span>
         </div>
       {/each}
-      <div class="slider-sum" class:slider-sum-warning={sensitivity.simulatedSum !== 100}>
-        Sum: {sensitivity.simulatedSum} %
+      <div class="slider-sum">
+        Sum: {formatNOK(simTotal)} kr
       </div>
     </div>
 
@@ -143,8 +169,8 @@
       <div class="ranking-alert ranking-alert-minor">Rangeringen endres (samme vinner).</div>
     {/if}
 
-    {#if sensitivity.hasChanges}
-      <button class="reset-btn" onclick={() => sensitivity.reset()}>Nullstill</button>
+    {#if hasChanges}
+      <button class="reset-btn" onclick={reset}>Nullstill</button>
     {/if}
   </div>
 </div>
@@ -233,7 +259,7 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-muted);
     text-align: right;
-    min-width: 80px;
+    min-width: 100px;
   }
 
   .slider-changed {
@@ -257,10 +283,6 @@
     font-size: 11px;
     color: var(--color-ink-muted);
     padding-top: var(--spacing-1);
-  }
-
-  .slider-sum-warning {
-    color: var(--color-score-low);
   }
 
   /* ── Ranking comparison ── */
