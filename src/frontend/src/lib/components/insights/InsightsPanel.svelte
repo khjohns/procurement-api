@@ -3,6 +3,7 @@
     evaluation,
     formatNOK,
     subEffectiveWeight,
+    criterionMode,
     type ActiveMethod,
   } from '$lib/stores/evaluation.svelte';
   import SensitivityPane from './SensitivityPane.svelte';
@@ -100,6 +101,75 @@
       }
     }
     return best;
+  });
+
+  // ── Metodekontroll ──
+
+  /** Weight warnings: criteria where sub-weights don't sum to 100%. */
+  let weightWarnings = $derived(evaluation.weightWarnings);
+
+  let weightWarningList = $derived(
+    Object.entries(weightWarnings).map(([id, w]) => ({
+      name: evaluation.data.criteria.find((c) => c.id === id)?.name ?? id,
+      subSum: w.subSum,
+    }))
+  );
+
+  /** Scoring distribution per criterion: spread and clustering analysis. */
+  let scoringDistribution = $derived.by(() => {
+    const suppliers = evaluation.data.suppliers;
+    if (suppliers.length < 2)
+      return {
+        clustered: [] as { name: string; avg: number; spread: number }[],
+        lowDiff: [] as { name: string; spread: number }[],
+      };
+
+    const clustered: { name: string; avg: number; spread: number }[] = [];
+    const lowDiff: { name: string; spread: number }[] = [];
+
+    for (const c of evaluation.data.criteria) {
+      if (c.type === 'price') continue;
+      const mode = criterionMode(c);
+
+      // Collect all individual scores for this criterion
+      const allScores: number[] = [];
+      if (mode === 'leaf') {
+        for (const s of suppliers) {
+          const score = c.scores?.[s.id] ?? 0;
+          if (score > 0) allScores.push(score);
+        }
+      } else if (mode === 'traditional') {
+        for (const sub of c.subcriteria) {
+          for (const s of suppliers) {
+            const score = sub.scores[s.id] ?? 0;
+            if (score > 0) allScores.push(score);
+          }
+        }
+      }
+
+      if (allScores.length < 2) continue;
+
+      const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
+      const high = Math.max(...allScores);
+      const low = Math.min(...allScores);
+      const spread = high - low;
+
+      // Clustering: all scores within a narrow band (spread ≤ 2 on 0-10 scale)
+      if (spread <= 2 && allScores.length >= 4) {
+        clustered.push({ name: c.name, avg, spread });
+      }
+
+      // Low differentiation: group scores per supplier nearly identical
+      const groupScores = suppliers.map((s) => evaluation.groupScores[c.id]?.[s.id] ?? 0);
+      const groupHigh = Math.max(...groupScores);
+      const groupLow = Math.min(...groupScores);
+      const groupSpread = groupHigh - groupLow;
+      if (groupSpread < 0.5 && groupScores.some((s) => s > 0)) {
+        lowDiff.push({ name: c.name, spread: groupSpread });
+      }
+    }
+
+    return { clustered, lowDiff };
   });
 </script>
 
@@ -355,6 +425,49 @@
               : 'Metodene gir ulik rangering — vurder årsaken'}
           </span>
         </div>
+
+        <!-- Validation warnings -->
+        {#if weightWarningList.length > 0}
+          <div class="mk-section">
+            <div class="mk-section-header">Vektvarsler</div>
+            {#each weightWarningList as warning}
+              <div class="mk-warning">
+                <span class="mk-warning-icon">⚠</span>
+                <span class="mk-warning-text">
+                  <strong>{warning.name}</strong> — undervekter summerer til {warning.subSum} % (forventet
+                  100 %)
+                </span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Scoring quality -->
+        {#if scoringDistribution.lowDiff.length > 0 || scoringDistribution.clustered.length > 0}
+          <div class="mk-section">
+            <div class="mk-section-header">Poengkvalitet</div>
+            {#each scoringDistribution.lowDiff as item}
+              <div class="mk-warning">
+                <span class="mk-warning-icon">⚠</span>
+                <span class="mk-warning-text">
+                  <strong>{item.name}</strong> — leverandørene får nesten identiske scores
+                  (spredning {item.spread.toFixed(1)}). Kriteriet skiller ikke mellom tilbudene.
+                </span>
+              </div>
+            {/each}
+            {#each scoringDistribution.clustered as item}
+              <div class="mk-info">
+                <span class="mk-warning-icon">ℹ</span>
+                <span class="mk-warning-text">
+                  <strong>{item.name}</strong> — alle scores ligger i et smalt bånd rundt {item.avg.toFixed(
+                    1
+                  )} (spredning {item.spread.toFixed(1)}). Vurder om differensieringen er
+                  tilstrekkelig.
+                </span>
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -740,6 +853,55 @@
   }
   .mk-verdict-text {
     font-weight: 500;
+  }
+
+  .mk-section {
+    margin-top: var(--spacing-4);
+  }
+  .mk-section-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-muted);
+    margin-bottom: var(--spacing-2);
+  }
+  .mk-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-score-low-bg);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--color-score-low);
+    margin-bottom: var(--spacing-2);
+  }
+  .mk-warning strong {
+    color: inherit;
+  }
+  .mk-info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-felt-raised);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--color-ink-secondary);
+    margin-bottom: var(--spacing-2);
+  }
+  .mk-info strong {
+    color: var(--color-ink);
+  }
+  .mk-warning-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .mk-warning-text {
+    line-height: 1.5;
   }
 
   @media (max-width: 1024px) {
