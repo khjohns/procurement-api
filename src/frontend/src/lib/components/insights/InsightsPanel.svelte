@@ -540,13 +540,6 @@
   }
 
   /* ── Method switch ── */
-  .empty-state {
-    font-size: 12px;
-    color: var(--color-ink-muted);
-    padding: var(--spacing-4);
-    text-align: center;
-  }
-
   .method-switch {
     display: flex;
     align-items: center;
@@ -580,6 +573,11 @@
     box-shadow: 0 0 0 1.5px var(--color-wire-focus);
   }
 
+  .method-switch-btn:hover:not(.active) {
+    background: var(--color-felt-hover);
+    color: var(--color-ink-secondary);
+  }
+
   .method-switch-btn.active {
     background: var(--color-vekt-bg);
     color: var(--color-vekt);
@@ -609,6 +607,10 @@
     padding: var(--spacing-2) var(--spacing-3);
     font-size: 12px;
     border-bottom: 1px solid var(--color-wire);
+    transition: background 0.12s;
+  }
+  .bv-table tbody tr:hover td {
+    background: var(--color-felt-hover);
   }
   .bv-table tr:last-child td {
     border-bottom: none;
@@ -617,8 +619,8 @@
     color: var(--color-ink-secondary);
     font-weight: 500;
   }
-  .bv-sub {
-    padding-left: var(--spacing-8) !important;
+  .bv-table td.bv-sub {
+    padding-left: var(--spacing-8);
     color: var(--color-ink-muted);
     position: relative;
   }
@@ -693,6 +695,13 @@
     color: var(--color-vekt);
     font-family: var(--font-data);
     font-weight: 600;
+  }
+
+  .empty-state {
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    padding: var(--spacing-4);
+    text-align: center;
   }
 
   /* ── Robusthet ── */
@@ -853,9 +862,9 @@
     align-items: center;
     gap: var(--spacing-3);
     font-size: 12px;
-    background: var(--color-felt-raised);
-    border: 1px solid var(--color-wire);
-    color: var(--color-ink-secondary);
+    background: var(--color-score-low-bg);
+    border: 1px solid var(--color-score-low-bg);
+    color: var(--color-score-low);
   }
   .mk-verdict.match {
     background: var(--color-score-high-bg);

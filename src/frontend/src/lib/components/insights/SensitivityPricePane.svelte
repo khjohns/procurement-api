@@ -219,6 +219,14 @@
     border: none;
   }
 
+  .slider-input:focus-visible {
+    outline: none;
+  }
+
+  .slider-input:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--color-wire-focus);
+  }
+
   .slider-value {
     font-family: var(--font-data);
     font-size: 11px;

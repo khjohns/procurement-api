@@ -295,6 +295,14 @@
     border: none;
   }
 
+  .slider-input:focus-visible {
+    outline: none;
+  }
+
+  .slider-input:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--color-wire-focus);
+  }
+
   .slider-value {
     font-family: var(--font-data);
     font-size: 11px;
@@ -361,6 +369,10 @@
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border-bottom: 1px solid var(--color-wire);
+    transition: background 0.12s;
+  }
+  .ranking-row:hover {
+    background: var(--color-felt-hover);
   }
 
   .ranking-row:last-child {
