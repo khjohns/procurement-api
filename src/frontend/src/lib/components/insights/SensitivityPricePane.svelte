@@ -373,7 +373,7 @@
     color: var(--color-ink);
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1023px) {
     .ranking-comparison {
       grid-template-columns: 1fr;
     }

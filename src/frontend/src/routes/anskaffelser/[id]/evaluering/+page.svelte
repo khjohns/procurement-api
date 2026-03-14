@@ -113,7 +113,10 @@
         <button
           class="setup-toggle-btn"
           class:setup-active={setupToggleOpen}
-          onclick={() => (setupToggleOpen = !setupToggleOpen)}
+          onclick={() => {
+            setupToggleOpen = !setupToggleOpen;
+            if (setupToggleOpen) mobilePanelOpen = true;
+          }}
           title="Juster oppsett"
         >
           &#9881; Oppsett
@@ -280,7 +283,10 @@
   <!-- Mobile panel toggle -->
   <button
     class="mobile-panel-toggle"
-    onclick={() => (mobilePanelOpen = !mobilePanelOpen)}
+    onclick={() => {
+      mobilePanelOpen = !mobilePanelOpen;
+      if (mobilePanelOpen) panelCollapsed = false;
+    }}
     aria-label={mobilePanelOpen ? 'Lukk panel' : 'Åpne panel'}
   >
     {#if mobilePanelOpen}
@@ -899,6 +905,18 @@
 
     .eval-main {
       padding: var(--spacing-3) var(--spacing-4);
+    }
+
+    .eval-context {
+      flex-wrap: wrap;
+    }
+
+    .context-info {
+      width: 100%;
+    }
+
+    .context-actions {
+      width: 100%;
     }
   }
 </style>

@@ -350,6 +350,8 @@
 
 <style>
   .setup-main {
+    --weight-col: 72px;
+    --criterion-indent: calc(var(--weight-col) + var(--spacing-3) + var(--spacing-4) + 3px);
     max-width: 800px;
   }
 
@@ -458,7 +460,7 @@
   }
 
   .criterion-weight {
-    width: 72px;
+    width: var(--weight-col);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -712,7 +714,7 @@
   }
 
   .add-sub-spacer {
-    width: 72px;
+    width: var(--weight-col);
     flex-shrink: 0;
   }
 
@@ -799,7 +801,7 @@
     border-left: 3px solid rgba(232, 168, 56, 0.15);
     background: var(--color-felt);
     padding: var(--spacing-3) var(--spacing-4);
-    padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+    padding-left: var(--criterion-indent);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-3);
@@ -1017,7 +1019,7 @@
     border-left: 3px solid rgba(232, 168, 56, 0.15);
     background: var(--color-felt);
     padding: var(--spacing-3) var(--spacing-4);
-    padding-left: calc(72px + var(--spacing-3) + var(--spacing-4) + 3px);
+    padding-left: var(--criterion-indent);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
@@ -1111,5 +1113,37 @@
   .role-add:focus-visible {
     outline: none;
     box-shadow: 0 0 0 1.5px var(--color-wire-focus);
+  }
+
+  @media (max-width: 1023px) {
+    .setup-main {
+      --weight-col: 52px;
+      --criterion-indent: calc(var(--weight-col) + var(--spacing-2) + var(--spacing-2) + 3px);
+    }
+
+    .criterion-row {
+      gap: var(--spacing-2);
+      padding: var(--spacing-2);
+    }
+
+    .weight-bar {
+      width: 36px;
+    }
+
+    .criterion-name-sub {
+      padding-left: var(--spacing-2);
+    }
+
+    .criterion-move {
+      display: none;
+    }
+
+    .criterion-remove {
+      opacity: 1;
+    }
+
+    .add-sub-label {
+      padding-left: var(--spacing-2);
+    }
   }
 </style>

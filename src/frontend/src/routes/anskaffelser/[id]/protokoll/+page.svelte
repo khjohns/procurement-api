@@ -6,11 +6,7 @@
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import type { ResolvedSection } from '$lib/stores/protokoll.svelte';
-  import {
-    getProcName,
-    buildOrgLookup,
-    getOrgNameWithLookup,
-  } from '$lib/utils/protokoll-helpers';
+  import { getProcName, buildOrgLookup, getOrgNameWithLookup } from '$lib/utils/protokoll-helpers';
   import {
     type InfoRow,
     generellInfoRows,
@@ -183,13 +179,13 @@
     const sectionBuilders: Record<string, () => InfoRow[]> = {
       'generell-info': () => generellInfoRows(proc),
       'mottak-tilbud': () => mottakTilbudRows(protokoll.activities),
-      'prosedyre': () => prosedyreRows(proc, protokoll.eforms, protokoll.activities),
+      prosedyre: () => prosedyreRows(proc, protokoll.eforms, protokoll.activities),
       'ettersending-avklaring': () => ettersendingRows(proc, protokoll.activities),
-      'tildelingskriterier': () => tildelingskriterierRows(protokoll.eforms),
+      tildelingskriterier: () => tildelingskriterierRows(protokoll.eforms),
       'valgt-tilbud': () => valgtTilbudRows(proc, protokoll.activities),
       'meddelelse-klagefrist': () => meddelelseRows(proc),
       'meddelelse-karens': () => meddelelseRows(proc),
-      'rammeavtaler': () => rammeavtaleRows(proc, protokoll.eforms),
+      rammeavtaler: () => rammeavtaleRows(proc, protokoll.eforms),
       'andre-opplysninger': () => andreOpplysningerRows(proc),
     };
 
@@ -207,7 +203,9 @@
     const orgLookup = buildOrgLookup(protokoll.activities);
     const excluded = new Set(
       protokoll.activities
-        .filter((a: any) => a.action === 'REJECT_PARTICIPATION' || a.action === 'WITHDRAW_PARTICIPATION')
+        .filter(
+          (a: any) => a.action === 'REJECT_PARTICIPATION' || a.action === 'WITHDRAW_PARTICIPATION'
+        )
         .map((a: any) => getOrgNameWithLookup(a, orgLookup).toLowerCase())
     );
     return protokoll.suppliers.filter((s) => !excluded.has(s.name.toLowerCase()));
@@ -228,7 +226,6 @@
     }
     return [...seen.values()];
   }
-
 </script>
 
 <svelte:window onclick={handleWindowClick} />
@@ -983,7 +980,7 @@
   }
 
   /* ── Responsive ── */
-  @media (max-width: 1024px) {
+  @media (max-width: 1023px) {
     .section-nav-popup {
       width: 280px;
     }
