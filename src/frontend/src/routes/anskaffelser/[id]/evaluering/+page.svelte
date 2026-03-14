@@ -27,9 +27,11 @@
 
   let isPriceMode = $derived(evaluation.activeMethod === 'pris');
 
-  /** Show empty state when no criteria or all weights are 0. */
+  /** Show setup when no criteria, all weights 0, or still in Oppsett status. */
   let showEmptyState = $derived(
-    evaluation.data.criteria.length === 0 || evaluation.data.criteria.every((c) => c.weight === 0)
+    evaluation.data.criteria.length === 0 ||
+      evaluation.data.criteria.every((c) => c.weight === 0) ||
+      evaluation.data.status === 'Oppsett'
   );
 
   /** Show justification panel when viewing a quality criterion. */
@@ -85,16 +87,15 @@
   /** Desktop panel collapsed state. */
   let panelCollapsed = $state(false);
 
-  /** Sync quality/price weights from criteria when data is ready. */
-  $effect(() => {
-    if (evaluation.isReady && evaluation.data.status === 'Oppsett') {
-      evaluation.data.status = 'Under evaluering';
-      evaluation.setQualityPriceWeights(
-        evaluation.qualityWeightDerived,
-        evaluation.priceWeightDerived
-      );
-    }
-  });
+  /** Start evaluation explicitly — called from SetupEmptyState button. */
+  function startEvaluation() {
+    evaluation.data.status = 'Under evaluering';
+    evaluation.setQualityPriceWeights(
+      evaluation.qualityWeightDerived,
+      evaluation.priceWeightDerived
+    );
+    setupToggleOpen = false;
+  }
 </script>
 
 <div class="eval-workspace">
@@ -126,7 +127,7 @@
 
     <div class="eval-main-content">
       {#if showEmptyState || setupToggleOpen}
-        <SetupEmptyState />
+        <SetupEmptyState onstart={startEvaluation} />
       {:else if isPriceMode}
         <PriceMatrix />
       {:else if isOverview}

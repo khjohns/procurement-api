@@ -71,8 +71,7 @@
                   inputmode="numeric"
                   class="price-input"
                   autofocus
-                  value={editPriceVal[supplier.id]}
-                  oninput={(e) => (editPriceVal[supplier.id] = e.currentTarget.value)}
+                  bind:value={editPriceVal[supplier.id]}
                   onblur={() => commitPrice(supplier.id)}
                   onkeydown={(e) => {
                     if (e.key === 'Enter') commitPrice(supplier.id);

@@ -51,39 +51,6 @@
     addingSupplier = false;
   }
 
-  // ── Supplier price editing ──
-  let editingPrice: Record<string, boolean> = $state({});
-  let editPriceVal: Record<string, string> = $state({});
-  let priceInputs: Record<string, HTMLInputElement | undefined> = {};
-
-  function handlePriceFocus(supplierId: string, currentPrice: number | undefined) {
-    editingPrice[supplierId] = true;
-    editPriceVal[supplierId] = currentPrice != null && currentPrice > 0 ? String(currentPrice) : '';
-    requestAnimationFrame(() => {
-      priceInputs[supplierId]?.select();
-    });
-  }
-
-  function handlePriceInput(supplierId: string, e: Event) {
-    const raw = (e.target as HTMLInputElement).value.replace(/\s/g, '');
-    editPriceVal[supplierId] = raw;
-    const num = parseInt(raw, 10);
-    if (!isNaN(num) && num >= 0) {
-      evaluation.setSupplierPrice(supplierId, num);
-    } else if (raw === '') {
-      evaluation.setSupplierPrice(supplierId, 0);
-    }
-  }
-
-  function handlePriceBlur(supplierId: string) {
-    editingPrice[supplierId] = false;
-  }
-
-  function supplierPriceDisplay(supplierId: string, price: number | undefined): string {
-    if (editingPrice[supplierId]) return editPriceVal[supplierId] ?? '';
-    return price != null && price > 0 ? fmt.format(price) : '';
-  }
-
   // ── Validation ──
   let validationItems = $derived.by(() => {
     const items: string[] = [];
@@ -92,8 +59,6 @@
     if (evaluation.data.criteria.length === 0) items.push('Legg til kriterier');
     if (evaluation.totalWeight !== 100 && evaluation.data.criteria.length > 0)
       items.push('Vekting må summere til 100%');
-    if (evaluation.activeMethod === 'pris' && evaluation.data.suppliers.some((s) => !s.price))
-      items.push('Fyll inn tilbudspriser');
     return items;
   });
 </script>
@@ -164,18 +129,6 @@
             oninput={(e) =>
               evaluation.renameSupplier(supplier.id, (e.target as HTMLInputElement).value)}
             placeholder="Navn"
-          />
-          <input
-            bind:this={priceInputs[supplier.id]}
-            class="supplier-price-input"
-            type="text"
-            inputmode="numeric"
-            value={supplierPriceDisplay(supplier.id, supplier.price)}
-            oninput={(e) => handlePriceInput(supplier.id, e)}
-            onfocus={() => handlePriceFocus(supplier.id, supplier.price)}
-            onblur={() => handlePriceBlur(supplier.id)}
-            placeholder="Pris"
-            title="Tilbudspris"
           />
           <button
             class="supplier-rm"
@@ -369,31 +322,6 @@
   }
 
   .supplier-input::placeholder {
-    color: var(--color-ink-ghost);
-  }
-
-  .supplier-price-input {
-    width: 76px;
-    flex-shrink: 0;
-    padding: var(--spacing-1) var(--spacing-2);
-    background: none;
-    border: none;
-    border-bottom: 1px solid transparent;
-    outline: none;
-    color: var(--color-ink-secondary);
-    font-family: var(--font-data);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    transition: border-color 0.12s;
-  }
-
-  .supplier-price-input:focus {
-    border-bottom-color: var(--color-wire-focus);
-    color: var(--color-ink);
-  }
-
-  .supplier-price-input::placeholder {
     color: var(--color-ink-ghost);
   }
 
