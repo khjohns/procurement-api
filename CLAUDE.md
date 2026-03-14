@@ -100,6 +100,7 @@ SvelteKit 2 with Svelte 5, adapter-static (SPA mode, `ssr: false` in `+layout.ts
 - Mutation via methods (`setScore`, `setNote`, `addItem`, etc.), never direct state assignment from outside
 - Two evaluation methods: poengmodell (quality points) and prismodell (price with quality deductions)
 - Item-level evaluation: sub-criteria can have `evaluationType: 'item'` with nested items scored on multiple dimensions, aggregated upward via `AggregationMethod` ('average' | 'minimum')
+- **Composition:** Large stores decomposed into delegate modules (`evaluation-computations.ts`, `evaluation-helpers.ts`, `evaluation-items.ts`, `evaluation-roles.ts`, `evaluation-structure.ts`). Store class keeps public API, delegates to pure functions. See `docs/plans/2026-03-13-reduce-complexity-evaluation.md`.
 
 **Design system** (`.interface-design/system.md`):
 - Direction: "Analysebordet" — dense, number-forward, financial analysis aesthetic
@@ -112,6 +113,27 @@ SvelteKit 2 with Svelte 5, adapter-static (SPA mode, `ssr: false` in `+layout.ts
 
 - **Artifik** (`api.artifik.no`) — procurement data, activities, contracts. OAuth2 client credentials from GCP Secret Manager (`vendor-api-id`, `vendor-api-key`).
 - **Doffin** — Norwegian procurement notices. eForms XML parsing for award criteria, selection criteria, contract nature. API key from GCP Secret Manager (`doffin-api-key`). Cache: `.cache/eforms/` (JSON, keyed by doffin_id).
+
+## Svelte 5 Reference
+
+Key Svelte 5 docs relevant to this project's patterns. Consult these before generating Svelte code.
+
+**Runes (core reactivity):**
+- `$state`: https://svelte.dev/docs/svelte/$state — deep reactive state via proxies. Use only POJOs, not classes, for reactive data. Use `$state.snapshot()` before serialization, `$state.raw` for read-only datasets.
+- `$derived` / `$derived.by`: https://svelte.dev/docs/svelte/$derived — all computed values. `$derived.by(() => ...)` for multi-statement computations. Never use `$effect` for calculations.
+- `$effect`: https://svelte.dev/docs/svelte/$effect — only for true side effects (API calls, DOM, localStorage). Never update `$state` inside `$effect` without `untrack`. `$effect.root()` for effects outside component lifecycle.
+- `$bindable`: https://svelte.dev/docs/svelte/$bindable — two-way binding in custom components.
+- `$inspect`: https://svelte.dev/docs/svelte/$inspect — debugging reactive values. `$inspect.trace()` for tracing updates.
+
+**Snippets (replaces slots):**
+- `{#snippet}` + `{@render}`: https://svelte.dev/docs/svelte/snippet — reusable markup blocks within/between components. Typed via `Snippet<[ParamTypes]>` from `'svelte'`. Used for shared markup (weight editors, score cells) across mode-specific components.
+
+**Store composition pattern:**
+- Runes work in `.svelte.ts` files. Pure computation functions go in regular `.ts` files — the store wraps them in `$derived`.
+- Class-based singleton: export `const store = new StoreClass()` at module level.
+- Break large stores into focused delegate modules with pure functions taking `data` as parameter.
+- `$derived` is shallow-reactive — pass all dependencies as explicit arguments to extracted functions.
+- Migration guide: https://svelte.dev/docs/svelte/v5-migration-guide
 
 ## Conventions
 
