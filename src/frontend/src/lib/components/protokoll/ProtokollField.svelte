@@ -11,9 +11,10 @@
   import DateInput from './DateInput.svelte';
   import type { InfoRow } from '$lib/utils/protokoll-info-rows';
   import { addDays } from '$lib/utils/protokoll-helpers';
+  import type { FieldType } from '$lib/stores/protokoll-sections';
 
   interface Props {
-    field: { key: string; type: string; label: string; hint?: string; foaRef?: string };
+    field: { key: string; type: FieldType; label: string; hint?: string; foaRef?: string };
     infoRows: InfoRow[];
     suppliers: { id: string; name: string }[];
     rejectedSuppliers: { id: string; name: string }[];
