@@ -7,7 +7,7 @@
  * passed as explicit arguments — never access store state via closure.
  */
 
-import type { Criterion, Supplier, ActiveMethod } from './evaluation.svelte';
+import type { Criterion, Supplier, ActiveMethod, CriterionMode } from './evaluation.svelte';
 import { criterionMode, supplierResourceScore, weightedAverage } from './evaluation.svelte';
 
 // ── Shared helpers ──
@@ -205,7 +205,7 @@ export function computePriceDeductions(
 function groupScoreForMode(
   criterion: Criterion,
   suppliers: Supplier[],
-  mode: string,
+  mode: CriterionMode,
   itemScores: Record<string, Record<string, number>>
 ): Record<string, number> {
   if (mode === 'resource') {

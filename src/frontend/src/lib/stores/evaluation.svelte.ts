@@ -117,8 +117,10 @@ export interface EvaluationData {
 
 export type ActiveMethod = 'poeng' | 'pris';
 
+export type CriterionMode = 'leaf' | 'traditional' | 'resource';
+
 /** Determine the mode of a criterion. */
-export function criterionMode(c: Criterion): 'leaf' | 'traditional' | 'resource' {
+export function criterionMode(c: Criterion): CriterionMode {
   if (c.evaluationType === 'item') return 'resource';
   if (c.subcriteria.length === 0) return 'leaf';
   return 'traditional';
@@ -187,8 +189,10 @@ export function formatNOK(value: number | null | undefined): string {
   return value.toLocaleString('nb-NO', { maximumFractionDigits: 0 });
 }
 
+export type ScoreTier = 'high' | 'mid' | 'low';
+
 /** Determine score tier for CSS class. */
-export function scoreTier(score: number): 'high' | 'mid' | 'low' {
+export function scoreTier(score: number): ScoreTier {
   if (score >= 7) return 'high';
   if (score >= 4) return 'mid';
   return 'low';
