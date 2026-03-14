@@ -9,13 +9,13 @@
   interface Props {
     suppliers: Supplier[];
     values: Record<string, string>;
-    useTipex?: boolean;
+    useRichtext?: boolean;
     label?: string;
     hint?: string;
     onchange: (supplierId: string, value: string) => void;
   }
 
-  let { suppliers, values, useTipex = false, label = '', hint = '', onchange }: Props = $props();
+  let { suppliers, values, useRichtext = false, label = '', hint = '', onchange }: Props = $props();
 </script>
 
 {#if label}
@@ -33,7 +33,7 @@
         <span class="supplier-name">{supplier.name}</span>
       </div>
 
-      {#if useTipex}
+      {#if useRichtext}
         <RichTextEditor
           body={val || '<p></p>'}
           maxHeight="40vh"

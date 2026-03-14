@@ -19,11 +19,11 @@ export type FieldType =
   | 'info-table'
   | 'supplier-list'
   | 'textarea'
-  | 'tipex'
+  | 'richtext'
   | 'date'
   | 'checkbox-textarea'
   | 'per-supplier-textarea'
-  | 'per-supplier-tipex'
+  | 'per-supplier-richtext'
   | 'avvisning-card'
   | 'data-quality-table';
 
@@ -235,7 +235,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
       { key: 'qualifyingParticipants', type: 'supplier-list', label: 'Kvalifiserte leverandører' },
       {
         key: 'utvelgelsesbegrunnelser',
-        type: 'per-supplier-tipex',
+        type: 'per-supplier-richtext',
         label: 'Utvelgelsesbegrunnelse per leverandør',
         hint: 'Begrunn utvelgelse av leverandører, jf. FOA § 9-3.',
         required: true,
@@ -321,7 +321,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
         key: 'tildelingsbegrunnelse',
-        type: 'tipex',
+        type: 'richtext',
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
@@ -524,7 +524,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
       { key: 'qualifyingParticipants', type: 'supplier-list', label: 'Kvalifiserte leverandører' },
       {
         key: 'utvelgelsesbegrunnelser',
-        type: 'per-supplier-tipex',
+        type: 'per-supplier-richtext',
         label: 'Utvelgelsesbegrunnelse per leverandør',
         hint: 'Begrunn utvelgelse av leverandører.',
         required: true,
@@ -617,7 +617,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     fields: [
       {
         key: 'forhandlingsreferat',
-        type: 'tipex',
+        type: 'richtext',
         label: 'Forhandlingsreferat',
         hint: 'Dokumenter forhandlingsprosessen. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
@@ -668,7 +668,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
         key: 'tildelingsbegrunnelse',
-        type: 'tipex',
+        type: 'richtext',
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,

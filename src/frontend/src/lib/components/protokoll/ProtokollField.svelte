@@ -74,7 +74,7 @@
       </button>
     {/if}
   </div>
-{:else if field.type === 'tipex'}
+{:else if field.type === 'richtext'}
   <div class="manual-field">
     <div class="field-label">{field.label}</div>
     <RichTextEditor
@@ -96,11 +96,11 @@
       protokoll.setManualField(`${field.key}Begrunnelse`, b);
     }}
   />
-{:else if field.type === 'per-supplier-textarea' || field.type === 'per-supplier-tipex'}
+{:else if field.type === 'per-supplier-textarea' || field.type === 'per-supplier-richtext'}
   <PerSupplierCards
     {suppliers}
     values={(protokoll.manual[field.key] as Record<string, string>) ?? {}}
-    useTipex={field.type === 'per-supplier-tipex'}
+    useRichtext={field.type === 'per-supplier-richtext'}
     label={field.label}
     hint={field.hint}
     onchange={(sid, val) => protokoll.setPerSupplierField(field.key, sid, val)}
