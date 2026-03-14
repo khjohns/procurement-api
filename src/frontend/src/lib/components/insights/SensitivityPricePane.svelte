@@ -2,6 +2,20 @@
   import { evaluation, formatNOK } from '$lib/stores/evaluation.svelte';
   import { sensitivity } from '$lib/stores/sensitivity.svelte';
 
+  /** Simulated max deductions per criterion (for summary display). */
+  let simulatedMaxDeductions = $derived.by(() => {
+    const result: Record<string, number> = {};
+    const simWeightMap = new Map(sensitivity.simulatedWeights.map((w) => [w.id, w.weight]));
+    const simTotal = sensitivity.simulatedSum;
+    const qb = evaluation.data.contractValue * (evaluation.data.qualityWeight / 100);
+    for (const c of evaluation.data.criteria) {
+      if (c.type === 'price') continue;
+      const simWeight = simWeightMap.get(c.id) ?? c.weight;
+      result[c.id] = c.maxPriceDeduction ?? (simTotal > 0 ? qb * (simWeight / simTotal) : 0);
+    }
+    return result;
+  });
+
   /** Recompute evaluated prices using the sensitivity store's simulated weights.
    *  Weight changes affect max deductions (when not explicitly set),
    *  which clamps the entered deductions, changing evaluated prices. */
@@ -84,6 +98,12 @@
     <div class="simulator-sliders">
       {#each sensitivity.simulatedWeights as sw}
         {@const changed = sw.weight !== sw.original}
+        {@const criterion = evaluation.data.criteria.find((c) => c.id === sw.id)}
+        {@const hasExplicit = criterion?.maxPriceDeduction != null}
+        {@const qb = evaluation.data.contractValue * (evaluation.data.qualityWeight / 100)}
+        {@const simMaxDed = hasExplicit
+          ? criterion!.maxPriceDeduction!
+          : sensitivity.simulatedSum > 0 ? qb * (sw.weight / sensitivity.simulatedSum) : 0}
         <div class="slider-row">
           <span class="slider-label">{sw.name}</span>
           <input
@@ -92,19 +112,19 @@
             min="0"
             max="100"
             value={sw.weight}
+            disabled={hasExplicit}
             oninput={(e) => sensitivity.setWeight(sw.id, Number(e.currentTarget.value))}
           />
           <span class="slider-value" class:slider-changed={changed}>
-            {#if changed}
-              <span class="slider-original">{sw.original}</span>
-              <span class="slider-arrow">&rarr;</span>
+            {formatNOK(simMaxDed)} kr
+            {#if hasExplicit}
+              <span class="slider-locked">fast</span>
             {/if}
-            {sw.weight} %
           </span>
         </div>
       {/each}
       <div class="slider-sum" class:slider-sum-warning={sensitivity.simulatedSum !== 100}>
-        Sum: {sensitivity.simulatedSum} %
+        Sum: {formatNOK(Object.values(simulatedMaxDeductions).reduce((s, v) => s + v, 0))} kr
       </div>
     </div>
 
@@ -241,14 +261,18 @@
     font-weight: 600;
   }
 
-  .slider-original {
+  .slider-locked {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--color-ink-ghost);
-    font-weight: 400;
+    margin-left: var(--spacing-1);
   }
 
-  .slider-arrow {
-    color: var(--color-ink-ghost);
-    margin: 0 2px;
+  .slider-input:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 
   .slider-sum {
