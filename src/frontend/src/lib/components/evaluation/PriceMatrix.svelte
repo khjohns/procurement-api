@@ -62,11 +62,12 @@
   }
 
   function commitPrice(supplierId: string) {
+    if (!editingPrice[supplierId]) return; // guard against double-fire (Enter + blur)
+    editingPrice[supplierId] = false;
     const raw = (editPriceVal[supplierId] ?? '').replace(/\s/g, '');
     const num = parseInt(raw, 10);
-    if (!isNaN(num) && num >= 0) evaluation.setSupplierPrice(supplierId, num);
-    else if (raw === '') evaluation.setSupplierPrice(supplierId, 0);
-    editingPrice[supplierId] = false;
+    if (!isNaN(num) && num > 0) evaluation.setSupplierPrice(supplierId, num);
+    else evaluation.setSupplierPrice(supplierId, undefined);
   }
 
   // ── Deduction amount editing ──
@@ -207,7 +208,8 @@
                     inputmode="numeric"
                     class="price-input"
                     autofocus
-                    bind:value={editPriceVal[supplier.id]}
+                    value={editPriceVal[supplier.id]}
+                    oninput={(e) => (editPriceVal[supplier.id] = e.currentTarget.value)}
                     onblur={() => commitPrice(supplier.id)}
                     onkeydown={(e) => {
                       if (e.key === 'Enter') commitPrice(supplier.id);
