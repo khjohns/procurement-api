@@ -1,10 +1,21 @@
 <script lang="ts">
-  import { evaluation, formatNOK, subEffectiveWeight } from '$lib/stores/evaluation.svelte';
+  import {
+    evaluation,
+    formatNOK,
+    subEffectiveWeight,
+    type ActiveMethod,
+  } from '$lib/stores/evaluation.svelte';
   import SensitivityPane from './SensitivityPane.svelte';
+  import SensitivityPricePane from './SensitivityPricePane.svelte';
 
   let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll' | 'sensitivitet'>(
     'betalingsvilje'
   );
+
+  /** Which model the analysis panel is analyzing (independent of main view). */
+  let analysisMethod = $state<ActiveMethod>(evaluation.activeMethod);
+
+  let isPris = $derived(analysisMethod === 'pris');
 
   const tabs = [
     { id: 'betalingsvilje' as const, label: 'Betalingsvilje' },
@@ -16,21 +27,25 @@
   let qualityBudget = $derived(evaluation.qualityBudget);
   let totalWeight = $derived(evaluation.totalWeight);
 
-  /** Criterion with largest spread. */
+  // ── Poengmodell robusthet ──
+
+  /** Criterion with largest spread (poengmodell). */
   let largestSpread = $derived.by(() => {
     let best = { name: '', spread: 0, low: 0, high: 0, leader: '' };
     for (const c of evaluation.data.criteria) {
       const scores = evaluation.data.suppliers.map(
         (s) => evaluation.groupScores[c.id]?.[s.id] ?? 0
       );
-      const spread = Math.max(...scores) - Math.min(...scores);
+      const high = Math.max(...scores);
+      const low = Math.min(...scores);
+      const spread = high - low;
       if (spread > best.spread) {
-        const leadIdx = scores.indexOf(Math.max(...scores));
+        const leadIdx = scores.indexOf(high);
         best = {
           name: c.name,
           spread,
-          low: Math.min(...scores),
-          high: Math.max(...scores),
+          low,
+          high,
           leader: evaluation.data.suppliers[leadIdx]?.name ?? '',
         };
       }
@@ -48,20 +63,76 @@
     }
     return best;
   });
+
+  // ── Prismodell robusthet ──
+
+  /** Price margin between #1 and #2 in NOK. */
+  let priceMargin = $derived(
+    evaluation.priceRanking.length >= 2
+      ? evaluation.priceRanking[1].evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice
+      : 0
+  );
+
+  /** Criterion with largest deduction spread across suppliers (prismodell). */
+  let largestDeductionSpread = $derived.by(() => {
+    let best = { name: '', spread: 0, leader: '' };
+    for (const c of evaluation.data.criteria) {
+      if (c.type === 'price') continue;
+      // Sum deductions per supplier for this criterion (leaf or subs)
+      const supplierDeds = evaluation.data.suppliers.map((s) => {
+        if (c.subcriteria.length === 0 || c.evaluationType === 'item') {
+          return evaluation.priceDeductions[c.id]?.[s.id] ?? 0;
+        }
+        return c.subcriteria.reduce(
+          (sum, sub) => sum + (evaluation.priceDeductions[sub.id]?.[s.id] ?? 0),
+          0
+        );
+      });
+      const maxDed = Math.max(...supplierDeds);
+      const spread = maxDed - Math.min(...supplierDeds);
+      if (spread > best.spread) {
+        const leadIdx = supplierDeds.indexOf(maxDed);
+        best = {
+          name: c.name,
+          spread,
+          leader: evaluation.data.suppliers[leadIdx]?.name ?? '',
+        };
+      }
+    }
+    return best;
+  });
 </script>
 
 <div class="innsikt">
   <div class="innsikt-body">
-    <div class="innsikt-tabs">
-      {#each tabs as tab}
+    <div class="innsikt-header">
+      <div class="innsikt-tabs">
+        {#each tabs as tab}
+          <button
+            class="innsikt-tab"
+            class:active={activeTab === tab.id}
+            onclick={() => (activeTab = tab.id)}
+          >
+            {tab.label}
+          </button>
+        {/each}
+      </div>
+      <div class="method-switch">
         <button
-          class="innsikt-tab"
-          class:active={activeTab === tab.id}
-          onclick={() => (activeTab = tab.id)}
+          class="method-switch-btn"
+          class:active={!isPris}
+          onclick={() => (analysisMethod = 'poeng')}
         >
-          {tab.label}
+          Poeng
         </button>
-      {/each}
+        <button
+          class="method-switch-btn"
+          class:active={isPris}
+          onclick={() => (analysisMethod = 'pris')}
+        >
+          Pris
+        </button>
+      </div>
     </div>
 
     <!-- Betalingsvilje -->
@@ -125,53 +196,116 @@
     <!-- Robusthet -->
     {#if activeTab === 'robusthet'}
       <div class="innsikt-pane">
-        <div class="robusthet-ranking">
-          {#each evaluation.ranking as entry}
-            <div class="robusthet-item" class:leader={entry.rank === 1}>
-              <span class="robusthet-rank">#{entry.rank}</span>
-              <span class="robusthet-name">{entry.supplier.name}</span>
-              <span class="robusthet-score">{entry.score.toFixed(1)}</span>
-              <span class="robusthet-margin">
-                {entry.rank === 1
-                  ? 'leder'
-                  : `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(1)}`}
-              </span>
-            </div>
-          {/each}
-        </div>
+        {#if isPris}
+          <!-- Prismodell robusthet -->
+          <div class="robusthet-ranking">
+            {#each evaluation.priceRanking as entry}
+              {@const marginToWinner =
+                entry.evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice}
+              <div class="robusthet-item" class:leader={entry.rank === 1}>
+                <span class="robusthet-rank">#{entry.rank}</span>
+                <span class="robusthet-name">{entry.supplier.name}</span>
+                <span class="robusthet-score">{formatNOK(entry.evaluatedPrice)} kr</span>
+                <span class="robusthet-margin">
+                  {entry.rank === 1 ? 'leder' : `+${formatNOK(marginToWinner)} kr`}
+                </span>
+              </div>
+            {/each}
+          </div>
 
-        <div class="robusthet-insights">
-          <div class="robusthet-insight">
-            <div class="robusthet-insight-label">Margin</div>
-            <div class="robusthet-insight-text">
-              Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-              <span class="mono">{evaluation.margin.toFixed(1)}</span> poeng. Resultatet er
-              <strong
-                >{evaluation.margin >= 0.5
-                  ? 'robust'
-                  : evaluation.margin >= 0.2
-                    ? 'moderat robust'
-                    : 'sårbart'}</strong
-              >.
+          <div class="robusthet-insights">
+            <div class="robusthet-insight">
+              <div class="robusthet-insight-label">Prismargin</div>
+              <div class="robusthet-insight-text">
+                Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
+                <span class="mono">{formatNOK(priceMargin)} kr</span>.
+                {#if evaluation.data.contractValue > 0}
+                  Det utgjør <span class="mono"
+                    >{((priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
+                  > av kontraktsverdien.
+                {/if}
+                Resultatet er
+                <strong>
+                  {#if priceMargin > evaluation.data.contractValue * 0.05}
+                    robust
+                  {:else if priceMargin > evaluation.data.contractValue * 0.01}
+                    moderat robust
+                  {:else}
+                    sårbart
+                  {/if}
+                </strong>.
+              </div>
+            </div>
+            <div class="robusthet-insight">
+              <div class="robusthet-insight-label">Størst påvirkning</div>
+              <div class="robusthet-insight-text">
+                <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst maksimalt
+                fradrag og dermed størst innvirkning på evaluert pris.
+              </div>
+            </div>
+            {#if largestDeductionSpread.spread > 0}
+              <div class="robusthet-insight">
+                <div class="robusthet-insight-label">Størst fradragsspredning</div>
+                <div class="robusthet-insight-text">
+                  <strong>{largestDeductionSpread.name}</strong> har størst spredning i fradrag
+                  mellom leverandørene (<span class="mono"
+                    >{formatNOK(largestDeductionSpread.spread)} kr</span
+                  >).
+                  {largestDeductionSpread.leader} får størst fradrag her.
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <!-- Poengmodell robusthet -->
+          <div class="robusthet-ranking">
+            {#each evaluation.ranking as entry}
+              <div class="robusthet-item" class:leader={entry.rank === 1}>
+                <span class="robusthet-rank">#{entry.rank}</span>
+                <span class="robusthet-name">{entry.supplier.name}</span>
+                <span class="robusthet-score">{entry.score.toFixed(1)}</span>
+                <span class="robusthet-margin">
+                  {entry.rank === 1
+                    ? 'leder'
+                    : `\u2212${(evaluation.ranking[0].score - entry.score).toFixed(1)}`}
+                </span>
+              </div>
+            {/each}
+          </div>
+
+          <div class="robusthet-insights">
+            <div class="robusthet-insight">
+              <div class="robusthet-insight-label">Margin</div>
+              <div class="robusthet-insight-text">
+                Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
+                <span class="mono">{evaluation.margin.toFixed(1)}</span> poeng. Resultatet er
+                <strong
+                  >{evaluation.margin >= 0.5
+                    ? 'robust'
+                    : evaluation.margin >= 0.2
+                      ? 'moderat robust'
+                      : 'sårbart'}</strong
+                >.
+              </div>
+            </div>
+            <div class="robusthet-insight">
+              <div class="robusthet-insight-label">Størst påvirkning</div>
+              <div class="robusthet-insight-text">
+                <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst innvirkning
+                på resultatet.
+              </div>
+            </div>
+            <div class="robusthet-insight">
+              <div class="robusthet-insight-label">Størst spredning</div>
+              <div class="robusthet-insight-text">
+                <strong>{largestSpread.name}</strong> har størst spredning mellom leverandørene (fra
+                <span class="mono">{largestSpread.low.toFixed(1)}</span>
+                til <span class="mono">{largestSpread.high.toFixed(1)}</span>).
+                {largestSpread.leader} skiller seg positivt ut her.
+              </div>
             </div>
           </div>
-          <div class="robusthet-insight">
-            <div class="robusthet-insight-label">Størst påvirkning</div>
-            <div class="robusthet-insight-text">
-              <strong>{heaviestCriterion.name}</strong> ({heaviestCriterion.weight} %) har størst innvirkning
-              på resultatet.
-            </div>
-          </div>
-          <div class="robusthet-insight">
-            <div class="robusthet-insight-label">Størst spredning</div>
-            <div class="robusthet-insight-text">
-              <strong>{largestSpread.name}</strong> har størst spredning mellom leverandørene (fra
-              <span class="mono">{largestSpread.low.toFixed(1)}</span>
-              til <span class="mono">{largestSpread.high.toFixed(1)}</span>).
-              {largestSpread.leader} skiller seg positivt ut her.
-            </div>
-          </div>
-        </div>
+        {/if}
       </div>
     {/if}
 
@@ -215,7 +349,11 @@
     <!-- Sensitivitet -->
     {#if activeTab === 'sensitivitet'}
       <div class="innsikt-pane">
-        <SensitivityPane />
+        {#if isPris}
+          <SensitivityPricePane />
+        {:else}
+          <SensitivityPane />
+        {/if}
       </div>
     {/if}
   </div>
@@ -233,9 +371,15 @@
     overflow: hidden;
   }
 
+  .innsikt-header {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--color-wire);
+  }
+
   .innsikt-tabs {
     display: flex;
-    border-bottom: 1px solid var(--color-wire);
+    flex: 1;
   }
 
   .innsikt-tab {
@@ -268,6 +412,42 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+  }
+
+  /* ── Method switch ── */
+  .method-switch {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  .method-switch-btn {
+    padding: var(--spacing-1) var(--spacing-3);
+    background: none;
+    border: 1px solid var(--color-wire);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+    transition: all 0.12s;
+  }
+
+  .method-switch-btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    border-right: none;
+  }
+
+  .method-switch-btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .method-switch-btn.active {
+    background: var(--color-vekt-bg);
+    color: var(--color-vekt);
+    border-color: var(--color-vekt-bg-strong);
+    font-weight: 600;
   }
 
   /* ── Betalingsvilje ── */
