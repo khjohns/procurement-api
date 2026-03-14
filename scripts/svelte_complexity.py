@@ -97,13 +97,6 @@ class FileResult:
     def rating(self) -> str:
         return _rating(self.cc)
 
-    @property
-    def max_function_cc(self) -> int:
-        return max((f.cc for f in self.functions), default=0)
-
-    @property
-    def avg_function_cc(self) -> float:
-        return sum(f.cc for f in self.functions) / len(self.functions) if self.functions else 0.0
 
 
 def strip_comments(code: str) -> str:
@@ -162,30 +155,53 @@ def _find_brace_block(code: str, start: int) -> int | None:
     """Finn slutten av brace-blokken som starter ved (eller etter) `start`.
 
     Returnerer indeksen etter den avsluttende }. Håndterer nøstede blokker
-    og hopper over strenger og kommentarer (forenklet).
+    og hopper over strenger, template-literal-interpolasjoner og kommentarer.
+    Regex-literals som inneholder { } kan gi feil — krever full AST å løse.
     """
     i = code.find('{', start)
     if i == -1:
         return None
     depth = 0
-    in_str: str | None = None
     n = len(code)
+    # Stack for template literal nesting: True = inside `...` body, False = inside ${...}
+    tpl_stack: list[bool] = []
     while i < n:
         ch = code[i]
-        # String-håndtering
-        if in_str:
+
+        # Inside a template literal body — look for ` (end) or ${ (interpolation)
+        if tpl_stack and tpl_stack[-1]:
             if ch == '\\':
                 i += 2
                 continue
-            if ch == in_str:
-                in_str = None
+            if ch == '`':
+                tpl_stack.pop()
+                i += 1
+                continue
+            if ch == '$' and i + 1 < n and code[i + 1] == '{':
+                tpl_stack.append(False)  # enter interpolation
+                i += 2
+                continue
             i += 1
             continue
-        if ch in ('"', "'", '`'):
-            in_str = ch
+
+        # Regular string literals (single/double quotes)
+        if ch in ('"', "'"):
+            quote = ch
+            i += 1
+            while i < n and code[i] != quote:
+                if code[i] == '\\':
+                    i += 1
+                i += 1
+            i += 1  # skip closing quote
+            continue
+
+        # Template literal start
+        if ch == '`':
+            tpl_stack.append(True)
             i += 1
             continue
-        # Kommentarer
+
+        # Comments
         if ch == '/' and i + 1 < n:
             if code[i + 1] == '/':
                 nl = code.find('\n', i)
@@ -195,9 +211,16 @@ def _find_brace_block(code: str, start: int) -> int | None:
                 end = code.find('*/', i + 2)
                 i = end + 2 if end != -1 else n
                 continue
+
+        # Braces — only count when not inside a template interpolation
         if ch == '{':
             depth += 1
         elif ch == '}':
+            # If we're inside a ${...} interpolation, close it instead of decrementing depth
+            if tpl_stack and not tpl_stack[-1]:
+                tpl_stack.pop()
+                i += 1
+                continue
             depth -= 1
             if depth == 0:
                 return i + 1
