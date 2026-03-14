@@ -906,5 +906,17 @@
     .eval-main {
       padding: var(--spacing-3) var(--spacing-4);
     }
+
+    .eval-context {
+      flex-wrap: wrap;
+    }
+
+    .context-info {
+      width: 100%;
+    }
+
+    .context-actions {
+      width: 100%;
+    }
   }
 </style>

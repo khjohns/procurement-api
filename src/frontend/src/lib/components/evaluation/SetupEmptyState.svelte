@@ -1112,4 +1112,51 @@
     outline: none;
     box-shadow: 0 0 0 1.5px var(--color-wire-focus);
   }
+
+  @media (max-width: 1023px) {
+    .criterion-row {
+      gap: var(--spacing-2);
+      padding: var(--spacing-2);
+    }
+
+    .criterion-weight {
+      width: 52px;
+    }
+
+    .weight-bar {
+      width: 36px;
+    }
+
+    .criterion-name-sub {
+      padding-left: var(--spacing-2);
+    }
+
+    .criterion-move {
+      display: none;
+    }
+
+    .criterion-remove {
+      opacity: 1;
+    }
+
+    .criterion-remove-sub {
+      opacity: 1;
+    }
+
+    .add-sub-spacer {
+      width: 52px;
+    }
+
+    .add-sub-label {
+      padding-left: var(--spacing-2);
+    }
+
+    .item-config {
+      padding-left: calc(52px + var(--spacing-2) + var(--spacing-2) + 3px);
+    }
+
+    .roles-config {
+      padding-left: calc(52px + var(--spacing-2) + var(--spacing-2) + 3px);
+    }
+  }
 </style>
