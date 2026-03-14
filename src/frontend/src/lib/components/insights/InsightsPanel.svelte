@@ -78,13 +78,6 @@
 
   // ── Prismodell robusthet ──
 
-  /** Price margin between #1 and #2 in NOK. */
-  let priceMargin = $derived(
-    evaluation.priceRanking.length >= 2
-      ? evaluation.priceRanking[1].evaluatedPrice - evaluation.priceRanking[0].evaluatedPrice
-      : 0
-  );
-
   /** Criterion with largest deduction spread across suppliers (prismodell). */
   let largestDeductionSpread = $derived.by(() => {
     let best = { name: '', spread: 0, leader: '' };
@@ -323,17 +316,17 @@
                 <div class="robusthet-insight-label">Prismargin</div>
                 <div class="robusthet-insight-text">
                   Marginen mellom <strong>#1</strong> og <strong>#2</strong> er
-                  <span class="mono">{formatNOK(priceMargin)} kr</span>.
+                  <span class="mono">{formatNOK(evaluation.priceMargin)} kr</span>.
                   {#if evaluation.data.contractValue > 0}
                     Det utgjør <span class="mono"
-                      >{((priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
+                      >{((evaluation.priceMargin / evaluation.data.contractValue) * 100).toFixed(1)} %</span
                     > av kontraktsverdien.
                   {/if}
                   Resultatet er
                   <strong>
-                    {#if priceMargin > evaluation.data.contractValue * 0.05}
+                    {#if evaluation.priceMargin > evaluation.data.contractValue * 0.05}
                       robust
-                    {:else if priceMargin > evaluation.data.contractValue * 0.01}
+                    {:else if evaluation.priceMargin > evaluation.data.contractValue * 0.01}
                       moderat robust
                     {:else}
                       sårbart

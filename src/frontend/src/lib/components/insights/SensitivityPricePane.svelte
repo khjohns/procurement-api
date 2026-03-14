@@ -39,8 +39,6 @@
 
   /** Recompute evaluated prices using simulated max deductions. */
   let simulatedPriceData = $derived.by(() => {
-    const simMap = new Map(simDeductions.map((d) => [d.id, d.simulated]));
-
     const totalDed: Record<string, number> = {};
     for (const supplier of evaluation.data.suppliers) {
       totalDed[supplier.id] = 0;
@@ -48,7 +46,7 @@
 
     for (const criterion of evaluation.data.criteria) {
       if (criterion.type === 'price') continue;
-      const maxDed = simMap.get(criterion.id) ?? (evaluation.maxDeductions[criterion.id] ?? 0);
+      const maxDed = overrides[criterion.id] ?? (evaluation.maxDeductions[criterion.id] ?? 0);
 
       if (criterion.subcriteria.length === 0 || criterion.evaluationType === 'item') {
         for (const supplier of evaluation.data.suppliers) {

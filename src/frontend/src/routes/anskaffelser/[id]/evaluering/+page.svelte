@@ -215,34 +215,13 @@
       <div class="panel-section">
         <div class="panel-label">Nøkkeltall</div>
         <div class="key-metrics">
-          {#if isPriceMode}
-            <div class="metric">
-              <span class="metric-label">Margin #1 → #2</span>
-              <span class="metric-value">
+          <div class="metric">
+            <span class="metric-label">Margin #1 → #2</span>
+            <span class="metric-value">
+              {#if isPriceMode}
                 <span class="metric-num">{formatNOK(evaluation.priceMargin)}</span>
                 <span class="metric-unit">kr</span>
-              </span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Metodekontroll</span>
-              <span class="metric-value">
-                <span class="metric-icon" class:metric-match={evaluation.sameWinner}
-                  >{evaluation.sameWinner ? '✓' : '⚠'}</span
-                >
-                <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
-              </span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Kvalitetsbudsjett</span>
-              <span class="metric-value">
-                <span class="metric-num">{formatNOK(evaluation.totalMaxDeductions)}</span>
-                <span class="metric-unit">kr</span>
-              </span>
-            </div>
-          {:else}
-            <div class="metric">
-              <span class="metric-label">Margin #1 → #2</span>
-              <span class="metric-value">
+              {:else}
                 <span class="metric-num">{evaluation.margin.toFixed(1)}</span>
                 <span
                   class="metric-verdict"
@@ -255,24 +234,26 @@
                       ? 'moderat'
                       : 'sårbart'}
                 </span>
-              </span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Metodekontroll</span>
-              <span class="metric-value">
-                <span class="metric-icon" class:metric-match={evaluation.sameWinner}
-                  >{evaluation.sameWinner ? '✓' : '⚠'}</span
-                >
-                <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
-              </span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Kvalitetsbudsjett</span>
-              <span class="metric-value">
-                <span class="metric-num">{formatNOK(evaluation.qualityBudget)}</span>
-                <span class="metric-unit">kr</span>
-              </span>
-            </div>
+              {/if}
+            </span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Metodekontroll</span>
+            <span class="metric-value">
+              <span class="metric-icon" class:metric-match={evaluation.sameWinner}
+                >{evaluation.sameWinner ? '✓' : '⚠'}</span
+              >
+              <span class="metric-text">{evaluation.sameWinner ? 'Samsvar' : 'Avvik'}</span>
+            </span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Kvalitetsbudsjett</span>
+            <span class="metric-value">
+              <span class="metric-num">{formatNOK(isPriceMode ? evaluation.totalMaxDeductions : evaluation.qualityBudget)}</span>
+              <span class="metric-unit">kr</span>
+            </span>
+          </div>
+          {#if !isPriceMode}
             <div class="metric">
               <span class="metric-label">Kvalitet / pris</span>
               <span class="metric-value">
