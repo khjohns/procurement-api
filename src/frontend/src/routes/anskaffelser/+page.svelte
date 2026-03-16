@@ -4,6 +4,7 @@
   import Saksoversikt from '$lib/components/saksoversikt/Saksoversikt.svelte';
   import OversiktSidebar from '$lib/components/saksoversikt/OversiktSidebar.svelte';
   import CaseListTable from '$lib/components/case-list/CaseListTable.svelte';
+  import { themeStore } from '$lib/stores/theme.svelte';
   import type {
     AnskaffelsesOversiktItem,
     AnskaffelsesFilter,
@@ -135,63 +136,159 @@
 
 <svelte:window onkeydown={handleKeydown} onkeyup={handleKeyup} onblur={handleBlur} />
 
-<div class="page-layout">
-  <!-- Desktop sidebar -->
-  <div class="desktop-sidebar">
-    <OversiktSidebar {...sidebarProps} />
-  </div>
+<div class="app-shell">
+  <header class="top-nav">
+    <nav class="nav-breadcrumbs" aria-label="Brødsmuler">
+      <span class="current">Anskaffelser</span>
+    </nav>
+    <div class="nav-actions">
+      <button
+        class="theme-toggle"
+        onclick={() => themeStore.toggle()}
+        title="Tema: {themeStore.label}"
+      >
+        {themeStore.icon}
+      </button>
+      <span class="user-org">Bergen kommune</span>
+      <div class="avatar">KJ</div>
+    </div>
+  </header>
 
-  <!-- Mobile toggle -->
-  <button
-    class="sidebar-toggle"
-    class:er-open={sidebarOpen}
-    onclick={() => (sidebarOpen = !sidebarOpen)}
-    aria-label={sidebarOpen ? 'Skjul meny' : 'Vis meny'}
-  >
-    {sidebarOpen ? '\u2715' : '\u2630'}
-  </button>
-
-  <!-- Mobile drawer -->
-  {#if sidebarOpen}
-    <div class="sidebar-backdrop" role="presentation" onclick={() => (sidebarOpen = false)}></div>
-    <div class="sidebar-drawer">
+  <div class="page-layout">
+    <!-- Desktop sidebar -->
+    <div class="desktop-sidebar">
       <OversiktSidebar {...sidebarProps} />
     </div>
-  {/if}
 
-  <div class="page-content">
-    {#if loading}
-      <div class="state-message" role="status" aria-live="polite">
-        <span class="state-text">Laster anskaffelser...</span>
-      </div>
-    {:else if error}
-      <div class="state-message state-error" role="alert">
-        <span class="state-text">
-          Kunne ikke laste anskaffelser. {error}
-        </span>
-      </div>
-    {:else if alleMature.length === 0}
-      <div class="state-message" role="status">
-        <span class="state-text">Ingen anskaffelser funnet.</span>
-      </div>
-    {:else if filtrert.length === 0}
-      <div class="state-message" role="status">
-        <span class="state-text">Ingen anskaffelser matcher valgte filter.</span>
-      </div>
-    {:else if visning === 'tidslinje'}
-      <Saksoversikt saker={filtrert} {aktivtSpor} />
-    {:else}
-      <div class="tabell-wrap">
-        <CaseListTable saker={filtrert} />
+    <!-- Mobile toggle -->
+    <button
+      class="sidebar-toggle"
+      class:er-open={sidebarOpen}
+      onclick={() => (sidebarOpen = !sidebarOpen)}
+      aria-label={sidebarOpen ? 'Skjul meny' : 'Vis meny'}
+    >
+      {sidebarOpen ? '\u2715' : '\u2630'}
+    </button>
+
+    <!-- Mobile drawer -->
+    {#if sidebarOpen}
+      <div class="sidebar-backdrop" role="presentation" onclick={() => (sidebarOpen = false)}></div>
+      <div class="sidebar-drawer">
+        <OversiktSidebar {...sidebarProps} />
       </div>
     {/if}
+
+    <div class="page-content">
+      {#if loading}
+        <div class="state-message" role="status" aria-live="polite">
+          <span class="state-text">Laster anskaffelser...</span>
+        </div>
+      {:else if error}
+        <div class="state-message state-error" role="alert">
+          <span class="state-text">
+            Kunne ikke laste anskaffelser. {error}
+          </span>
+        </div>
+      {:else if alleMature.length === 0}
+        <div class="state-message" role="status">
+          <span class="state-text">Ingen anskaffelser funnet.</span>
+        </div>
+      {:else if filtrert.length === 0}
+        <div class="state-message" role="status">
+          <span class="state-text">Ingen anskaffelser matcher valgte filter.</span>
+        </div>
+      {:else if visning === 'tidslinje'}
+        <Saksoversikt saker={filtrert} {aktivtSpor} />
+      {:else}
+        <div class="tabell-wrap">
+          <CaseListTable saker={filtrert} />
+        </div>
+      {/if}
+    </div>
   </div>
 </div>
 
 <style>
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  .top-nav {
+    height: var(--header-height);
+    border-bottom: 1px solid var(--color-wire-strong);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+    background: var(--color-canvas);
+  }
+
+  .nav-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--color-ink-secondary);
+  }
+
+  .nav-breadcrumbs .current {
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--color-ink-secondary);
+  }
+
+  .theme-toggle {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-ink-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition:
+      background 0.12s,
+      color 0.12s;
+  }
+
+  .theme-toggle:hover {
+    background: var(--color-felt-hover);
+    color: var(--color-ink);
+  }
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--color-wire-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
   .page-layout {
     display: flex;
-    height: 100vh;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -250,7 +347,7 @@
       align-items: center;
       justify-content: center;
       position: fixed;
-      top: 8px;
+      top: calc(var(--header-height) + 8px);
       left: 16px;
       z-index: 26;
       width: 30px;
