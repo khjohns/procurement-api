@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 @import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -37,9 +36,9 @@
   --color-score-low-bg: rgba(176, 64, 64, 0.08);
 
   /* Typography */
-  --font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  --font-data: 'Source Code Pro', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-editor: 'Lora', 'Georgia', serif;
+  --font-prose: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Spacing (4px grid) */
   --spacing-1: 4px;
@@ -136,7 +135,7 @@ body {
 
 /* ── Section label ── */
 .section-label {
-  font-family: var(--font-data);
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;

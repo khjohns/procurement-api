@@ -201,16 +201,45 @@ The subsections below document the **dark theme** token values in CSS custom pro
 
 ## Typography
 
+### Tre fonter
+
 ```
---font-data: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace
---font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+--font-ui:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+--font-prose: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+--font-data:  'Source Code Pro', 'SF Mono', 'Cascadia Code', 'Consolas', monospace
 ```
 
-- **Numbers/scores/percentages:** Always `--font-data` with `font-variant-numeric: tabular-nums`
-- **Headlines:** `--font-ui`, 20px, weight 700, tracking -0.025em
-- **Body/labels:** `--font-ui`, 13px, weight 500
-- **Section labels:** 11px, weight 600, uppercase, tracking 0.08em, color `--color-ink-muted`
-- **Data values:** `--font-data`, 13px, weight 500
+- **`--font-ui`** — Labels, knapper, navigasjon, metadata, seksjonsoverskrifter (uppercase). Tekst du *skanner*. Høy x-høyde og åpne aperturer gir best lesbarhet ved 10–13px på HiDPI-skjermer.
+- **`--font-prose`** — Begrunnelsestekster, rik teksteditor (Tiptap/protokoll), dokumenttitler, kontraktstekst. Tekst du *leser og skriver*. Mekaniske terminaler gir maskinskrevet kontrakt-kvalitet.
+- **`--font-data`** — Tall, beløp, datoer, prosent, system-IDer, paragrafreferanser, klassifikasjoner, poengverdier. Verdier du *slår opp*. Alltid `font-variant-numeric: tabular-nums`.
+
+### Fontvalg-prinsipp
+
+- **UI** = navigasjon, interaksjon, korte labels. Fonten er usynlig — den skal ikke merkes.
+- **Prosa** = dokumentinnhold, argumentasjon, avsnitt. Fontbyttet signaliserer modusendring: «nå leser/skriver du et dokument.»
+- **Mono** = ville du *slått det opp, kopiert, eller sammenlignet mot et annet dokument*? Tall, datoer, IDer, koder, paragrafer.
+
+### Overskrifter: navigasjon vs. dokumenttittel
+
+- **Seksjonsoverskrifter** («KONTRAKTSFORHOLD», «VEDERLAGSKRAV») = `--font-ui`. Uppercase, tracked, strukturell navigasjon.
+- **Dokumenttitler** = `--font-prose`. Introduserer dokumentinnholdet, skaper visuell kontinuitet med brødteksten under.
+
+### Romlig separasjon avgjør fontvalg
+
+- **Romlig separerte soner** kan ha forskjellig font (label venstre i `--font-ui`, verdi høyre i `--font-data`).
+- **Aldri bytt font inni en sammenhengende tekstlinje.**
+- **Linjen tar fonten til sin primære funksjon:** Datasammenligning = hele linjen mono. Narrativ setning = hele linjen sans.
+
+### Skala
+
+| Bruk | Font | Størrelse | Vekt | Annet |
+|---|---|---|---|---|
+| Section labels | `--font-ui` | 11px | 600 | uppercase, tracking 0.08em, `ink-muted` |
+| Body/labels | `--font-ui` | 13px | 500 | |
+| Headlines | `--font-ui` | 20px | 700 | tracking -0.025em |
+| Prose body | `--font-prose` | 14px | 400 | line-height 1.6 |
+| Document titles | `--font-prose` | 17–19px | 600 | |
+| Data values | `--font-data` | 13px | 500 | tabular-nums |
 
 ---
 

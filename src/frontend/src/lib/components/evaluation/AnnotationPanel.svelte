@@ -173,9 +173,9 @@
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
     color: var(--color-ink);
-    font-family: var(--font-ui);
-    font-size: 12px;
-    line-height: 1.5;
+    font-family: var(--font-prose);
+    font-size: 14px;
+    line-height: 1.6;
     resize: vertical;
     outline: none;
     transition: border-color 0.12s;

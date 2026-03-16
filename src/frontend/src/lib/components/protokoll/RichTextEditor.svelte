@@ -123,7 +123,7 @@
     max-height: var(--rte-max-height, 60vh);
     overflow-y: auto;
     padding: var(--spacing-4, 16px);
-    font-family: var(--font-editor);
+    font-family: var(--font-prose);
     font-size: 16px;
     line-height: 1.6;
     color: var(--color-ink);
