@@ -6,7 +6,7 @@ Dense, number-forward evaluation workspace. Inspired by financial analysis tools
 Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 
 **Feel:** Like a financial analyst's desk — numbers are the primary content, everything serves the numbers.
-**Not:** Warm, friendly, spacious. This is analytical tooling.
+**Not:** Friendly, spacious, consumer-soft. This is analytical tooling — warm neutrals serve focus, not decoration.
 
 ---
 
