@@ -118,16 +118,16 @@ The following subsections show the **dark theme** token values. For light theme 
 ```
 --color-wire: rgba(255, 255, 255, 0.06)       /* standard separation */
 --color-wire-strong: rgba(255, 255, 255, 0.10) /* emphasis, group dividers */
---color-wire-focus: rgba(232, 168, 56, 0.35)   /* focus rings */
+--color-wire-focus: rgba(129, 140, 248, 0.35)   /* focus rings */
 ```
 
 ### Vekt (weight accent — amber)
 
 ```
---color-vekt: #e8a838                         /* primary weight color */
---color-vekt-dim: #c49030                     /* secondary weight */
---color-vekt-bg: rgba(232, 168, 56, 0.08)    /* weight row tint */
---color-vekt-bg-strong: rgba(232, 168, 56, 0.14) /* weight emphasis */
+--color-vekt: #818cf8                         /* primary weight color */
+--color-vekt-dim: #6571e0                     /* secondary weight */
+--color-vekt-bg: rgba(129, 140, 248, 0.08)   /* weight row tint */
+--color-vekt-bg-strong: rgba(129, 140, 248, 0.14) /* weight emphasis */
 ```
 
 ### Score Semantics
@@ -167,25 +167,25 @@ All tokens are defined in `@theme` (light values) in `app.css` and overridden in
 | Token | Light | Dark |
 |---|---|---|
 | **Surfaces** | | |
-| `--color-canvas` | `#f4f5f8` | `#0c0e14` |
-| `--color-felt` | `#ffffff` | `#12151e` |
-| `--color-felt-raised` | `#ffffff` | `#181c28` |
-| `--color-felt-hover` | `#eef0f5` | `#1e2233` |
-| `--color-felt-active` | `#e4e7ee` | `#242840` |
+| `--color-canvas` | `#f5f4f1` | `#0c0e14` |
+| `--color-felt` | `#fdfcfa` | `#12151e` |
+| `--color-felt-raised` | `#fdfcfa` | `#181c28` |
+| `--color-felt-hover` | `#edecea` | `#1e2233` |
+| `--color-felt-active` | `#e3e1de` | `#242840` |
 | **Ink** | | |
-| `--color-ink` | `#1a1d26` | `#e2e5ef` |
-| `--color-ink-secondary` | `#555b6e` | `#8890a4` |
-| `--color-ink-muted` | `#666c82` | `#7b829b` |
-| `--color-ink-ghost` | `#9ba1b4` | `#5a6178` |
+| `--color-ink` | `#1c1b18` | `#e2e5ef` |
+| `--color-ink-secondary` | `#5a5650` | `#8890a4` |
+| `--color-ink-muted` | `#6b6660` | `#7b829b` |
+| `--color-ink-ghost` | `#9c9892` | `#5a6178` |
 | **Wire** | | |
 | `--color-wire` | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.06)` |
 | `--color-wire-strong` | `rgba(0,0,0,0.13)` | `rgba(255,255,255,0.10)` |
-| `--color-wire-focus` | `rgba(153,101,16,0.35)` | `rgba(232,168,56,0.35)` |
+| `--color-wire-focus` | `rgba(92,107,192,0.35)` | `rgba(129,140,248,0.35)` |
 | **Vekt** | | |
-| `--color-vekt` | `#996510` | `#e8a838` |
-| `--color-vekt-dim` | `#7a5210` | `#c49030` |
-| `--color-vekt-bg` | `rgba(153,101,16,0.06)` | `rgba(232,168,56,0.08)` |
-| `--color-vekt-bg-strong` | `rgba(153,101,16,0.10)` | `rgba(232,168,56,0.14)` |
+| `--color-vekt` | `#5c6bc0` | `#818cf8` |
+| `--color-vekt-dim` | `#4a58a8` | `#6571e0` |
+| `--color-vekt-bg` | `rgba(92,107,192,0.06)` | `rgba(129,140,248,0.08)` |
+| `--color-vekt-bg-strong` | `rgba(92,107,192,0.10)` | `rgba(129,140,248,0.14)` |
 | **Score** | | |
 | `--color-score-high` | `#2d7a54` | `#3d9a6e` |
 | `--color-score-high-bg` | `rgba(45,122,84,0.08)` | `rgba(61,154,110,0.10)` |

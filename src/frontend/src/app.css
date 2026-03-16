@@ -5,33 +5,33 @@
   /* ── Light theme (standard) ── */
 
   /* Canvas & surfaces */
-  --color-canvas: #f4f5f8;
-  --color-felt: #ffffff;
-  --color-felt-raised: #ffffff;
-  --color-felt-hover: #eef0f5;
-  --color-felt-active: #e4e7ee;
+  --color-canvas: #f5f4f1;
+  --color-felt: #fdfcfa;
+  --color-felt-raised: #fdfcfa;
+  --color-felt-hover: #edecea;
+  --color-felt-active: #e3e1de;
 
   /* Ink hierarchy */
-  --color-ink: #1a1d26;
-  --color-ink-secondary: #555b6e;
-  --color-ink-muted: #666c82;
-  --color-ink-ghost: #9ba1b4;
+  --color-ink: #1c1b18;
+  --color-ink-secondary: #5a5650;
+  --color-ink-muted: #6b6660;
+  --color-ink-ghost: #9c9892;
 
   /* Wire — borders */
   --color-wire: rgba(0, 0, 0, 0.07);
   --color-wire-strong: rgba(0, 0, 0, 0.13);
-  --color-wire-focus: rgba(153, 101, 16, 0.35);
+  --color-wire-focus: rgba(92, 107, 192, 0.35);
 
   /* Vekt — weight accent */
-  --color-vekt: #996510;
-  --color-vekt-dim: #7a5210;
-  --color-vekt-bg: rgba(153, 101, 16, 0.06);
-  --color-vekt-bg-strong: rgba(153, 101, 16, 0.1);
+  --color-vekt: #5c6bc0;
+  --color-vekt-dim: #4a58a8;
+  --color-vekt-bg: rgba(92, 107, 192, 0.06);
+  --color-vekt-bg-strong: rgba(92, 107, 192, 0.1);
 
   /* Score semantics */
   --color-score-high: #2d7a54;
   --color-score-high-bg: rgba(45, 122, 84, 0.08);
-  --color-score-mid: #555b6e;
+  --color-score-mid: #5a5650;
   --color-score-low: #b04040;
   --color-score-low-bg: rgba(176, 64, 64, 0.08);
 
@@ -78,12 +78,12 @@
 
   --color-wire: rgba(255, 255, 255, 0.06);
   --color-wire-strong: rgba(255, 255, 255, 0.1);
-  --color-wire-focus: rgba(232, 168, 56, 0.35);
+  --color-wire-focus: rgba(129, 140, 248, 0.35);
 
-  --color-vekt: #e8a838;
-  --color-vekt-dim: #c49030;
-  --color-vekt-bg: rgba(232, 168, 56, 0.08);
-  --color-vekt-bg-strong: rgba(232, 168, 56, 0.14);
+  --color-vekt: #818cf8;
+  --color-vekt-dim: #6571e0;
+  --color-vekt-bg: rgba(129, 140, 248, 0.08);
+  --color-vekt-bg-strong: rgba(129, 140, 248, 0.14);
 
   --color-score-high: #3d9a6e;
   --color-score-high-bg: rgba(61, 154, 110, 0.1);
