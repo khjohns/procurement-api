@@ -48,10 +48,9 @@
       content: body,
     });
 
-    editorInstance.on('create', ({ editor: e }) => {
-      editor = e;
-      charCount = e.storage.characterCount?.characters() ?? 0;
-    });
+    // 'create' fires synchronously during new Editor(), so we assign directly
+    editor = editorInstance;
+    charCount = editorInstance.storage.characterCount?.characters() ?? 0;
 
     editorInstance.on('update', ({ editor: e }) => {
       html = e.getHTML();
@@ -74,7 +73,6 @@
     {#if editor}
       <EditorMenu {editor} />
     {/if}
-
     <div bind:this={editorContainer} class="rte-editor"></div>
   </div>
 
@@ -106,7 +104,6 @@
     background: var(--color-canvas);
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
-    overflow: hidden;
     transition: border-color 0.12s;
   }
 
@@ -145,9 +142,15 @@
     color: var(--color-ink);
   }
 
-  /* Lists */
-  :global(.rte-editor .ProseMirror ul),
+  /* Lists — override Tailwind preflight which strips list-style */
+  :global(.rte-editor .ProseMirror ul) {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+
   :global(.rte-editor .ProseMirror ol) {
+    list-style-type: decimal;
     padding-left: 1.5em;
     margin: 0.5em 0;
   }
