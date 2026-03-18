@@ -25,7 +25,9 @@ export type FieldType =
   | 'per-supplier-textarea'
   | 'per-supplier-richtext'
   | 'avvisning-card'
-  | 'data-quality-table';
+  | 'data-quality-table'
+  | 'evaluation-summary'
+  | 'justification-generator';
 
 /** Context passed to computeFilled for field status resolution. */
 export interface ComputeFilledContext {
@@ -110,6 +112,11 @@ function computeFilledAvvisningCard(value: unknown): ComputeFilledResult {
  */
 function makeCheckboxTextareaFilled(key: string): FieldDefinition['computeFilled'] {
   return (value, context) => computeFilledCheckboxTextarea(value, context, key);
+}
+
+function computeFilledSelectedSuppliers(value: unknown): ComputeFilledResult {
+  const arr = Array.isArray(value) ? value : [];
+  return { total: 1, filled: arr.length > 0 ? 1 : 0 };
 }
 
 export interface SectionContext {
@@ -309,8 +316,22 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
-    dataSource: 'api',
-    fields: [{ key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' }],
+    dataSource: 'mixed',
+    fields: [
+      { key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' },
+      {
+        key: 'evaluationSummary',
+        type: 'evaluation-summary',
+        label: 'Poengoversikt og innstilling',
+      },
+      {
+        key: 'selectedSuppliers',
+        type: 'info-table', // status tracked via computeFilled, rendering handled by evaluation-summary
+        label: 'Innstilt(e) leverandør(er)',
+        computeFilled: computeFilledSelectedSuppliers,
+        required: true,
+      },
+    ],
   },
   {
     id: 'valgt-tilbud',
@@ -321,7 +342,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
         key: 'tildelingsbegrunnelse',
-        type: 'richtext',
+        type: 'justification-generator',
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,
@@ -656,8 +677,22 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
-    dataSource: 'api',
-    fields: [{ key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' }],
+    dataSource: 'mixed',
+    fields: [
+      { key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' },
+      {
+        key: 'evaluationSummary',
+        type: 'evaluation-summary',
+        label: 'Poengoversikt og innstilling',
+      },
+      {
+        key: 'selectedSuppliers',
+        type: 'info-table',
+        label: 'Innstilt(e) leverandør(er)',
+        computeFilled: computeFilledSelectedSuppliers,
+        required: true,
+      },
+    ],
   },
   {
     id: 'valgt-tilbud',
@@ -668,7 +703,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
         key: 'tildelingsbegrunnelse',
-        type: 'richtext',
+        type: 'justification-generator',
         label: 'Tildelingsbegrunnelse',
         hint: 'Begrunn valget opp mot hvert tildelingskriterium. Feltet eksporteres som formatert tekst i Word-dokumentet.',
         required: true,

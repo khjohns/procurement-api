@@ -17,6 +17,15 @@ import {
   type AvvisningKategori,
 } from './protokoll-sections';
 import { extractBidders } from '$lib/utils/activities';
+import {
+  type EvaluationData,
+  type ActiveMethod,
+  type Supplier,
+  criterionMode,
+  weightedAverage,
+  supplierResourceScore,
+} from './evaluation.svelte';
+import { computeGroupScores } from './evaluation-computations';
 
 // Re-export types that were moved to protokoll-sections.ts
 export type { Avvisning, AvvisningKategori } from './protokoll-sections';
@@ -44,6 +53,8 @@ export interface ManualFields {
   reservasjonIdeellBegrunnelse?: string;
   unormaltLavtTilbud?: boolean;
   unormaltLavtTilbudBegrunnelse?: string;
+  /** IDs of suppliers selected as winners (punkt 11). */
+  selectedSuppliers?: string[];
 }
 
 export type SectionStatus = 'complete' | 'partial' | 'empty' | 'na';
@@ -98,6 +109,137 @@ class ProtokollStore {
 
   // Derived: suppliers from activities
   suppliers = $derived(extractBidders(this.activities));
+
+  // ── Evaluation data bridge (reads from localStorage) ──
+
+  /** Trigger re-read when procurement changes. */
+  private _evalVersion = $state(0);
+
+  /** Evaluation data loaded from localStorage (read-only bridge). */
+  evaluationSnapshot = $derived.by<{ data: EvaluationData; activeMethod: ActiveMethod } | null>(
+    () => {
+      // Depend on procurement id + version counter for reactivity
+      const procId = this.procurement?.id;
+      const _v = this._evalVersion;
+      if (!procId || typeof localStorage === 'undefined') return null;
+      try {
+        const raw = localStorage.getItem(`eval-${procId}`);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed?.data) return { data: parsed.data, activeMethod: parsed.activeMethod ?? 'poeng' };
+      } catch { /* corrupt */ }
+      return null;
+    }
+  );
+
+  /** Whether evaluation data is available for this procurement. */
+  hasEvaluation = $derived(this.evaluationSnapshot != null);
+
+  /** Pre-computed item scores for the evaluation snapshot. */
+  private _evalItemScores = $derived.by<Record<string, Record<string, number>>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    const result: Record<string, Record<string, number>> = {};
+    for (const criterion of snap.data.criteria) {
+      for (const sub of criterion.subcriteria) {
+        if (sub.evaluationType !== 'item' || !sub.items || !sub.itemCriteria) continue;
+        result[sub.id] = {};
+        for (const supplier of snap.data.suppliers) {
+          const items = sub.items[supplier.id] ?? [];
+          result[sub.id][supplier.id] = items.length > 0
+            ? supplierResourceScore(items, sub.itemCriteria, sub.aggregation ?? 'average')
+            : 0;
+        }
+      }
+    }
+    return result;
+  });
+
+  /** Pre-computed price formula scores. */
+  private _evalPriceFormulaScores = $derived.by<Record<string, number>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    const result: Record<string, number> = {};
+    let pb = Infinity;
+    const valid: { id: string; price: number }[] = [];
+    for (const s of snap.data.suppliers) {
+      if (s.price != null && s.price > 0) {
+        valid.push({ id: s.id, price: s.price });
+        if (s.price < pb) pb = s.price;
+      }
+    }
+    for (const { id, price } of valid) {
+      result[id] = Math.max(0, Math.min(10, 10 - (10 * (price - pb)) / pb));
+    }
+    return result;
+  });
+
+  /** Pre-computed group scores from evaluation. */
+  evalGroupScores = $derived.by<Record<string, Record<string, number>>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    return computeGroupScores(
+      snap.data.criteria,
+      snap.data.suppliers,
+      snap.activeMethod,
+      this._evalItemScores,
+      this._evalPriceFormulaScores
+    );
+  });
+
+  /** Pre-computed totals from evaluation. */
+  evalTotals = $derived.by<Record<string, number>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    const tw = snap.data.criteria.reduce((s, c) => s + c.weight, 0);
+    const result: Record<string, number> = {};
+    for (const supplier of snap.data.suppliers) {
+      let sum = 0;
+      for (const criterion of snap.data.criteria) {
+        sum += (this.evalGroupScores[criterion.id]?.[supplier.id] ?? 0) * criterion.weight;
+      }
+      result[supplier.id] = tw > 0 ? sum / tw : 0;
+    }
+    return result;
+  });
+
+  /** Pre-computed ranking from evaluation. */
+  evalRanking = $derived.by<Array<{ supplier: Supplier; score: number; rank: number }>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return [];
+    return snap.data.suppliers
+      .map((s) => ({ supplier: s, score: this.evalTotals[s.id] ?? 0 }))
+      .sort((a, b) => b.score - a.score)
+      .map((entry, i) => ({ ...entry, rank: i + 1 }));
+  });
+
+  /** Re-read evaluation data from localStorage (call after navigating from evaluering). */
+  refreshEvaluation() {
+    this._evalVersion++;
+  }
+
+  /** Toggle a supplier as selected/innstilt. */
+  toggleSelectedSupplier(supplierId: string) {
+    const current = (this.manual.selectedSuppliers as string[]) ?? [];
+    const idx = current.indexOf(supplierId);
+    if (idx >= 0) {
+      this.manual = {
+        ...this.manual,
+        selectedSuppliers: current.filter((id) => id !== supplierId),
+      };
+    } else {
+      this.manual = {
+        ...this.manual,
+        selectedSuppliers: [...current, supplierId],
+      };
+    }
+    this._scheduleSave();
+  }
+
+  /** Get the list of selected supplier IDs. */
+  get selectedSupplierIds(): string[] {
+    return (this.manual.selectedSuppliers as string[]) ?? [];
+  }
 
   // Derived: section context for condition evaluation
   sectionContext = $derived<SectionContext>({
@@ -158,7 +300,10 @@ class ProtokollStore {
     // Manual or mixed: check each field
     const manualFields = def.fields.filter(
       (f) =>
-        f.type !== 'info-table' && f.type !== 'supplier-list' && f.type !== 'data-quality-table'
+        f.type !== 'info-table' &&
+        f.type !== 'supplier-list' &&
+        f.type !== 'data-quality-table' &&
+        f.type !== 'evaluation-summary'
     );
 
     if (manualFields.length === 0) return 'complete';

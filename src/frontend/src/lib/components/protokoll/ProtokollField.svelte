@@ -9,6 +9,8 @@
   import DataQualityTable from './DataQualityTable.svelte';
   import RichTextEditor from './RichTextEditor.svelte';
   import DateInput from './DateInput.svelte';
+  import EvaluationSummaryTable from './EvaluationSummaryTable.svelte';
+  import JustificationGenerator from './JustificationGenerator.svelte';
   import type { InfoRow } from '$lib/utils/protokoll-info-rows';
   import { addDays } from '$lib/utils/protokoll-helpers';
   import type { FieldType } from '$lib/stores/protokoll-sections';
@@ -117,6 +119,10 @@
   />
 {:else if field.type === 'data-quality-table'}
   <DataQualityTable sections={protokoll.sections} />
+{:else if field.type === 'evaluation-summary'}
+  <EvaluationSummaryTable {suppliers} />
+{:else if field.type === 'justification-generator'}
+  <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
 {/if}
 
 <style>
