@@ -37,3 +37,6 @@ src/frontend/dist/
 # IDE
 .idea/
 .vscode/
+
+# codegrasp index
+.codegrasp/

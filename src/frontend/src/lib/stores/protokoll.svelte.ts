@@ -324,8 +324,7 @@ class ProtokollStore {
         f.type !== 'info-table' &&
         f.type !== 'supplier-list' &&
         f.type !== 'data-quality-table' &&
-        f.type !== 'evaluation-summary' &&
-        f.type !== 'meddelelse-generator'
+        f.type !== 'evaluation-summary'
     );
 
     if (manualFields.length === 0) return 'complete';

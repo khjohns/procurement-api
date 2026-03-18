@@ -15,7 +15,7 @@
   --color-ink: #1c1b18;
   --color-ink-secondary: #5a5650;
   --color-ink-muted: #6b6660;
-  --color-ink-ghost: #9c9892;
+  --color-ink-ghost: #827e76;
 
   /* Wire — borders */
   --color-wire: rgba(0, 0, 0, 0.07);
@@ -23,7 +23,7 @@
   --color-wire-focus: rgba(92, 107, 192, 0.35);
 
   /* Vekt — weight accent */
-  --color-vekt: #5c6bc0;
+  --color-vekt: #5262b5;
   --color-vekt-dim: #4a58a8;
   --color-vekt-bg: rgba(92, 107, 192, 0.06);
   --color-vekt-bg-strong: rgba(92, 107, 192, 0.1);
@@ -73,22 +73,22 @@
 
   --color-ink: #e2e5ef;
   --color-ink-secondary: #8890a4;
-  --color-ink-muted: #7b829b;
-  --color-ink-ghost: #5a6178;
+  --color-ink-muted: #838ba5;
+  --color-ink-ghost: #6a7088;
 
   --color-wire: rgba(255, 255, 255, 0.06);
   --color-wire-strong: rgba(255, 255, 255, 0.1);
   --color-wire-focus: rgba(129, 140, 248, 0.35);
 
   --color-vekt: #818cf8;
-  --color-vekt-dim: #6571e0;
+  --color-vekt-dim: #6a76e4;
   --color-vekt-bg: rgba(129, 140, 248, 0.08);
   --color-vekt-bg-strong: rgba(129, 140, 248, 0.14);
 
   --color-score-high: #3d9a6e;
   --color-score-high-bg: rgba(61, 154, 110, 0.1);
   --color-score-mid: #8890a4;
-  --color-score-low: #c45858;
+  --color-score-low: #d46e6e;
   --color-score-low-bg: rgba(196, 88, 88, 0.1);
 
   --color-overlay: rgba(0, 0, 0, 0.6);

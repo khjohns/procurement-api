@@ -12,6 +12,7 @@
     if (path.endsWith('/kvalifisering')) return 'Kvalifisering';
     if (path.includes('/evaluering')) return 'Evaluering';
     if (path.endsWith('/protokoll')) return 'Protokoll';
+    if (path.endsWith('/meddelelse')) return 'Meddelelse';
     return null;
   });
 </script>

@@ -13,6 +13,7 @@
       <a href="/anskaffelser/{id}/kvalifisering">Kvalifisering</a>
       <a href="/anskaffelser/{id}/evaluering">Evaluering</a>
       <a href="/anskaffelser/{id}/protokoll">Protokoll</a>
+      <a href="/anskaffelser/{id}/meddelelse">Meddelelse</a>
     </nav>
   </div>
 </div>

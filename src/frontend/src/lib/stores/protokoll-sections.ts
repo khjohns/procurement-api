@@ -27,8 +27,7 @@ export type FieldType =
   | 'avvisning-card'
   | 'data-quality-table'
   | 'evaluation-summary'
-  | 'justification-generator'
-  | 'meddelelse-generator';
+  | 'justification-generator';
 
 /** Context passed to computeFilled for field status resolution. */
 export interface ComputeFilledContext {
@@ -136,22 +135,6 @@ export interface SectionDefinition {
   dataSource: 'api' | 'eforms' | 'manual' | 'mixed';
   condition?: (ctx: SectionContext) => boolean;
 }
-
-// ── Shared sections ──
-
-const MEDDELSESBREV_SECTION: SectionDefinition = {
-  id: 'meddelsesbrev',
-  title: 'Meddelsesbrev',
-  chapter: 'TILDELING',
-  dataSource: 'mixed',
-  fields: [
-    {
-      key: 'meddelsesbrev',
-      type: 'meddelelse-generator',
-      label: 'Generer meddelsesbrev til leverandørene',
-    },
-  ],
-};
 
 // ── Del II ──
 
@@ -390,7 +373,6 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
       },
     ],
   },
-  MEDDELSESBREV_SECTION,
   {
     id: 'rammeavtaler',
     title: 'Rammeavtaler',
@@ -773,7 +755,6 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
       },
     ],
   },
-  MEDDELSESBREV_SECTION,
   {
     id: 'rammeavtaler',
     title: 'Rammeavtaler',

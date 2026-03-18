@@ -24,6 +24,7 @@ Alle arbeidsflater (kvalifisering, evaluering, protokoll) tilhører én spesifik
 /anskaffelser/[id]/kvalifisering       → Arbeidsflate: kvalifikasjonskrav
 /anskaffelser/[id]/evaluering          → Arbeidsflate: evaluering av tilbud
 /anskaffelser/[id]/protokoll           → Arbeidsflate: anskaffelsesprotokoll
+/anskaffelser/[id]/meddelelse          → Arbeidsflate: meddelsesbrev
 ```
 
 ### Narrativskille

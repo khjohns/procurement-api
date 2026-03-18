@@ -11,7 +11,6 @@
   import DateInput from './DateInput.svelte';
   import EvaluationSummaryTable from './EvaluationSummaryTable.svelte';
   import JustificationGenerator from './JustificationGenerator.svelte';
-  import MeddelelseGenerator from './MeddelelseGenerator.svelte';
   import type { InfoRow } from '$lib/utils/protokoll-info-rows';
   import { addDays } from '$lib/utils/protokoll-helpers';
   import type { FieldType } from '$lib/stores/protokoll-sections';
@@ -121,8 +120,6 @@
   <EvaluationSummaryTable />
 {:else if field.type === 'justification-generator'}
   <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
-{:else if field.type === 'meddelelse-generator'}
-  <MeddelelseGenerator />
 {/if}
 
 <style>
