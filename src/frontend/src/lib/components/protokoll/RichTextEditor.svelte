@@ -5,6 +5,7 @@
   import Underline from '@tiptap/extension-underline';
   import Placeholder from '@tiptap/extension-placeholder';
   import CharacterCount from '@tiptap/extension-character-count';
+  import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
   import EditorMenu from './EditorMenu.svelte';
 
   interface Props {
@@ -44,6 +45,10 @@
         Underline,
         Placeholder.configure({ placeholder }),
         CharacterCount.configure({ limit: null }),
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
       ],
       content: body,
     });
@@ -165,6 +170,31 @@
     padding-left: var(--spacing-4, 16px);
     color: var(--color-ink-secondary);
     margin: 0.5em 0;
+  }
+
+  /* Tables */
+  :global(.rte-editor .ProseMirror table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    font-family: var(--font-data);
+    font-size: 13px;
+  }
+
+  :global(.rte-editor .ProseMirror th),
+  :global(.rte-editor .ProseMirror td) {
+    text-align: left;
+    padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+    border-bottom: 1px solid var(--color-wire);
+    vertical-align: top;
+  }
+
+  :global(.rte-editor .ProseMirror th) {
+    font-weight: 600;
+    color: var(--color-ink-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   /* Placeholder */

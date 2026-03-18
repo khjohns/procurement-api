@@ -17,11 +17,7 @@ import {
   type AvvisningKategori,
 } from './protokoll-sections';
 import { extractBidders } from '$lib/utils/activities';
-import {
-  type EvaluationData,
-  type ActiveMethod,
-  type Supplier,
-} from './evaluation.svelte';
+import { type EvaluationData, type ActiveMethod, type Supplier } from './evaluation.svelte';
 import {
   computeGroupScores,
   computeItemScores,
@@ -133,15 +129,24 @@ class ProtokollStore {
       if (!procId || typeof localStorage === 'undefined') return null;
       try {
         const raw = localStorage.getItem(`eval-${procId}`);
-        if (!raw) { this._lastEvalRaw = ''; this._lastEvalParsed = null; return null; }
+        if (!raw) {
+          this._lastEvalRaw = '';
+          this._lastEvalParsed = null;
+          return null;
+        }
         if (raw === this._lastEvalRaw) return this._lastEvalParsed;
         const parsed = JSON.parse(raw);
         if (parsed?.data) {
-          this._lastEvalParsed = { data: parsed.data, activeMethod: parsed.activeMethod ?? 'poeng' };
+          this._lastEvalParsed = {
+            data: parsed.data,
+            activeMethod: parsed.activeMethod ?? 'poeng',
+          };
           this._lastEvalRaw = raw;
           return this._lastEvalParsed;
         }
-      } catch { /* corrupt */ }
+      } catch {
+        /* corrupt */
+      }
       return null;
     }
   );
@@ -214,9 +219,7 @@ class ProtokollStore {
   }
 
   /** Selected supplier IDs from manual fields. */
-  selectedSupplierIds = $derived<string[]>(
-    (this.manual.selectedSuppliers as string[]) ?? []
-  );
+  selectedSupplierIds = $derived<string[]>((this.manual.selectedSuppliers as string[]) ?? []);
 
   /** Fingerprint of evaluation state for staleness detection. */
   evalHash = $derived.by<string>(() => {
@@ -226,7 +229,9 @@ class ProtokollStore {
     const parts = [
       snap.data.suppliers.map((s) => s.id).join(','),
       snap.data.criteria.map((c) => `${c.id}:${c.weight}`).join(','),
-      Object.entries(this.evalTotals).map(([k, v]) => `${k}:${v.toFixed(4)}`).join(','),
+      Object.entries(this.evalTotals)
+        .map(([k, v]) => `${k}:${v.toFixed(4)}`)
+        .join(','),
       this.selectedSupplierIds.join(','),
     ];
     return parts.join('|');
@@ -319,7 +324,8 @@ class ProtokollStore {
         f.type !== 'info-table' &&
         f.type !== 'supplier-list' &&
         f.type !== 'data-quality-table' &&
-        f.type !== 'evaluation-summary'
+        f.type !== 'evaluation-summary' &&
+        f.type !== 'meddelelse-generator'
     );
 
     if (manualFields.length === 0) return 'complete';

@@ -11,6 +11,7 @@
   import DateInput from './DateInput.svelte';
   import EvaluationSummaryTable from './EvaluationSummaryTable.svelte';
   import JustificationGenerator from './JustificationGenerator.svelte';
+  import MeddelelseGenerator from './MeddelelseGenerator.svelte';
   import type { InfoRow } from '$lib/utils/protokoll-info-rows';
   import { addDays } from '$lib/utils/protokoll-helpers';
   import type { FieldType } from '$lib/stores/protokoll-sections';
@@ -42,15 +43,12 @@
     <textarea
       class="field-textarea"
       value={(protokoll.manual[field.key] as string) ?? ''}
-      oninput={(e) =>
-        protokoll.setManualField(field.key, (e.target as HTMLTextAreaElement).value)}
+      oninput={(e) => protokoll.setManualField(field.key, (e.target as HTMLTextAreaElement).value)}
       placeholder="Skriv her..."
       rows="3"
     ></textarea>
     <div class="field-footer">
-      <span class="char-count"
-        >{((protokoll.manual[field.key] as string) ?? '').length} tegn</span
-      >
+      <span class="char-count">{((protokoll.manual[field.key] as string) ?? '').length} tegn</span>
       {#if field.hint}
         <span class="field-hint">{field.hint}</span>
       {/if}
@@ -123,6 +121,8 @@
   <EvaluationSummaryTable />
 {:else if field.type === 'justification-generator'}
   <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
+{:else if field.type === 'meddelelse-generator'}
+  <MeddelelseGenerator />
 {/if}
 
 <style>
