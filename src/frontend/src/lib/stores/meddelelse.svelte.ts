@@ -37,8 +37,8 @@ class MeddelelseStore {
   procurement = $state<any>(null);
   activities = $state<any[]>([]);
 
-  /** Currently viewed letter index. */
-  currentIdx = $state(0);
+  /** Raw letter index — clamped via `currentIdx` derived. */
+  private _currentIdx = $state(0);
 
   // ── Derived procurement info ──
 
@@ -239,16 +239,26 @@ class MeddelelseStore {
   /** Whether letters have been generated. */
   hasLetters = $derived(this.letters.length > 0);
 
+  /** Currently viewed letter index (clamped to valid range). */
+  currentIdx = $derived(
+    this.letters.length === 0 ? 0 : Math.min(this._currentIdx, this.letters.length - 1)
+  );
+
   /** Current letter. */
   currentLetter = $derived<MeddelelseLetterResult | null>(this.letters[this.currentIdx] ?? null);
 
   // ── Methods ──
 
   loadFromData(proc: any, activities: any[]) {
-    if (!proc || this.procurement?.id === proc.id) return;
+    if (!proc) return;
+    const newActivities = Array.isArray(activities) ? activities : [];
+    if (this.procurement?.id === proc.id) {
+      this.activities = newActivities;
+      return;
+    }
     this.procurement = proc;
-    this.activities = Array.isArray(activities) ? activities : [];
-    this.currentIdx = 0;
+    this.activities = newActivities;
+    this._currentIdx = 0;
   }
 
   refreshData() {
@@ -258,14 +268,14 @@ class MeddelelseStore {
 
   setCurrentIdx(idx: number) {
     if (idx >= 0 && idx < this.letters.length) {
-      this.currentIdx = idx;
+      this._currentIdx = idx;
     }
   }
 
   reset() {
     this.procurement = null;
     this.activities = [];
-    this.currentIdx = 0;
+    this._currentIdx = 0;
   }
 }
 
