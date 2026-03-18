@@ -281,3 +281,76 @@ export function computeWeightWarnings(
   }
   return result;
 }
+
+// ── Shared computations (used by both EvaluationStore and ProtokollStore) ──
+
+/** Compute item scores for item-evaluated subcriteria. */
+export function computeItemScores(
+  criteria: Criterion[],
+  suppliers: Supplier[]
+): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {};
+  for (const criterion of criteria) {
+    for (const sub of criterion.subcriteria) {
+      if (sub.evaluationType !== 'item' || !sub.items || !sub.itemCriteria) continue;
+      result[sub.id] = {};
+      for (const supplier of suppliers) {
+        const items = sub.items[supplier.id] ?? [];
+        result[sub.id][supplier.id] = supplierResourceScore(
+          items,
+          sub.itemCriteria,
+          sub.aggregation ?? 'average'
+        );
+      }
+    }
+  }
+  return result;
+}
+
+/** Price formula scores for poengmodell: score = 10 - 10*(Pe-Pb)/Pb, clamped to [0, 10]. */
+export function computePriceFormulaScores(
+  suppliers: Supplier[]
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  let pb = Infinity;
+  const valid: { id: string; price: number }[] = [];
+  for (const s of suppliers) {
+    if (s.price != null && s.price > 0) {
+      valid.push({ id: s.id, price: s.price });
+      if (s.price < pb) pb = s.price;
+    }
+  }
+  for (const { id, price } of valid) {
+    result[id] = Math.max(0, Math.min(10, 10 - (10 * (price - pb)) / pb));
+  }
+  return result;
+}
+
+/** Compute weighted total score per supplier (0-10 scale). */
+export function computeTotals(
+  criteria: Criterion[],
+  suppliers: Supplier[],
+  groupScores: Record<string, Record<string, number>>
+): Record<string, number> {
+  const tw = criteria.reduce((s, c) => s + c.weight, 0);
+  const result: Record<string, number> = {};
+  for (const supplier of suppliers) {
+    let sum = 0;
+    for (const criterion of criteria) {
+      sum += (groupScores[criterion.id]?.[supplier.id] ?? 0) * criterion.weight;
+    }
+    result[supplier.id] = tw > 0 ? sum / tw : 0;
+  }
+  return result;
+}
+
+/** Sorted ranking derived from totals: highest score first. */
+export function computeRanking(
+  suppliers: Supplier[],
+  totals: Record<string, number>
+): Array<{ supplier: Supplier; score: number; rank: number }> {
+  return suppliers
+    .map((s) => ({ supplier: s, score: totals[s.id] ?? 0 }))
+    .sort((a, b) => b.score - a.score)
+    .map((entry, i) => ({ ...entry, rank: i + 1 }));
+}

@@ -17,6 +17,18 @@ import {
   type AvvisningKategori,
 } from './protokoll-sections';
 import { extractBidders } from '$lib/utils/activities';
+import {
+  type EvaluationData,
+  type ActiveMethod,
+  type Supplier,
+} from './evaluation.svelte';
+import {
+  computeGroupScores,
+  computeItemScores,
+  computePriceFormulaScores,
+  computeTotals,
+  computeRanking,
+} from './evaluation-computations';
 
 // Re-export types that were moved to protokoll-sections.ts
 export type { Avvisning, AvvisningKategori } from './protokoll-sections';
@@ -44,6 +56,12 @@ export interface ManualFields {
   reservasjonIdeellBegrunnelse?: string;
   unormaltLavtTilbud?: boolean;
   unormaltLavtTilbudBegrunnelse?: string;
+  /** IDs of suppliers selected as winners (punkt 11). */
+  selectedSuppliers?: string[];
+  /** Hash of evaluation data at last justification generation. */
+  _evalHashAtGeneration?: string;
+  /** The generated HTML before any manual edits. */
+  _generatedJustification?: string;
 }
 
 export type SectionStatus = 'complete' | 'partial' | 'empty' | 'na';
@@ -98,6 +116,146 @@ class ProtokollStore {
 
   // Derived: suppliers from activities
   suppliers = $derived(extractBidders(this.activities));
+
+  // ── Evaluation data bridge (reads from localStorage) ──
+
+  /** Trigger re-read when procurement changes. */
+  private _evalVersion = $state(0);
+
+  /** Evaluation data loaded from localStorage (read-only bridge). */
+  private _lastEvalRaw = '';
+  private _lastEvalParsed: { data: EvaluationData; activeMethod: ActiveMethod } | null = null;
+
+  evaluationSnapshot = $derived.by<{ data: EvaluationData; activeMethod: ActiveMethod } | null>(
+    () => {
+      const procId = this.procurement?.id;
+      const _v = this._evalVersion;
+      if (!procId || typeof localStorage === 'undefined') return null;
+      try {
+        const raw = localStorage.getItem(`eval-${procId}`);
+        if (!raw) { this._lastEvalRaw = ''; this._lastEvalParsed = null; return null; }
+        if (raw === this._lastEvalRaw) return this._lastEvalParsed;
+        const parsed = JSON.parse(raw);
+        if (parsed?.data) {
+          this._lastEvalParsed = { data: parsed.data, activeMethod: parsed.activeMethod ?? 'poeng' };
+          this._lastEvalRaw = raw;
+          return this._lastEvalParsed;
+        }
+      } catch { /* corrupt */ }
+      return null;
+    }
+  );
+
+  /** Whether evaluation data is available for this procurement. */
+  hasEvaluation = $derived(this.evaluationSnapshot != null);
+
+  /** Pre-computed item scores for the evaluation snapshot. */
+  private _evalItemScores = $derived.by<Record<string, Record<string, number>>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    return computeItemScores(snap.data.criteria, snap.data.suppliers);
+  });
+
+  /** Pre-computed price formula scores. */
+  evalPriceFormulaScores = $derived.by<Record<string, number>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    return computePriceFormulaScores(snap.data.suppliers);
+  });
+
+  /** Pre-computed group scores from evaluation. */
+  evalGroupScores = $derived.by<Record<string, Record<string, number>>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    return computeGroupScores(
+      snap.data.criteria,
+      snap.data.suppliers,
+      snap.activeMethod,
+      this._evalItemScores,
+      this.evalPriceFormulaScores
+    );
+  });
+
+  /** Pre-computed totals from evaluation. */
+  evalTotals = $derived.by<Record<string, number>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return {};
+    return computeTotals(snap.data.criteria, snap.data.suppliers, this.evalGroupScores);
+  });
+
+  /** Pre-computed ranking from evaluation. */
+  evalRanking = $derived.by<Array<{ supplier: Supplier; score: number; rank: number }>>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return [];
+    return computeRanking(snap.data.suppliers, this.evalTotals);
+  });
+
+  /** Re-read evaluation data from localStorage (call after navigating from evaluering). */
+  refreshEvaluation() {
+    this._evalVersion++;
+  }
+
+  /** Toggle a supplier as selected/innstilt. */
+  toggleSelectedSupplier(supplierId: string) {
+    const current = (this.manual.selectedSuppliers as string[]) ?? [];
+    const idx = current.indexOf(supplierId);
+    if (idx >= 0) {
+      this.manual = {
+        ...this.manual,
+        selectedSuppliers: current.filter((id) => id !== supplierId),
+      };
+    } else {
+      this.manual = {
+        ...this.manual,
+        selectedSuppliers: [...current, supplierId],
+      };
+    }
+    this._scheduleSave();
+  }
+
+  /** Selected supplier IDs from manual fields. */
+  selectedSupplierIds = $derived<string[]>(
+    (this.manual.selectedSuppliers as string[]) ?? []
+  );
+
+  /** Fingerprint of evaluation state for staleness detection. */
+  evalHash = $derived.by<string>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return '';
+    // Lightweight fingerprint: supplier count + criteria weights + totals
+    const parts = [
+      snap.data.suppliers.map((s) => s.id).join(','),
+      snap.data.criteria.map((c) => `${c.id}:${c.weight}`).join(','),
+      Object.entries(this.evalTotals).map(([k, v]) => `${k}:${v.toFixed(4)}`).join(','),
+      this.selectedSupplierIds.join(','),
+    ];
+    return parts.join('|');
+  });
+
+  /** True when evaluation data has changed since the justification was last generated. */
+  justificationStale = $derived.by<boolean>(() => {
+    const hashAtGen = this.manual._evalHashAtGeneration as string | undefined;
+    if (!hashAtGen) return false; // never generated — not "stale"
+    return hashAtGen !== this.evalHash;
+  });
+
+  /** True when the user has manually edited the generated justification. */
+  justificationEdited = $derived.by<boolean>(() => {
+    const generated = this.manual._generatedJustification as string | undefined;
+    if (!generated) return false;
+    const current = (this.manual.tildelingsbegrunnelse as string) ?? '';
+    return current !== generated;
+  });
+
+  /** Record that a justification was generated with the current eval state. */
+  markJustificationGenerated(html: string) {
+    this.manual = {
+      ...this.manual,
+      _evalHashAtGeneration: this.evalHash,
+      _generatedJustification: html,
+    };
+    this._scheduleSave();
+  }
 
   // Derived: section context for condition evaluation
   sectionContext = $derived<SectionContext>({
@@ -158,7 +316,10 @@ class ProtokollStore {
     // Manual or mixed: check each field
     const manualFields = def.fields.filter(
       (f) =>
-        f.type !== 'info-table' && f.type !== 'supplier-list' && f.type !== 'data-quality-table'
+        f.type !== 'info-table' &&
+        f.type !== 'supplier-list' &&
+        f.type !== 'data-quality-table' &&
+        f.type !== 'evaluation-summary'
     );
 
     if (manualFields.length === 0) return 'complete';
