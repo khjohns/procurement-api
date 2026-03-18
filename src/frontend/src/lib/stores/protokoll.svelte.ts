@@ -58,6 +58,10 @@ export interface ManualFields {
   unormaltLavtTilbudBegrunnelse?: string;
   /** IDs of suppliers selected as winners (punkt 11). */
   selectedSuppliers?: string[];
+  /** Hash of evaluation data at last justification generation. */
+  _evalHashAtGeneration?: string;
+  /** The generated HTML before any manual edits. */
+  _generatedJustification?: string;
 }
 
 export type SectionStatus = 'complete' | 'partial' | 'empty' | 'na';
@@ -213,6 +217,45 @@ class ProtokollStore {
   selectedSupplierIds = $derived<string[]>(
     (this.manual.selectedSuppliers as string[]) ?? []
   );
+
+  /** Fingerprint of evaluation state for staleness detection. */
+  evalHash = $derived.by<string>(() => {
+    const snap = this.evaluationSnapshot;
+    if (!snap) return '';
+    // Lightweight fingerprint: supplier count + criteria weights + totals
+    const parts = [
+      snap.data.suppliers.map((s) => s.id).join(','),
+      snap.data.criteria.map((c) => `${c.id}:${c.weight}`).join(','),
+      Object.entries(this.evalTotals).map(([k, v]) => `${k}:${v.toFixed(4)}`).join(','),
+      this.selectedSupplierIds.join(','),
+    ];
+    return parts.join('|');
+  });
+
+  /** True when evaluation data has changed since the justification was last generated. */
+  justificationStale = $derived.by<boolean>(() => {
+    const hashAtGen = this.manual._evalHashAtGeneration as string | undefined;
+    if (!hashAtGen) return false; // never generated — not "stale"
+    return hashAtGen !== this.evalHash;
+  });
+
+  /** True when the user has manually edited the generated justification. */
+  justificationEdited = $derived.by<boolean>(() => {
+    const generated = this.manual._generatedJustification as string | undefined;
+    if (!generated) return false;
+    const current = (this.manual.tildelingsbegrunnelse as string) ?? '';
+    return current !== generated;
+  });
+
+  /** Record that a justification was generated with the current eval state. */
+  markJustificationGenerated(html: string) {
+    this.manual = {
+      ...this.manual,
+      _evalHashAtGeneration: this.evalHash,
+      _generatedJustification: html,
+    };
+    this._scheduleSave();
+  }
 
   // Derived: section context for condition evaluation
   sectionContext = $derived<SectionContext>({

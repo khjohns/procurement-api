@@ -16,18 +16,14 @@
   let selectedIds = $derived(protokoll.selectedSupplierIds);
   let canGenerate = $derived(snap != null && selectedIds.length > 0);
   let body = $derived((protokoll.manual[fieldKey] as string) || '<p></p>');
+  let isStale = $derived(protokoll.justificationStale);
+  let isEdited = $derived(protokoll.justificationEdited);
 
   let infoOpen = $state(false);
   let confirmOverwrite = $state(false);
   let hasContent = $derived(stripHtml((protokoll.manual[fieldKey] as string) ?? '').length > 0);
 
-  function handleGenerate() {
-    if (hasContent && !confirmOverwrite) {
-      confirmOverwrite = true;
-      return;
-    }
-    confirmOverwrite = false;
-
+  function doGenerate() {
     if (!snap) return;
 
     const input: JustificationInput = {
@@ -42,6 +38,24 @@
 
     const html = generateJustification(input);
     protokoll.setManualField(fieldKey, html);
+    protokoll.markJustificationGenerated(html);
+    confirmOverwrite = false;
+  }
+
+  function handleGenerate() {
+    if (hasContent && !confirmOverwrite) {
+      confirmOverwrite = true;
+      return;
+    }
+    doGenerate();
+  }
+
+  function handleRegenerate() {
+    if (isEdited && !confirmOverwrite) {
+      confirmOverwrite = true;
+      return;
+    }
+    doGenerate();
   }
 
   function handleCancel() {
@@ -54,10 +68,25 @@
     <div class="field-label">{label}</div>
   {/if}
 
+  {#if isStale && canGenerate}
+    <div class="stale-banner">
+      <span class="stale-text">Evalueringen er endret siden begrunnelsen ble generert.</span>
+      {#if confirmOverwrite && isEdited}
+        <span class="overwrite-warn">Manuelle endringer vil gå tapt.</span>
+        <button class="gen-btn gen-btn-confirm" onclick={handleRegenerate}>Regenerer</button>
+        <button class="gen-btn gen-btn-cancel" onclick={handleCancel}>Avbryt</button>
+      {:else}
+        <button class="gen-btn gen-btn-stale" onclick={handleRegenerate}>
+          Regenerer begrunnelse
+        </button>
+      {/if}
+    </div>
+  {/if}
+
   <div class="generator-bar">
     <div class="bar-left">
       {#if canGenerate}
-        {#if confirmOverwrite}
+        {#if confirmOverwrite && !isStale}
           <span class="overwrite-warn">Eksisterende tekst vil bli erstattet.</span>
           <button class="gen-btn gen-btn-confirm" onclick={handleGenerate}>Erstatt</button>
           <button class="gen-btn gen-btn-cancel" onclick={handleCancel}>Avbryt</button>
@@ -204,6 +233,34 @@
 
   .refresh-btn:hover {
     background: var(--color-felt-hover);
+  }
+
+  .stale-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--color-vekt-bg);
+    border: 1px solid var(--color-vekt-bg-strong);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+  }
+
+  .stale-text {
+    font-size: 12px;
+    color: var(--color-vekt-dim);
+    font-weight: 500;
+  }
+
+  .gen-btn-stale {
+    background: var(--color-vekt-bg-strong);
+    border-color: var(--color-vekt);
+    color: var(--color-vekt-dim);
+  }
+
+  .gen-btn-stale:hover {
+    background: var(--color-vekt);
+    color: var(--color-canvas);
   }
 
   .overwrite-warn {
