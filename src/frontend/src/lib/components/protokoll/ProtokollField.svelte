@@ -120,7 +120,7 @@
 {:else if field.type === 'data-quality-table'}
   <DataQualityTable sections={protokoll.sections} />
 {:else if field.type === 'evaluation-summary'}
-  <EvaluationSummaryTable {suppliers} />
+  <EvaluationSummaryTable />
 {:else if field.type === 'justification-generator'}
   <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
 {/if}

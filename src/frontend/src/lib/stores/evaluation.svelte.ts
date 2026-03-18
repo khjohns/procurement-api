@@ -17,6 +17,10 @@ import {
   computeGroupScores,
   computeBestScores,
   computeWeightWarnings,
+  computeItemScores,
+  computePriceFormulaScores,
+  computeTotals,
+  computeRanking,
 } from './evaluation-computations';
 import {
   uid,
@@ -179,6 +183,11 @@ export function weightedAverage(
   return sum / totalWeight;
 }
 
+/** Format a score for display: 1 decimal place, no trailing zeros. */
+export function fmt1(score: number): string {
+  return parseFloat(score.toFixed(1)).toString();
+}
+
 /** Format a score for display: max 2 decimal places, no trailing zeros. */
 export function fmt2(score: number): string {
   return parseFloat(score.toFixed(2)).toString();
@@ -284,45 +293,18 @@ class EvaluationStore {
   );
 
   /** Pure $derived: computed scores for item-evaluated subcriteria. */
-  itemScores = $derived.by(() => {
-    const result: Record<string, Record<string, number>> = {};
-    for (const criterion of this.data.criteria) {
-      for (const sub of criterion.subcriteria) {
-        if (sub.evaluationType !== 'item' || !sub.items || !sub.itemCriteria) continue;
-        result[sub.id] = {};
-        for (const supplier of this.data.suppliers) {
-          const items = sub.items[supplier.id] ?? [];
-          result[sub.id][supplier.id] = supplierItemScore(
-            items,
-            sub.itemCriteria,
-            sub.aggregation ?? 'average'
-          );
-        }
-      }
-    }
-    return result;
-  });
+  itemScores = $derived.by(() =>
+    computeItemScores(this.data.criteria, this.data.suppliers)
+  );
 
   /**
    * Price formula scores for poengmodell: score = 10 - 10*(Pe-Pb)/Pb
    * Pb = lowest supplier price. Clamped to [0, 10].
    * Only computed when at least one supplier has a price.
    */
-  priceFormulaScores = $derived.by(() => {
-    const result: Record<string, number> = {};
-    let pb = Infinity;
-    const valid: { id: string; price: number }[] = [];
-    for (const s of this.data.suppliers) {
-      if (s.price != null && s.price > 0) {
-        valid.push({ id: s.id, price: s.price });
-        if (s.price < pb) pb = s.price;
-      }
-    }
-    for (const { id, price } of valid) {
-      result[id] = Math.max(0, Math.min(10, 10 - (10 * (price - pb)) / pb));
-    }
-    return result;
-  });
+  priceFormulaScores = $derived.by(() =>
+    computePriceFormulaScores(this.data.suppliers)
+  );
 
   /** Computed group averages per supplier (handles all three modes). */
   groupScores = $derived.by(() =>
@@ -336,29 +318,14 @@ class EvaluationStore {
   );
 
   /** Total weighted score per supplier (0-10 scale). */
-  totals = $derived.by(() => {
-    const result: Record<string, number> = {};
-    const tw = this.totalWeight;
-    for (const supplier of this.data.suppliers) {
-      let sum = 0;
-      for (const criterion of this.data.criteria) {
-        sum += (this.groupScores[criterion.id]?.[supplier.id] ?? 0) * criterion.weight;
-      }
-      result[supplier.id] = tw > 0 ? sum / tw : 0;
-    }
-    return result;
-  });
+  totals = $derived.by(() =>
+    computeTotals(this.data.criteria, this.data.suppliers, this.groupScores)
+  );
 
   /** Sorted ranking derived from totals. */
-  ranking = $derived.by(() => {
-    return this.data.suppliers
-      .map((s) => ({
-        supplier: s,
-        score: this.totals[s.id],
-      }))
-      .sort((a, b) => b.score - a.score)
-      .map((entry, i) => ({ ...entry, rank: i + 1 }));
-  });
+  ranking = $derived.by(() =>
+    computeRanking(this.data.suppliers, this.totals)
+  );
 
   /** Effective max deduction per quality criterion (explicit or weight-derived). Single source of truth for prismodell display. */
   maxDeductions = $derived.by(() => {

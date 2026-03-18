@@ -1,6 +1,7 @@
 <script lang="ts">
   import { protokoll } from '$lib/stores/protokoll.svelte';
   import { generateJustification, type JustificationInput } from '$lib/utils/justification-generator';
+  import { stripHtml } from '$lib/utils/protokoll-helpers';
   import RichTextEditor from './RichTextEditor.svelte';
 
   interface Props {
@@ -18,9 +19,7 @@
 
   let infoOpen = $state(false);
   let confirmOverwrite = $state(false);
-  let hasContent = $derived(
-    ((protokoll.manual[fieldKey] as string) ?? '').replace(/<[^>]*>/g, '').trim().length > 0
-  );
+  let hasContent = $derived(stripHtml((protokoll.manual[fieldKey] as string) ?? '').length > 0);
 
   function handleGenerate() {
     if (hasContent && !confirmOverwrite) {
@@ -38,21 +37,8 @@
       groupScores: protokoll.evalGroupScores,
       totals: protokoll.evalTotals,
       ranking: protokoll.evalRanking,
-      priceFormulaScores: {},
+      priceFormulaScores: protokoll.evalPriceFormulaScores,
     };
-
-    // Compute price formula scores
-    let pb = Infinity;
-    const valid: { id: string; price: number }[] = [];
-    for (const s of snap.data.suppliers) {
-      if (s.price != null && s.price > 0) {
-        valid.push({ id: s.id, price: s.price });
-        if (s.price < pb) pb = s.price;
-      }
-    }
-    for (const { id, price } of valid) {
-      input.priceFormulaScores[id] = Math.max(0, Math.min(10, 10 - (10 * (price - pb)) / pb));
-    }
 
     const html = generateJustification(input);
     protokoll.setManualField(fieldKey, html);

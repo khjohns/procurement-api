@@ -12,13 +12,9 @@ import {
   type EvaluationData,
   type ActiveMethod,
   criterionMode,
-  weightedAverage,
-  supplierResourceScore,
+  fmt1,
   formatNOK,
 } from '$lib/stores/evaluation.svelte';
-import {
-  computeGroupScores,
-} from '$lib/stores/evaluation-computations';
 
 // ── Types ──
 
@@ -37,10 +33,6 @@ export interface JustificationInput {
 }
 
 // ── Helpers ──
-
-function fmt(score: number): string {
-  return parseFloat(score.toFixed(1)).toString();
-}
 
 function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -94,7 +86,7 @@ function priceTable(
   let html = '<table><thead><tr><th>Leverandør</th><th>Tilbudt pris</th><th>Poeng</th></tr></thead><tbody>';
   for (const { supplier, score } of ranked) {
     const price = supplier.price != null ? `${formatNOK(supplier.price)} kr` : '—';
-    html += `<tr><td>${name(supplier)}</td><td>${price}</td><td>${fmt(score)}</td></tr>`;
+    html += `<tr><td>${name(supplier)}</td><td>${price}</td><td>${fmt1(score)}</td></tr>`;
   }
   html += '</tbody></table>';
   return html;
@@ -111,16 +103,16 @@ function criterionTable(
   if (mode === 'leaf' || mode === 'resource' || criterion.subcriteria.length === 0) {
     let html = '<table><thead><tr><th>Leverandør</th><th>Poeng</th></tr></thead><tbody>';
     for (const { supplier, score } of ranked) {
-      html += `<tr><td>${name(supplier)}</td><td>${fmt(score)}</td></tr>`;
+      html += `<tr><td>${name(supplier)}</td><td>${fmt1(score)}</td></tr>`;
     }
     html += '</tbody></table>';
     return html;
   }
 
   // Traditional with subcriteria
+  const subWeightSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0);
   let html = '<table><thead><tr><th>Leverandør</th>';
   for (const sub of criterion.subcriteria) {
-    const subWeightSum = criterion.subcriteria.reduce((s, sc) => s + sc.weight, 0);
     const pct = subWeightSum > 0 ? Math.round((sub.weight / subWeightSum) * 100) : 0;
     html += `<th>${esc(sub.name)} (${pct}\u00A0%)</th>`;
   }
@@ -129,9 +121,9 @@ function criterionTable(
   for (const { supplier, score } of ranked) {
     html += `<tr><td>${name(supplier)}</td>`;
     for (const sub of criterion.subcriteria) {
-      html += `<td>${fmt(sub.scores[supplier.id] ?? 0)}</td>`;
+      html += `<td>${fmt1(sub.scores[supplier.id] ?? 0)}</td>`;
     }
-    html += `<td>${fmt(score)}</td></tr>`;
+    html += `<td>${fmt1(score)}</td></tr>`;
   }
   html += '</tbody></table>';
   return html;
@@ -152,9 +144,9 @@ function totalTable(input: JustificationInput): string {
     html += `<tr><td>${isWinner ? '<strong>' : ''}${name(supplier)}${isWinner ? '</strong>' : ''}</td>`;
     for (const c of qualityCriteria) {
       const gs = input.groupScores[c.id]?.[supplier.id] ?? 0;
-      html += `<td>${isWinner ? '<strong>' : ''}${fmt(gs)}${isWinner ? '</strong>' : ''}</td>`;
+      html += `<td>${isWinner ? '<strong>' : ''}${fmt1(gs)}${isWinner ? '</strong>' : ''}</td>`;
     }
-    html += `<td>${isWinner ? '<strong>' : ''}${fmt(score)}${isWinner ? '</strong>' : ''}</td></tr>`;
+    html += `<td>${isWinner ? '<strong>' : ''}${fmt1(score)}${isWinner ? '</strong>' : ''}</td></tr>`;
   }
   html += '</tbody></table>';
   return html;
@@ -191,7 +183,7 @@ function renderComparison(
   for (const other of others) {
     const notes = collectNotes(criterion, other.id);
     if (notes.length > 0) {
-      parts.push(`${esc(other.name)} (${fmt(scores[other.id] ?? 0)} poeng): ${notes.join(' ')}`);
+      parts.push(`${esc(other.name)} (${fmt1(scores[other.id] ?? 0)} poeng): ${notes.join(' ')}`);
     }
   }
 
@@ -266,7 +258,7 @@ export function generateJustification(input: JustificationInput): string {
 
   if (winnerSuppliers.length === 1) {
     sections.push(
-      `<p>${esc(topWinner.name)} oppnådde høyest vektet totalpoeng (${fmt(topScore)} av 10) og innstilles som valgt leverandør.</p>`
+      `<p>${esc(topWinner.name)} oppnådde høyest vektet totalpoeng (${fmt1(topScore)} av 10) og innstilles som valgt leverandør.</p>`
     );
   } else {
     const names = winnerSuppliers.map((s) => esc(s.name)).join(', ');

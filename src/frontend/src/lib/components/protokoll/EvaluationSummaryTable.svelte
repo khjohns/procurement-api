@@ -1,28 +1,14 @@
 <script lang="ts">
   import { protokoll } from '$lib/stores/protokoll.svelte';
-  import { formatNOK } from '$lib/stores/evaluation.svelte';
-
-  interface Props {
-    suppliers: { id: string; name: string }[];
-  }
-
-  let { suppliers }: Props = $props();
+  import { fmt1, formatNOK } from '$lib/stores/evaluation.svelte';
 
   let snap = $derived(protokoll.evaluationSnapshot);
   let criteria = $derived(snap?.data.criteria ?? []);
   let evalSuppliers = $derived(snap?.data.suppliers ?? []);
   let groupScores = $derived(protokoll.evalGroupScores);
-  let totals = $derived(protokoll.evalTotals);
   let ranking = $derived(protokoll.evalRanking);
   let selectedIds = $derived(protokoll.selectedSupplierIds);
-
-  function fmt(score: number): string {
-    return parseFloat(score.toFixed(1)).toString();
-  }
-
-  function isSelected(supplierId: string): boolean {
-    return selectedIds.includes(supplierId);
-  }
+  let hasPrice = $derived(evalSuppliers.some((s) => s.price != null));
 
   function handleToggle(supplierId: string) {
     protokoll.toggleSelectedSupplier(supplierId);
@@ -57,7 +43,7 @@
           <tr>
             <th class="col-check"></th>
             <th class="col-supplier">Leverandør</th>
-            {#if evalSuppliers.some((s) => s.price != null)}
+            {#if hasPrice}
               <th class="col-price">Pris</th>
             {/if}
             {#each criteria as criterion}
@@ -70,7 +56,7 @@
         </thead>
         <tbody>
           {#each ranking as { supplier, score, rank } (supplier.id)}
-            {@const selected = isSelected(supplier.id)}
+            {@const selected = selectedIds.includes(supplier.id)}
             <tr class:row-selected={selected}>
               <td class="col-check">
                 <label class="check-label" title="Innstill som valgt leverandør">
@@ -87,14 +73,14 @@
                 <span class="rank-num">{rank}.</span>
                 <span class="supplier-name" class:supplier-selected={selected}>{supplier.name}</span>
               </td>
-              {#if evalSuppliers.some((s) => s.price != null)}
+              {#if hasPrice}
                 <td class="col-price">{supplier.price != null ? `${formatNOK(supplier.price)} kr` : '—'}</td>
               {/if}
               {#each criteria as criterion}
-                <td class="col-score">{fmt(groupScores[criterion.id]?.[supplier.id] ?? 0)}</td>
+                <td class="col-score">{fmt1(groupScores[criterion.id]?.[supplier.id] ?? 0)}</td>
               {/each}
               <td class="col-total">
-                <strong>{fmt(score)}</strong>
+                <strong>{fmt1(score)}</strong>
               </td>
             </tr>
           {/each}
