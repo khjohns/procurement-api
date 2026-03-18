@@ -1,6 +1,5 @@
 <script lang="ts">
   import { meddelelse } from '$lib/stores/meddelelse.svelte';
-  import WorkspaceHeader from '$lib/components/WorkspaceHeader.svelte';
 
   let { data } = $props();
 
@@ -18,7 +17,7 @@
         <p>Ingen anskaffelse lastet.</p>
       </div>
     {:else}
-      <WorkspaceHeader procurement={meddelelse.procurement} title="Meddelsesbrev" />
+      <div class="page-title">Meddelsesbrev</div>
 
       {#if !meddelelse.hasEvaluation}
         <div class="notice">
@@ -121,6 +120,18 @@
     margin: 0 auto;
     padding: var(--spacing-6) var(--spacing-8);
     padding-bottom: 72px;
+  }
+
+  /* ── Page title ── */
+
+  .page-title {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-ink-muted);
+    margin-bottom: var(--spacing-6);
   }
 
   /* ── Notice ── */
