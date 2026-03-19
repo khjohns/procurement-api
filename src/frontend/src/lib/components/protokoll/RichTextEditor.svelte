@@ -31,6 +31,17 @@
   let editor: Editor | undefined = $state();
   let editorContainer: HTMLDivElement | undefined = $state();
   let charCount = $state(0);
+  let expanded = $state(false);
+
+  function toggleExpand() {
+    expanded = !expanded;
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && expanded) {
+      expanded = false;
+    }
+  }
 
   onMount(() => {
     if (!editorContainer) return;
@@ -77,15 +88,45 @@
   });
 </script>
 
-<div class="rte-wrap">
-  {#if label}
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="rte-wrap" class:rte-expanded={expanded} onkeydown={handleKeydown}>
+  {#if label && !expanded}
     <div class="rte-label">{label}</div>
   {/if}
 
-  <div class="rte-container" style="--rte-max-height: {maxHeight}">
-    {#if editor}
-      <EditorMenu {editor} />
-    {/if}
+  <div class="rte-container" style="--rte-max-height: {expanded ? 'none' : maxHeight}">
+    <div class="rte-toolbar-row">
+      {#if editor}
+        <EditorMenu {editor} />
+      {/if}
+      <button
+        class="rte-expand-btn"
+        onclick={toggleExpand}
+        title={expanded ? 'Lukk fullskjerm (Esc)' : 'Fullskjerm'}
+      >
+        {#if expanded}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path
+              d="M9 1v4h4M5 13V9H1M1 5h4V1M13 9h-4v4"
+              stroke="currentColor"
+              stroke-width="1.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        {:else}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path
+              d="M1 5V1h4M13 9v4H9M9 1h4v4M5 13H1V9"
+              stroke="currentColor"
+              stroke-width="1.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        {/if}
+      </button>
+    </div>
     <div bind:this={editorContainer} class="rte-editor"></div>
   </div>
 
@@ -118,10 +159,79 @@
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
     transition: border-color 0.12s;
+    display: flex;
+    flex-direction: column;
   }
 
   .rte-container:focus-within {
     border-color: var(--color-wire-focus);
+  }
+
+  .rte-toolbar-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--color-wire);
+  }
+
+  .rte-toolbar-row :global(.toolbar) {
+    flex: 1;
+    border-bottom: none;
+  }
+
+  .rte-expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--color-wire);
+    color: var(--color-ink-ghost);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      color 0.1s,
+      background-color 0.1s;
+  }
+
+  .rte-expand-btn:hover {
+    color: var(--color-ink);
+    background: var(--color-felt-hover);
+  }
+
+  .rte-expand-btn:focus-visible {
+    outline: none;
+    color: var(--color-vekt);
+  }
+
+  /* ── Expanded (fullscreen) ── */
+
+  .rte-expanded {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--color-canvas);
+    padding: var(--spacing-4);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .rte-expanded .rte-container {
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--radius-md);
+  }
+
+  .rte-expanded :global(.rte-editor .ProseMirror) {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .rte-expanded .rte-footer {
+    padding: var(--spacing-2) var(--spacing-4) 0;
   }
 
   :global(.rte-editor) {
