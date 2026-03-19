@@ -205,32 +205,37 @@
     color: var(--color-vekt);
   }
 
-  /* ── Expanded (fullscreen) ── */
+  /* ── Expanded (fullscreen, A4 document feel) ── */
 
   .rte-expanded {
     position: fixed;
     inset: 0;
     z-index: 50;
-    background: var(--color-canvas);
-    padding: var(--spacing-4);
+    background: var(--color-felt-active);
     display: flex;
     flex-direction: column;
-    gap: 0;
+    align-items: center;
+    overflow-y: auto;
+    padding: var(--spacing-6) var(--spacing-4);
   }
 
   .rte-expanded .rte-container {
-    flex: 1;
-    min-height: 0;
+    width: 100%;
+    max-width: 794px; /* A4 width: 210mm ≈ 794px at 96dpi */
+    min-height: calc(100vh - 80px);
     border-radius: var(--radius-md);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   }
 
   .rte-expanded :global(.rte-editor .ProseMirror) {
     max-height: none;
-    flex: 1;
-    min-height: 0;
+    min-height: 900px;
+    padding: 60px 72px; /* Word-like margins: ~25mm top/bottom, ~19mm sides */
   }
 
   .rte-expanded .rte-footer {
+    width: 100%;
+    max-width: 794px;
     padding: var(--spacing-2) var(--spacing-4) 0;
   }
 
