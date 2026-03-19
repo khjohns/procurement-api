@@ -233,7 +233,7 @@ export function generateEvaluationDescription(input: JustificationInput): string
   const sortedCriteria = [...priceCriteria, ...qualityCriteria];
 
   // ── 1. Innledning ──
-  sections.push('<h3>1. Innledning</h3>');
+  sections.push('<h2>1. Innledning</h2>');
   sections.push(
     `<p>Evaluering er foretatt ut fra hvilket tilbud som gir det beste forholdet mellom pris og kvalitet. ` +
       `Evalueringen er basert på følgende kriterier: ${data.criteria.map((c) => esc(c.name)).join(' og ')}.</p>`
@@ -245,7 +245,7 @@ export function generateEvaluationDescription(input: JustificationInput): string
   );
 
   // ── 2. Evaluering ──
-  sections.push('<h3>2. Evaluering</h3>');
+  sections.push('<h2>2. Evaluering</h2>');
 
   for (let i = 0; i < sortedCriteria.length; i++) {
     const criterion = sortedCriteria[i];
@@ -291,7 +291,7 @@ export function generateEvaluationDescription(input: JustificationInput): string
   }
 
   // ── 3. Resultat ──
-  sections.push('<h3>3. Resultat</h3>');
+  sections.push('<h2>3. Resultat</h2>');
   sections.push(totalTable(input));
 
   return sections.join('\n');
