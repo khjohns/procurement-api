@@ -378,31 +378,40 @@
     letter-spacing: 0.05em;
   }
 
-  .letter-preview :global(.meddelelse-header-table) {
-    width: auto;
-    margin-bottom: var(--spacing-4);
-    padding-bottom: var(--spacing-3);
+  /* ── Header metadata ── */
+
+  .letter-preview :global(.meddelelse-header) {
+    margin-bottom: var(--spacing-5);
+    padding-bottom: var(--spacing-4);
     border-bottom: 1px solid var(--color-wire-strong);
+  }
+
+  .letter-preview :global(.meddelelse-meta-table) {
+    width: 100%;
     font-family: var(--font-ui);
     font-size: 12px;
   }
 
-  .letter-preview :global(.meddelelse-header-table td) {
+  .letter-preview :global(.meddelelse-meta-table td) {
     border-bottom: none;
-    padding: 2px var(--spacing-3) 2px 0;
-    font-size: 12px;
+    padding: 2px 0;
     vertical-align: top;
   }
 
-  .letter-preview :global(.meddelelse-header-table td:first-child) {
+  .letter-preview :global(.meddelelse-meta-table td:nth-child(odd)) {
     color: var(--color-ink-muted);
     white-space: nowrap;
+    width: 1%;
+    padding-right: var(--spacing-2);
   }
 
-  .letter-preview :global(.meddelelse-header-table td:last-child) {
+  .letter-preview :global(.meddelelse-meta-table td:nth-child(even)) {
     color: var(--color-ink);
     font-family: var(--font-data);
+    padding-right: var(--spacing-6);
   }
+
+  /* ── Separator ── */
 
   .letter-preview :global(hr) {
     border: none;
@@ -410,18 +419,51 @@
     margin: var(--spacing-6) 0;
   }
 
+  /* ── Footer ── */
+
   .letter-preview :global(.meddelelse-footer) {
     margin-top: var(--spacing-8);
-    padding-top: var(--spacing-4);
-    border-top: 1px solid var(--color-wire);
+    padding-top: var(--spacing-5);
+    border-top: 2px solid var(--color-wire-strong);
     font-family: var(--font-ui);
     font-size: 11px;
     color: var(--color-ink-muted);
-    line-height: 1.6;
+    line-height: 1.5;
   }
 
-  .letter-preview :global(.meddelelse-footer p) {
-    margin: 0;
+  .letter-preview :global(.footer-org) {
+    font-weight: 600;
+    color: var(--color-ink-secondary);
+    margin-bottom: 2px;
+  }
+
+  .letter-preview :global(.footer-dept) {
+    margin-bottom: var(--spacing-3);
+  }
+
+  .letter-preview :global(.footer-grid) {
+    width: 100%;
+    font-size: 11px;
+    font-family: var(--font-ui);
+  }
+
+  .letter-preview :global(.footer-grid td) {
+    border-bottom: none;
+    padding: 1px 0;
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    vertical-align: top;
+  }
+
+  .letter-preview :global(.footer-grid td:nth-child(odd)) {
+    white-space: nowrap;
+    width: 1%;
+    padding-right: var(--spacing-2);
+    color: var(--color-ink-ghost);
+  }
+
+  .letter-preview :global(.footer-grid td:nth-child(even)) {
+    padding-right: var(--spacing-6);
   }
 
   /* ── Responsive ── */
