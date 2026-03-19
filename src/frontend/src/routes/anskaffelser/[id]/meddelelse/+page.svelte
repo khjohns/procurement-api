@@ -378,17 +378,50 @@
     letter-spacing: 0.05em;
   }
 
-  .letter-preview :global(.meddelelse-header) {
+  .letter-preview :global(.meddelelse-header-table) {
+    width: auto;
     margin-bottom: var(--spacing-4);
     padding-bottom: var(--spacing-3);
     border-bottom: 1px solid var(--color-wire-strong);
     font-family: var(--font-ui);
+    font-size: 12px;
   }
 
-  .letter-preview :global(.meddelelse-header p) {
-    margin: 0;
+  .letter-preview :global(.meddelelse-header-table td) {
+    border-bottom: none;
+    padding: 2px var(--spacing-3) 2px 0;
     font-size: 12px;
-    color: var(--color-ink-secondary);
+    vertical-align: top;
+  }
+
+  .letter-preview :global(.meddelelse-header-table td:first-child) {
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
+  .letter-preview :global(.meddelelse-header-table td:last-child) {
+    color: var(--color-ink);
+    font-family: var(--font-data);
+  }
+
+  .letter-preview :global(hr) {
+    border: none;
+    border-top: 1px solid var(--color-wire-strong);
+    margin: var(--spacing-6) 0;
+  }
+
+  .letter-preview :global(.meddelelse-footer) {
+    margin-top: var(--spacing-8);
+    padding-top: var(--spacing-4);
+    border-top: 1px solid var(--color-wire);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    line-height: 1.6;
+  }
+
+  .letter-preview :global(.meddelelse-footer p) {
+    margin: 0;
   }
 
   /* ── Responsive ── */

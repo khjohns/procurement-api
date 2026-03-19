@@ -111,14 +111,15 @@ export function generateMeddelelse(input: MeddelelseInput): string {
   const qualified = totalBids - rejectedCount;
   const anskaffelsesnavn = getProcName(procurement) || 'anskaffelsen';
 
-  // ── Header ──
-  sections.push('<div class="meddelelse-header">');
+  // ── Header (table format) ──
   const ref = saksnummer(procurement);
-  if (ref) sections.push(`<p><strong>Vår ref.:</strong> ${esc(ref)}</p>`);
   const sbh = saksbehandler(procurement);
-  if (sbh) sections.push(`<p><strong>Saksbehandler:</strong> ${esc(sbh)}</p>`);
-  sections.push(`<p><strong>Dato:</strong> ${dato}</p>`);
-  sections.push('</div>');
+  sections.push('<table class="meddelelse-header-table">');
+  sections.push(`<tr><td>Deres ref.:</td><td></td></tr>`);
+  if (ref) sections.push(`<tr><td>Vår ref. (saksnr.):</td><td>${esc(ref)}</td></tr>`);
+  if (sbh) sections.push(`<tr><td>Saksbehandler:</td><td>${esc(sbh)}</td></tr>`);
+  sections.push(`<tr><td>Dato:</td><td>${dato}</td></tr>`);
+  sections.push('</table>');
 
   // ── Title ──
   sections.push(`<h2>Meddelelse om tildeling \u2014 ${esc(anskaffelsesnavn)}</h2>`);
@@ -205,6 +206,23 @@ export function generateMeddelelse(input: MeddelelseInput): string {
         `gjelder ikke kravet om karensperiode, jf. ${foaRef}.</p>`
     );
   }
+
+  // ── Avslutning ──
+  sections.push('<hr>');
+  sections.push(
+    `<p>Vi takker igjen for deres interesse og ønsker velkommen tilbake til mulige oppdrag i fremtiden.</p>`
+  );
+  sections.push(`<p>Vennlig hilsen</p>`);
+  sections.push(`<p><strong>${esc(procurerName(procurement))}</strong></p>`);
+
+  // ── Footer ──
+  sections.push('<div class="meddelelse-footer">');
+  sections.push(`<p>Oslo kommune Oslobygg KF Økonomi- og virksomhetsstyring Juridisk avdeling</p>`);
+  sections.push(
+    `<p>Besøksadresse: Grenseveien 82, 0663 Oslo &middot; Postadresse: Postboks 6391, 0604 OSLO</p>`
+  );
+  sections.push(`<p>Telefon: 2180 2180 &middot; Org. nr.: 924599545 &middot; oslo.kommune.no</p>`);
+  sections.push('</div>');
 
   return sections.join('\n');
 }
