@@ -88,7 +88,15 @@
   });
 </script>
 
-{#snippet resourceCard(name: string, label: string | undefined, scores: {name: string; score: number}[], avg: number, note: string, onNoteChange: (v: string) => void, placeholder: string)}
+{#snippet resourceCard(
+  name: string,
+  label: string | undefined,
+  scores: { name: string; score: number }[],
+  avg: number,
+  note: string,
+  onNoteChange: (v: string) => void,
+  placeholder: string
+)}
   <div class="resource-note">
     <div class="resource-header">
       <span class="resource-name">{name}</span>
@@ -203,7 +211,7 @@
               {@render resourceCard(
                 role.name,
                 item.label,
-                criterion.subcriteria.map(m => ({ name: m.name, score: item.scores[m.id] ?? 0 })),
+                criterion.subcriteria.map((m) => ({ name: m.name, score: item.scores[m.id] ?? 0 })),
                 resourceMomentScore(item, criterion.subcriteria),
                 item.note ?? '',
                 (v) => evaluation.setRoleResourceNote(criterion.id, supplier.id, role.id, v),
@@ -232,7 +240,10 @@
                 {@render resourceCard(
                   item.name,
                   item.label,
-                  (sub.itemCriteria ?? []).map(ic => ({ name: ic.name, score: item.scores[ic.id] ?? 0 })),
+                  (sub.itemCriteria ?? []).map((ic) => ({
+                    name: ic.name,
+                    score: item.scores[ic.id] ?? 0,
+                  })),
                   itemScore(item, sub.itemCriteria ?? []),
                   item.note ?? '',
                   (v) => evaluation.setItemResourceNote(sub.id, supplier.id, item.id, v),
@@ -567,17 +578,19 @@
   /* ── Shared textarea ── */
   .note-textarea {
     width: 100%;
-    padding: var(--spacing-2);
+    min-height: 80px;
+    padding: var(--spacing-3);
     background: var(--color-canvas);
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
     color: var(--color-ink);
     font-family: var(--font-ui);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
     resize: vertical;
     outline: none;
     transition: border-color 0.12s;
+    field-sizing: content;
   }
 
   .note-textarea:focus {
@@ -589,7 +602,7 @@
   }
 
   .note-textarea-sm {
-    min-height: 48px;
+    min-height: 64px;
   }
 
   /* ── Tier colors ── */
