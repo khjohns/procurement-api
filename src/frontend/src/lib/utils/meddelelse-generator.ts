@@ -221,9 +221,8 @@ export function generateMeddelelse(input: MeddelelseInput): string {
 
   // ── Footer ──
   sections.push('<div class="meddelelse-footer">');
-  sections.push(`<div class="footer-org">Oslo kommune Oslobygg KF</div>`);
   sections.push(
-    `<div class="footer-dept">Økonomi- og virksomhetsstyring &middot; Juridisk avdeling</div>`
+    `<div class="footer-org">Oslo kommune Oslobygg KF &middot; Økonomi- og virksomhetsstyring &middot; Juridisk avdeling</div>`
   );
   sections.push('<table class="footer-grid"><tbody>');
   sections.push(
@@ -232,7 +231,6 @@ export function generateMeddelelse(input: MeddelelseInput): string {
   sections.push(
     `<tr><td>Postadresse:</td><td>Postboks 6391, 0604 OSLO</td><td>Org. nr.:</td><td>924599545</td></tr>`
   );
-  sections.push(`<tr><td></td><td></td><td></td><td>oslo.kommune.no</td></tr>`);
   sections.push('</tbody></table>');
   sections.push('</div>');
 

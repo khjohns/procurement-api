@@ -434,10 +434,6 @@
   .letter-preview :global(.footer-org) {
     font-weight: 600;
     color: var(--color-ink-secondary);
-    margin-bottom: 2px;
-  }
-
-  .letter-preview :global(.footer-dept) {
     margin-bottom: var(--spacing-3);
   }
 
