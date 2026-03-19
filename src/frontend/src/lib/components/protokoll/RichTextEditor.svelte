@@ -241,7 +241,7 @@
     max-height: none;
     height: 100%;
     overflow-y: auto;
-    padding: 60px 72px; /* Word-like margins: ~25mm top/bottom, ~19mm sides */
+    padding: 32px 72px 60px; /* Top: compact (toolbar above), sides: ~19mm, bottom: ~25mm */
   }
 
   .rte-expanded :global(.rte-editor .ProseMirror table) {
@@ -286,6 +286,10 @@
     font-weight: 700;
     margin: 1em 0 0.5em;
     color: var(--color-ink);
+  }
+
+  :global(.rte-editor .ProseMirror h2:first-child) {
+    margin-top: 0;
   }
 
   :global(.rte-editor .ProseMirror h3) {
