@@ -215,28 +215,44 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    overflow-y: auto;
     padding: var(--spacing-6) var(--spacing-4);
+    overflow: hidden;
   }
 
   .rte-expanded .rte-container {
     width: 100%;
     max-width: 794px; /* A4 width: 210mm ≈ 794px at 96dpi */
-    min-height: calc(100vh - 80px);
+    flex: 1;
+    min-height: 0;
     border-radius: var(--radius-md);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .rte-expanded :global(.rte-editor) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .rte-expanded :global(.rte-editor .ProseMirror) {
     max-height: none;
-    min-height: 900px;
+    height: 100%;
+    overflow-y: auto;
     padding: 60px 72px; /* Word-like margins: ~25mm top/bottom, ~19mm sides */
+  }
+
+  .rte-expanded :global(.rte-editor .ProseMirror table) {
+    table-layout: fixed;
   }
 
   .rte-expanded .rte-footer {
     width: 100%;
     max-width: 794px;
     padding: var(--spacing-2) var(--spacing-4) 0;
+    flex-shrink: 0;
   }
 
   :global(.rte-editor) {
