@@ -57,6 +57,14 @@
     editor = editorInstance;
     charCount = editorInstance.storage.characterCount?.characters() ?? 0;
 
+    // Sync body prop → editor when body changes externally (e.g. generator)
+    $effect(() => {
+      if (editorInstance && body !== editorInstance.getHTML()) {
+        editorInstance.commands.setContent(body, false);
+        charCount = editorInstance.storage.characterCount?.characters() ?? 0;
+      }
+    });
+
     editorInstance.on('update', ({ editor: e }) => {
       html = e.getHTML();
       charCount = e.storage.characterCount?.characters() ?? 0;
@@ -130,6 +138,15 @@
     line-height: 1.6;
     color: var(--color-ink);
     outline: none;
+  }
+
+  /* Paragraphs */
+  :global(.rte-editor .ProseMirror p) {
+    margin: 0 0 0.5em;
+  }
+
+  :global(.rte-editor .ProseMirror p:last-child) {
+    margin-bottom: 0;
   }
 
   /* Headings */

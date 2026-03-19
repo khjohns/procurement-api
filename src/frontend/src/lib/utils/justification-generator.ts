@@ -192,20 +192,20 @@ function renderComparison(
   const others = suppliers.filter((s) => !winnerIds.has(s.id));
   if (others.length === 0) return '';
 
-  const parts: string[] = [];
+  const paragraphs: string[] = [];
   for (const other of others) {
     const rawScore = scores[other.id] ?? 0;
     const ws = weightedScore(rawScore, weight);
     const notes = collectNotes(criterion, other.id);
+    const scoreIntro = `${esc(other.name)} er gitt ${fmt1(rawScore)} poeng. Dette ga en vektet score på ${fmt1(ws)} poeng.`;
     if (notes.length > 0) {
-      parts.push(
-        `${esc(other.name)} (${fmt1(rawScore)} poeng, vektet score ${fmt1(ws)}): ${notes.join(' ')}`
-      );
+      paragraphs.push(`<p>${scoreIntro} ${notes.map((n) => esc(n)).join(' ')}</p>`);
+    } else {
+      paragraphs.push(`<p>${scoreIntro}</p>`);
     }
   }
 
-  if (parts.length === 0) return '';
-  return `<p>Til sammenligning: ${parts.join('. ')}.</p>`;
+  return paragraphs.join('\n');
 }
 
 // ── Price formula explanation ──
@@ -227,7 +227,13 @@ export function generateEvaluationDescription(input: JustificationInput): string
   const winnerIds = new Set(selectedSupplierIds);
   const sections: string[] = [];
 
-  // Intro
+  // Sort criteria: price first, then quality
+  const priceCriteria = data.criteria.filter((c) => c.type === 'price');
+  const qualityCriteria = data.criteria.filter((c) => c.type !== 'price');
+  const sortedCriteria = [...priceCriteria, ...qualityCriteria];
+
+  // ── 1. Innledning ──
+  sections.push('<h3>1. Innledning</h3>');
   sections.push(
     `<p>Evaluering er foretatt ut fra hvilket tilbud som gir det beste forholdet mellom pris og kvalitet. ` +
       `Evalueringen er basert på følgende kriterier: ${data.criteria.map((c) => esc(c.name)).join(' og ')}.</p>`
@@ -238,13 +244,15 @@ export function generateEvaluationDescription(input: JustificationInput): string
       `slik angitt i konkurransegrunnlaget.</p>`
   );
 
-  // Per-criterion sections
-  for (let i = 0; i < data.criteria.length; i++) {
-    const criterion = data.criteria[i];
-    const scores = groupScores[criterion.id] ?? {};
-    const num = i + 1;
+  // ── 2. Evaluering ──
+  sections.push('<h3>2. Evaluering</h3>');
 
-    sections.push(`<h3>${num}. ${esc(criterion.name)} (${criterion.weight}\u00A0%)</h3>`);
+  for (let i = 0; i < sortedCriteria.length; i++) {
+    const criterion = sortedCriteria[i];
+    const scores = groupScores[criterion.id] ?? {};
+    const subNum = i + 1;
+
+    sections.push(`<h3>2.${subNum} ${esc(criterion.name)} (${criterion.weight}\u00A0%)</h3>`);
 
     // Price formula explanation for price criteria
     if (criterion.type === 'price') {
@@ -258,9 +266,11 @@ export function generateEvaluationDescription(input: JustificationInput): string
       sections.push(criterionTable(criterion, data.suppliers, scores));
     }
 
-    // Winner notes
-    for (const winner of winnerSuppliers) {
-      sections.push(renderNotes(criterion, winner.id, winner.name, true));
+    // Winner notes (quality criteria only — price is purely formula-based)
+    if (criterion.type !== 'price') {
+      for (const winner of winnerSuppliers) {
+        sections.push(renderNotes(criterion, winner.id, winner.name, true));
+      }
     }
 
     // Price criterion: if winner didn't get highest price score, note it
@@ -280,8 +290,8 @@ export function generateEvaluationDescription(input: JustificationInput): string
     }
   }
 
-  // Summary table
-  sections.push('<h3>Samlet vurdering</h3>');
+  // ── 3. Resultat ──
+  sections.push('<h3>3. Resultat</h3>');
   sections.push(totalTable(input));
 
   return sections.join('\n');
