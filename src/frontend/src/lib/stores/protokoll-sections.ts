@@ -306,13 +306,6 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 
   // TILDELING
   {
-    id: 'tildelingskriterier',
-    title: 'Tildelingskriterier',
-    chapter: 'TILDELING',
-    dataSource: 'eforms',
-    fields: [{ key: 'awardCriteria', type: 'info-table', label: 'Tildelingskriterier' }],
-  },
-  {
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
@@ -667,13 +660,6 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 
   // TILDELING
   {
-    id: 'tildelingskriterier',
-    title: 'Tildelingskriterier',
-    chapter: 'TILDELING',
-    dataSource: 'eforms',
-    fields: [{ key: 'awardCriteria', type: 'info-table', label: 'Tildelingskriterier' }],
-  },
-  {
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
@@ -709,27 +695,6 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         required: true,
         computeFilled: computeFilledText,
       },
-      {
-        key: 'karensperiode',
-        type: 'date',
-        label: 'Karensperiodens utløp',
-        hint: 'Oppgi dato for karensperiodens utløp.',
-        computeFilled: computeFilledDate,
-      },
-      {
-        key: 'klager',
-        type: 'textarea',
-        label: 'Eventuelle klager',
-        hint: 'Oppgi eventuelle klager mottatt.',
-        computeFilled: computeFilledText,
-      },
-      {
-        key: 'klageutfall',
-        type: 'textarea',
-        label: 'Resultat av klage',
-        hint: 'Beskriv utfallet av klagen.',
-        computeFilled: computeFilledText,
-      },
     ],
   },
   {
@@ -752,6 +717,20 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Karensperiodens utløp',
         hint: 'Utløpsdato for karensperiode. Bruk +10 dager for automatisk beregning.',
         computeFilled: computeFilledDate,
+      },
+      {
+        key: 'klager',
+        type: 'textarea',
+        label: 'Eventuelle klager',
+        hint: 'Oppgi eventuelle klager mottatt.',
+        computeFilled: computeFilledText,
+      },
+      {
+        key: 'klageutfall',
+        type: 'textarea',
+        label: 'Resultat av klage',
+        hint: 'Beskriv utfallet av klagen.',
+        computeFilled: computeFilledText,
       },
     ],
   },
