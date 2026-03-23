@@ -214,6 +214,7 @@ class MeddelelseStore {
       totals: this.evalTotals,
       ranking: this.evalRanking,
       priceFormulaScores: this.evalPriceFormulaScores,
+      samletVurdering: snap.data.samletVurdering,
     };
     const evalHtml = generateEvaluationDescription(evalInput);
 

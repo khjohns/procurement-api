@@ -1,6 +1,9 @@
 <script lang="ts">
   import { protokoll } from '$lib/stores/protokoll.svelte';
-  import { generateJustification, type JustificationInput } from '$lib/utils/justification-generator';
+  import {
+    generateJustification,
+    type JustificationInput,
+  } from '$lib/utils/justification-generator';
   import { stripHtml } from '$lib/utils/protokoll-helpers';
   import RichTextEditor from './RichTextEditor.svelte';
 
@@ -34,6 +37,7 @@
       totals: protokoll.evalTotals,
       ranking: protokoll.evalRanking,
       priceFormulaScores: protokoll.evalPriceFormulaScores,
+      samletVurdering: snap.data.samletVurdering,
     };
 
     const html = generateJustification(input);
@@ -91,9 +95,7 @@
           <button class="gen-btn gen-btn-confirm" onclick={handleGenerate}>Erstatt</button>
           <button class="gen-btn gen-btn-cancel" onclick={handleCancel}>Avbryt</button>
         {:else}
-          <button class="gen-btn" onclick={handleGenerate}>
-            Generer utkast fra evaluering
-          </button>
+          <button class="gen-btn" onclick={handleGenerate}> Generer utkast fra evaluering </button>
         {/if}
       {:else if !snap}
         <span class="gen-disabled-hint">Evalueringsdata mangler</span>
@@ -121,8 +123,8 @@
   {#if infoOpen}
     <div class="info-box">
       <p>
-        Generatoren lager et <strong>utkast</strong> basert på poeng og begrunnelser fra
-        evalueringen. Utkastet bør gjennomgås og tilpasses:
+        Generatoren lager et <strong>utkast</strong> basert på poeng og begrunnelser fra evalueringen.
+        Utkastet bør gjennomgås og tilpasses:
       </p>
       <ul>
         <li>Kontroller at formuleringene er dekkende og presise</li>
@@ -184,7 +186,9 @@
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.12s, border-color 0.12s;
+    transition:
+      background-color 0.12s,
+      border-color 0.12s;
     white-space: nowrap;
   }
 
@@ -284,7 +288,9 @@
     font-weight: 600;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background-color 0.12s, color 0.12s;
+    transition:
+      background-color 0.12s,
+      color 0.12s;
   }
 
   .info-toggle:hover {

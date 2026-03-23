@@ -30,8 +30,12 @@ export interface ProgressResult {
 }
 
 function progressLeaf(
-  criterion: Criterion, suppliers: Supplier[],
-  cells: number, filledCells: number, notes: number, filledNotes: number
+  criterion: Criterion,
+  suppliers: Supplier[],
+  cells: number,
+  filledCells: number,
+  notes: number,
+  filledNotes: number
 ): [number, number, number, number] {
   for (const supplier of suppliers) {
     cells++;
@@ -43,8 +47,12 @@ function progressLeaf(
 }
 
 function progressResource(
-  criterion: Criterion, suppliers: Supplier[],
-  cells: number, filledCells: number, notes: number, filledNotes: number
+  criterion: Criterion,
+  suppliers: Supplier[],
+  cells: number,
+  filledCells: number,
+  notes: number,
+  filledNotes: number
 ): [number, number, number, number] {
   const nMoments = criterion.subcriteria.length;
   for (const supplier of suppliers) {
@@ -66,8 +74,10 @@ function progressResource(
 }
 
 function progressItemSub(
-  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
-  cells: number, filledCells: number
+  sub: Criterion['subcriteria'][0],
+  suppliers: Supplier[],
+  cells: number,
+  filledCells: number
 ): [number, number] {
   const nCriteria = sub.itemCriteria!.length;
   for (const supplier of suppliers) {
@@ -87,8 +97,12 @@ function progressItemSub(
 }
 
 function progressSimpleSub(
-  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
-  cells: number, filledCells: number, notes: number, filledNotes: number
+  sub: Criterion['subcriteria'][0],
+  suppliers: Supplier[],
+  cells: number,
+  filledCells: number,
+  notes: number,
+  filledNotes: number
 ): [number, number, number, number] {
   for (const supplier of suppliers) {
     cells++;
@@ -100,8 +114,10 @@ function progressSimpleSub(
 }
 
 function countNotes(
-  sub: Criterion['subcriteria'][0], suppliers: Supplier[],
-  notes: number, filledNotes: number
+  sub: Criterion['subcriteria'][0],
+  suppliers: Supplier[],
+  notes: number,
+  filledNotes: number
 ): [number, number] {
   for (const supplier of suppliers) {
     notes++;
@@ -111,15 +127,26 @@ function countNotes(
 }
 
 function progressTraditional(
-  criterion: Criterion, suppliers: Supplier[],
-  cells: number, filledCells: number, notes: number, filledNotes: number
+  criterion: Criterion,
+  suppliers: Supplier[],
+  cells: number,
+  filledCells: number,
+  notes: number,
+  filledNotes: number
 ): [number, number, number, number] {
   for (const sub of criterion.subcriteria) {
     if (sub.evaluationType === 'item' && sub.itemCriteria) {
       [cells, filledCells] = progressItemSub(sub, suppliers, cells, filledCells);
       [notes, filledNotes] = countNotes(sub, suppliers, notes, filledNotes);
     } else {
-      [cells, filledCells, notes, filledNotes] = progressSimpleSub(sub, suppliers, cells, filledCells, notes, filledNotes);
+      [cells, filledCells, notes, filledNotes] = progressSimpleSub(
+        sub,
+        suppliers,
+        cells,
+        filledCells,
+        notes,
+        filledNotes
+      );
     }
   }
   return [cells, filledCells, notes, filledNotes];
@@ -127,12 +154,23 @@ function progressTraditional(
 
 /** Count filled vs total score cells and notes across all criteria/suppliers. */
 export function computeProgress(criteria: Criterion[], suppliers: Supplier[]): ProgressResult {
-  let cells = 0, filledCells = 0, notes = 0, filledNotes = 0;
+  let cells = 0,
+    filledCells = 0,
+    notes = 0,
+    filledNotes = 0;
 
   for (const criterion of criteria) {
     const mode = criterionMode(criterion);
-    const fn = mode === 'leaf' ? progressLeaf : mode === 'resource' ? progressResource : progressTraditional;
-    [cells, filledCells, notes, filledNotes] = fn(criterion, suppliers, cells, filledCells, notes, filledNotes);
+    const fn =
+      mode === 'leaf' ? progressLeaf : mode === 'resource' ? progressResource : progressTraditional;
+    [cells, filledCells, notes, filledNotes] = fn(
+      criterion,
+      suppliers,
+      cells,
+      filledCells,
+      notes,
+      filledNotes
+    );
   }
 
   return {
@@ -178,12 +216,12 @@ function deductionsTraditional(
 export function computePriceDeductions(
   criteria: Criterion[],
   suppliers: Supplier[],
-  contractValue: number,
+  lowestPrice: number,
   qualityWeight: number,
   totalWeight: number
 ): Record<string, Record<string, number>> {
   const result: Record<string, Record<string, number>> = {};
-  const qb = contractValue * (qualityWeight / 100);
+  const qb = lowestPrice * (qualityWeight / 100);
 
   for (const criterion of criteria) {
     if (criterion.type === 'price') continue;
@@ -237,7 +275,12 @@ export function computeGroupScores(
       result[criterion.id] = mapSuppliers(suppliers, (s) => priceFormulaScores[s.id] ?? 0);
       continue;
     }
-    result[criterion.id] = groupScoreForMode(criterion, suppliers, criterionMode(criterion), itemScores);
+    result[criterion.id] = groupScoreForMode(
+      criterion,
+      suppliers,
+      criterionMode(criterion),
+      itemScores
+    );
   }
   return result;
 }
@@ -308,9 +351,7 @@ export function computeItemScores(
 }
 
 /** Price formula scores for poengmodell: score = 10 - 10*(Pe-Pb)/Pb, clamped to [0, 10]. */
-export function computePriceFormulaScores(
-  suppliers: Supplier[]
-): Record<string, number> {
+export function computePriceFormulaScores(suppliers: Supplier[]): Record<string, number> {
   const result: Record<string, number> = {};
   let pb = Infinity;
   const valid: { id: string; price: number }[] = [];

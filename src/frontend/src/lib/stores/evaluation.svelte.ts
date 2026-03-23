@@ -117,6 +117,8 @@ export interface EvaluationData {
   contractValue: number;
   suppliers: Supplier[];
   criteria: Criterion[];
+  /** Per-criterion overall assessment text (used in meddelelsesbrev/protokoll). */
+  samletVurdering?: Record<string, string>;
 }
 
 export type ActiveMethod = 'poeng' | 'pris';
@@ -293,18 +295,14 @@ class EvaluationStore {
   );
 
   /** Pure $derived: computed scores for item-evaluated subcriteria. */
-  itemScores = $derived.by(() =>
-    computeItemScores(this.data.criteria, this.data.suppliers)
-  );
+  itemScores = $derived.by(() => computeItemScores(this.data.criteria, this.data.suppliers));
 
   /**
    * Price formula scores for poengmodell: score = 10 - 10*(Pe-Pb)/Pb
    * Pb = lowest supplier price. Clamped to [0, 10].
    * Only computed when at least one supplier has a price.
    */
-  priceFormulaScores = $derived.by(() =>
-    computePriceFormulaScores(this.data.suppliers)
-  );
+  priceFormulaScores = $derived.by(() => computePriceFormulaScores(this.data.suppliers));
 
   /** Computed group averages per supplier (handles all three modes). */
   groupScores = $derived.by(() =>
@@ -323,9 +321,7 @@ class EvaluationStore {
   );
 
   /** Sorted ranking derived from totals. */
-  ranking = $derived.by(() =>
-    computeRanking(this.data.suppliers, this.totals)
-  );
+  ranking = $derived.by(() => computeRanking(this.data.suppliers, this.totals));
 
   /** Effective max deduction per quality criterion (explicit or weight-derived). Single source of truth for prismodell display. */
   maxDeductions = $derived.by(() => {
@@ -344,7 +340,7 @@ class EvaluationStore {
     computePriceDeductions(
       this.data.criteria,
       this.data.suppliers,
-      this.data.contractValue,
+      this.lowestPrice,
       this.data.qualityWeight,
       this.totalWeight
     )
@@ -385,8 +381,17 @@ class EvaluationStore {
       .map((entry, i) => ({ ...entry, rank: i + 1 }));
   });
 
-  /** Quality budget: how much of contract value is allocated to quality. */
-  qualityBudget = $derived(this.data.contractValue * (this.data.qualityWeight / 100));
+  /** Lowest offered price across all suppliers (implicit contract value for poengmodell). */
+  lowestPrice = $derived.by(() => {
+    let min = Infinity;
+    for (const s of this.data.suppliers) {
+      if (s.price != null && s.price > 0 && s.price < min) min = s.price;
+    }
+    return min === Infinity ? 0 : min;
+  });
+
+  /** Quality budget: how much of the lowest price is allocated to quality differentiation. */
+  qualityBudget = $derived(this.lowestPrice * (this.data.qualityWeight / 100));
 
   /** Total weight of all criteria (should be 100). */
   totalWeight = $derived(this.data.criteria.reduce((s, c) => s + c.weight, 0));
@@ -402,9 +407,7 @@ class EvaluationStore {
   );
 
   /** Sum of max deductions across all quality criteria (the real quality budget in prismodell). */
-  totalMaxDeductions = $derived(
-    Object.values(this.maxDeductions).reduce((sum, d) => sum + d, 0)
-  );
+  totalMaxDeductions = $derived(Object.values(this.maxDeductions).reduce((sum, d) => sum + d, 0));
 
   /** Whether both evaluation methods agree on winner. */
   sameWinner = $derived(this.ranking[0]?.supplier.id === this.priceRanking[0]?.supplier.id);
@@ -491,11 +494,30 @@ class EvaluationStore {
 
   // ── Item mutation delegates ──
 
-  setItemScore(subCriterionId: string, supplierId: string, itemId: string, itemCriterionId: string, value: number) {
-    itemMutations.setItemScore(this.data, subCriterionId, supplierId, itemId, itemCriterionId, value);
+  setItemScore(
+    subCriterionId: string,
+    supplierId: string,
+    itemId: string,
+    itemCriterionId: string,
+    value: number
+  ) {
+    itemMutations.setItemScore(
+      this.data,
+      subCriterionId,
+      supplierId,
+      itemId,
+      itemCriterionId,
+      value
+    );
   }
 
-  setItemNote(subCriterionId: string, supplierId: string, itemId: string, itemCriterionId: string, text: string) {
+  setItemNote(
+    subCriterionId: string,
+    supplierId: string,
+    itemId: string,
+    itemCriterionId: string,
+    text: string
+  ) {
     itemMutations.setItemNote(this.data, subCriterionId, supplierId, itemId, itemCriterionId, text);
   }
 
@@ -565,11 +587,23 @@ class EvaluationStore {
     roleMutations.setRoleLabel(this.data, criterionId, supplierId, roleId, label);
   }
 
-  setRoleScore(criterionId: string, supplierId: string, roleId: string, momentId: string, value: number) {
+  setRoleScore(
+    criterionId: string,
+    supplierId: string,
+    roleId: string,
+    momentId: string,
+    value: number
+  ) {
     roleMutations.setRoleScore(this.data, criterionId, supplierId, roleId, momentId, value);
   }
 
-  setRoleNote(criterionId: string, supplierId: string, roleId: string, momentId: string, text: string) {
+  setRoleNote(
+    criterionId: string,
+    supplierId: string,
+    roleId: string,
+    momentId: string,
+    text: string
+  ) {
     roleMutations.setRoleNote(this.data, criterionId, supplierId, roleId, momentId, text);
   }
 
@@ -595,6 +629,12 @@ class EvaluationStore {
   /** Toggle the overview matrix axis orientation. */
   toggleMatrixTransposed() {
     this.matrixTransposed = !this.matrixTransposed;
+  }
+
+  /** Set the overall assessment text for a criterion (samlet vurdering). */
+  setSamletVurdering(criterionId: string, text: string) {
+    if (!this.data.samletVurdering) this.data.samletVurdering = {};
+    this.data.samletVurdering[criterionId] = text;
   }
 
   /** Set a criterion-level note (overordnet vurdering) for a supplier. */
@@ -706,7 +746,12 @@ class EvaluationStore {
   }
 
   /** Build initial EvaluationData from route parameters. */
-  private _buildFreshData(procId: number, proc: any, activities: any[], eforms: any | null): EvaluationData {
+  private _buildFreshData(
+    procId: number,
+    proc: any,
+    activities: any[],
+    eforms: any | null
+  ): EvaluationData {
     const title = proc?.name || proc?.title || '';
     return {
       id: String(procId),
@@ -767,7 +812,6 @@ class EvaluationStore {
     if (!node.priceDeductionAmounts) node.priceDeductionAmounts = {};
     node.priceDeductionAmounts[supplierId] = Math.max(0, Math.round(amount));
   }
-
 }
 
 export const evaluation = new EvaluationStore();

@@ -33,6 +33,8 @@ export interface JustificationInput {
   ranking: Array<{ supplier: Supplier; score: number; rank: number }>;
   /** Pre-computed price formula scores (poengmodell) */
   priceFormulaScores: Record<string, number>;
+  /** Per-criterion samlet vurdering text from the evaluation matrix. When present, replaces auto-generated notes. */
+  samletVurdering?: Record<string, string>;
 }
 
 // ── Helpers ──
@@ -266,10 +268,21 @@ export function generateEvaluationDescription(input: JustificationInput): string
       sections.push(criterionTable(criterion, data.suppliers, scores));
     }
 
-    // Winner notes (quality criteria only — price is purely formula-based)
+    // Quality criteria: use samletVurdering if available, otherwise fall back to auto-generated notes
     if (criterion.type !== 'price') {
-      for (const winner of winnerSuppliers) {
-        sections.push(renderNotes(criterion, winner.id, winner.name, true));
+      const samlet = input.samletVurdering?.[criterion.id]?.trim();
+      if (samlet) {
+        // Use the evaluator's own narrative directly
+        const paragraphs = samlet.split(/\n\n+/).filter((p) => p.trim());
+        sections.push(paragraphs.map((p) => `<p>${esc(p)}</p>`).join('\n'));
+      } else {
+        // Fall back to auto-generated notes
+        for (const winner of winnerSuppliers) {
+          sections.push(renderNotes(criterion, winner.id, winner.name, true));
+        }
+        sections.push(
+          renderComparison(criterion, data.suppliers, winnerIds, scores, criterion.weight)
+        );
       }
     }
 
@@ -282,11 +295,6 @@ export function generateEvaluationDescription(input: JustificationInput): string
           `<p>${winnerNames} tilbød ikke lavest pris. De relative fordelene ved ${winnerSuppliers.length > 1 ? 'de valgte tilbudene' : 'det valgte tilbudet'} på de øvrige kriteriene oppveier prisforskjellen, som redegjort nedenfor.</p>`
         );
       }
-    } else {
-      // Quality criteria: compare with others
-      sections.push(
-        renderComparison(criterion, data.suppliers, winnerIds, scores, criterion.weight)
-      );
     }
   }
 

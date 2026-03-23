@@ -1,55 +1,55 @@
 <script lang="ts">
-  import { evaluation, type ActiveMethod } from '$lib/stores/evaluation.svelte';
-
-  const methods: { id: ActiveMethod; label: string }[] = [
-    { id: 'poeng', label: 'Poengmodell' },
-    { id: 'pris', label: 'Prismodell' },
-  ];
+  import { evaluation } from '$lib/stores/evaluation.svelte';
 </script>
 
-<div class="method-toggle">
-  {#each methods as method}
-    <button
-      class="method-btn"
-      class:active={evaluation.activeMethod === method.id}
-      onclick={() => (evaluation.activeMethod = method.id)}
-    >
-      {method.label}
-    </button>
-  {/each}
+<div class="toggle">
+  <button
+    class="toggle-btn"
+    class:toggle-active={evaluation.activeMethod === 'poeng'}
+    onclick={() => (evaluation.activeMethod = 'poeng')}
+  >
+    Poeng
+  </button>
+  <button
+    class="toggle-btn"
+    class:toggle-active={evaluation.activeMethod === 'pris'}
+    onclick={() => (evaluation.activeMethod = 'pris')}
+  >
+    Pris
+  </button>
 </div>
 
 <style>
-  .method-toggle {
+  .toggle {
     display: flex;
-    background: var(--color-felt);
     border: 1px solid var(--color-wire);
-    border-radius: var(--radius-md);
-    padding: 2px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
   }
 
-  .method-btn {
-    flex: 1;
+  .toggle-btn {
     padding: var(--spacing-1) var(--spacing-3);
+    border: none;
+    background: var(--color-felt);
     font-family: var(--font-ui);
     font-size: 11px;
     font-weight: 500;
-    color: var(--color-ink-muted);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
+    color: var(--color-ink-ghost);
     cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
+    transition: all 0.12s;
   }
 
-  .method-btn:hover {
-    color: var(--color-ink);
+  .toggle-btn:first-child {
+    border-right: 1px solid var(--color-wire);
   }
 
-  .method-btn.active {
-    background: var(--color-vekt-bg-strong);
+  .toggle-active {
+    background: var(--color-vekt-bg);
     color: var(--color-vekt);
     font-weight: 600;
+  }
+
+  .toggle-btn:hover:not(.toggle-active) {
+    background: var(--color-felt-hover);
   }
 </style>
