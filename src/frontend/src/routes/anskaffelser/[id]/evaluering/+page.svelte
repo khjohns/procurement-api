@@ -74,7 +74,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--spacing-3);
-    margin-bottom: var(--spacing-5);
+    margin-bottom: var(--spacing-3);
     font-size: 12px;
     color: var(--color-ink-secondary);
   }

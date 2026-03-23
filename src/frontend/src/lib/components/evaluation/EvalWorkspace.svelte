@@ -48,11 +48,6 @@
     <NavStripe aktivId={activeCriterion.id} onselect={selectCriterion} onback={goOverview} />
     <AnalysisStripe onopendrawer={() => (drawerOpen = true)} />
 
-    <div class="criterion-header">
-      <h2 class="criterion-title">{activeCriterion.name}</h2>
-      <span class="criterion-weight">Vekt: {activeCriterion.weight}%</span>
-    </div>
-
     {#if mode === 'leaf'}
       <EvalLeaf criterion={activeCriterion} />
     {:else if mode === 'traditional'}
@@ -86,7 +81,7 @@
   }
 
   .workspace-header {
-    margin-bottom: var(--spacing-4);
+    margin-bottom: var(--spacing-2);
   }
 
   .workspace-title {
@@ -94,28 +89,11 @@
     font-weight: 700;
     color: var(--color-ink);
     letter-spacing: -0.02em;
-    margin-bottom: var(--spacing-1);
+    margin-bottom: 0;
   }
 
   .workspace-meta {
     font-size: 12px;
-    color: var(--color-ink-ghost);
-  }
-
-  .criterion-header {
-    margin-bottom: var(--spacing-4);
-    margin-top: var(--spacing-4);
-  }
-
-  .criterion-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--color-ink);
-  }
-
-  .criterion-weight {
-    font-size: 10px;
-    font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
 

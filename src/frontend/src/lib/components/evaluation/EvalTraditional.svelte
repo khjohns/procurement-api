@@ -139,7 +139,7 @@
     display: flex;
     gap: 0;
     border-bottom: 1px solid var(--color-wire);
-    margin-bottom: var(--spacing-4);
+    margin-bottom: var(--spacing-3);
   }
 
   .sub-tab {

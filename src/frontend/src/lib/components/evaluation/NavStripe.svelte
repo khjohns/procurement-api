@@ -22,7 +22,7 @@
     {@const cur = aktivId === k.id}
     {@const pct = c.total > 0 ? c.done / c.total : 0}
     <button class="nav-tab" class:nav-tab-active={cur} onclick={() => onselect(k.id)}>
-      <span class="nav-tab-label">{k.name}</span>
+      <span class="nav-tab-label">{k.name} <span class="nav-tab-weight">{k.weight}%</span></span>
       <span class="nav-tab-count" class:nav-tab-done={pct === 1}>
         {c.done}/{c.total}
       </span>
@@ -36,9 +36,8 @@
     display: flex;
     align-items: stretch;
     gap: var(--spacing-1);
-    padding: var(--spacing-3) 0 var(--spacing-4);
+    padding: var(--spacing-2) 0;
     border-bottom: 1px solid var(--color-wire);
-    margin-bottom: 0;
   }
 
   .nav-back {
@@ -99,6 +98,18 @@
   .nav-tab-active .nav-tab-label {
     font-weight: 700;
     color: var(--color-vekt);
+  }
+
+  .nav-tab-weight {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--color-ink-ghost);
+    margin-left: 2px;
+  }
+
+  .nav-tab-active .nav-tab-weight {
+    color: var(--color-vekt-dim);
   }
 
   .nav-tab-count {
