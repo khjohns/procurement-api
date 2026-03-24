@@ -59,13 +59,13 @@
   <div class="row">
     <div class="col-saksnr">
       <FormField label="Saksnummer">
-        <input class="input mono" bind:value={saksnr} placeholder="2026/1234" />
+        <input class="form-input mono" bind:value={saksnr} placeholder="2026/1234" />
       </FormField>
     </div>
     <div class="col-tittel">
       <FormField label="Tittel">
         <input
-          class="input"
+          class="form-input"
           bind:value={tittel}
           placeholder="Kort, beskrivende tittel på anskaffelsen"
         />
@@ -78,7 +78,7 @@
     hint="Beskriv hva som skal anskaffes. Danner grunnlag for protokollen."
   >
     <textarea
-      class="textarea"
+      class="form-textarea"
       bind:value={beskrivelse}
       placeholder="Beskriv behovet, omfanget og hva kontrakten skal dekke..."
       rows="3"
@@ -121,7 +121,7 @@
     <div class="row">
       <div class="col-mnd">
         <FormField label="Varighet (måneder)">
-          <input class="input mono" type="number" bind:value={varighetMnd} placeholder="24" />
+          <input class="form-input mono" type="number" bind:value={varighetMnd} placeholder="24" />
         </FormField>
       </div>
       <div class="col-grow">
@@ -130,12 +130,12 @@
           hjemmel="§ 5-4 (1)"
           hint="Samlet betaling for hele kontraktsperioden."
         >
-          <input class="input mono" type="number" bind:value={anslattVerdi} placeholder="0" />
+          <input class="form-input mono" type="number" bind:value={anslattVerdi} placeholder="0" />
         </FormField>
       </div>
       <div class="col-opsjon">
         <FormField label="Herav opsjoner" hjemmel="§ 5-4 (1)" hint="Inkluderes i totalverdi.">
-          <input class="input mono" type="number" bind:value={opsjonVerdi} placeholder="0" />
+          <input class="form-input mono" type="number" bind:value={opsjonVerdi} placeholder="0" />
         </FormField>
       </div>
     </div>
@@ -148,7 +148,7 @@
         <div class="col-grow">
           <FormField label="Månedlig verdi (NOK)" hjemmel="§ 5-4 (10)/(12)">
             <input
-              class="input mono"
+              class="form-input mono"
               type="number"
               bind:value={maanedligVerdi}
               placeholder="0"
@@ -223,7 +223,7 @@
       hint="Begrunnelsen dokumenteres i anskaffelsesprotokollen."
     >
       <textarea
-        class="textarea"
+        class="form-textarea"
         bind:value={unntakBegrunnelse}
         placeholder="Begrunn hvorfor vilkårene for unntak er oppfylt..."
         rows="3"
@@ -259,50 +259,6 @@
   }
   .col-opsjon {
     flex: 0 0 160px;
-  }
-
-  .input {
-    width: 100%;
-    padding: 6px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    color: var(--color-ink);
-    background: var(--color-felt);
-    outline: none;
-  }
-
-  .input.mono {
-    font-family: var(--font-data);
-  }
-
-  .input:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px rgba(43, 107, 127, 0.08);
-  }
-
-  .textarea {
-    width: 100%;
-    padding: 7px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-size: 13px;
-    font-family: var(--font-ui);
-    color: var(--color-ink);
-    background: var(--color-felt);
-    line-height: 1.55;
-    resize: vertical;
-    outline: none;
-  }
-
-  .textarea:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px rgba(43, 107, 127, 0.08);
-  }
-
-  input[type='number']::-webkit-inner-spin-button {
-    opacity: 0.3;
   }
 
   .tidsubegrenset-box {

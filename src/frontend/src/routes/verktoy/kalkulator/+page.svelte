@@ -201,12 +201,12 @@
         <div class="row">
           <div class="col-grow">
             <FormField label="Samlet betaling ekskl. mva." hjemmel="§ 5-4 (1)">
-              <input class="input mono" type="number" bind:value={stdVerdi} placeholder="0" />
+              <input class="form-input mono" type="number" bind:value={stdVerdi} placeholder="0" />
             </FormField>
           </div>
           <div class="col-fixed">
             <FormField label="Herav opsjoner">
-              <input class="input mono" type="number" bind:value={stdOpsjon} placeholder="0" />
+              <input class="form-input mono" type="number" bind:value={stdOpsjon} placeholder="0" />
             </FormField>
           </div>
         </div>
@@ -220,12 +220,12 @@
         <div class="row">
           <div class="col-grow">
             <FormField label="Forventet antall avrop / kontrakter">
-              <input class="input mono" type="number" bind:value={raAntall} placeholder="0" />
+              <input class="form-input mono" type="number" bind:value={raAntall} placeholder="0" />
             </FormField>
           </div>
           <div class="col-grow">
             <FormField label="Gjennomsnittlig kontraktsverdi (NOK)">
-              <input class="input mono" type="number" bind:value={raSnitt} placeholder="0" />
+              <input class="form-input mono" type="number" bind:value={raSnitt} placeholder="0" />
             </FormField>
           </div>
         </div>
@@ -254,7 +254,7 @@
                 ? 'Samlet verdi siste 12 mnd / regnskapsår'
                 : 'Anslått samlet verdi neste 12 mnd'}
             >
-              <input class="input mono" type="number" bind:value={regVerdi} placeholder="0" />
+              <input class="form-input mono" type="number" bind:value={regVerdi} placeholder="0" />
             </FormField>
           </div>
           {#if regMetode === 'historisk'}
@@ -263,7 +263,12 @@
                 label="Forventet endring (%)"
                 hint="Justering for forventede endringer neste 12 mnd."
               >
-                <input class="input mono" type="number" bind:value={regJustering} placeholder="0" />
+                <input
+                  class="form-input mono"
+                  type="number"
+                  bind:value={regJustering}
+                  placeholder="0"
+                />
               </FormField>
             </div>
           {/if}
@@ -285,20 +290,25 @@
         </FormField>
         {#if leaseVarighet === 'kort'}
           <FormField label="Kontraktens samlede verdi">
-            <input class="input mono" type="number" bind:value={leaseVerdi} placeholder="0" />
+            <input class="form-input mono" type="number" bind:value={leaseVerdi} placeholder="0" />
           </FormField>
         {/if}
         {#if leaseVarighet === 'lang'}
           <div class="row">
             <div class="col-grow">
               <FormField label="Kontraktens samlede verdi">
-                <input class="input mono" type="number" bind:value={leaseVerdi} placeholder="0" />
+                <input
+                  class="form-input mono"
+                  type="number"
+                  bind:value={leaseVerdi}
+                  placeholder="0"
+                />
               </FormField>
             </div>
             <div class="col-grow">
               <FormField label="Anslått restverdi">
                 <input
-                  class="input mono"
+                  class="form-input mono"
                   type="number"
                   bind:value={leaseRestverdi}
                   placeholder="0"
@@ -312,7 +322,12 @@
             <p class="note-label">Månedlig verdi × 48</p>
             <div style="max-width: 220px">
               <FormField label="Månedlig verdi">
-                <input class="input mono" type="number" bind:value={leaseMnd} placeholder="0" />
+                <input
+                  class="form-input mono"
+                  type="number"
+                  bind:value={leaseMnd}
+                  placeholder="0"
+                />
               </FormField>
             </div>
             {#if leaseMnd}
@@ -336,14 +351,14 @@
         </FormField>
         {#if tjVarighet === 'under48'}
           <FormField label="Samlet verdi for hele kontraktsperioden">
-            <input class="input mono" type="number" bind:value={tjSamlet} placeholder="0" />
+            <input class="form-input mono" type="number" bind:value={tjSamlet} placeholder="0" />
           </FormField>
         {:else}
           <div class="note warn">
             <p class="note-label">Månedlig verdi × 48</p>
             <div style="max-width: 220px">
               <FormField label="Månedlig verdi">
-                <input class="input mono" type="number" bind:value={tjMnd} placeholder="0" />
+                <input class="form-input mono" type="number" bind:value={tjMnd} placeholder="0" />
               </FormField>
             </div>
             {#if tjMnd}
@@ -401,7 +416,12 @@
         <div class="row">
           <div class="col-grow">
             <FormField label="Bygge- og anleggsarbeidene">
-              <input class="input mono" type="number" bind:value={byggeArbeider} placeholder="0" />
+              <input
+                class="form-input mono"
+                type="number"
+                bind:value={byggeArbeider}
+                placeholder="0"
+              />
             </FormField>
           </div>
           <div class="col-grow">
@@ -409,7 +429,12 @@
               label="Varer/tjenester stilt til rådighet"
               hint="Varer og tjenester oppdragsgiver stiller til leverandørens rådighet, og som er nødvendige for arbeidene."
             >
-              <input class="input mono" type="number" bind:value={byggeVarer} placeholder="0" />
+              <input
+                class="form-input mono"
+                type="number"
+                bind:value={byggeVarer}
+                placeholder="0"
+              />
             </FormField>
           </div>
         </div>
@@ -508,31 +533,6 @@
   }
   .col-fixed {
     flex: 0 0 160px;
-  }
-
-  .input {
-    width: 100%;
-    padding: 6px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    color: var(--color-ink);
-    background: #fff;
-    outline: none;
-  }
-
-  .input.mono {
-    font-family: var(--font-data);
-  }
-
-  .input:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px rgba(43, 107, 127, 0.08);
-  }
-
-  input[type='number']::-webkit-inner-spin-button {
-    opacity: 0.3;
   }
 
   .note {

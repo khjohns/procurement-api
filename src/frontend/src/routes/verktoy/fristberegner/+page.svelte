@@ -57,7 +57,7 @@
   <div class="options-row">
     <div class="date-col">
       <FormField label="Kunngjøringsdato">
-        <input class="input mono" type="date" bind:value={kunngjoring} />
+        <input class="form-input mono" type="date" bind:value={kunngjoring} />
       </FormField>
     </div>
     <div class="checks">
@@ -211,23 +211,6 @@
 
   input[type='checkbox'] {
     accent-color: var(--color-vekt);
-  }
-
-  .input {
-    width: 100%;
-    padding: 6px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-family: var(--font-data);
-    font-size: 13px;
-    color: var(--color-ink);
-    background: #fff;
-    outline: none;
-  }
-
-  .input:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px rgba(43, 107, 127, 0.08);
   }
 
   .timeline-section {
