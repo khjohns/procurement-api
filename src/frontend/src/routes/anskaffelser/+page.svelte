@@ -142,6 +142,8 @@
       <span class="current">Anskaffelser</span>
     </nav>
     <div class="nav-actions">
+      <a href="/anskaffelser/ny" class="ny-btn">+ Ny anskaffelse</a>
+      <a href="/verktoy" class="verktoy-link">Verktøy</a>
       <button
         class="theme-toggle"
         onclick={() => themeStore.toggle()}
@@ -248,6 +250,33 @@
     gap: 12px;
     font-size: 12px;
     color: var(--color-ink-secondary);
+  }
+
+  .ny-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--color-vekt);
+    color: #fff;
+    text-decoration: none;
+    transition: opacity 0.12s;
+  }
+
+  .ny-btn:hover {
+    opacity: 0.85;
+  }
+
+  .verktoy-link {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-ink-secondary);
+    text-decoration: none;
+    transition: color 0.12s;
+  }
+
+  .verktoy-link:hover {
+    color: var(--color-vekt);
   }
 
   .theme-toggle {
