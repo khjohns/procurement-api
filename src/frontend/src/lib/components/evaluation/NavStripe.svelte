@@ -36,7 +36,7 @@
     display: flex;
     align-items: stretch;
     gap: var(--spacing-1);
-    padding: var(--spacing-2) 0;
+    padding: var(--spacing-3) 0 var(--spacing-4);
     border-bottom: 1px solid var(--color-wire);
   }
 

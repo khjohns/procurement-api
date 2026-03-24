@@ -7,7 +7,7 @@ import { scoreTier } from '$lib/stores/evaluation.svelte';
 
 const TIER_COLORS = {
   high: 'var(--color-score-high)',
-  mid: 'var(--color-ink-secondary)',
+  mid: 'var(--color-score-mid)',
   low: 'var(--color-score-low)',
 } as const;
 

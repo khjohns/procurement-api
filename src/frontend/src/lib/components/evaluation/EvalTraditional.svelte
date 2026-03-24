@@ -12,11 +12,7 @@
   let subs = $derived(criterion.subcriteria);
   let activeSubId = $state('');
 
-  // Resolve active sub with fallback to first — no $effect needed
   let activeSub = $derived(subs.find((s) => s.id === activeSubId) ?? subs[0] ?? null);
-  let activeSubIdx = $derived(activeSub ? subs.indexOf(activeSub) : -1);
-  let prevSub = $derived(activeSubIdx > 0 ? subs[activeSubIdx - 1] : null);
-  let nextSub = $derived(activeSubIdx < subs.length - 1 ? subs[activeSubIdx + 1] : null);
 
   /** Weighted score for a supplier on this criterion. */
   function tradScore(supplierId: string): number | null {
@@ -73,20 +69,6 @@
   </div>
 {/if}
 
-<!-- Prev/next navigation -->
-<div class="sub-nav">
-  {#if prevSub}
-    <button class="nav-btn" onclick={() => (activeSubId = prevSub!.id)}>← {prevSub.name}</button>
-  {:else}
-    <div></div>
-  {/if}
-  {#if nextSub}
-    <button class="nav-btn" onclick={() => (activeSubId = nextSub!.id)}>{nextSub.name} →</button>
-  {:else}
-    <div></div>
-  {/if}
-</div>
-
 <!-- Summary table -->
 <div class="summary">
   <div class="summary-label">Sammendrag – {criterion.name}</div>
@@ -137,9 +119,10 @@
 <style>
   .sub-tabs {
     display: flex;
+    align-items: center;
     gap: 0;
     border-bottom: 1px solid var(--color-wire);
-    margin-bottom: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
   }
 
   .sub-tab {
@@ -222,30 +205,6 @@
   .card-textarea:focus {
     border-color: var(--color-vekt);
     box-shadow: 0 0 0 2px var(--color-vekt-bg);
-  }
-
-  .sub-nav {
-    display: flex;
-    justify-content: space-between;
-    margin-top: var(--spacing-3);
-  }
-
-  .nav-btn {
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-ink-secondary);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-2) var(--spacing-4);
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-
-  .nav-btn:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
   }
 
   /* Summary table */

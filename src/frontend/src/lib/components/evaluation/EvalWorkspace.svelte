@@ -7,6 +7,9 @@
   import EvalLeaf from './EvalLeaf.svelte';
   import EvalTraditional from './EvalTraditional.svelte';
   import EvalResource from './EvalResource.svelte';
+  import MethodToggle from './MethodToggle.svelte';
+
+  let { onsetup }: { onsetup: () => void } = $props();
 
   let isOverview = $derived(evaluation.activeView === 'overview');
   let activeCriterion = $derived(
@@ -35,10 +38,13 @@
 <div class="workspace">
   <div class="workspace-header">
     <h1 class="workspace-title">Evalueringsmatrise</h1>
-    <p class="workspace-meta">
-      {evaluation.data.procurementName || 'Evaluering'} · {evaluation.data.suppliers.length} leverandører
-      · {evaluation.data.criteria.length} kriterier
-    </p>
+    <span class="workspace-meta">
+      {evaluation.data.suppliers.length} leverandører · {evaluation.data.criteria.length} kriterier
+    </span>
+    <div class="workspace-actions">
+      <MethodToggle />
+      <button class="setup-btn" onclick={onsetup} title="Rediger oppsett">&#9881; Oppsett</button>
+    </div>
   </div>
 
   {#if isOverview}
@@ -76,12 +82,13 @@
 
 <style>
   .workspace {
-    max-width: 1120px;
-    margin: 0 auto;
   }
 
   .workspace-header {
-    margin-bottom: var(--spacing-2);
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
   }
 
   .workspace-title {
@@ -89,12 +96,36 @@
     font-weight: 700;
     color: var(--color-ink);
     letter-spacing: -0.02em;
-    margin-bottom: 0;
   }
 
   .workspace-meta {
     font-size: 12px;
     color: var(--color-ink-ghost);
+  }
+
+  .workspace-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .setup-btn {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-ink-ghost);
+    background: none;
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-1) var(--spacing-3);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .setup-btn:hover {
+    color: var(--color-ink-secondary);
+    background: var(--color-felt-hover);
   }
 
   .criterion-nav {

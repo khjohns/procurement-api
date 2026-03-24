@@ -13,11 +13,7 @@
   let moments = $derived(criterion.subcriteria);
   let activeRoleId = $state('');
 
-  // Resolve active role with fallback to first — no $effect needed
   let activeRole = $derived(roles.find((r) => r.id === activeRoleId) ?? roles[0] ?? null);
-  let activeRoleIdx = $derived(activeRole ? roles.indexOf(activeRole) : -1);
-  let prevRole = $derived(activeRoleIdx > 0 ? roles[activeRoleIdx - 1] : null);
-  let nextRole = $derived(activeRoleIdx < roles.length - 1 ? roles[activeRoleIdx + 1] : null);
 
   /** Get the item for a supplier + role. */
   function getItem(supplierId: string, roleId: string) {
@@ -124,20 +120,6 @@
   </div>
 {/if}
 
-<!-- Prev/next -->
-<div class="role-nav">
-  {#if prevRole}
-    <button class="nav-btn" onclick={() => (activeRoleId = prevRole!.id)}>← {prevRole.name}</button>
-  {:else}
-    <div></div>
-  {/if}
-  {#if nextRole}
-    <button class="nav-btn" onclick={() => (activeRoleId = nextRole!.id)}>{nextRole.name} →</button>
-  {:else}
-    <div></div>
-  {/if}
-</div>
-
 <!-- Summary table: all roles -->
 <div class="summary">
   <div class="summary-label">Alle roller – personscore</div>
@@ -187,9 +169,10 @@
 <style>
   .role-tabs {
     display: flex;
+    align-items: center;
     gap: 0;
     border-bottom: 1px solid var(--color-wire);
-    margin-bottom: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
   }
 
   .role-tab {
@@ -333,30 +316,6 @@
   .card-textarea:focus {
     border-color: var(--color-vekt);
     box-shadow: 0 0 0 2px var(--color-vekt-bg);
-  }
-
-  .role-nav {
-    display: flex;
-    justify-content: space-between;
-    margin-top: var(--spacing-3);
-  }
-
-  .nav-btn {
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-ink-secondary);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-2) var(--spacing-4);
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-
-  .nav-btn:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
   }
 
   /* Summary table */

@@ -5,39 +5,39 @@
   /* ── Light theme (standard) ── */
 
   /* Canvas & surfaces */
-  --color-canvas: #f5f4f1;
-  --color-felt: #fdfcfa;
-  --color-felt-raised: #fdfcfa;
-  --color-felt-hover: #edecea;
-  --color-felt-active: #e3e1de;
+  --color-canvas: #edeae4;
+  --color-felt: #fbfaf8;
+  --color-felt-raised: #f4f2ee;
+  --color-felt-hover: #f0ede7;
+  --color-felt-active: #e6e3dd;
 
   /* Ink hierarchy */
-  --color-ink: #1c1b18;
-  --color-ink-secondary: #5a5650;
+  --color-ink: #1e2530;
+  --color-ink-secondary: #4d5666;
   --color-ink-muted: #6b6660;
-  --color-ink-ghost: #827e76;
+  --color-ink-ghost: #9a9488;
 
   /* Wire — borders */
-  --color-wire: rgba(0, 0, 0, 0.07);
-  --color-wire-strong: rgba(0, 0, 0, 0.13);
-  --color-wire-focus: rgba(92, 107, 192, 0.35);
+  --color-wire: #ccc8bf;
+  --color-wire-strong: #b8b4ab;
+  --color-wire-focus: rgba(43, 107, 127, 0.35);
 
-  /* Vekt — weight accent */
-  --color-vekt: #5262b5;
-  --color-vekt-dim: #4a58a8;
-  --color-vekt-bg: rgba(92, 107, 192, 0.06);
-  --color-vekt-bg-strong: rgba(92, 107, 192, 0.1);
+  /* Vekt — weight accent (teal) */
+  --color-vekt: #2b6b7f;
+  --color-vekt-dim: #245d6e;
+  --color-vekt-bg: #ebf2f5;
+  --color-vekt-bg-strong: rgba(43, 107, 127, 0.15);
 
   /* Score semantics */
-  --color-score-high: #2d7a54;
-  --color-score-high-bg: rgba(45, 122, 84, 0.08);
-  --color-score-mid: #5a5650;
-  --color-score-low: #b04040;
-  --color-score-low-bg: rgba(176, 64, 64, 0.08);
+  --color-score-high: #3d7a5a;
+  --color-score-high-bg: #edf5f0;
+  --color-score-mid: #6b7a5a;
+  --color-score-low: #8b5a3d;
+  --color-score-low-bg: #fdf5f0;
 
   /* Warn (amber) */
   --color-warn: #8b6914;
-  --color-warn-bg: rgba(139, 105, 20, 0.08);
+  --color-warn-bg: #fdf6e8;
 
   /* Typography */
   --font-data: 'Source Code Pro', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
@@ -70,31 +70,31 @@
 
 /* ── Dark theme ── */
 .dark {
-  --color-canvas: #0c0e14;
-  --color-felt: #12151e;
-  --color-felt-raised: #181c28;
-  --color-felt-hover: #1e2233;
-  --color-felt-active: #242840;
+  --color-canvas: #111518;
+  --color-felt: #191d22;
+  --color-felt-raised: #1f252b;
+  --color-felt-hover: #252b32;
+  --color-felt-active: #2e3338;
 
-  --color-ink: #e2e5ef;
-  --color-ink-secondary: #8890a4;
-  --color-ink-muted: #838ba5;
-  --color-ink-ghost: #6a7088;
+  --color-ink: #d4d1ca;
+  --color-ink-secondary: #9a978f;
+  --color-ink-muted: #7a776f;
+  --color-ink-ghost: #5e5c56;
 
-  --color-wire: rgba(255, 255, 255, 0.06);
-  --color-wire-strong: rgba(255, 255, 255, 0.1);
-  --color-wire-focus: rgba(129, 140, 248, 0.35);
+  --color-wire: #2e3338;
+  --color-wire-strong: #3a4048;
+  --color-wire-focus: rgba(91, 164, 184, 0.35);
 
-  --color-vekt: #818cf8;
-  --color-vekt-dim: #6a76e4;
-  --color-vekt-bg: rgba(129, 140, 248, 0.08);
-  --color-vekt-bg-strong: rgba(129, 140, 248, 0.14);
+  --color-vekt: #5ba4b8;
+  --color-vekt-dim: #4d8fa0;
+  --color-vekt-bg: rgba(91, 164, 184, 0.1);
+  --color-vekt-bg-strong: rgba(91, 164, 184, 0.18);
 
-  --color-score-high: #3d9a6e;
-  --color-score-high-bg: rgba(61, 154, 110, 0.1);
-  --color-score-mid: #8890a4;
-  --color-score-low: #d46e6e;
-  --color-score-low-bg: rgba(196, 88, 88, 0.1);
+  --color-score-high: #5ea87a;
+  --color-score-high-bg: rgba(94, 168, 122, 0.08);
+  --color-score-mid: #8a9a6d;
+  --color-score-low: #c4805a;
+  --color-score-low-bg: rgba(196, 128, 90, 0.1);
 
   --color-warn: #c4952a;
   --color-warn-bg: rgba(196, 149, 42, 0.08);

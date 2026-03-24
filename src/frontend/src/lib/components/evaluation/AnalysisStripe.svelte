@@ -71,9 +71,9 @@
 
 <style>
   .stripe {
-    padding: var(--spacing-2) 0;
+    padding: var(--spacing-3) 0;
     border-bottom: 1px solid var(--color-wire);
-    margin-bottom: var(--spacing-2);
+    margin-bottom: var(--spacing-4);
   }
 
   .stripe-line {
