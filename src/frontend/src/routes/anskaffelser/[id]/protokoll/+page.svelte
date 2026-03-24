@@ -229,265 +229,282 @@
 <svelte:window onclick={handleWindowClick} />
 
 <div class="protokoll-page">
-  {#if protokoll.loading}
-    <!-- ── Loading state ── -->
-    <header class="page-header">
-      <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-      <h1 class="page-title">Henter data...</h1>
-    </header>
-    <div class="progress-strip">
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill progress-bar-loading"></div>
-      </div>
-      <span class="progress-text">Henter data fra Artifik...</span>
-    </div>
-    <div class="skeleton-sections">
-      {#each Array(6) as _, i}
-        <div class="skeleton-row">
-          <span class="skeleton-num">{i + 1}</span>
-          <div class="skeleton-line" style="width: {120 + Math.random() * 200}px"></div>
-        </div>
-      {/each}
-    </div>
-  {:else if protokoll.error}
-    <!-- ── Error state ── -->
-    <header class="page-header">
-      <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-      <h1 class="page-title">Feil ved lasting</h1>
-    </header>
-    <div class="error-banner">
-      <span class="error-icon">&#9888;</span>
-      <span>{protokoll.error}</span>
-      <button class="error-retry" onclick={() => protokoll.reset()}>Tilbake</button>
-    </div>
-  {:else}
-    <!-- ── Document view ── -->
-    <header class="page-header">
-      <div class="page-header-left">
+  <div class="protokoll-card">
+    {#if protokoll.loading}
+      <!-- ── Loading state ── -->
+      <header class="page-header">
         <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
-        <h1 class="page-title">{getProcName(protokoll.procurement)}</h1>
-        <div class="page-meta">
-          Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
-          &middot; {protokoll.delLabel}
+        <h1 class="page-title">Henter data...</h1>
+      </header>
+      <div class="progress-strip">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill progress-bar-loading"></div>
         </div>
+        <span class="progress-text">Henter data fra Artifik...</span>
       </div>
-    </header>
-
-    <!-- Progress strip -->
-    <div class="progress-strip">
-      <div
-        class="progress-bar-track"
-        role="progressbar"
-        aria-valuenow={protokoll.completeness.done}
-        aria-valuemin={0}
-        aria-valuemax={protokoll.completeness.total}
-        aria-label="Seksjoner fullført: {protokoll.completeness.done} av {protokoll.completeness
-          .total}"
-      >
-        <div
-          class="progress-bar-fill"
-          style="width: {protokoll.completeness.percent}%; background: {progressColor}"
-        ></div>
-      </div>
-      <div class="progress-info">
-        {#if protokoll.completeness.percent >= 100}
-          <span class="progress-complete">Fullstendig — klar for generering</span>
-        {:else}
-          <span class="progress-fraction"
-            >{protokoll.completeness.done} av {protokoll.completeness.total} seksjoner</span
-          >
-          {#if protokoll.completeness.missing.length > 0}
-            <span class="progress-missing"
-              >{protokoll.completeness.missing.length} mangler begrunnelse</span
-            >
-          {/if}
-        {/if}
-      </div>
-    </div>
-
-    {#if generateError}
-      <div class="error-banner error-banner-inline">
-        <span class="error-icon">&#9888;</span>
-        <span>{generateError}</span>
-      </div>
-    {/if}
-
-    <!-- Sections -->
-    <div class="sections">
-      {#each chapters as group}
-        <div class="chapter-label" role="separator" aria-label={group.chapter}>
-          <span class="chapter-text">{group.chapter}</span>
-        </div>
-
-        {#each group.sections as section (section.id)}
-          {@const sectionInfoRows = getInfoRows(section)}
-          {@const sectionSuppliers = getSuppliers(section)}
-          {@const sectionRejected = getRejectedSuppliers()}
-          <SectionAccordion
-            {section}
-            open={protokoll.isSectionOpen(section.id)}
-            ontoggle={() => handleSectionToggle(section.id)}
-          >
-            {#each section.fields as field (field.key)}
-              <ProtokollField
-                {field}
-                infoRows={sectionInfoRows}
-                suppliers={sectionSuppliers}
-                rejectedSuppliers={sectionRejected}
-              />
-            {/each}
-          </SectionAccordion>
-        {/each}
-      {/each}
-    </div>
-
-    <!-- Sticky footer -->
-    <div class="sticky-footer">
-      <div class="footer-inner">
-        <div class="footer-progress">
-          <div class="footer-bar-track">
-            <div
-              class="footer-bar-fill"
-              style="width: {protokoll.completeness.percent}%; background: {progressColor}"
-            ></div>
+      <div class="skeleton-sections">
+        {#each Array(6) as _, i}
+          <div class="skeleton-row">
+            <span class="skeleton-num">{i + 1}</span>
+            <div class="skeleton-line" style="width: {120 + Math.random() * 200}px"></div>
           </div>
-          <span class="footer-fraction">
-            {#if protokoll.completeness.percent >= 100}
-              <span class="footer-complete">Klar</span>
-            {:else}
-              {protokoll.completeness.done}/{protokoll.completeness.total}
-            {/if}
-          </span>
-          {#if protokoll.completeness.missing.length > 0}
-            <span class="footer-missing"
-              >&middot; {protokoll.completeness.missing.length} mangler</span
+        {/each}
+      </div>
+    {:else if protokoll.error}
+      <!-- ── Error state ── -->
+      <header class="page-header">
+        <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
+        <h1 class="page-title">Feil ved lasting</h1>
+      </header>
+      <div class="error-banner">
+        <span class="error-icon">&#9888;</span>
+        <span>{protokoll.error}</span>
+        <button class="error-retry" onclick={() => protokoll.reset()}>Tilbake</button>
+      </div>
+    {:else}
+      <!-- ── Document view ── -->
+      <header class="page-header">
+        <div class="page-header-left">
+          <div class="page-label">ANSKAFFELSESPROTOKOLL</div>
+          <h1 class="page-title">{getProcName(protokoll.procurement)}</h1>
+          <div class="page-meta">
+            Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
+            &middot; {protokoll.delLabel}
+          </div>
+        </div>
+      </header>
+
+      <!-- Progress strip -->
+      <div class="progress-strip">
+        <div
+          class="progress-bar-track"
+          role="progressbar"
+          aria-valuenow={protokoll.completeness.done}
+          aria-valuemin={0}
+          aria-valuemax={protokoll.completeness.total}
+          aria-label="Seksjoner fullført: {protokoll.completeness.done} av {protokoll.completeness
+            .total}"
+        >
+          <div
+            class="progress-bar-fill"
+            style="width: {protokoll.completeness.percent}%; background: {progressColor}"
+          ></div>
+        </div>
+        <div class="progress-info">
+          {#if protokoll.completeness.percent >= 100}
+            <span class="progress-complete">Fullstendig — klar for generering</span>
+          {:else}
+            <span class="progress-fraction"
+              >{protokoll.completeness.done} av {protokoll.completeness.total} seksjoner</span
             >
+            {#if protokoll.completeness.missing.length > 0}
+              <span class="progress-missing"
+                >{protokoll.completeness.missing.length} mangler begrunnelse</span
+              >
+            {/if}
           {/if}
         </div>
+      </div>
 
-        {#if showSaved}
-          <span class="footer-saved">Lagret</span>
-        {/if}
+      {#if generateError}
+        <div class="error-banner error-banner-inline">
+          <span class="error-icon">&#9888;</span>
+          <span>{generateError}</span>
+        </div>
+      {/if}
 
-        {#if protokoll.nextMissingSectionId}
+      <!-- Sections -->
+      <div class="sections">
+        {#each chapters as group}
+          <div class="chapter-label" role="separator" aria-label={group.chapter}>
+            <span class="chapter-text">{group.chapter}</span>
+          </div>
+
+          {#each group.sections as section (section.id)}
+            {@const sectionInfoRows = getInfoRows(section)}
+            {@const sectionSuppliers = getSuppliers(section)}
+            {@const sectionRejected = getRejectedSuppliers()}
+            <SectionAccordion
+              {section}
+              open={protokoll.isSectionOpen(section.id)}
+              ontoggle={() => handleSectionToggle(section.id)}
+            >
+              {#each section.fields as field (field.key)}
+                <ProtokollField
+                  {field}
+                  infoRows={sectionInfoRows}
+                  suppliers={sectionSuppliers}
+                  rejectedSuppliers={sectionRejected}
+                />
+              {/each}
+            </SectionAccordion>
+          {/each}
+        {/each}
+      </div>
+
+      <!-- Sticky footer -->
+      <div class="sticky-footer">
+        <div class="footer-inner">
+          <div class="footer-progress">
+            <div class="footer-bar-track">
+              <div
+                class="footer-bar-fill"
+                style="width: {protokoll.completeness.percent}%; background: {progressColor}"
+              ></div>
+            </div>
+            <span class="footer-fraction">
+              {#if protokoll.completeness.percent >= 100}
+                <span class="footer-complete">Klar</span>
+              {:else}
+                {protokoll.completeness.done}/{protokoll.completeness.total}
+              {/if}
+            </span>
+            {#if protokoll.completeness.missing.length > 0}
+              <span class="footer-missing"
+                >&middot; {protokoll.completeness.missing.length} mangler</span
+              >
+            {/if}
+          </div>
+
+          {#if showSaved}
+            <span class="footer-saved">Lagret</span>
+          {/if}
+
+          {#if protokoll.nextMissingSectionId}
+            <button
+              class="footer-action footer-action-stacked footer-action-responsive"
+              onclick={handleNextMissing}
+              title="Gå til neste ufullstendige seksjon"
+            >
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
+                ><path
+                  d="M1 6h9M7 3l3 3-3 3"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+              >
+              <span>Neste</span>
+            </button>
+          {/if}
+
           <button
             class="footer-action footer-action-stacked footer-action-responsive"
-            onclick={handleNextMissing}
-            title="Gå til neste ufullstendige seksjon"
+            onclick={handleToggleAll}
           >
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
-              ><path
-                d="M1 6h9M7 3l3 3-3 3"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg
-            >
-            <span>Neste</span>
+            {#if allOpen}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+                ><path
+                  d="M3 5.5L7 9.5L11 5.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+              >
+              <span>Lukk alle</span>
+            {:else}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+                ><path
+                  d="M3 8.5L7 4.5L11 8.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg
+              >
+              <span>Vis alle</span>
+            {/if}
           </button>
-        {/if}
 
-        <button
-          class="footer-action footer-action-stacked footer-action-responsive"
-          onclick={handleToggleAll}
-        >
-          {#if allOpen}
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-              ><path
-                d="M3 5.5L7 9.5L11 5.5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg
+          <!-- Section nav popup -->
+          <div class="footer-nav-wrap">
+            <button
+              class="footer-action footer-action-stacked"
+              onclick={(e) => {
+                e.stopPropagation();
+                navPopupOpen = !navPopupOpen;
+              }}
+              aria-expanded={navPopupOpen}
+              aria-controls="section-nav-popup"
             >
-            <span>Lukk alle</span>
-          {:else}
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-              ><path
-                d="M3 8.5L7 4.5L11 8.5"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg
-            >
-            <span>Vis alle</span>
-          {/if}
-        </button>
-
-        <!-- Section nav popup -->
-        <div class="footer-nav-wrap">
-          <button
-            class="footer-action footer-action-stacked"
-            onclick={(e) => {
-              e.stopPropagation();
-              navPopupOpen = !navPopupOpen;
-            }}
-            aria-expanded={navPopupOpen}
-            aria-controls="section-nav-popup"
-          >
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
-              ><path
-                d="M1 3h10M1 6h10M1 9h10"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              /></svg
-            >
-            <span>Seksjoner</span>
-          </button>
-          {#if navPopupOpen}
-            <div
-              class="section-nav-popup"
-              id="section-nav-popup"
-              transition:slide={{ duration: 150 }}
-            >
-              {#each chapters as group}
-                <div class="nav-chapter">{group.chapter}</div>
-                {#each group.sections as section}
-                  <button class="nav-item" onclick={() => handleNavJump(section.id)}>
-                    <span class="nav-num">{section.sectionNumber}</span>
-                    <span class="nav-title">{section.title}</span>
-                    <span class="nav-badge nav-badge-{section.status}">
-                      {section.status === 'complete'
-                        ? '✓'
-                        : section.status === 'partial'
-                          ? '◐'
-                          : '○'}
-                    </span>
-                  </button>
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none"
+                ><path
+                  d="M1 3h10M1 6h10M1 9h10"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /></svg
+              >
+              <span>Seksjoner</span>
+            </button>
+            {#if navPopupOpen}
+              <div
+                class="section-nav-popup"
+                id="section-nav-popup"
+                transition:slide={{ duration: 150 }}
+              >
+                {#each chapters as group}
+                  <div class="nav-chapter">{group.chapter}</div>
+                  {#each group.sections as section}
+                    <button class="nav-item" onclick={() => handleNavJump(section.id)}>
+                      <span class="nav-num">{section.sectionNumber}</span>
+                      <span class="nav-title">{section.title}</span>
+                      <span class="nav-badge nav-badge-{section.status}">
+                        {section.status === 'complete'
+                          ? '✓'
+                          : section.status === 'partial'
+                            ? '◐'
+                            : '○'}
+                      </span>
+                    </button>
+                  {/each}
                 {/each}
-              {/each}
-            </div>
-          {/if}
-        </div>
+              </div>
+            {/if}
+          </div>
 
-        <button
-          class="generate-btn generate-btn-footer"
-          class:generate-btn-draft={protokoll.completeness.percent < 100}
-          disabled={generating}
-          onclick={handleGenerate}
-        >
-          {#if generating}
-            <span class="spinner"></span> Genererer...
-          {:else if protokoll.completeness.percent < 100}
-            &#8595; Generer utkast
-          {:else}
-            &#8595; Generer .docx
-          {/if}
-        </button>
+          <button
+            class="generate-btn generate-btn-footer"
+            class:generate-btn-draft={protokoll.completeness.percent < 100}
+            disabled={generating}
+            onclick={handleGenerate}
+          >
+            {#if generating}
+              <span class="spinner"></span> Genererer...
+            {:else if protokoll.completeness.percent < 100}
+              &#8595; Generer utkast
+            {:else}
+              &#8595; Generer .docx
+            {/if}
+          </button>
+        </div>
       </div>
-    </div>
-  {/if}
+    {/if}
+  </div>
 </div>
 
 <style>
   .protokoll-page {
-    max-width: 800px;
-    margin: 0 auto;
+    padding: var(--spacing-5) 100px;
     padding-bottom: 72px;
+  }
+
+  .protokoll-card {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-6);
+  }
+
+  @media (max-width: 1200px) {
+    .protokoll-page {
+      padding: var(--spacing-5) var(--spacing-6);
+      padding-bottom: 72px;
+    }
   }
 
   /* ── Page header ── */

@@ -97,17 +97,22 @@ SvelteKit 2 with Svelte 5, adapter-static (SPA mode, `ssr: false` in `+layout.ts
 **Store pattern** (`src/frontend/src/lib/stores/evaluation.svelte.ts`):
 - Single `EvaluationStore` class with `$state` for mutable data, `$derived` for all computed layers
 - Computed chain: scores → itemScores → groupScores → totals → ranking → priceDeductions → evaluatedPrices
+- `lowestPrice` (min supplier price) replaces `contractValue` for budget calculations
+- `samletVurdering` per criterion feeds into justification-generator for protokoll/meddelelsesbrev
 - Mutation via methods (`setScore`, `setNote`, `addItem`, etc.), never direct state assignment from outside
 - Two evaluation methods: poengmodell (quality points) and prismodell (price with quality deductions)
+- In prismodell, price criterion has no weight — only quality criteria weights sum to 100%
 - Item-level evaluation: sub-criteria can have `evaluationType: 'item'` with nested items scored on multiple dimensions, aggregated upward via `AggregationMethod` ('average' | 'minimum')
 - **Composition:** Large stores decomposed into delegate modules (`evaluation-computations.ts`, `evaluation-helpers.ts`, `evaluation-items.ts`, `evaluation-roles.ts`, `evaluation-structure.ts`). Store class keeps public API, delegates to pure functions. See `docs/plans/2026-03-13-reduce-complexity-evaluation.md`.
 
 **Design system** (`.interface-design/system.md`):
 - Direction: "Analysebordet" — dense, number-forward, financial analysis aesthetic
-- Dark mode with cool dark blue surfaces, amber weight accent ("vektlinjen")
-- Tokens in `src/frontend/src/lib/tokens.css` — custom properties for colors, spacing (4px grid), typography (JetBrains Mono for data, Inter for UI), radius
-- Depth: borders-only, no shadows
-- Score thresholds: `>=7` high (green), `>=4` mid (neutral), `<4` low (rose)
+- Warm neutral palette with teal accent (`--color-vekt`), dark header bar
+- Tokens in `src/frontend/src/app.css` — custom properties for colors, spacing (4px grid), typography (Source Code Pro for data, Inter for UI), radius
+- Content width principle: form/prose pages 880px, data-dense pages full-width (100px side-padding)
+- Card panel pattern: `--color-felt` surface with border on `--color-canvas` background
+- Depth: borders-only, no shadows (except drawer overlay)
+- Score thresholds: `>=7` high (green), `>=4` mid (olive), `<4` low (warm brown)
 
 ### External APIs
 
@@ -138,7 +143,7 @@ Key Svelte 5 docs relevant to this project's patterns. Consult these before gene
 ## Conventions
 
 - Derived scores display with `.toFixed(1)`, integer scores as-is
-- Frontend components use scoped `<style>` with CSS custom properties from `tokens.css`
+- Frontend components use scoped `<style>` with CSS custom properties from `app.css`
 - Python uses `ruff` for linting/formatting, no type checker configured
 - No test framework configured for frontend yet
 - ADRs live in `docs/adr-*.md`, implementation plans in `docs/plans/`
