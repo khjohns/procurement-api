@@ -95,64 +95,78 @@ Eksisterende sider (evaluering, kvalifisering, protokoll) kan kreve redesign for
 
 The following subsections show the **dark theme** token values. For light theme values and the full side-by-side comparison, see [## Themes](#themes) below.
 
-### Surfaces (cool dark blues)
+### Surfaces (warm neutrals)
 
 ```
---color-canvas: #0c0e14          /* workspace background */
---color-felt: #12151e             /* cards, panels — barely lifted */
---color-felt-raised: #181c28      /* elevated: dropdowns, popovers */
---color-felt-hover: #1e2233       /* hover state */
---color-felt-active: #242840      /* pressed/active state */
+--color-canvas: #edeae4 / #111518     /* workspace background */
+--color-felt: #fbfaf8 / #191d22       /* cards, panels */
+--color-felt-raised: #f4f2ee / #1f252b /* elevated: dropdowns, summary tables */
+--color-felt-hover: #f0ede7 / #252b32  /* hover state */
+--color-felt-active: #e6e3dd / #2e3338 /* pressed/active state */
 ```
 
 ### Ink (text hierarchy)
 
 ```
---color-ink: #e2e5ef              /* primary text */
---color-ink-secondary: #8890a4    /* supporting text, labels */
---color-ink-muted: #7b829b        /* labels, metadata, section titles */
---color-ink-ghost: #5a6178        /* disabled, placeholder, decorative */
+--color-ink: #1e2530 / #d4d1ca            /* primary text */
+--color-ink-secondary: #4d5666 / #9a978f  /* supporting text, labels */
+--color-ink-muted: #6b6660 / #7a776f      /* labels, metadata, section titles */
+--color-ink-ghost: #9a9488 / #5e5c56      /* disabled, placeholder, decorative */
 ```
 
-### Wire (borders)
+### Wire (borders — solid warm)
 
 ```
---color-wire: rgba(255, 255, 255, 0.06)       /* standard separation */
---color-wire-strong: rgba(255, 255, 255, 0.10) /* emphasis, group dividers */
---color-wire-focus: rgba(129, 140, 248, 0.35)   /* focus rings */
+--color-wire: #ccc8bf / #2e3338           /* standard separation */
+--color-wire-strong: #b8b4ab / #3a4048    /* emphasis, group dividers */
+--color-wire-focus: rgba(43,107,127,0.35) / rgba(91,164,184,0.35) /* focus rings */
 ```
 
-### Vekt (weight accent — amber)
+### Vekt (weight accent — teal)
 
 ```
---color-vekt: #818cf8                         /* primary weight color */
---color-vekt-dim: #6571e0                     /* secondary weight */
---color-vekt-bg: rgba(129, 140, 248, 0.08)   /* weight row tint */
---color-vekt-bg-strong: rgba(129, 140, 248, 0.14) /* weight emphasis */
+--color-vekt: #2b6b7f / #5ba4b8           /* primary accent */
+--color-vekt-dim: #245d6e / #4d8fa0        /* secondary accent */
+--color-vekt-bg: #ebf2f5 / rgba(91,164,184,0.1)   /* accent tint */
+--color-vekt-bg-strong: rgba(43,107,127,0.15) / rgba(91,164,184,0.18) /* accent emphasis */
 ```
 
 ### Score Semantics
 
 ```
---color-score-high: #3d9a6e                      /* high scores (7+) */
---color-score-high-bg: rgba(61, 154, 110, 0.10) /* high score background */
---color-score-mid: #8890a4                       /* mid scores (4-6) */
---color-score-low: #c45858                       /* low scores (≤3) */
---color-score-low-bg: rgba(196, 88, 88, 0.10)   /* low score background */
+--color-score-high: #3d7a5a / #5ea87a     /* high scores (7+), green */
+--color-score-high-bg: #edf5f0 / rgba(94,168,122,0.08) /* high score bg */
+--color-score-mid: #6b7a5a / #8a9a6d      /* mid scores (4-6), olive */
+--color-score-low: #8b5a3d / #c4805a      /* low scores (≤3), warm brown */
+--color-score-low-bg: #fdf5f0 / rgba(196,128,90,0.1)   /* low score bg */
 ```
 
-### Overlay
+### Warn
 
 ```
---color-overlay: rgba(0, 0, 0, 0.6)              /* modal/drawer backdrop */
+--color-warn: #8b6914 / #c4952a           /* amber warning */
+--color-warn-bg: #fdf6e8 / rgba(196,149,42,0.08)
 ```
 
-Light theme: `rgba(0, 0, 0, 0.4)`. Dark theme: `rgba(0, 0, 0, 0.6)`.
+### Header (dark nav bar)
+
+```
+--color-header-bg: #1e2530 / #0d0f12
+--color-header-fg: #edeae4 / #d4d1ca
+--color-header-muted: rgba(237,234,228,0.35) / rgba(212,209,202,0.25)
+```
+
+### Overlay & Elevation
+
+```
+--color-overlay: rgba(0,0,0,0.4) / rgba(0,0,0,0.6)
+--shadow-overlay: 0 -4px 24px rgba(0,0,0,0.08)  /* drawer only */
+```
 
 ### Layout
 
 ```
---header-height: 48px                             /* top nav bar height */
+--header-height: 48px
 ```
 
 ---
@@ -168,35 +182,40 @@ All tokens are defined in `@theme` (light values) in `app.css` and overridden in
 | Token | Light | Dark |
 |---|---|---|
 | **Surfaces** | | |
-| `--color-canvas` | `#f5f4f1` | `#0c0e14` |
-| `--color-felt` | `#fdfcfa` | `#12151e` |
-| `--color-felt-raised` | `#fdfcfa` | `#181c28` |
-| `--color-felt-hover` | `#edecea` | `#1e2233` |
-| `--color-felt-active` | `#e3e1de` | `#242840` |
+| `--color-canvas` | `#edeae4` | `#111518` |
+| `--color-felt` | `#fbfaf8` | `#191d22` |
+| `--color-felt-raised` | `#f4f2ee` | `#1f252b` |
+| `--color-felt-hover` | `#f0ede7` | `#252b32` |
+| `--color-felt-active` | `#e6e3dd` | `#2e3338` |
 | **Ink** | | |
-| `--color-ink` | `#1c1b18` | `#e2e5ef` |
-| `--color-ink-secondary` | `#5a5650` | `#8890a4` |
-| `--color-ink-muted` | `#6b6660` | `#7b829b` |
-| `--color-ink-ghost` | `#9c9892` | `#5a6178` |
+| `--color-ink` | `#1e2530` | `#d4d1ca` |
+| `--color-ink-secondary` | `#4d5666` | `#9a978f` |
+| `--color-ink-muted` | `#6b6660` | `#7a776f` |
+| `--color-ink-ghost` | `#9a9488` | `#5e5c56` |
 | **Wire** | | |
-| `--color-wire` | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.06)` |
-| `--color-wire-strong` | `rgba(0,0,0,0.13)` | `rgba(255,255,255,0.10)` |
-| `--color-wire-focus` | `rgba(92,107,192,0.35)` | `rgba(129,140,248,0.35)` |
-| **Vekt** | | |
-| `--color-vekt` | `#5c6bc0` | `#818cf8` |
-| `--color-vekt-dim` | `#4a58a8` | `#6571e0` |
-| `--color-vekt-bg` | `rgba(92,107,192,0.06)` | `rgba(129,140,248,0.08)` |
-| `--color-vekt-bg-strong` | `rgba(92,107,192,0.10)` | `rgba(129,140,248,0.14)` |
+| `--color-wire` | `#ccc8bf` | `#2e3338` |
+| `--color-wire-strong` | `#b8b4ab` | `#3a4048` |
+| `--color-wire-focus` | `rgba(43,107,127,0.35)` | `rgba(91,164,184,0.35)` |
+| **Vekt (teal)** | | |
+| `--color-vekt` | `#2b6b7f` | `#5ba4b8` |
+| `--color-vekt-dim` | `#245d6e` | `#4d8fa0` |
+| `--color-vekt-bg` | `#ebf2f5` | `rgba(91,164,184,0.1)` |
+| `--color-vekt-bg-strong` | `rgba(43,107,127,0.15)` | `rgba(91,164,184,0.18)` |
 | **Score** | | |
-| `--color-score-high` | `#2d7a54` | `#3d9a6e` |
-| `--color-score-high-bg` | `rgba(45,122,84,0.08)` | `rgba(61,154,110,0.10)` |
-| `--color-score-mid` | `#555b6e` | `#8890a4` |
-| `--color-score-low` | `#b04040` | `#c45858` |
-| `--color-score-low-bg` | `rgba(176,64,64,0.08)` | `rgba(196,88,88,0.10)` |
+| `--color-score-high` | `#3d7a5a` | `#5ea87a` |
+| `--color-score-high-bg` | `#edf5f0` | `rgba(94,168,122,0.08)` |
+| `--color-score-mid` | `#6b7a5a` | `#8a9a6d` |
+| `--color-score-low` | `#8b5a3d` | `#c4805a` |
+| `--color-score-low-bg` | `#fdf5f0` | `rgba(196,128,90,0.1)` |
+| **Warn** | | |
+| `--color-warn` | `#8b6914` | `#c4952a` |
+| `--color-warn-bg` | `#fdf6e8` | `rgba(196,149,42,0.08)` |
+| **Header** | | |
+| `--color-header-bg` | `#1e2530` | `#0d0f12` |
+| `--color-header-fg` | `#edeae4` | `#d4d1ca` |
+| `--color-header-muted` | `rgba(237,234,228,0.35)` | `rgba(212,209,202,0.25)` |
 | **Overlay** | | |
 | `--color-overlay` | `rgba(0,0,0,0.4)` | `rgba(0,0,0,0.6)` |
-
-The subsections below document the **dark theme** token values in CSS custom property format.
 
 ---
 
@@ -270,6 +289,20 @@ Technical, not friendly:
 --radius-md: 6px      /* small cards, badges */
 --radius-lg: 8px      /* major containers, matrix wrap */
 ```
+
+---
+
+## Content Width
+
+Match panel width to content density. Form-style pages (setup, configuration) use narrower panels; data-dense pages (matrices, tables) use wider panels.
+
+| Innholdstype | Bredde | Eksempel |
+|---|---|---|
+| Prose/skjema | `max-width: 880px`, sentrert | Evalueringsoppsett, protokollskjema |
+| Datatett/matrise | Full bredde (side-padding 100px) | Evalueringsmatrise, oversiktstabeller |
+| Begrunnelsestekst | `max-width: 760px`, venstrejustert | Samlet vurdering per kriterium |
+
+Panelet (`.eval-card`) wrapper innholdet med border og radius. Bredden tilpasser seg innholdstypen via CSS-klasse (f.eks. `.eval-card-narrow`). På skjermer under 1200px faller side-padding tilbake til `--spacing-6`.
 
 ---
 

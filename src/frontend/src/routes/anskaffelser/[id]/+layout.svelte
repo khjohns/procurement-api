@@ -122,13 +122,12 @@
 
   .top-nav {
     height: var(--header-height);
-    border-bottom: 1px solid var(--color-wire-strong);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
     flex-shrink: 0;
-    background: var(--color-canvas);
+    background: var(--color-header-bg);
   }
 
   .nav-breadcrumbs {
@@ -136,25 +135,25 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
   }
 
   .nav-breadcrumbs .crumb {
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
     text-decoration: none;
     transition: color 100ms ease;
   }
 
   .nav-breadcrumbs .crumb:hover {
-    color: var(--color-ink);
+    color: var(--color-header-fg);
   }
 
   .nav-breadcrumbs .sep {
-    color: var(--color-ink-ghost);
+    color: var(--color-header-muted);
   }
 
   .current-static {
-    color: var(--color-ink);
+    color: var(--color-header-fg);
     font-weight: 500;
   }
 
@@ -168,7 +167,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: var(--color-ink);
+    color: var(--color-header-fg);
     font-weight: 500;
     font-size: 12px;
     font-family: inherit;
@@ -182,17 +181,17 @@
   }
 
   .workspace-switcher .current:hover {
-    background: var(--color-felt-hover);
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .workspace-switcher .current:focus-visible {
     outline: none;
-    background: var(--color-felt-hover);
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .chevron {
     transition: transform 0.15s ease;
-    color: var(--color-ink-ghost);
+    color: var(--color-header-muted);
   }
 
   .chevron-open {
@@ -246,7 +245,7 @@
     align-items: center;
     gap: 12px;
     font-size: 12px;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
   }
 
   .theme-toggle {
@@ -258,7 +257,7 @@
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     background: transparent;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
     font-size: 14px;
     cursor: pointer;
     transition:
@@ -267,21 +266,21 @@
   }
 
   .theme-toggle:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-header-fg);
   }
 
   .avatar {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: var(--color-wire-strong);
+    background: var(--color-header-muted);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
     font-weight: 600;
-    color: var(--color-ink);
+    color: var(--color-header-bg);
   }
 
   .app-main {

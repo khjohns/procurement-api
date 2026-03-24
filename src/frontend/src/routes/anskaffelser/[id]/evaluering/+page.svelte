@@ -30,7 +30,7 @@
 </script>
 
 <div class="eval-page">
-  <div class="eval-card">
+  <div class="eval-card" class:eval-card-narrow={showSetup}>
     {#if showSetup}
       <SetupForm onstart={startEvaluation} />
     {:else}
@@ -52,6 +52,11 @@
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-md);
     padding: var(--spacing-6);
+  }
+
+  .eval-card-narrow {
+    max-width: 880px;
+    margin: 0 auto;
   }
 
   @media (max-width: 1200px) {

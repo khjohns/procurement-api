@@ -64,6 +64,11 @@
   --color-overlay: rgba(0, 0, 0, 0.4);
   --shadow-overlay: 0 -4px 24px rgba(0, 0, 0, 0.08);
 
+  /* Header */
+  --color-header-bg: #1e2530;
+  --color-header-fg: #edeae4;
+  --color-header-muted: rgba(237, 234, 228, 0.35);
+
   /* Layout */
   --header-height: 48px;
 }
@@ -98,6 +103,10 @@
 
   --color-warn: #c4952a;
   --color-warn-bg: rgba(196, 149, 42, 0.08);
+
+  --color-header-bg: #0d0f12;
+  --color-header-fg: #d4d1ca;
+  --color-header-muted: rgba(212, 209, 202, 0.25);
 
   --color-overlay: rgba(0, 0, 0, 0.6);
 }
