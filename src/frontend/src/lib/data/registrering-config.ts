@@ -104,6 +104,9 @@ export const UNNTAK_DEL3_UTEN: UnntakItem[] = [
   },
 ];
 
+/** FOA § 5-4 (10)/(12): tidsubegrenset kontrakt verdsettes som månedlig verdi × 48 */
+export const TIDSUBEGRENSET_FAKTOR = 48;
+
 /** EØS threshold based on oppdragsgiver and kontraktstype */
 export function getEos(o: OppdragsgiverType, k: KontraktstypeId): number {
   if (k === 'bygge') return 57_800_000;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TREE, type Conclusion, type TreeOption } from '$lib/data/unntak-tree';
+  import ToolHeader from '$lib/components/verktoy/ToolHeader.svelte';
 
   let path = $state<string[]>(['start']);
   let conclusion = $state<Conclusion | null>(null);
@@ -49,10 +50,7 @@
   };
 </script>
 
-<header class="tool-header">
-  <span class="tool-title">Unntaks-veiviser</span>
-  <span class="tool-ref">FOA §§ 2-4, 2-5, 3-1 til 3-3, 5-2, 13-3, 13-4</span>
-</header>
+<ToolHeader title="Unntaks-veiviser" ref="FOA §§ 2-4, 2-5, 3-1 til 3-3, 5-2, 13-3, 13-4" />
 
 <div class="tool-body">
   <!-- Legend -->
@@ -140,26 +138,6 @@
 </div>
 
 <style>
-  .tool-header {
-    padding: 10px 36px;
-    background: var(--color-header-bg);
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .tool-title {
-    font-family: var(--font-prose);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-header-fg);
-  }
-  .tool-ref {
-    font-family: var(--font-data);
-    font-size: 8.5px;
-    color: var(--color-header-muted);
-  }
-
   .tool-body {
     max-width: 720px;
     margin: 24px auto;

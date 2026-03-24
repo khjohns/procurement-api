@@ -34,6 +34,11 @@ export function formatNOK(n: number | null | undefined): string {
   return new Intl.NumberFormat(NB, { maximumFractionDigits: 0 }).format(n) + ' kr';
 }
 
+/** 3. mar — short date with month name, for timelines */
+export function formatDatoMndKort(d: Date): string {
+  return d.toLocaleDateString(NB, { day: 'numeric', month: 'short' });
+}
+
 /** dd.mm.yyyy kl. HH:MM — date with time */
 export function formatDatoTid(iso: string | null | undefined): string {
   if (!iso) return '\u2014';

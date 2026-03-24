@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { OppdragsgiverType, KontraktstypeId, VarighetType } from '$lib/types/registrering';
-  import { getEos, getDel, getKrav } from '$lib/data/registrering-config';
-  import { themeStore } from '$lib/stores/theme.svelte';
+  import { getEos, getDel, getKrav, TIDSUBEGRENSET_FAKTOR } from '$lib/data/registrering-config';
   import RegistreringForm from '$lib/components/registrering/RegistreringForm.svelte';
   import AnalysePanel from '$lib/components/registrering/AnalysePanel.svelte';
+  import ToolHeader from '$lib/components/verktoy/ToolHeader.svelte';
 
   // All form state owned at page level
   let saksnr = $state('');
@@ -22,7 +22,7 @@
   // Computed
   const totalVerdi = $derived.by(() => {
     if (varighetType === 'tidsubegrenset' && maanedligVerdi) {
-      return (parseFloat(maanedligVerdi) || 0) * 48;
+      return (parseFloat(maanedligVerdi) || 0) * TIDSUBEGRENSET_FAKTOR;
     }
     return (parseFloat(anslattVerdi) || 0) + (parseFloat(opsjonVerdi) || 0);
   });
@@ -43,10 +43,7 @@
 </script>
 
 <div class="reg-shell">
-  <header class="reg-header">
-    <span class="reg-title">Anskaffelsesregistrering</span>
-    <span class="reg-ref">FOR-2016-08-12-974</span>
-  </header>
+  <ToolHeader title="Anskaffelsesregistrering" ref="FOR-2016-08-12-974" />
 
   <div class="reg-body">
     <RegistreringForm
@@ -82,27 +79,6 @@
   .reg-shell {
     min-height: 100vh;
     background: var(--color-canvas);
-  }
-
-  .reg-header {
-    padding: 10px 36px;
-    background: var(--color-header-bg);
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .reg-title {
-    font-family: var(--font-prose);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-header-fg);
-  }
-
-  .reg-ref {
-    font-family: var(--font-data);
-    font-size: 8.5px;
-    color: var(--color-header-muted);
   }
 
   .reg-body {

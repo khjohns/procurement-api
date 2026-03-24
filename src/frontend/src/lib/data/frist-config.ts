@@ -29,9 +29,8 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-export function fmtDateShort(d: Date): string {
-  return d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
-}
+// Re-export from shared utils for backwards compatibility
+export { formatDatoMndKort as fmtDateShort } from '$lib/utils/format';
 
 export function calcFrister(
   prosedyre: ProsedyreId,

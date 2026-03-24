@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { OppdragsgiverType } from '$lib/types/registrering';
-  import { getEos } from '$lib/data/registrering-config';
+  import { getEos, TIDSUBEGRENSET_FAKTOR } from '$lib/data/registrering-config';
   import { formatNOK } from '$lib/utils/format';
   import FormField from '$lib/components/registrering/FormField.svelte';
   import RadioCards from '$lib/components/registrering/RadioCards.svelte';
+  import ToolHeader from '$lib/components/verktoy/ToolHeader.svelte';
 
   type MetodeId =
     | 'standard'
@@ -110,9 +111,11 @@
         if (leaseVarighet === 'kort') return parseFloat(leaseVerdi) || 0;
         if (leaseVarighet === 'lang')
           return (parseFloat(leaseVerdi) || 0) + (parseFloat(leaseRestverdi) || 0);
-        return (parseFloat(leaseMnd) || 0) * 48;
+        return (parseFloat(leaseMnd) || 0) * TIDSUBEGRENSET_FAKTOR;
       case 'tjeneste_uten_pris':
-        return tjVarighet === 'under48' ? parseFloat(tjSamlet) || 0 : (parseFloat(tjMnd) || 0) * 48;
+        return tjVarighet === 'under48'
+          ? parseFloat(tjSamlet) || 0
+          : (parseFloat(tjMnd) || 0) * TIDSUBEGRENSET_FAKTOR;
       case 'delkontrakter':
         return deler.reduce((s, d) => s + (parseFloat(d.verdi) || 0), 0);
       case 'bygge':
@@ -158,10 +161,7 @@
   });
 </script>
 
-<header class="tool-header">
-  <span class="tool-title">Terskelverdikalkulator</span>
-  <span class="tool-ref">FOA § 5-4</span>
-</header>
+<ToolHeader title="Terskelverdikalkulator" ref="FOA § 5-4" />
 
 <div class="tool-body">
   <FormField label="Oppdragsgiver" hjemmel="(påvirker EØS-terskel)">
@@ -316,7 +316,7 @@
               </FormField>
             </div>
             {#if leaseMnd}
-              <p class="note-result">= {formatNOK(parseFloat(leaseMnd) * 48)}</p>
+              <p class="note-result">= {formatNOK(parseFloat(leaseMnd) * TIDSUBEGRENSET_FAKTOR)}</p>
             {/if}
           </div>
         {/if}
@@ -347,7 +347,7 @@
               </FormField>
             </div>
             {#if tjMnd}
-              <p class="note-result">= {formatNOK(parseFloat(tjMnd) * 48)}</p>
+              <p class="note-result">= {formatNOK(parseFloat(tjMnd) * TIDSUBEGRENSET_FAKTOR)}</p>
             {/if}
           </div>
         {/if}
@@ -442,27 +442,6 @@
 </div>
 
 <style>
-  .tool-header {
-    padding: 10px 36px;
-    background: var(--color-header-bg);
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .tool-title {
-    font-family: var(--font-prose);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-header-fg);
-  }
-
-  .tool-ref {
-    font-family: var(--font-data);
-    font-size: 8.5px;
-    color: var(--color-header-muted);
-  }
-
   .tool-body {
     max-width: 880px;
     margin: 24px auto;

@@ -14,6 +14,7 @@
     UNNTAK_DEL3_UTEN,
   } from '$lib/data/registrering-config';
   import { formatNOK } from '$lib/utils/format';
+  import { TIDSUBEGRENSET_FAKTOR } from '$lib/data/registrering-config';
   import FormField from './FormField.svelte';
   import FormDivider from './FormDivider.svelte';
   import RadioCards from './RadioCards.svelte';
@@ -160,7 +161,7 @@
         </div>
         {#if maanedligVerdi}
           <div class="tidsubegrenset-result">
-            = {formatNOK(parseFloat(maanedligVerdi) * 48)}
+            = {formatNOK(parseFloat(maanedligVerdi) * TIDSUBEGRENSET_FAKTOR)}
           </div>
         {/if}
       </div>

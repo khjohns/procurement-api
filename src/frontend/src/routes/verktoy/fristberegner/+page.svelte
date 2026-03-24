@@ -8,6 +8,7 @@
   } from '$lib/data/frist-config';
   import FormField from '$lib/components/registrering/FormField.svelte';
   import RadioCards from '$lib/components/registrering/RadioCards.svelte';
+  import ToolHeader from '$lib/components/verktoy/ToolHeader.svelte';
 
   let prosedyre = $state<ProsedyreId | ''>('');
   let kunngjoring = $state('');
@@ -38,10 +39,7 @@
   };
 </script>
 
-<header class="tool-header">
-  <span class="tool-title">Fristberegner</span>
-  <span class="tool-ref">FOA §§ 20-1 til 20-7, 25-2</span>
-</header>
+<ToolHeader title="Fristberegner" ref="FOA §§ 20-1 til 20-7, 25-2" />
 
 <div class="tool-body">
   <FormField label="Prosedyre">
@@ -138,27 +136,6 @@
 </div>
 
 <style>
-  .tool-header {
-    padding: 10px 36px;
-    background: var(--color-header-bg);
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .tool-title {
-    font-family: var(--font-prose);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-header-fg);
-  }
-
-  .tool-ref {
-    font-family: var(--font-data);
-    font-size: 8.5px;
-    color: var(--color-header-muted);
-  }
-
   .tool-body {
     max-width: 800px;
     margin: 24px auto;
