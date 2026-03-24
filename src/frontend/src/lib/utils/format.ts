@@ -28,6 +28,12 @@ export function formatDato(iso: string | null | undefined): string {
   }
 }
 
+/** 1 234 567 kr — Norwegian currency without decimals */
+export function formatNOK(n: number | null | undefined): string {
+  if (n == null) return '\u2013';
+  return new Intl.NumberFormat(NB, { maximumFractionDigits: 0 }).format(n) + ' kr';
+}
+
 /** dd.mm.yyyy kl. HH:MM — date with time */
 export function formatDatoTid(iso: string | null | undefined): string {
   if (!iso) return '\u2014';
