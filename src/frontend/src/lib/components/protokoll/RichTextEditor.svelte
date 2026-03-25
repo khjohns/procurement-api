@@ -51,7 +51,6 @@
       extensions: [
         StarterKit.configure({
           heading: { levels: [2, 3] },
-          history: { depth: 100 },
         }),
         Underline,
         Placeholder.configure({ placeholder }),
@@ -71,7 +70,7 @@
     // Sync body prop → editor when body changes externally (e.g. generator)
     $effect(() => {
       if (editorInstance && body !== editorInstance.getHTML()) {
-        editorInstance.commands.setContent(body, false);
+        editorInstance.commands.setContent(body, { emitUpdate: false });
         charCount = editorInstance.storage.characterCount?.characters() ?? 0;
       }
     });
