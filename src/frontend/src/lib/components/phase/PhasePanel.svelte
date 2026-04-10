@@ -1,14 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
-
-  type PhaseStatus = 'fullfort' | 'aktiv' | 'kommende';
+  import type { FaseStatus } from '$lib/types/saksmappe';
 
   interface Phase {
     id: string;
     number: string;
     label: string;
     route: string | null;
-    status: PhaseStatus;
+    status: FaseStatus;
   }
 
   let { procId }: { procId: string } = $props();
@@ -38,20 +37,22 @@
       '<path d="M10.5 2.5l5 5-8.5 8.5H2V11L10.5 2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2 16.5h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
   };
 
+  // Static map: sub-route → phase id
+  const routeToPhase: Record<string, string> = {
+    konkurranse: 'konkurranse',
+    kvalifisering: 'kvalifisering',
+    evaluering: 'evaluering',
+    protokoll: 'tildeling',
+    meddelelse: 'tildeling',
+    kontrakt: 'kontrakt',
+  };
+
   const activePhaseId = $derived.by(() => {
     const pathname = page.url.pathname;
     const base = `/anskaffelser/${procId}`;
     if (pathname === base || pathname === `${base}/`) return 'registrering';
     const sub = pathname.slice(base.length + 1).split('/')[0];
-    const routeMap: Record<string, string> = {
-      konkurranse: 'konkurranse',
-      kvalifisering: 'kvalifisering',
-      evaluering: 'evaluering',
-      protokoll: 'tildeling',
-      meddelelse: 'tildeling',
-      kontrakt: 'kontrakt',
-    };
-    return routeMap[sub] ?? null;
+    return routeToPhase[sub] ?? null;
   });
 
   function getHref(phase: Phase): string | null {
@@ -60,7 +61,7 @@
     return `/anskaffelser/${procId}/${phase.route}`;
   }
 
-  const statusLabels: Record<PhaseStatus, string> = {
+  const statusLabels: Record<FaseStatus, string> = {
     fullfort: 'Fullført',
     aktiv: 'Aktiv',
     kommende: 'Kommende',

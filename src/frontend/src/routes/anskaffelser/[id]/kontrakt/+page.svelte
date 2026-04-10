@@ -1,8 +1,4 @@
 <script lang="ts">
-  let { data } = $props();
-
-  const proc = $derived(data?.proc);
-
   const aktiviteter = [
     'Signere kontrakt med valgt leverandør',
     'Kunngjøre kontraktsinngåelse (§ 21-6)',
@@ -59,15 +55,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
-  }
-
-  .section-label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-ink-muted);
-    margin-bottom: var(--spacing-3);
   }
 
   .card {

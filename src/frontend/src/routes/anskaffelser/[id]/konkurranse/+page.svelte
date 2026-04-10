@@ -1,5 +1,6 @@
 <script lang="ts">
   import { extractBidders } from '$lib/utils/activities';
+  import { formatNOK } from '$lib/utils/format';
 
   let { data } = $props();
 
@@ -43,8 +44,6 @@
         : tilbud.map((l) => ({ navn: l.name, status: 'Tilbud', kvalifisert: false }));
     return { kval: kval.length, avvist: avvist.length, tilbud: tilbud.length, rader };
   });
-
-  const harLeverandorer = $derived(stats.rader.length > 0);
 
   // Documents derived from activities
   const dokumenter = $derived.by(() => {
@@ -93,10 +92,6 @@
     });
   }
 
-  function formatNOK(value: number | null | undefined): string {
-    if (value == null) return '—';
-    return new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(value);
-  }
 </script>
 
 <div class="konkurranse-page">
@@ -114,7 +109,7 @@
       <div class="frist-meta">
         <span>{proc?.procedure ?? ''}</span>
         <span class="frist-meta-sep">&middot;</span>
-        <span class="mono">{formatNOK(proc?.estimated_value)} kr</span>
+        <span class="mono">{formatNOK(proc?.estimated_value)}</span>
       </div>
     </div>
 
@@ -178,15 +173,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
-  }
-
-  .section-label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-ink-muted);
-    margin-bottom: var(--spacing-3);
   }
 
   .card {
@@ -294,18 +280,9 @@
     color: var(--color-ink);
   }
 
-  .stat-dim {
-    color: var(--color-ink-muted);
-  }
-
   .stat-label {
     font-size: 12px;
     color: var(--color-ink-muted);
-  }
-
-  .stat-sep {
-    color: var(--color-ink-ghost);
-    font-size: 12px;
   }
 
   .lev-list {
