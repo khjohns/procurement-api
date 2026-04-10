@@ -13,6 +13,49 @@
     mono?: boolean;
   }
 
+  /** CPV group (2-digit prefix) → Norwegian label. */
+  const CPV_GROUP_LABELS: Record<string, string> = {
+    '09': 'Petroleumsprodukter og energi',
+    '18': 'Klær og tekstiler',
+    '30': 'Kontor- og datautstyr',
+    '34': 'Transportutstyr',
+    '35': 'Sikkerhetsutstyr',
+    '38': 'Laboratorium- og presisjonsutstyr',
+    '39': 'Møbler og innredning',
+    '42': 'Industrimaskiner',
+    '43': 'Anleggsmaskiner',
+    '44': 'Byggevarer',
+    '45': 'Bygg og anlegg',
+    '48': 'Programvare',
+    '50': 'Vedlikehold og reparasjon',
+    '55': 'Hotell og restaurant',
+    '60': 'Transporttjenester',
+    '64': 'Post og telekommunikasjon',
+    '65': 'Energiforsyning',
+    '71': 'Arkitekt- og rådgivningstjenester',
+    '72': 'IT-tjenester',
+    '77': 'Landbruk og hagebruk',
+    '79': 'Konsulenttjenester',
+    '85': 'Helse og sosial',
+    '90': 'Avfall og rengjøring',
+    '92': 'Kultur og fritid',
+    '98': 'Andre tjenester',
+  };
+
+  interface CpvDisplay {
+    code: string;
+    group: string;
+  }
+
+  const cpvKoder = $derived.by((): CpvDisplay[] => {
+    const cpvList = proc?.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
+    if (!cpvList?.length) return [];
+    return cpvList.map((code: string) => ({
+      code,
+      group: CPV_GROUP_LABELS[code.slice(0, 2)] ?? '',
+    }));
+  });
+
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
     const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature);
@@ -40,10 +83,6 @@
       if (start !== end) varighet += ` (${start}–${end})`;
     }
 
-    // CPV
-    const cpvList = proc.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
-    const cpv = cpvList?.length ? cpvList.join(', ') : null;
-
     // Publication date
     const publisert = proc.publicationDate ?? eforms?.issue_date ?? null;
 
@@ -52,7 +91,6 @@
       prosed && { label: 'Prosedyre', value: prosed },
       terskel && { label: 'Terskel', value: terskel },
       ramme && { label: 'Rammeavtale', value: ramme },
-      cpv && { label: 'CPV', value: cpv, mono: true },
       varighet && { label: 'Varighet', value: varighet },
       publisert && { label: 'Kunngjort', value: formatDatoMndAar(publisert) },
     ].filter(Boolean) as MetaItem[];
@@ -138,6 +176,23 @@
         {/if}
       </div>
 
+      <!-- CPV-koder -->
+      {#if cpvKoder.length > 0}
+        <div class="card">
+          <div class="section-label">CPV-koder</div>
+          <div class="cpv-list">
+            {#each cpvKoder as cpv}
+              <div class="cpv-row">
+                <span class="cpv-code">{cpv.code}</span>
+                {#if cpv.group}
+                  <span class="cpv-group">{cpv.group}</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <!-- Økonomi -->
       {#if okonomi.length > 0}
         <div class="card okonomi-card">
@@ -216,6 +271,38 @@
     line-height: 1.6;
     max-width: 680px;
     white-space: pre-line;
+  }
+
+  /* ── CPV-koder ── */
+  .cpv-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cpv-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) 0;
+    border-top: 1px solid var(--color-wire);
+  }
+
+  .cpv-row:first-child {
+    border-top: none;
+  }
+
+  .cpv-code {
+    font-family: var(--font-data);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .cpv-group {
+    font-size: 12px;
+    color: var(--color-ink-muted);
   }
 
   /* ── Metadata grid ── */
