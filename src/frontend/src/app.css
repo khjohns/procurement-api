@@ -273,3 +273,88 @@ input[type='number']::-webkit-inner-spin-button {
 .empty-back:hover {
   color: var(--color-ink-secondary);
 }
+
+/* ── Shared tool links (used on phase pages) ── */
+.tool-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.tool-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-vekt-bg);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background-color 0.12s;
+}
+
+.tool-link:hover {
+  background: var(--color-vekt-bg-strong);
+}
+
+.tool-link-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-vekt);
+}
+
+.tool-link-desc {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  flex: 1;
+}
+
+.tool-link-icon {
+  font-size: 12px;
+  color: var(--color-ink-ghost);
+  flex-shrink: 0;
+}
+
+/* Reference variant (external links, not tools) */
+.tool-link-ref {
+  background: var(--color-felt-raised);
+  margin-top: var(--spacing-1);
+}
+
+.tool-link-ref:hover {
+  background: var(--color-felt-hover);
+}
+
+.tool-link-ref .tool-link-label {
+  color: var(--color-ink-secondary);
+}
+
+/* ── Shared aktivitet list ── */
+.aktivitet-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.aktivitet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) 0;
+  border-top: 1px solid var(--color-wire);
+}
+
+.aktivitet-row:first-child {
+  border-top: none;
+}
+
+.aktivitet-dot {
+  font-size: 11px;
+  color: var(--color-ink-ghost);
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.aktivitet-tekst {
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+}

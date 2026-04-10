@@ -8,7 +8,7 @@
 </script>
 
 <div class="kontrakt-page">
-  <div class="page-inner">
+  <div class="page-inner wide">
     <div class="card card-accent">
       <div class="section-label">Kommende fase</div>
       <p class="desc">
@@ -57,6 +57,7 @@
     font-size: 14px;
     color: var(--color-ink-secondary);
     line-height: 1.6;
+    max-width: 680px;
     margin-bottom: var(--spacing-4);
   }
 
@@ -71,32 +72,6 @@
   .prereq-label {
     font-weight: 600;
     margin-right: var(--spacing-1);
-  }
-
-  .aktivitet-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .aktivitet-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    padding: var(--spacing-2) 0;
-    border-top: 1px solid var(--color-wire);
-  }
-
-  .aktivitet-dot {
-    font-size: 10px;
-    color: var(--color-ink-ghost);
-    width: 14px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .aktivitet-tekst {
-    font-size: 12px;
-    color: var(--color-ink-secondary);
   }
 
   .notice {

@@ -170,47 +170,27 @@
       <!-- Verktøy -->
       <div class="card">
         <div class="section-label">Verktøy</div>
-        <div class="tools-grid">
-          <a
-            href="/verktoy/unntak"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Unntaksveiviser</span>
-            <span class="tool-desc">Sjekk om unntak fra forskriften gjelder</span>
-            <span class="tool-ext">↗</span>
+        <div class="tool-links">
+          <a href="/verktoy/unntak" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Unntaksveiviser</span>
+            <span class="tool-link-desc">Sjekk om unntak fra forskriften gjelder</span>
+            <span class="tool-link-icon">↗</span>
           </a>
-          <a
-            href="/verktoy/kalkulator"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Terskelverdikalkulator</span>
-            <span class="tool-desc">Beregn terskelverdi og gjeldende del</span>
-            <span class="tool-ext">↗</span>
+          <a href="/verktoy/kalkulator" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Terskelverdikalkulator</span>
+            <span class="tool-link-desc">Beregn terskelverdi og gjeldende del</span>
+            <span class="tool-link-icon">↗</span>
           </a>
-          <a
-            href="/verktoy/fristberegner"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Fristberegner</span>
-            <span class="tool-desc">Beregn minimumsfrister for prosedyren</span>
-            <span class="tool-ext">↗</span>
+          <a href="/verktoy/fristberegner" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Fristberegner</span>
+            <span class="tool-link-desc">Beregn minimumsfrister for prosedyren</span>
+            <span class="tool-link-icon">↗</span>
           </a>
           {#if doffinUrl}
-            <a
-              href={doffinUrl}
-              target="_blank"
-              rel="noopener"
-              class="tool-link tool-link-ref"
-            >
-              <span class="tool-label">Doffin-kunngjøring</span>
-              <span class="tool-desc">Se kunngjøringen på doffin.no</span>
-              <span class="tool-ext">↗</span>
+            <a href={doffinUrl} target="_blank" rel="noopener" class="tool-link tool-link-ref">
+              <span class="tool-link-label">Doffin-kunngjøring</span>
+              <span class="tool-link-desc">Se kunngjøringen på doffin.no</span>
+              <span class="tool-link-icon">↗</span>
             </a>
           {/if}
         </div>
@@ -337,59 +317,6 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--color-vekt);
-  }
-
-  /* ── Tools ── */
-  .tools-grid {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-  }
-
-  .tool-link {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-vekt-bg);
-    border-radius: var(--radius-sm);
-    text-decoration: none;
-    transition: background-color 0.12s;
-  }
-
-  .tool-link:hover {
-    background: var(--color-vekt-bg-strong);
-  }
-
-  .tool-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-vekt);
-  }
-
-  .tool-desc {
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    flex: 1;
-  }
-
-  .tool-ext {
-    font-size: 12px;
-    color: var(--color-ink-ghost);
-    flex-shrink: 0;
-  }
-
-  .tool-link-ref {
-    background: var(--color-felt-raised);
-    margin-top: var(--spacing-1);
-  }
-
-  .tool-link-ref:hover {
-    background: var(--color-felt-hover);
-  }
-
-  .tool-link-ref .tool-label {
-    color: var(--color-ink-secondary);
   }
 
   @media (max-width: 768px) {
