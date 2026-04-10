@@ -65,12 +65,12 @@ export function fmtCurrency(value: number | null | undefined, currency?: string)
   return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
 }
 
-/** Threshold code → Norwegian label. */
-const THRESHOLD_LABELS: Record<string, string> = {
-  over_eea_threshold_value: 'Over EØS-terskel',
-  below_eea_threshold_value: 'Under EØS-terskel',
-  national_threshold: 'Nasjonal terskel',
-  below_national_threshold: 'Under nasjonal terskel',
+/** Threshold code → Norwegian label (with Del suffix). Artifik API values. */
+export const THRESHOLD_LABELS: Record<string, string> = {
+  over_eea_threshold_value: 'Over EØS-terskel (Del III)',
+  below_eea_threshold_value: 'Under EØS-terskel (Del II)',
+  national_threshold: 'Nasjonal terskel (Del II)',
+  below_national_threshold: 'Under nasjonal terskel (Del I)',
 };
 
 /** Format threshold code to Norwegian label. */
@@ -110,9 +110,13 @@ export const PROCEDURE_LABELS: Record<string, string> = {
   'Direct award': 'Anskaffelse uten konkurranse',
 };
 
-/** Contract nature code → Norwegian label. */
+/** Contract nature code → Norwegian label. Covers both Artifik and eForms values. */
 export const CONTRACT_NATURE_LABELS: Record<string, string> = {
   services: 'Tjeneste',
   supplies: 'Varer',
   works: 'Bygg og anlegg',
+  goods_and_services: 'Varer og tjenester',
+  SERVICES: 'Tjeneste',
+  SUPPLIES: 'Varer',
+  WORKS: 'Bygg og anlegg',
 };
