@@ -1,19 +1,14 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { getContext } from 'svelte';
   import { formatDatoMndAar } from '$lib/utils/format';
   import { getTimelineDate, addDays } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
-  import type { PhaseState } from '$lib/config/phases';
 
   let { data } = $props();
 
   const procId = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
-
-  const getPhaseStates = getContext<() => Record<string, PhaseState>>('phaseStates');
-  const tildelingState = $derived(getPhaseStates().tildeling);
 
   // ── Karensperiode ──
   // Karensperiode starts when award letters are sent. Default 10 calendar days.
