@@ -1,11 +1,11 @@
 import type { FaseStatus } from '$lib/types/saksmappe';
+import type { Activity } from '$lib/types/activity';
 
 export interface PhaseDefinition {
   id: string;
   number: string;
   label: string;
   route: string | null;
-  status: FaseStatus;
 }
 
 /** SVG path data per phase icon (viewBox="0 0 18 18", stroke="currentColor") */
@@ -25,12 +25,12 @@ export const phaseIcons: Record<string, string> = {
 };
 
 export const phases: PhaseDefinition[] = [
-  { id: 'registrering', number: '01', label: 'Registrering', route: '', status: 'fullfort' },
-  { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'konkurranse', status: 'aktiv' },
-  { id: 'kvalifisering', number: '03', label: 'Kvalifisering', route: 'kvalifisering', status: 'fullfort' },
-  { id: 'evaluering', number: '04', label: 'Evaluering', route: 'evaluering', status: 'kommende' },
-  { id: 'tildeling', number: '05', label: 'Tildeling', route: 'protokoll', status: 'kommende' },
-  { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt', status: 'kommende' },
+  { id: 'registrering', number: '01', label: 'Registrering', route: '' },
+  { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'konkurranse' },
+  { id: 'kvalifisering', number: '03', label: 'Kvalifisering', route: 'kvalifisering' },
+  { id: 'evaluering', number: '04', label: 'Evaluering', route: 'evaluering' },
+  { id: 'tildeling', number: '05', label: 'Tildeling', route: 'protokoll' },
+  { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt' },
 ];
 
 /** Map sub-route segment → phase id (for highlighting active phase) */
@@ -58,3 +58,35 @@ export const statusLabels: Record<FaseStatus, string> = {
   aktiv: 'Aktiv',
   kommende: 'Kommende',
 };
+
+/**
+ * Derive phase statuses from procurement activities.
+ *
+ * Phase gates:
+ * - PUBLISH_TO_DOFFIN → konkurranse starts
+ * - QUALIFYING_PARTICIPANTS → kvalifisering done
+ * - SUBMIT_BID → konkurranse done, evaluering starts
+ * - AWARDING_PARTICIPANTS → evaluering done, tildeling starts
+ *
+ * Kvalifisering can complete independently of konkurranse (e.g. qualification
+ * done while still waiting for bids). If bids exist, qualification is
+ * implicitly done (open procedures may skip explicit qualification).
+ */
+export function derivePhaseStatuses(activities: Activity[]): Record<string, FaseStatus> {
+  const actions = new Set(activities.map((a) => a.action));
+  const has = (action: string) => actions.has(action);
+
+  const published = has('PUBLISH_TO_DOFFIN');
+  const qualified = has('QUALIFYING_PARTICIPANTS');
+  const hasBids = has('SUBMIT_BID');
+  const awarded = has('AWARDING_PARTICIPANTS');
+
+  return {
+    registrering: 'fullfort',
+    konkurranse: hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
+    kvalifisering: qualified || hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
+    evaluering: awarded ? 'fullfort' : hasBids ? 'aktiv' : 'kommende',
+    tildeling: awarded ? 'aktiv' : 'kommende',
+    kontrakt: 'kommende',
+  };
+}

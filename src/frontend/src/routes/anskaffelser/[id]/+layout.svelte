@@ -3,11 +3,21 @@
   import { beforeNavigate } from '$app/navigation';
   import { themeStore } from '$lib/stores/theme.svelte';
   import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
-  import { routeLabels } from '$lib/config/phases';
+  import {
+    routeLabels,
+    routeToPhase,
+    phases,
+    statusLabels,
+    derivePhaseStatuses,
+  } from '$lib/config/phases';
+  import { formatNOK } from '$lib/utils/format';
+  import type { Activity } from '$lib/types/activity';
 
   let { children, data } = $props();
 
   const id = $derived(page.params.id ?? '');
+  const proc = $derived(data?.proc);
+  const activities: Activity[] = $derived(data?.activities ?? []);
 
   const currentSubRoute = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -20,7 +30,21 @@
     currentSubRoute ? (routeLabels[currentSubRoute] ?? null) : null,
   );
 
-  const procName = $derived(data?.proc?.name || data?.proc?.title || id);
+  const procName = $derived(proc?.name || proc?.title || id);
+
+  // Active phase (from URL) and its status (from activities)
+  const activePhaseId = $derived(
+    currentSubRoute ? (routeToPhase[currentSubRoute] ?? null) : null,
+  );
+
+  const activePhase = $derived(
+    activePhaseId ? phases.find((p) => p.id === activePhaseId) : null,
+  );
+
+  const statuses = $derived(derivePhaseStatuses(activities));
+  const activePhaseStatus = $derived(
+    activePhaseId ? (statuses[activePhaseId] ?? null) : null,
+  );
 
   let mobileMenuOpen = $state(false);
 
@@ -72,15 +96,58 @@
     </div>
   </header>
 
+  {#if proc}
+    <div class="case-info">
+      <div class="case-id-row">
+        <span class="case-ref">{proc.sequenceId ?? id}</span>
+        {#if proc.threshold === 'ABOVE_EEA' || proc.regulation === 'del3'}
+          <span class="case-del">Del III</span>
+        {:else if proc.threshold === 'BELOW_EEA' || proc.regulation === 'del2'}
+          <span class="case-del">Del II</span>
+        {/if}
+      </div>
+      <div class="case-meta">
+        {#if proc.about_procurer?.name}
+          <span>{proc.about_procurer.name}</span>
+          <span class="case-meta-sep">&middot;</span>
+        {/if}
+        {#if proc.contractCategory}
+          <span>{proc.contractCategory}</span>
+          <span class="case-meta-sep">&middot;</span>
+        {/if}
+        {#if proc.estimated_value}
+          <span class="case-value">{formatNOK(proc.estimated_value)}</span>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   <div class="shell-body">
     <PhasePanel
       procId={id}
+      {activities}
       mobileOpen={mobileMenuOpen}
       onclose={() => (mobileMenuOpen = false)}
     />
-    <main class="app-main">
-      {@render children()}
-    </main>
+    <div class="shell-content">
+      {#if activePhase && activePhaseStatus}
+        <div class="content-header">
+          <span class="phase-num">{activePhase.number}</span>
+          <span class="phase-title">{activePhase.label}</span>
+          <span
+            class="phase-badge"
+            class:badge-fullfort={activePhaseStatus === 'fullfort'}
+            class:badge-aktiv={activePhaseStatus === 'aktiv'}
+            class:badge-kommende={activePhaseStatus === 'kommende'}
+          >
+            {statusLabels[activePhaseStatus]}
+          </span>
+        </div>
+      {/if}
+      <main class="app-main">
+        {@render children()}
+      </main>
+    </div>
   </div>
 </div>
 
@@ -186,12 +253,118 @@
     color: var(--color-header-bg);
   }
 
+  /* ── Case info strip ── */
+  .case-info {
+    flex-shrink: 0;
+    padding: var(--spacing-2) 24px;
+    border-bottom: 1px solid var(--color-wire);
+    background: var(--color-felt);
+  }
+
+  .case-id-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .case-ref {
+    font-family: var(--font-data);
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .case-del {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-vekt);
+    color: var(--color-felt);
+  }
+
+  .case-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: 11px;
+    color: var(--color-ink-ghost);
+    margin-top: 2px;
+    flex-wrap: wrap;
+  }
+
+  .case-meta-sep {
+    color: var(--color-ink-ghost);
+  }
+
+  .case-value {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ── Shell body ── */
   .shell-body {
     flex: 1;
     display: flex;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .shell-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Content header (phase title + badge) ── */
+  .content-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-5);
+    border-bottom: 1px solid var(--color-wire);
+  }
+
+  .phase-num {
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink-ghost);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .phase-title {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .phase-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+  }
+
+  .badge-fullfort {
+    color: var(--color-score-high);
+    background: var(--color-score-high-bg);
+  }
+
+  .badge-aktiv {
+    color: var(--color-vekt);
+    background: var(--color-vekt-bg);
+  }
+
+  .badge-kommende {
+    color: var(--color-ink-ghost);
+    background: var(--color-felt-active);
   }
 
   .app-main {
@@ -206,6 +379,10 @@
   @media (max-width: 1023px) {
     .top-nav {
       padding: 0 16px;
+    }
+
+    .case-info {
+      padding: var(--spacing-2) 16px;
     }
 
     .mobile-menu-btn {
@@ -239,6 +416,10 @@
     .nav-actions .user-org,
     .nav-actions .avatar {
       display: none;
+    }
+
+    .content-header {
+      padding: var(--spacing-3) var(--spacing-4);
     }
   }
 </style>

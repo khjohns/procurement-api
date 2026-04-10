@@ -5,18 +5,25 @@
     phaseIcons,
     routeToPhase,
     statusLabels,
+    derivePhaseStatuses,
     type PhaseDefinition,
   } from '$lib/config/phases';
+  import type { FaseStatus } from '$lib/types/saksmappe';
+  import type { Activity } from '$lib/types/activity';
 
   let {
     procId,
+    activities = [],
     mobileOpen = false,
     onclose,
   }: {
     procId: string;
+    activities?: Activity[];
     mobileOpen?: boolean;
     onclose?: () => void;
   } = $props();
+
+  const statuses = $derived(derivePhaseStatuses(activities));
 
   const activePhaseId = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -35,61 +42,71 @@
   function handlePhaseClick() {
     onclose?.();
   }
+
+  function statusFor(phase: PhaseDefinition): FaseStatus {
+    return statuses[phase.id] ?? 'kommende';
+  }
 </script>
 
-{#snippet phaseContent(phase: PhaseDefinition)}
+{#snippet phaseContent(phase: PhaseDefinition, status: FaseStatus)}
   <div class="phase-icon-col">
     <!-- SVG data is hardcoded trusted content from phaseIcons config -->
     <svg class="phase-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
       {@html phaseIcons[phase.id]}
     </svg>
-    {#if phase.status !== 'kommende'}
+    {#if status !== 'kommende'}
       <span class="phase-dot"></span>
     {/if}
   </div>
   <div class="phase-text">
     <span class="phase-label">{phase.label}</span>
     <span class="phase-meta">
-      {#if phase.status === 'fullfort'}
+      {#if status === 'fullfort'}
         <span class="meta-done">✓</span>
       {/if}
-      {statusLabels[phase.status]}
+      {statusLabels[status]}
     </span>
   </div>
+{/snippet}
+
+{#snippet phaseList(mobile: boolean)}
+  {#each phases as phase}
+    {@const isActive = phase.id === activePhaseId}
+    {@const href = getHref(phase)}
+    {@const status = statusFor(phase)}
+
+    {#if href !== null}
+      <a
+        class="phase-item"
+        class:phase-current={isActive}
+        class:status-fullfort={status === 'fullfort'}
+        class:status-aktiv={status === 'aktiv'}
+        class:status-kommende={status === 'kommende'}
+        {href}
+        aria-current={isActive ? 'step' : undefined}
+        title="{phase.label} — {statusLabels[status]}"
+        onclick={mobile ? handlePhaseClick : undefined}
+      >
+        {@render phaseContent(phase, status)}
+      </a>
+    {:else}
+      <div
+        class="phase-item phase-disabled"
+        class:status-fullfort={status === 'fullfort'}
+        class:status-aktiv={status === 'aktiv'}
+        class:status-kommende={status === 'kommende'}
+        title="{phase.label} — {statusLabels[status]}"
+      >
+        {@render phaseContent(phase, status)}
+      </div>
+    {/if}
+  {/each}
 {/snippet}
 
 <!-- Desktop: sidebar in flow -->
 <nav class="phase-panel" aria-label="Faser">
   <div class="phase-panel-inner">
-    {#each phases as phase}
-      {@const isActive = phase.id === activePhaseId}
-      {@const href = getHref(phase)}
-
-      {#if href !== null}
-        <a
-          class="phase-item"
-          class:phase-current={isActive}
-          class:status-fullfort={phase.status === 'fullfort'}
-          class:status-aktiv={phase.status === 'aktiv'}
-          class:status-kommende={phase.status === 'kommende'}
-          {href}
-          aria-current={isActive ? 'step' : undefined}
-          title="{phase.label} — {statusLabels[phase.status]}"
-        >
-          {@render phaseContent(phase)}
-        </a>
-      {:else}
-        <div
-          class="phase-item phase-disabled"
-          class:status-fullfort={phase.status === 'fullfort'}
-          class:status-aktiv={phase.status === 'aktiv'}
-          class:status-kommende={phase.status === 'kommende'}
-          title="{phase.label} — {statusLabels[phase.status]}"
-        >
-          {@render phaseContent(phase)}
-        </div>
-      {/if}
-    {/each}
+    {@render phaseList(false)}
   </div>
 </nav>
 
@@ -99,34 +116,7 @@
   </button>
 {/if}
 <nav class="mobile-panel" class:mobile-panel-open={mobileOpen} aria-label="Faser">
-  {#each phases as phase}
-    {@const isActive = phase.id === activePhaseId}
-    {@const href = getHref(phase)}
-
-    {#if href !== null}
-      <a
-        class="phase-item"
-        class:phase-current={isActive}
-        class:status-fullfort={phase.status === 'fullfort'}
-        class:status-aktiv={phase.status === 'aktiv'}
-        class:status-kommende={phase.status === 'kommende'}
-        {href}
-        aria-current={isActive ? 'step' : undefined}
-        onclick={handlePhaseClick}
-      >
-        {@render phaseContent(phase)}
-      </a>
-    {:else}
-      <div
-        class="phase-item phase-disabled"
-        class:status-fullfort={phase.status === 'fullfort'}
-        class:status-aktiv={phase.status === 'aktiv'}
-        class:status-kommende={phase.status === 'kommende'}
-      >
-        {@render phaseContent(phase)}
-      </div>
-    {/if}
-  {/each}
+  {@render phaseList(true)}
 </nav>
 
 <style>
