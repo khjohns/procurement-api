@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, lookupLabel } from '$lib/utils/protokoll-helpers';
+  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, THRESHOLD_LABELS, lookupLabel, stripHtml } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
@@ -15,8 +15,9 @@
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
-    const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
+    const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature);
     const prosed = lookupLabel(PROCEDURE_LABELS, proc.procedure);
+    const terskel = lookupLabel(THRESHOLD_LABELS, proc.threshold);
 
     // Framework details
     let ramme: string | null = null;
@@ -27,8 +28,9 @@
 
     // Duration
     let varighet: string | null = null;
-    if (proc.duration_months) {
-      varighet = `${proc.duration_months} mnd`;
+    const durationMonths = proc.duration_months ?? eforms?.duration_months;
+    if (durationMonths) {
+      varighet = `${durationMonths} mnd`;
     } else if (proc.duration) {
       varighet = proc.duration;
     }
@@ -39,7 +41,8 @@
     }
 
     // CPV
-    const cpv = proc.cpv_codes?.length ? proc.cpv_codes.join(', ') : null;
+    const cpvList = proc.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
+    const cpv = cpvList?.length ? cpvList.join(', ') : null;
 
     // Publication date
     const publisert = proc.publicationDate ?? eforms?.issue_date ?? null;
@@ -47,8 +50,7 @@
     return [
       cat && { label: 'Kontraktstype', value: cat },
       prosed && { label: 'Prosedyre', value: prosed },
-      proc.threshold === 'ABOVE_EEA' && { label: 'Terskel', value: 'Over EØS-terskel (Del III)' },
-      proc.threshold === 'BELOW_EEA' && { label: 'Terskel', value: 'Under EØS-terskel (Del II)' },
+      terskel && { label: 'Terskel', value: terskel },
       ramme && { label: 'Rammeavtale', value: ramme },
       cpv && { label: 'CPV', value: cpv, mono: true },
       varighet && { label: 'Varighet', value: varighet },
@@ -92,7 +94,8 @@
   );
 
   // Description
-  const beskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
+  const rawBeskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
+  const beskrivelse = $derived(rawBeskrivelse ? stripHtml(rawBeskrivelse) : null);
 </script>
 
 <div class="reg-page">
@@ -212,6 +215,7 @@
     color: var(--color-ink-secondary);
     line-height: 1.6;
     max-width: 680px;
+    white-space: pre-line;
   }
 
   /* ── Metadata grid ── */

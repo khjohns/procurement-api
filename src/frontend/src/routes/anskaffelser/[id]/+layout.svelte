@@ -115,10 +115,12 @@
         {#if procRef}
           <span class="case-ref">{procRef}</span>
         {/if}
-        {#if proc.threshold === 'ABOVE_EEA' || proc.regulation === 'del3'}
+        {#if proc.threshold === 'over_eea_threshold_value' || proc.regulation === 'del3'}
           <span class="case-del">Del III</span>
-        {:else if proc.threshold === 'BELOW_EEA' || proc.regulation === 'del2'}
+        {:else if proc.threshold === 'below_eea_threshold_value' || proc.threshold === 'national_threshold' || proc.regulation === 'del2'}
           <span class="case-del">Del II</span>
+        {:else if proc.threshold === 'below_national_threshold'}
+          <span class="case-del">Del I</span>
         {/if}
       </div>
       <div class="case-meta">
