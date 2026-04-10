@@ -11,6 +11,11 @@
     derivePhaseStates,
   } from '$lib/config/phases';
   import { formatNOK } from '$lib/utils/format';
+  import {
+    CONTRACT_NATURE_LABELS,
+    PROCEDURE_LABELS,
+    getTimelineDate,
+  } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
 
   let { children, data } = $props();
@@ -18,6 +23,19 @@
   const id = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
+
+  // Case-insensitive label lookup (API returns "open", labels have "Open")
+  function lookupLabel(map: Record<string, string>, key: string | undefined): string | null {
+    if (!key) return null;
+    if (map[key]) return map[key];
+    // Try capitalized
+    const cap = key.charAt(0).toUpperCase() + key.slice(1);
+    return map[cap] ?? null;
+  }
+
+  const contractLabel = $derived(lookupLabel(CONTRACT_NATURE_LABELS, proc?.contractCategory ?? proc?.contract_nature));
+  const procedureLabel = $derived(lookupLabel(PROCEDURE_LABELS, proc?.procedure));
+  const procRef = $derived(proc?.sequenceId ?? proc?.externalId ?? null);
 
   const currentSubRoute = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -99,7 +117,9 @@
   {#if proc}
     <div class="case-info">
       <div class="case-id-row">
-        <span class="case-ref">{proc.sequenceId ?? id}</span>
+        {#if procRef}
+          <span class="case-ref">{procRef}</span>
+        {/if}
         {#if proc.threshold === 'ABOVE_EEA' || proc.regulation === 'del3'}
           <span class="case-del">Del III</span>
         {:else if proc.threshold === 'BELOW_EEA' || proc.regulation === 'del2'}
@@ -109,13 +129,13 @@
       <div class="case-meta">
         {#if proc.about_procurer?.name}
           <span>{proc.about_procurer.name}</span>
-          <span class="case-meta-sep">&middot;</span>
         {/if}
-        {#if proc.contractCategory}
-          <span>{proc.contractCategory}</span>
+        {#if contractLabel}
           <span class="case-meta-sep">&middot;</span>
+          <span>{contractLabel}</span>
         {/if}
         {#if proc.estimated_value}
+          <span class="case-meta-sep">&middot;</span>
           <span class="case-value">{formatNOK(proc.estimated_value)}</span>
         {/if}
       </div>

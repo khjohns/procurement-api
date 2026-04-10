@@ -1,9 +1,17 @@
 <script lang="ts">
   import { formatNOK } from '$lib/utils/format';
+  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
+
+  function labelFor(map: Record<string, string>, key: string | undefined): string | null {
+    if (!key) return null;
+    if (map[key]) return map[key];
+    const cap = key.charAt(0).toUpperCase() + key.slice(1);
+    return map[cap] ?? key;
+  }
 
   interface MetaItem {
     label: string;
@@ -13,9 +21,11 @@
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
+    const cat = labelFor(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
+    const prosed = labelFor(PROCEDURE_LABELS, proc.procedure);
     return [
-      proc.contractCategory && { label: 'Kontraktstype', value: proc.contractCategory },
-      proc.procedure && { label: 'Prosedyre', value: proc.procedure },
+      cat && { label: 'Kontraktstype', value: cat },
+      prosed && { label: 'Prosedyre', value: prosed },
       proc.framework_agreement_involved && { label: 'Rammeavtale', value: 'Ja' },
       proc.threshold === 'ABOVE_EEA' && { label: 'Terskel', value: 'Over EØS-terskel (Del III)' },
       proc.threshold === 'BELOW_EEA' && { label: 'Terskel', value: 'Under EØS-terskel (Del II)' },

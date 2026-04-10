@@ -1,6 +1,7 @@
 import type { FaseStatus } from '$lib/types/saksmappe';
 import type { Activity } from '$lib/types/activity';
 import { formatDatoMndKort } from '$lib/utils/format';
+import { getTimelineDate } from '$lib/utils/protokoll-helpers';
 
 export interface PhaseDefinition {
   id: string;
@@ -14,10 +15,8 @@ export interface PhaseState {
   meta: string;
 }
 
-export interface ProcDeadlineInfo {
-  currentDeadline?: string;
-  timeline?: { submission?: string };
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- proc shape varies
+export type ProcDeadlineInfo = Record<string, any>;
 
 /** SVG path data per phase icon (viewBox="0 0 18 18", stroke="currentColor") */
 export const phaseIcons: Record<string, string> = {
@@ -40,7 +39,7 @@ export const phases: PhaseDefinition[] = [
   { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'konkurranse' },
   { id: 'kvalifisering', number: '03', label: 'Kvalifisering', route: 'kvalifisering' },
   { id: 'evaluering', number: '04', label: 'Evaluering', route: 'evaluering' },
-  { id: 'tildeling', number: '05', label: 'Tildeling', route: 'protokoll' },
+  { id: 'tildeling', number: '05', label: 'Tildeling', route: 'tildeling' },
   { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt' },
 ];
 
@@ -48,6 +47,7 @@ export const routeToPhase: Record<string, string> = {
   konkurranse: 'konkurranse',
   kvalifisering: 'kvalifisering',
   evaluering: 'evaluering',
+  tildeling: 'tildeling',
   protokoll: 'tildeling',
   meddelelse: 'tildeling',
   kontrakt: 'kontrakt',
@@ -57,6 +57,7 @@ export const routeLabels: Record<string, string> = {
   konkurranse: 'Konkurranse',
   kvalifisering: 'Kvalifisering',
   evaluering: 'Evaluering',
+  tildeling: 'Tildeling',
   protokoll: 'Protokoll',
   meddelelse: 'Meddelelse',
   kontrakt: 'Kontrakt',
@@ -100,7 +101,7 @@ export function derivePhaseStates(
   const awarded = has('AWARDING_PARTICIPANTS');
 
   // Deadline countdown for active konkurranse
-  const deadline = proc?.currentDeadline ?? proc?.timeline?.submission;
+  const deadline = proc?.currentDeadline ?? getTimelineDate(proc, 'submission');
   let fristMeta = 'Aktiv';
   if (deadline) {
     const d = new Date(deadline);
