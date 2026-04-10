@@ -3,6 +3,7 @@
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
   import AutoTextarea from './AutoTextarea.svelte';
+  import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS } from './shared';
 
@@ -16,11 +17,6 @@
   let activeRoleId = $state('');
 
   let activeRole = $derived(roles.find((r) => r.id === activeRoleId) ?? roles[0] ?? null);
-
-  // Vertical layout state
-  let focusId = $state<string | null>(null);
-  let sortBy = $state<'original' | 'score'>('original');
-  let focusIndex = $derived(focusId ? suppliers.findIndex((s) => s.id === focusId) : -1);
 
   /** Get the item for a supplier + role. */
   function getItem(supplierId: string, roleId: string) {
@@ -42,15 +38,6 @@
     const gs = evaluation.groupScores[criterion.id];
     return gs?.[supplierId] ?? null;
   }
-
-  let sortedSuppliers = $derived.by(() => {
-    if (!useVertical || sortBy === 'original' || !activeRole) return suppliers;
-    return [...suppliers].sort((a, b) => {
-      const sa = personScore(a.id, activeRole!.id) ?? -1;
-      const sb = personScore(b.id, activeRole!.id) ?? -1;
-      return sb - sa;
-    });
-  });
 </script>
 
 <!-- Role tabs -->
@@ -76,10 +63,13 @@
 <!-- Supplier evaluation for active role -->
 {#if activeRole}
   {#if useVertical}
-    <!-- Vertical row layout with dimension columns -->
-    <div class="vrow-container">
-      <div class="vrow-header">
-        <span class="vrow-col-supplier">Leverandør</span>
+    <VerticalRows
+      {suppliers}
+      scoreFn={(id) => personScore(id, activeRole!.id)}
+      rowClass="vrow-res"
+      sortScoreLabel="Etter snitt"
+    >
+      {#snippet headerColumns()}
         {#each moments as dim (dim.id)}
           <span class="vrow-col-dim">
             {dim.name}<br />
@@ -88,70 +78,53 @@
         {/each}
         <span class="vrow-col-avg">Snitt</span>
         <span class="vrow-col-note">Begrunnelse</span>
-        <select class="vrow-sort" bind:value={sortBy}>
-          <option value="original">Original</option>
-          <option value="score">Etter snitt</option>
-        </select>
-      </div>
-      {#each sortedSuppliers as lev, i (lev.id)}
-        {@const item = getItem(lev.id, activeRole.id)}
-        {@const avg = personScore(lev.id, activeRole.id)}
-        {@const isFocus = focusId === lev.id}
-        {@const dimmed = focusIndex >= 0 && !isFocus && Math.abs(focusIndex - i) > 3}
-        <div
-          class="vrow vrow-res"
-          class:vrow-focus={isFocus}
-          class:vrow-dimmed={dimmed}
-          class:vrow-separator={i > 0}
-        >
-          <!-- Supplier + person name -->
-          <div class="vrow-supplier">
-            <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
-            <input
-              class="vrow-person-input"
-              type="text"
-              value={item?.label ?? ''}
-              oninput={(e) =>
-                evaluation.setRoleLabel(
-                  criterion.id,
-                  lev.id,
-                  activeRole!.id,
-                  e.currentTarget.value
-                )}
-              onfocus={() => (focusId = lev.id)}
-              placeholder="Person"
-            />
-          </div>
-          <!-- Dimension scores -->
-          {#each moments as dim (dim.id)}
-            <div class="vrow-dim">
-              <ScoreField
-                size="small"
-                value={item?.scores?.[dim.id] ?? null}
-                onchange={(v) => {
-                  if (v != null)
-                    evaluation.setRoleScore(criterion.id, lev.id, activeRole!.id, dim.id, v);
-                }}
-              />
-            </div>
-          {/each}
-          <!-- Average -->
-          <div class="vrow-avg">
-            <span class="vrow-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
-          </div>
-          <!-- Note -->
-          <div class="vrow-note">
-            <AutoTextarea
-              value={item?.note ?? ''}
-              oninput={(v) =>
-                evaluation.setRoleResourceNote(criterion.id, lev.id, activeRole!.id, v)}
-              placeholder="Begrunnelse..."
-              onfocus={() => (focusId = lev.id)}
-            />
-          </div>
+      {/snippet}
+      {#snippet row({ supplier: lev, setFocus })}
+        {@const item = getItem(lev.id, activeRole!.id)}
+        {@const avg = personScore(lev.id, activeRole!.id)}
+        <div class="vrow-supplier">
+          <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
+          <input
+            class="vrow-person-input"
+            type="text"
+            value={item?.label ?? ''}
+            oninput={(e) =>
+              evaluation.setRoleLabel(
+                criterion.id,
+                lev.id,
+                activeRole!.id,
+                e.currentTarget.value
+              )}
+            onfocus={setFocus}
+            placeholder="Person"
+          />
         </div>
-      {/each}
-    </div>
+        {#each moments as dim (dim.id)}
+          <div class="vrow-dim">
+            <ScoreField
+              size="small"
+              value={item?.scores?.[dim.id] ?? null}
+              onchange={(v) => {
+                if (v != null)
+                  evaluation.setRoleScore(criterion.id, lev.id, activeRole!.id, dim.id, v);
+              }}
+            />
+          </div>
+        {/each}
+        <div class="vrow-avg">
+          <span class="vrow-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
+        </div>
+        <div class="vrow-note">
+          <AutoTextarea
+            value={item?.note ?? ''}
+            oninput={(v) =>
+              evaluation.setRoleResourceNote(criterion.id, lev.id, activeRole!.id, v)}
+            placeholder="Begrunnelse..."
+            onfocus={setFocus}
+          />
+        </div>
+      {/snippet}
+    </VerticalRows>
   {:else}
     <!-- Card grid for ≤4 suppliers -->
     <div
@@ -166,7 +139,6 @@
             {compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}
           </div>
 
-          <!-- Person name -->
           <input
             class="card-person"
             type="text"
@@ -181,7 +153,6 @@
             placeholder="Personens navn"
           />
 
-          <!-- Dimensions with scores -->
           {#each moments as dim (dim.id)}
             <div class="dim-row">
               <span class="dim-label">{dim.name}</span>
@@ -197,13 +168,11 @@
             </div>
           {/each}
 
-          <!-- Average -->
           <div class="card-avg">
             <span class="card-avg-label">Snitt</span>
             <span class="card-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
           </div>
 
-          <!-- Note -->
           <textarea
             class="card-textarea"
             value={item?.note ?? ''}
@@ -314,36 +283,7 @@
     color: var(--color-score-high);
   }
 
-  /* ── Vertical row layout ── */
-  .vrow-container {
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: 1px solid var(--color-wire);
-  }
-
-  .vrow-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt-raised);
-    border-bottom: 1px solid var(--color-wire);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--color-ink-ghost);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-family: var(--font-ui);
-  }
-
-  .vrow-col-supplier {
-    width: 150px;
-    flex-shrink: 0;
-  }
-
+  /* ── Vertical row content (Resource-specific) ── */
   .vrow-col-dim {
     width: 52px;
     text-align: center;
@@ -368,59 +308,10 @@
     flex: 1;
   }
 
-  .vrow-sort {
-    margin-left: auto;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-size: 10px;
-    font-family: var(--font-ui);
-    color: var(--color-ink-muted);
-    background: var(--color-felt);
-    outline: none;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 0.12s;
-  }
-
-  .vrow-sort:hover {
-    border-color: var(--color-wire-strong);
-  }
-
-  .vrow-sort:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px var(--color-vekt-bg);
-  }
-
-  .vrow {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt);
-    transition: background 0.15s, opacity 0.2s;
-  }
-
-  .vrow:hover:not(.vrow-focus) {
-    background: var(--color-felt-hover);
-  }
-
-  .vrow-res {
+  :global(.vrow-res) {
     align-items: flex-start;
     padding-top: var(--spacing-3);
     padding-bottom: var(--spacing-3);
-  }
-
-  .vrow-focus {
-    background: var(--color-vekt-bg);
-  }
-
-  .vrow-dimmed {
-    opacity: 0.85;
-  }
-
-  .vrow-separator {
-    border-top: 1px solid var(--color-wire);
   }
 
   .vrow-supplier {

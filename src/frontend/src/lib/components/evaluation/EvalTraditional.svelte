@@ -3,6 +3,7 @@
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
   import AutoTextarea from './AutoTextarea.svelte';
+  import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS } from './shared';
 
@@ -15,20 +16,6 @@
   let activeSubId = $state('');
 
   let activeSub = $derived(subs.find((s) => s.id === activeSubId) ?? subs[0] ?? null);
-
-  // Vertical layout state
-  let focusId = $state<string | null>(null);
-  let sortBy = $state<'original' | 'score'>('original');
-  let focusIndex = $derived(focusId ? suppliers.findIndex((s) => s.id === focusId) : -1);
-
-  let sortedSuppliers = $derived.by(() => {
-    if (!useVertical || sortBy === 'original' || !activeSub) return suppliers;
-    return [...suppliers].sort((a, b) => {
-      const sa = activeSub!.scores?.[a.id] ?? -1;
-      const sb = activeSub!.scores?.[b.id] ?? -1;
-      return sb - sa;
-    });
-  });
 
   /** Weighted score for a supplier on this criterion. */
   function tradScore(supplierId: string): number | null {
@@ -58,50 +45,37 @@
 <!-- Supplier evaluation for active sub-criterion -->
 {#if activeSub}
   {#if useVertical}
-    <!-- Vertical row layout for 5+ suppliers -->
-    <div class="vrow-container">
-      <div class="vrow-header">
-        <span class="vrow-col-supplier">Leverandør</span>
+    <VerticalRows
+      {suppliers}
+      scoreFn={(id) => activeSub?.scores?.[id] ?? null}
+    >
+      {#snippet headerColumns()}
         <span class="vrow-col-score">Score</span>
         <span class="vrow-col-note">Begrunnelse</span>
-        <select class="vrow-sort" bind:value={sortBy}>
-          <option value="original">Original rekkefølge</option>
-          <option value="score">Sorter etter score</option>
-        </select>
-      </div>
-      {#each sortedSuppliers as lev, i (lev.id)}
-        {@const isFocus = focusId === lev.id}
-        {@const dimmed = focusIndex >= 0 && !isFocus && Math.abs(focusIndex - i) > 3}
-        <div
-          class="vrow"
-          class:vrow-focus={isFocus}
-          class:vrow-dimmed={dimmed}
-          class:vrow-separator={i > 0}
-        >
-          <div class="vrow-supplier">
-            <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
-          </div>
-          <div class="vrow-score">
-            <ScoreField
-              value={activeSub.scores?.[lev.id] ?? null}
-              onchange={(v) => {
-                if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
-              }}
-            />
-          </div>
-          <div class="vrow-note">
-            <AutoTextarea
-              value={activeSub.notes?.[lev.id] ?? ''}
-              oninput={(v) => evaluation.setNote(activeSub!.id, lev.id, v)}
-              placeholder="Begrunnelse..."
-              onfocus={() => (focusId = lev.id)}
-            />
-          </div>
+      {/snippet}
+      {#snippet row({ supplier: lev, setFocus })}
+        <div class="vrow-supplier">
+          <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
         </div>
-      {/each}
-    </div>
+        <div class="vrow-score">
+          <ScoreField
+            value={activeSub!.scores?.[lev.id] ?? null}
+            onchange={(v) => {
+              if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
+            }}
+          />
+        </div>
+        <div class="vrow-note">
+          <AutoTextarea
+            value={activeSub!.notes?.[lev.id] ?? ''}
+            oninput={(v) => evaluation.setNote(activeSub!.id, lev.id, v)}
+            placeholder="Begrunnelse..."
+            onfocus={setFocus}
+          />
+        </div>
+      {/snippet}
+    </VerticalRows>
   {:else}
-    <!-- Card grid for ≤4 suppliers -->
     <div
       class="cards-grid"
       style:--card-columns="repeat({suppliers.length}, minmax({compact ? '170px' : '200px'}, 1fr))"
@@ -225,36 +199,7 @@
     color: var(--color-score-high);
   }
 
-  /* ── Vertical row layout ── */
-  .vrow-container {
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: 1px solid var(--color-wire);
-  }
-
-  .vrow-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt-raised);
-    border-bottom: 1px solid var(--color-wire);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--color-ink-ghost);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-family: var(--font-ui);
-  }
-
-  .vrow-col-supplier {
-    width: 150px;
-    flex-shrink: 0;
-  }
-
+  /* ── Vertical row content ── */
   .vrow-col-score {
     width: 44px;
     text-align: center;
@@ -263,55 +208,6 @@
 
   .vrow-col-note {
     flex: 1;
-  }
-
-  .vrow-sort {
-    margin-left: auto;
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-wire);
-    font-size: 10px;
-    font-family: var(--font-ui);
-    color: var(--color-ink-muted);
-    background: var(--color-felt);
-    outline: none;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 0.12s;
-  }
-
-  .vrow-sort:hover {
-    border-color: var(--color-wire-strong);
-  }
-
-  .vrow-sort:focus {
-    border-color: var(--color-vekt);
-    box-shadow: 0 0 0 2px var(--color-vekt-bg);
-  }
-
-  .vrow {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt);
-    transition: background 0.15s, opacity 0.2s;
-  }
-
-  .vrow:hover:not(.vrow-focus) {
-    background: var(--color-felt-hover);
-  }
-
-  .vrow-focus {
-    background: var(--color-vekt-bg);
-  }
-
-  .vrow-dimmed {
-    opacity: 0.85;
-  }
-
-  .vrow-separator {
-    border-top: 1px solid var(--color-wire);
   }
 
   .vrow-supplier {
