@@ -8,38 +8,76 @@ Authoritative, precise, data-dense. The evaluation matrix IS the interface.
 **Feel:** Like a financial analyst's desk — numbers are the primary content, everything serves the numbers.
 **Not:** Friendly, spacious, consumer-soft. This is analytical tooling — warm neutrals serve focus, not decoration.
 
+### Core Narrative: Arbeidsbenken
+
+Et verktøy som føles som et godt organisert skrivebord for en fagperson i offentlig forvaltning. Brukeren (innkjøpsrådgiver) har 8–12 anskaffelser i ulike faser. Verktøyet er *mellom* dokumentlesing og møter — stedet hun strukturerer vurderingene sine.
+
+Tre verb: *klassifisere* (registrering), *vurdere* (evaluering), *begrunne* (protokoll/meddelelsesbrev). Hele prosessen kulminerer i en skriftlig begrunnelse som tåler innsyn, klage og KOFA-prøving. Verktøyet er et *begrunnelsesverktøy*.
+
+**Ikke** et dashboard (hun overvåker ikke). **Ikke** en wizard (hun vet hva hun gjør). **Ikke** et skjema (hun fyller ikke ut, hun *vurderer*). Nærmest en *arbeidsbenk* — et sted der materialer (tilbud, kriterier, scores) ligger fremme, og hun jobber med dem systematisk.
+
+### Two Visual Modes
+
+The interface has two distinct visual modes, selected by content purpose:
+
+| Modus | Formål | Layout | Dybde | Radius | Eksempler |
+|---|---|---|---|---|---|
+| **Orientering** | Scanning, status, navigasjon | Bento grid (størrelse = viktighet) | Shadows (kort svever) | 10–14px (myk, fysisk) | Registrering, konkurranse, tildeling, kontrakt |
+| **Arbeid** | Vurdering, scoring, skriving | Uniform vertikal (likebehandling) | Borders-only (stille struktur) | 4–8px (teknisk, presis) | Evaluering, kvalifisering, protokoll |
+
+The phase panel bridges both modes — always visible, always the same.
+
+### Signature Element: Fasepanelet
+
+En vertikal prosessnavigator som *alltid* er synlig. Viser hele livssyklusen fra registrering til kontrakt. Transformerer innholdsområdet når du klikker mellom faser. Det er et *prosess-termometer* som er meningsløst utenfor anskaffelsesdomenet.
+
+- Collapsed (52px): Ikoner fargekodet etter status (grønn = fullført, teal = aktiv, dempet = kommende). Aktiv fase har pulserende prikk. Valgt fase har tykkere ikon-strek og teal venstre-border.
+- Expanded (230px): Ikon + label + meta. Fullførte faser viser `✓ 14. feb`. Aktiv konkurranse viser `Frist: 12. mai · 36d`. Labels fader inn med 60ms delay.
+- Cubic-bezier(0.22,1,0.36,1) transition, 0.25s.
+- Mobile: hamburger i header, slide-in overlay fra venstre (240px).
+
 ---
 
 ## Narrativ og informasjonsarkitektur
 
-Progressiv eksponering av detaljer i tre nivåer. Hvert nivå har et høyrepanel som vises ved klikk (skjult som default) for kontekstavhengige detaljer.
+Progressiv eksponering av detaljer i tre nivåer.
 
-Alle arbeidsflater (kvalifisering, evaluering, protokoll) tilhører én spesifikk anskaffelse. Navigasjonen gjenspeiler dette eierskapet.
+Alle arbeidsflater tilhører én spesifikk anskaffelse. Navigasjonen gjenspeiler dette eierskapet.
 
 ### Rutestruktur
 
 ```
 /anskaffelser                          → Kontrollbordet (oversikt)
-/anskaffelser/[id]                     → Saksmappen (én anskaffelse)
-/anskaffelser/[id]/kvalifisering       → Arbeidsflate: kvalifikasjonskrav
-/anskaffelser/[id]/evaluering          → Arbeidsflate: evaluering av tilbud
+/anskaffelser/[id]                     → Registrering (fase 01)
+/anskaffelser/[id]/konkurranse         → Konkurranse (fase 02)
+/anskaffelser/[id]/kvalifisering       → Kvalifisering (fase 03)
+/anskaffelser/[id]/evaluering          → Evaluering (fase 04)
+/anskaffelser/[id]/tildeling           → Tildeling — oversikt (fase 05)
 /anskaffelser/[id]/protokoll           → Arbeidsflate: anskaffelsesprotokoll
-/anskaffelser/[id]/meddelelse          → Arbeidsflate: meddelsesbrev
+/anskaffelser/[id]/meddelelse          → Arbeidsflate: meddelelsesbrev
+/anskaffelser/[id]/kontrakt            → Kontrakt (fase 06)
 ```
+
+### App-shell
+
+All pages under `/anskaffelser/[id]` share a persistent shell:
+- **Header** (48px): Breadcrumbs + theme toggle + user info
+- **Case-info strip**: Procurement reference, Del II/III badge, oppdragsgiver, kontraktstype, verdi
+- **Phase panel** (left): 6-phase navigator (registrering → kontrakt)
+- **Content header**: Phase number + label + status badge (fullført/aktiv/kommende)
+- **Main content**: Workspace component
 
 ### Narrativskille
 
-| Nivå | Rute | Metafor | Formål | Modus |
+| Nivå | Rute | Metafor | Formål | Visuell modus |
 |---|---|---|---|---|
-| 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Oversikt, radar |
-| 2 | `/anskaffelser/[id]` | **Saksmappen** | Status, fremdrift, neste steg | Lesing, scanning |
-| 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Arbeid, skriving |
+| 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Orientering |
+| 2 | `/anskaffelser/[id]` | **Faseoversikt** | Status, fremdrift, neste steg | Orientering (bento) |
+| 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Arbeid (uniform) |
 
-**Kontrollbordet** er proaktivt — brukeren driver prosessen fremover. Ulikt reaktiv triage (tvister som brenner). Vektlegger fremdrift og faser.
+**Fasesider** (registrering, konkurranse, tildeling, kontrakt) bruker orienteringsmodus — bento-grid der kortstørrelse kommuniserer viktighet. Hero-kort (2×1 eller 2×2) for frister og nøkkeltall. Mindre kort for dokumenter og team.
 
-**Saksmappen** viser faseoversikt (kvalifisering → evaluering → protokoll med status per fase), sammendrag og nøkkeltall. Navigasjon til arbeidsflater via faseelementene.
-
-**Arbeidsflatene** beholder sine spesialiserte grensesnitt (matriser, skjemaer). Høyrepanelinnhold er kontekstavhengig per arbeidsflate — detaljer utarbeides separat.
+**Arbeidsflater** (evaluering, kvalifisering, protokoll, meddelelse) bruker arbeidsmodus — uniform layout for likebehandlet vurdering.
 
 ### Kontrollbordet — visninger
 
@@ -308,12 +346,67 @@ Panelet (`.eval-card`) wrapper innholdet med border og radius. Bredden tilpasser
 
 ## Depth Strategy
 
-**Borders-only.** No shadows. Dark mode + dense data = borders define structure quietly.
+**Context-dependent.** Two depth strategies for two visual modes.
+
+### Arbeidsmodus (matrices, scoring)
+Borders-only. Dense data + dark mode = borders define structure quietly.
 
 - Group rows: `border-left: 3px solid var(--color-vekt)` (weight spine)
 - Sub-rows: `border-left: 3px solid rgba(232, 168, 56, 0.15)` (faded spine)
 - Separators: `1px solid var(--color-wire)` standard, `var(--color-wire-strong)` for group dividers
 - Annotation panel: `border-left: 3px solid var(--color-vekt)` (connects to spine)
+
+### Orienteringsmodus (bento phase pages)
+Shadow-based. Cards float on canvas, borders are invisible or minimal.
+
+- Cards: `0 1px 6px rgba(0,0,0,0.03)` at rest
+- Hover: `0 6px 24px rgba(0,0,0,0.08)` + `translateY(-1px)` + `scale(1.02)` (200ms ease)
+- Hero cards: accent left-border (3px `--color-vekt`) for emphasis
+- No visible card borders — depth comes from shadow alone
+- Radius: `--radius-bento: 10px` for bento cards (larger than work mode's 4-8px)
+
+### Bento Grid Pattern
+
+Used for orientation/phase pages. Size encodes importance.
+
+```
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 14px;
+```
+
+- **Hero card** (span 2 columns): Primary content — deadline countdown, key action, summary
+- **Standard card** (span 1): Supporting content — leverandører, dokumenter, metadata
+- **Responsive**: 3 columns at 1200px+, 2 at 768-1199px, 1 (stacked) below 768px
+- Reorder by importance on small screens, not by desktop position
+
+Card anatomy:
+- Section label (10px uppercase, ghost) at top
+- Content area with generous padding (20-24px)
+- Optional footer with actions or meta
+
+### Bento Interaction
+
+- **Hover elevation**: card lifts 1px + shadow deepens + `scale(1.02)` (200ms ease)
+- **No glassmorphism**: We use warm opaque surfaces, not translucent glass. The material metaphor is *felt* and *paper*, not *glass*.
+- **Staggered entry**: cards fade-up on page load (60-100ms stagger). Respect `prefers-reduced-motion`.
+- **Click-to-expand**: cards with hidden depth (hendelser, leverandører) show truncated content with inline expand. Not for navigation cards — those link via routes.
+
+### Kinetic Typography
+
+Deadline countdowns (tilbudsfrist, vedståelsesfrist, karensperiode) use animated number transitions on page load — a brief count-up to the current value. Subtle `letter-spacing` or `font-variation-settings` shift on hover. Reserved for time-sensitive values where urgency matters. The effect should feel precise and authoritative, not playful.
+
+### Time-Sensitive Urgency
+
+Deadline cards change visual character based on proximity:
+- `>30 days`: calm, standard bento card. Teal accent (`--color-vekt`).
+- `10–30 days`: amber accent (`--color-warn`), slightly more prominent.
+- `<10 days`: warn colors, possibly neo-brutal style. The card "escalates" visually.
+- `Expired`: rose/score-low (`--color-score-low`), muted. Not alarm — just clear.
+
+### Neo-Brutal Accent Card
+
+One card per bento grid may break the soft style to prevent visual monotony: solid accent color background, hard shadow (`4px 4px 0`), thick border. Used sparingly — max one per grid. Color from existing palette. Candidates: deadline urgency, key financial figures, "next action" prompts.
 
 ---
 
@@ -448,10 +541,26 @@ Two-panel workspace: matrix left, panel right.
 
 ## Navigation
 
-Top nav bar (`--header-height: 48px`), `--color-canvas` background, `--color-wire-strong` bottom border:
-- Breadcrumbs: `Anskaffelser / {id} / {subRoute}`, 12px, `--color-ink-secondary`
+### App Shell (implemented)
+
+The `/anskaffelser/[id]` layout provides a persistent shell:
+
+- **Header** (48px, `--color-header-bg`): hamburger (mobile only) + breadcrumbs + theme toggle + user info
+- **Case-info strip** (`--color-felt`, `--color-wire` bottom border): procurement reference, Del badge, oppdragsgiver, kontraktstype, verdi
+- **Phase panel** (left): 52px collapsed → 230px on hover, 6 phases with status indicators
+- **Content header**: phase number + label + status badge (only on workspace pages)
+- **Main content**: scrollable workspace
+
+### Phase Panel
+
+See "Signature Element: Fasepanelet" above. Navigation: clicking a phase navigates via SvelteKit routes. Phase status derived from activities via `derivePhaseStates()`.
+
+### Breadcrumbs
+
+Top nav bar (`--header-height: 48px`), `--color-header-bg`:
+- Path: `Anskaffelser / {procName} / {subRoute}`, 12px, `--color-header-muted`
 - Right side: theme toggle, organization name, avatar circle (24px)
-- Mobile: breadcrumb text truncated (max-width 120px), org/avatar hidden
+- Mobile: hamburger menu button + breadcrumb text truncated (max-width 120px), org/avatar hidden
 
 ### Method Toggle
 

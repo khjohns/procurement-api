@@ -1,6 +1,7 @@
 <script lang="ts">
   import { extractBidders } from '$lib/utils/activities';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
+  import { getTimelineDate } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
 
   let { data } = $props();
@@ -10,7 +11,9 @@
 
   // ── Derived data ──
 
-  const tilbudFrist = $derived(proc?.currentDeadline ?? proc?.timeline?.submission ?? null);
+  const tilbudFrist = $derived(
+    proc?.currentDeadline ?? getTimelineDate(proc, 'submission') ?? null,
+  );
 
   const dagerIgjen = $derived.by(() => {
     if (!tilbudFrist) return null;
