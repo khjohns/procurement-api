@@ -4,26 +4,27 @@
     phases,
     phaseIcons,
     routeToPhase,
-    statusLabels,
-    derivePhaseStatuses,
+    derivePhaseStates,
     type PhaseDefinition,
+    type PhaseState,
   } from '$lib/config/phases';
-  import type { FaseStatus } from '$lib/types/saksmappe';
   import type { Activity } from '$lib/types/activity';
 
   let {
     procId,
     activities = [],
+    proc,
     mobileOpen = false,
     onclose,
   }: {
     procId: string;
     activities?: Activity[];
+    proc?: { currentDeadline?: string; timeline?: { submission?: string } };
     mobileOpen?: boolean;
     onclose?: () => void;
   } = $props();
 
-  const statuses = $derived(derivePhaseStatuses(activities));
+  const states = $derived(derivePhaseStates(activities, proc));
 
   const activePhaseId = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -43,29 +44,24 @@
     onclose?.();
   }
 
-  function statusFor(phase: PhaseDefinition): FaseStatus {
-    return statuses[phase.id] ?? 'kommende';
+  function stateFor(phase: PhaseDefinition): PhaseState {
+    return states[phase.id] ?? { status: 'kommende', meta: 'Kommende' };
   }
 </script>
 
-{#snippet phaseContent(phase: PhaseDefinition, status: FaseStatus)}
+{#snippet phaseContent(phase: PhaseDefinition, state: PhaseState)}
   <div class="phase-icon-col">
     <!-- SVG data is hardcoded trusted content from phaseIcons config -->
     <svg class="phase-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
       {@html phaseIcons[phase.id]}
     </svg>
-    {#if status !== 'kommende'}
+    {#if state.status !== 'kommende'}
       <span class="phase-dot"></span>
     {/if}
   </div>
   <div class="phase-text">
     <span class="phase-label">{phase.label}</span>
-    <span class="phase-meta">
-      {#if status === 'fullfort'}
-        <span class="meta-done">✓</span>
-      {/if}
-      {statusLabels[status]}
-    </span>
+    <span class="phase-meta">{state.meta}</span>
   </div>
 {/snippet}
 
@@ -73,31 +69,31 @@
   {#each phases as phase}
     {@const isActive = phase.id === activePhaseId}
     {@const href = getHref(phase)}
-    {@const status = statusFor(phase)}
+    {@const state = stateFor(phase)}
 
     {#if href !== null}
       <a
         class="phase-item"
         class:phase-current={isActive}
-        class:status-fullfort={status === 'fullfort'}
-        class:status-aktiv={status === 'aktiv'}
-        class:status-kommende={status === 'kommende'}
+        class:status-fullfort={state.status === 'fullfort'}
+        class:status-aktiv={state.status === 'aktiv'}
+        class:status-kommende={state.status === 'kommende'}
         {href}
         aria-current={isActive ? 'step' : undefined}
-        title="{phase.label} — {statusLabels[status]}"
+        title="{phase.label} — {state.meta}"
         onclick={mobile ? handlePhaseClick : undefined}
       >
-        {@render phaseContent(phase, status)}
+        {@render phaseContent(phase, state)}
       </a>
     {:else}
       <div
         class="phase-item phase-disabled"
-        class:status-fullfort={status === 'fullfort'}
-        class:status-aktiv={status === 'aktiv'}
-        class:status-kommende={status === 'kommende'}
-        title="{phase.label} — {statusLabels[status]}"
+        class:status-fullfort={state.status === 'fullfort'}
+        class:status-aktiv={state.status === 'aktiv'}
+        class:status-kommende={state.status === 'kommende'}
+        title="{phase.label} — {state.meta}"
       >
-        {@render phaseContent(phase, status)}
+        {@render phaseContent(phase, state)}
       </div>
     {/if}
   {/each}
@@ -147,12 +143,22 @@
   }
 
   .phase-panel-inner:hover {
-    width: 220px;
+    width: 230px;
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.05);
   }
 
   :global(.dark) .phase-panel-inner:hover {
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Desktop labels: fade in with delay when panel expands */
+  .phase-panel-inner .phase-text {
+    opacity: 0;
+    transition: opacity 0.15s ease 0.06s;
+  }
+
+  .phase-panel-inner:hover .phase-text {
+    opacity: 1;
   }
 
   /* ══════════════════════════════════════════
@@ -197,6 +203,13 @@
     background: var(--color-vekt-bg-strong);
   }
 
+  /* Thicker icon stroke on selected phase */
+  .phase-current .phase-icon :global(path),
+  .phase-current .phase-icon :global(rect),
+  .phase-current .phase-icon :global(circle) {
+    stroke-width: 2;
+  }
+
   .status-fullfort:not(.phase-current) {
     color: var(--color-score-high);
   }
@@ -234,6 +247,23 @@
   .phase-current .phase-dot {
     background: var(--color-vekt);
     box-shadow: 0 0 6px var(--color-vekt);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Pulsing dot on active phase */
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  /* No pulse on completed phases */
+  .status-fullfort .phase-dot {
+    animation: none;
   }
 
   /* ── Text ── */
@@ -274,10 +304,6 @@
   .status-kommende .phase-meta {
     font-family: var(--font-ui);
     color: var(--color-ink-ghost);
-  }
-
-  .meta-done {
-    margin-right: 2px;
   }
 
   .phase-item:focus-visible {

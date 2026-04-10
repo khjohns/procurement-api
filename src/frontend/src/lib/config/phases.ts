@@ -1,11 +1,17 @@
 import type { FaseStatus } from '$lib/types/saksmappe';
 import type { Activity } from '$lib/types/activity';
+import { formatDatoMndKort } from '$lib/utils/format';
 
 export interface PhaseDefinition {
   id: string;
   number: string;
   label: string;
   route: string | null;
+}
+
+export interface PhaseState {
+  status: FaseStatus;
+  meta: string;
 }
 
 /** SVG path data per phase icon (viewBox="0 0 18 18", stroke="currentColor") */
@@ -33,7 +39,6 @@ export const phases: PhaseDefinition[] = [
   { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt' },
 ];
 
-/** Map sub-route segment → phase id (for highlighting active phase) */
 export const routeToPhase: Record<string, string> = {
   konkurranse: 'konkurranse',
   kvalifisering: 'kvalifisering',
@@ -43,7 +48,6 @@ export const routeToPhase: Record<string, string> = {
   kontrakt: 'kontrakt',
 };
 
-/** Map sub-route segment → display label (for breadcrumbs) */
 export const routeLabels: Record<string, string> = {
   konkurranse: 'Konkurranse',
   kvalifisering: 'Kvalifisering',
@@ -59,20 +63,29 @@ export const statusLabels: Record<FaseStatus, string> = {
   kommende: 'Kommende',
 };
 
+function activityDate(activities: Activity[], action: string): string | null {
+  const a = activities.find((x) => x.action === action);
+  if (!a) return null;
+  return formatDatoMndKort(new Date(a.date));
+}
+
+function doneMeta(date: string | null): string {
+  return date ? `✓ ${date}` : '✓ Fullført';
+}
+
 /**
- * Derive phase statuses from procurement activities.
+ * Derive phase statuses and display metadata from activities.
  *
  * Phase gates:
  * - PUBLISH_TO_DOFFIN → konkurranse starts
  * - QUALIFYING_PARTICIPANTS → kvalifisering done
  * - SUBMIT_BID → konkurranse done, evaluering starts
  * - AWARDING_PARTICIPANTS → evaluering done, tildeling starts
- *
- * Kvalifisering can complete independently of konkurranse (e.g. qualification
- * done while still waiting for bids). If bids exist, qualification is
- * implicitly done (open procedures may skip explicit qualification).
  */
-export function derivePhaseStatuses(activities: Activity[]): Record<string, FaseStatus> {
+export function derivePhaseStates(
+  activities: Activity[],
+  proc?: { currentDeadline?: string; timeline?: { submission?: string } },
+): Record<string, PhaseState> {
   const actions = new Set(activities.map((a) => a.action));
   const has = (action: string) => actions.has(action);
 
@@ -81,12 +94,49 @@ export function derivePhaseStatuses(activities: Activity[]): Record<string, Fase
   const hasBids = has('SUBMIT_BID');
   const awarded = has('AWARDING_PARTICIPANTS');
 
+  // Deadline countdown for active konkurranse
+  const deadline = proc?.currentDeadline ?? proc?.timeline?.submission;
+  let fristMeta = 'Aktiv';
+  if (deadline) {
+    const d = new Date(deadline);
+    const dager = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    fristMeta = `Frist: ${formatDatoMndKort(d)} · ${Math.abs(dager)}d`;
+  }
+
   return {
-    registrering: 'fullfort',
-    konkurranse: hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
-    kvalifisering: qualified || hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
-    evaluering: awarded ? 'fullfort' : hasBids ? 'aktiv' : 'kommende',
-    tildeling: awarded ? 'aktiv' : 'kommende',
-    kontrakt: 'kommende',
+    registrering: {
+      status: 'fullfort',
+      meta: doneMeta(activityDate(activities, 'PUBLISH_TO_DOFFIN')),
+    },
+    konkurranse: {
+      status: hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
+      meta: hasBids
+        ? doneMeta(activityDate(activities, 'SUBMIT_BID'))
+        : published
+          ? fristMeta
+          : 'Kommende',
+    },
+    kvalifisering: {
+      status: qualified || hasBids ? 'fullfort' : published ? 'aktiv' : 'kommende',
+      meta:
+        qualified || hasBids
+          ? doneMeta(activityDate(activities, 'QUALIFYING_PARTICIPANTS'))
+          : published
+            ? 'Aktiv'
+            : 'Kommende',
+    },
+    evaluering: {
+      status: awarded ? 'fullfort' : hasBids ? 'aktiv' : 'kommende',
+      meta: awarded
+        ? doneMeta(activityDate(activities, 'AWARDING_PARTICIPANTS'))
+        : hasBids
+          ? 'Aktiv'
+          : 'Kommende',
+    },
+    tildeling: {
+      status: awarded ? 'aktiv' : 'kommende',
+      meta: awarded ? 'Aktiv' : 'Kommende',
+    },
+    kontrakt: { status: 'kommende', meta: 'Kommende' },
   };
 }

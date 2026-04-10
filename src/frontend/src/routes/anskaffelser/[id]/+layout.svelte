@@ -8,7 +8,7 @@
     routeToPhase,
     phases,
     statusLabels,
-    derivePhaseStatuses,
+    derivePhaseStates,
   } from '$lib/config/phases';
   import { formatNOK } from '$lib/utils/format';
   import type { Activity } from '$lib/types/activity';
@@ -41,9 +41,9 @@
     activePhaseId ? phases.find((p) => p.id === activePhaseId) : null,
   );
 
-  const statuses = $derived(derivePhaseStatuses(activities));
+  const phaseStates = $derived(derivePhaseStates(activities, proc));
   const activePhaseStatus = $derived(
-    activePhaseId ? (statuses[activePhaseId] ?? null) : null,
+    activePhaseId ? (phaseStates[activePhaseId]?.status ?? null) : null,
   );
 
   let mobileMenuOpen = $state(false);
@@ -126,6 +126,7 @@
     <PhasePanel
       procId={id}
       {activities}
+      {proc}
       mobileOpen={mobileMenuOpen}
       onclose={() => (mobileMenuOpen = false)}
     />
