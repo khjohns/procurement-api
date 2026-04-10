@@ -763,7 +763,7 @@ class EvaluationStore {
       priceWeight: 0,
       contractValue: eforms?.estimated_value ?? 0,
       suppliers: extractBidders(activities),
-      criteria: [],
+      criteria: [{ id: uid('c'), name: 'Pris', type: 'price' as const, weight: 0, subcriteria: [] }],
     };
   }
 
@@ -772,6 +772,12 @@ class EvaluationStore {
     if (!eforms?.award_criteria?.length) return;
     for (const ac of eforms.award_criteria) {
       const type = ac.type === 'price' ? ('price' as const) : ('quality' as const);
+      // Skip if a price criterion already exists (added by default in _buildFreshData)
+      if (type === 'price' && this.data.criteria.some((c) => c.type === 'price')) {
+        const existing = this.data.criteria.find((c) => c.type === 'price')!;
+        if (ac.weight_percent) this.setCriterionWeight(existing.id, Math.round(ac.weight_percent));
+        continue;
+      }
       const name = ac.name || (type === 'price' ? 'Pris' : 'Kvalitet');
       const criterionId = this.addCriterion(name, type);
       if (ac.weight_percent) {
