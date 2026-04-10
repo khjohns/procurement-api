@@ -100,7 +100,10 @@
     <div class="page-inner wide">
       <div class="empty-state">
         <p>Kunne ikke laste anskaffelsen.</p>
-        <button class="empty-retry" onclick={() => location.reload()}>Prøv igjen</button>
+        <div class="empty-actions">
+          <button class="empty-retry" onclick={() => location.reload()}>Prøv igjen</button>
+          <a href="/anskaffelser" class="empty-back">Tilbake til oversikt</a>
+        </div>
       </div>
     </div>
   {:else}
@@ -134,7 +137,7 @@
 
       <!-- Økonomi -->
       {#if okonomi.length > 0}
-        <div class="card">
+        <div class="card okonomi-card">
           <div class="section-label">Økonomi</div>
           <div class="okonomi-row">
             {#each okonomi as m}
@@ -203,7 +206,7 @@
               href={doffinUrl}
               target="_blank"
               rel="noopener"
-              class="tool-link"
+              class="tool-link tool-link-ref"
             >
               <span class="tool-label">Doffin-kunngjøring</span>
               <span class="tool-desc">Se kunngjøringen på doffin.no</span>
@@ -234,6 +237,12 @@
     font-size: 13px;
   }
 
+  .empty-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+  }
+
   .empty-retry {
     padding: var(--spacing-2) var(--spacing-4);
     background: var(--color-felt);
@@ -250,12 +259,24 @@
     background: var(--color-felt-hover);
   }
 
+  .empty-back {
+    font-size: 13px;
+    color: var(--color-ink-ghost);
+    text-decoration: none;
+    transition: color 0.12s;
+  }
+
+  .empty-back:hover {
+    color: var(--color-ink-secondary);
+  }
+
   /* ── Beskrivelse ── */
   .beskrivelse {
     font-family: var(--font-prose);
     font-size: 14px;
     color: var(--color-ink-secondary);
     line-height: 1.6;
+    max-width: 680px;
   }
 
   /* ── Metadata grid ── */
@@ -272,6 +293,10 @@
   .meta-cell {
     padding: var(--spacing-3) var(--spacing-4);
     background: var(--color-felt);
+  }
+
+  .meta-cell:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .meta-label {
@@ -300,6 +325,14 @@
   }
 
   /* ── Økonomi ── */
+  .okonomi-card {
+    border-left: 3px solid var(--color-vekt);
+  }
+
+  .okonomi-card .meta-label {
+    margin-bottom: var(--spacing-2);
+  }
+
   .okonomi-row {
     display: flex;
     gap: var(--spacing-6);
@@ -331,6 +364,10 @@
     align-items: center;
     padding: var(--spacing-2) 0;
     border-top: 1px solid var(--color-wire);
+  }
+
+  .kriterie-row:first-child {
+    border-top: none;
   }
 
   .kriterie-name {
@@ -385,6 +422,19 @@
     font-size: 12px;
     color: var(--color-ink-ghost);
     flex-shrink: 0;
+  }
+
+  .tool-link-ref {
+    background: var(--color-felt-raised);
+    margin-top: var(--spacing-1);
+  }
+
+  .tool-link-ref:hover {
+    background: var(--color-felt-hover);
+  }
+
+  .tool-link-ref .tool-label {
+    color: var(--color-ink-secondary);
   }
 
   @media (max-width: 768px) {
