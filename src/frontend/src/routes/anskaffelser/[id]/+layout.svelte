@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { beforeNavigate } from '$app/navigation';
+  import { setContext } from 'svelte';
   import { themeStore } from '$lib/stores/theme.svelte';
   import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
   import {
@@ -55,6 +56,8 @@
   const activePhaseStatus = $derived(
     activePhaseId ? (phaseStates[activePhaseId]?.status ?? null) : null,
   );
+
+  setContext('phaseStates', () => phaseStates);
 
   let mobileMenuOpen = $state(false);
 

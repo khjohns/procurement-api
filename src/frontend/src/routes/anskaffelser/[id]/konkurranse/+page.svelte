@@ -1,13 +1,18 @@
 <script lang="ts">
+  import { getContext } from 'svelte';
   import { extractBidders } from '$lib/utils/activities';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
   import { getTimelineDate } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
+  import type { PhaseState } from '$lib/config/phases';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
+
+  const getPhaseStates = getContext<() => Record<string, PhaseState>>('phaseStates');
+  const hasBids = $derived(getPhaseStates().konkurranse?.status === 'fullfort');
 
   // ── Frist ──
 
@@ -56,8 +61,6 @@
         : tilbud.map((l) => ({ navn: l.name, status: 'Tilbud', kvalifisert: false }));
     return { kval: kval.length, avvist: avvist.length, tilbud: tilbud.length, rader };
   });
-
-  const hasBids = $derived(stats.tilbud > 0);
 
   const levDefaultCount = 4;
   let levExpanded = $state(false);
