@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, THRESHOLD_LABELS, lookupLabel } from '$lib/utils/protokoll-helpers';
+  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, THRESHOLD_LABELS, lookupLabel, stripHtml } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
@@ -94,7 +94,8 @@
   );
 
   // Description
-  const beskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
+  const rawBeskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
+  const beskrivelse = $derived(rawBeskrivelse ? stripHtml(rawBeskrivelse) : null);
 </script>
 
 <div class="reg-page">
@@ -214,6 +215,7 @@
     color: var(--color-ink-secondary);
     line-height: 1.6;
     max-width: 680px;
+    white-space: pre-line;
   }
 
   /* ── Metadata grid ── */
