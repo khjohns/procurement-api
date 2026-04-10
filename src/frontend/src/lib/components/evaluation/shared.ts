@@ -29,6 +29,15 @@ export function scoreBg(v: number | null | undefined): string {
   return TIER_BGS[scoreTier(v)];
 }
 
+/** Layout thresholds for supplier count. */
+export const VERTICAL_THRESHOLD = 5;
+export const COMPACT_THRESHOLD = 4;
+
+/** Short display name (first word) for compact layouts. */
+export function shortName(name: string): string {
+  return name.split(' ')[0] ?? name;
+}
+
 const _nf = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
 
 /** Format number with Norwegian locale (no decimals). */

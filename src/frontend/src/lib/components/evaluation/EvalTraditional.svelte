@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { evaluation, fmt1 } from '$lib/stores/evaluation.svelte';
+  import { evaluation } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
+  import AutoTextarea from './AutoTextarea.svelte';
+  import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
-  import { scoreColor, fS } from './shared';
+  import { scoreColor, fS, shortName, VERTICAL_THRESHOLD, COMPACT_THRESHOLD } from './shared';
 
   let { criterion }: { criterion: Criterion } = $props();
 
   let suppliers = $derived(evaluation.data.suppliers);
-  let compact = $derived(suppliers.length > 3);
+  let useVertical = $derived(suppliers.length >= VERTICAL_THRESHOLD);
+  let compact = $derived(suppliers.length >= COMPACT_THRESHOLD);
   let subs = $derived(criterion.subcriteria);
   let activeSubId = $state('');
 
@@ -39,34 +42,69 @@
   {/each}
 </div>
 
-<!-- Supplier cards for active sub-criterion -->
+<!-- Supplier evaluation for active sub-criterion -->
 {#if activeSub}
-  <div
-    class="cards-grid"
-    style:--card-columns="repeat({suppliers.length}, minmax({compact ? '170px' : '200px'}, 1fr))"
-  >
-    {#each suppliers as lev (lev.id)}
-      {@const score = activeSub.scores?.[lev.id] ?? null}
-      <div class="card">
-        <div class="card-header">
-          <span class="card-name">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</span>
+  {#if useVertical}
+    <VerticalRows
+      {suppliers}
+      scoreFn={(id) => activeSub?.scores?.[id] ?? null}
+    >
+      {#snippet headerColumns()}
+        <span class="vrow-col-score">Score</span>
+        <span class="vrow-col-note">Begrunnelse</span>
+      {/snippet}
+      {#snippet row({ supplier: lev, setFocus })}
+        <div class="vrow-supplier">
+          <div class="vrow-supplier-name">{shortName(lev.name)}</div>
+        </div>
+        <div class="vrow-score">
           <ScoreField
-            value={score}
+            value={activeSub!.scores?.[lev.id] ?? null}
             onchange={(v) => {
               if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
             }}
           />
         </div>
-        <textarea
-          class="card-textarea"
-          value={activeSub.notes?.[lev.id] ?? ''}
-          oninput={(e) => evaluation.setNote(activeSub!.id, lev.id, e.currentTarget.value)}
-          placeholder="Begrunnelse..."
-          rows="3"
-        ></textarea>
-      </div>
-    {/each}
-  </div>
+        <div class="vrow-note">
+          <AutoTextarea
+            value={activeSub!.notes?.[lev.id] ?? ''}
+            oninput={(v) => evaluation.setNote(activeSub!.id, lev.id, v)}
+            placeholder="Begrunnelse..."
+            onfocus={setFocus}
+          />
+        </div>
+      {/snippet}
+    </VerticalRows>
+  {:else}
+    <div
+      class="cards-grid"
+      style:--card-columns="repeat({suppliers.length}, minmax({compact ? '170px' : '200px'}, 1fr))"
+    >
+      {#each suppliers as lev (lev.id)}
+        {@const score = activeSub.scores?.[lev.id] ?? null}
+        <div class="card">
+          <div class="card-header">
+            <span class="card-name"
+              >{compact ? shortName(lev.name) : lev.name}</span
+            >
+            <ScoreField
+              value={score}
+              onchange={(v) => {
+                if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
+              }}
+            />
+          </div>
+          <textarea
+            class="card-textarea"
+            value={activeSub.notes?.[lev.id] ?? ''}
+            oninput={(e) => evaluation.setNote(activeSub!.id, lev.id, e.currentTarget.value)}
+            placeholder="Begrunnelse..."
+            rows="3"
+          ></textarea>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 <!-- Summary table -->
@@ -79,7 +117,7 @@
           <th class="th" style="width: 140px;">Underkriterium</th>
           <th class="th th-center" style="width: 40px;">Vekt</th>
           {#each suppliers as lev (lev.id)}
-            <th class="th th-center">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</th
+            <th class="th th-center">{compact ? shortName(lev.name) : lev.name}</th
             >
           {/each}
         </tr>
@@ -117,6 +155,7 @@
 <SamletVurdering label={criterion.name} criterionId={criterion.id} {criterion} />
 
 <style>
+  /* ── Sub-criterion tabs ── */
   .sub-tabs {
     display: flex;
     align-items: center;
@@ -160,6 +199,41 @@
     color: var(--color-score-high);
   }
 
+  /* ── Vertical row content ── */
+  .vrow-col-score {
+    width: 44px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .vrow-col-note {
+    flex: 1;
+  }
+
+  .vrow-supplier {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .vrow-supplier-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .vrow-score {
+    width: 44px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .vrow-note {
+    flex: 1;
+    max-width: 600px;
+  }
+
+  /* ── Card grid layout ── */
   .cards-grid {
     display: grid;
     grid-template-columns: var(--card-columns);
@@ -207,7 +281,7 @@
     box-shadow: 0 0 0 2px var(--color-vekt-bg);
   }
 
-  /* Summary table */
+  /* ── Summary table ── */
   .summary {
     margin-top: var(--spacing-5);
     padding: var(--spacing-3) var(--spacing-4);
