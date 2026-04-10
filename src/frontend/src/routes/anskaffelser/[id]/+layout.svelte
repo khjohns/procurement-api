@@ -9,10 +9,12 @@
 
   // Map sub-routes to display labels for breadcrumbs
   const routeLabels: Record<string, string> = {
+    konkurranse: 'Konkurranse',
     kvalifisering: 'Kvalifisering',
     evaluering: 'Evaluering',
     protokoll: 'Protokoll',
     meddelelse: 'Meddelelse',
+    kontrakt: 'Kontrakt',
   };
 
   const currentSubRoute = $derived.by(() => {

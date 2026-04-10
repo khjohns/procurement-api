@@ -15,10 +15,11 @@
 
   const phases: Phase[] = [
     { id: 'registrering', number: '01', label: 'Registrering', route: '', status: 'fullfort' },
-    { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'kvalifisering', status: 'aktiv' },
-    { id: 'evaluering', number: '03', label: 'Evaluering', route: 'evaluering', status: 'kommende' },
-    { id: 'tildeling', number: '04', label: 'Tildeling', route: 'protokoll', status: 'kommende' },
-    { id: 'kontrakt', number: '05', label: 'Kontrakt', route: null, status: 'kommende' },
+    { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'konkurranse', status: 'aktiv' },
+    { id: 'kvalifisering', number: '03', label: 'Kvalifisering', route: 'kvalifisering', status: 'fullfort' },
+    { id: 'evaluering', number: '04', label: 'Evaluering', route: 'evaluering', status: 'kommende' },
+    { id: 'tildeling', number: '05', label: 'Tildeling', route: 'protokoll', status: 'kommende' },
+    { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt', status: 'kommende' },
   ];
 
   // SVG path data per phase icon (viewBox="0 0 18 18")
@@ -27,6 +28,8 @@
       '<rect x="3.5" y="1.5" width="11" height="15" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 5.5h6M6 8.5h6M6 11.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
     konkurranse:
       '<path d="M13.5 3L7 6H4a1 1 0 00-1 1v4a1 1 0 001 1h3l6.5 3V3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+    kvalifisering:
+      '<path d="M9 2v5M5 4.5L9 7l4-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8h12M3 11.5h12M5 15h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
     evaluering:
       '<path d="M3.5 14V8.5M7 14V5M10.5 14V9.5M14.5 14V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
     tildeling:
@@ -41,10 +44,12 @@
     if (pathname === base || pathname === `${base}/`) return 'registrering';
     const sub = pathname.slice(base.length + 1).split('/')[0];
     const routeMap: Record<string, string> = {
-      kvalifisering: 'konkurranse',
+      konkurranse: 'konkurranse',
+      kvalifisering: 'kvalifisering',
       evaluering: 'evaluering',
       protokoll: 'tildeling',
       meddelelse: 'tildeling',
+      kontrakt: 'kontrakt',
     };
     return routeMap[sub] ?? null;
   });
