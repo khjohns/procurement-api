@@ -41,7 +41,7 @@
 <style>
   .auto-textarea {
     width: 100%;
-    padding: 5px 8px;
+    padding: var(--spacing-1) var(--spacing-2);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
     background: var(--color-felt-raised);

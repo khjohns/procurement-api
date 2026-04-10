@@ -370,7 +370,7 @@
 
   .vrow-sort {
     margin-left: auto;
-    padding: 3px 8px;
+    padding: var(--spacing-1) var(--spacing-2);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
     font-size: 10px;
@@ -380,6 +380,16 @@
     outline: none;
     cursor: pointer;
     flex-shrink: 0;
+    transition: border-color 0.12s;
+  }
+
+  .vrow-sort:hover {
+    border-color: var(--color-wire-strong);
+  }
+
+  .vrow-sort:focus {
+    border-color: var(--color-vekt);
+    box-shadow: 0 0 0 2px var(--color-vekt-bg);
   }
 
   .vrow {
@@ -389,6 +399,10 @@
     padding: var(--spacing-2) var(--spacing-4);
     background: var(--color-felt);
     transition: background 0.15s, opacity 0.2s;
+  }
+
+  .vrow:hover:not(.vrow-focus) {
+    background: var(--color-felt-hover);
   }
 
   .vrow-res {
