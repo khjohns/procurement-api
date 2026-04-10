@@ -16,16 +16,19 @@ Tre verb: *klassifisere* (registrering), *vurdere* (evaluering), *begrunne* (pro
 
 **Ikke** et dashboard (hun overvåker ikke). **Ikke** en wizard (hun vet hva hun gjør). **Ikke** et skjema (hun fyller ikke ut, hun *vurderer*). Nærmest en *arbeidsbenk* — et sted der materialer (tilbud, kriterier, scores) ligger fremme, og hun jobber med dem systematisk.
 
-### Two Visual Modes
+### One Visual Language
 
-The interface has two distinct visual modes, selected by content purpose:
+All pages share one consistent visual language. There is no modal split between "orientation" and "work" — the user switches between phase pages and work surfaces via the phase panel, and each transition should feel like turning a page in the same book, not switching applications.
 
-| Modus | Formål | Layout | Dybde | Radius | Eksempler |
-|---|---|---|---|---|---|
-| **Orientering** | Scanning, status, navigasjon | Bento grid (størrelse = viktighet) | Shadows (kort svever) | 10–14px (myk, fysisk) | Registrering, konkurranse, tildeling, kontrakt |
-| **Arbeid** | Vurdering, scoring, skriving | Uniform vertikal (likebehandling) | Borders-only (stille struktur) | 4–8px (teknisk, presis) | Evaluering, kvalifisering, protokoll |
+**Depth:** Borders define structure. `1px solid var(--color-wire)` for cards and sections, `var(--color-wire-strong)` for group dividers. No box-shadows on cards. The only shadow in the system is `--shadow-overlay` for drawers/modals.
 
-The phase panel bridges both modes — always visible, always the same.
+**Radius:** `4–8px` throughout (`--radius-sm`, `--radius-md`, `--radius-lg`). Technical and precise — not the 10–14px of consumer/marketing layouts.
+
+**Surfaces:** Cards use `--color-felt` on `--color-canvas`. Layering through background color shift, not elevation. Hover states use `--color-felt-hover`, not shadow deepening.
+
+**Why not two modes?** The user (innkjøpsrådgiver) navigates between registrering → evaluering → tildeling → protokoll via the phase panel. If each transition changed depth strategy, radius, and hover behavior, it would create cognitive load without information value. The phase panel and content header already communicate where the user is.
+
+Pages differ in *layout and content density* — a phase overview has stacked sections with metadata grids, while an evaluation workspace has a matrix with a side panel. But the visual vocabulary (borders, radius, surfaces, typography) is the same.
 
 ### Signature Element: Fasepanelet
 
@@ -69,15 +72,15 @@ All pages under `/anskaffelser/[id]` share a persistent shell:
 
 ### Narrativskille
 
-| Nivå | Rute | Metafor | Formål | Visuell modus |
+| Nivå | Rute | Metafor | Formål | Layout |
 |---|---|---|---|---|
-| 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Orientering |
-| 2 | `/anskaffelser/[id]` | **Faseoversikt** | Status, fremdrift, neste steg | Orientering (bento) |
-| 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Arbeid (uniform) |
+| 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Tidslinje / tabell |
+| 2 | `/anskaffelser/[id]` | **Faseoversikt** | Status, fremdrift, neste steg | Stablede seksjoner |
+| 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Oppgavespesifikt |
 
-**Fasesider** (registrering, konkurranse, tildeling, kontrakt) bruker orienteringsmodus — bento-grid der kortstørrelse kommuniserer viktighet. Hero-kort (2×1 eller 2×2) for frister og nøkkeltall. Mindre kort for dokumenter og team.
+**Fasesider** (registrering, konkurranse, tildeling, kontrakt) bruker stablede seksjoner — vertikal scanning med typografisk hierarki for å kommunisere viktighet. Store monospace-tall for nøkkelverdier (frist, verdi), kompakte metadata-grids for klassifisering, lister for hendelser og leverandører. Innholdet bestemmer seksjonslayout, ikke en forhåndsdefinert grid.
 
-**Arbeidsflater** (evaluering, kvalifisering, protokoll, meddelelse) bruker arbeidsmodus — uniform layout for likebehandlet vurdering.
+**Arbeidsflater** (evaluering, kvalifisering, protokoll, meddelelse) har oppgavespesifikke layouts — matrise med sidepanel for evaluering, dokumentstruktur for protokoll. Ulike oppgaver fortjener ulike grensesnitt, men samme visuelle vokabular (borders, radius, fonter, farger).
 
 ### Kontrollbordet — visninger
 
@@ -288,6 +291,12 @@ All tokens are defined in `@theme` (light values) in `app.css` and overridden in
 - **Aldri bytt font inni en sammenhengende tekstlinje.**
 - **Linjen tar fonten til sin primære funksjon:** Datasammenligning = hele linjen mono. Narrativ setning = hele linjen sans.
 
+### Minimumsstørrelse
+
+**11px er minimum for all lesbar tekst.** Ingenting under 11px i produksjon — verken labels, badges, metadata eller fotnoter. 9–10px er uleselig på 1080p kontorskjermer ved 110 PPI, spesielt i lavkontrastfarger som `--color-ink-ghost`.
+
+Tidligere spesifikasjoner som brukte 9–10px (section labels, badges, compact metadata) er oppjustert til 11px i tabellen under. **NB:** Component Patterns-seksjonen nedenfor inneholder eldre 10px/9px-referanser som skal leses som 11px.
+
 ### Skala
 
 | Bruk | Font | Størrelse | Vekt | Annet |
@@ -298,6 +307,8 @@ All tokens are defined in `@theme` (light values) in `app.css` and overridden in
 | Prose body | `--font-prose` | 14px | 400 | line-height 1.6 |
 | Document titles | `--font-prose` | 17–19px | 600 | |
 | Data values | `--font-data` | 13px | 500 | tabular-nums |
+| Compact metadata | `--font-data` | 11px | 500 | tabular-nums, `ink-ghost` |
+| Badges/pills | `--font-ui` | 11px | 600 | |
 
 ---
 
@@ -318,6 +329,27 @@ Base unit: **4px**
 
 ---
 
+## Screen Size Position
+
+The primary user is an innkjøpsrådgiver on a standard office monitor. Design explicitly for this context.
+
+| Prioritet | Skjerm | Effektiv viewport | Stilling |
+|---|---|---|---|
+| **Primær** | 20–24" 1080p, 100% zoom | ~1868 × 832 (etter app-chrome) | Optimert for dette |
+| **Sekundær** | Samme, 125% zoom | ~1484 × 636 | Skal fungere godt |
+| **Tertiær** | 13–15" laptop, 100–125% | ~1200–1400 × 600–700 | Skal fungere |
+| **Minimum** | 150% zoom / liten skjerm | ~1228 × 492 | Brukbart, ingen layout-brudd |
+
+Mobilvisning er irrelevant — innkjøpsrådgivere evaluerer ikke tilbud på telefonen. Mobil-breakpoints (≤768px) sikrer at siden ikke *brekker*, men er ikke et designmål.
+
+**Vertikal plass er premium.** Med ~832px tilgjengelig (primærmål) etter header, case-info og content-header, bør fasesider vise alt viktig innhold uten scrolling. Card-padding og section-gaps skal være nøkterne, ikke generøse.
+
+**Horisontal plass: bruk den formålsdrevet.** Med fasepanelet (52px collapsed) har innholdsområdet ~1868px. `.page-inner` begrenser dette til maks-bredde. Bredden tilpasses innholdstypen — se Content Width nedenfor.
+
+**"Designet på retina, brukt på 1080p"-fellen:** 1080p ved 110 PPI gir fuzzier tekst enn retina. Alle fontstørrelser og kontraster må testes ved 1080p/100% zoom, ikke bare retina. Se minimumsstørrelser i Typography.
+
+---
+
 ## Radius
 
 Technical, not friendly:
@@ -332,81 +364,53 @@ Technical, not friendly:
 
 ## Content Width
 
-Match panel width to content density. Form-style pages (setup, configuration) use narrower panels; data-dense pages (matrices, tables) use wider panels.
+Match content width to content type and reading pattern. The vertical scan axis (left edge) stays fixed — sections start at the same left position but extend differently to the right.
 
 | Innholdstype | Bredde | Eksempel |
 |---|---|---|
-| Prose/skjema | `max-width: 880px`, sentrert | Evalueringsoppsett, protokollskjema |
+| Prose/skjema | `max-width: 880px`, sentrert | Protokollskjema, evalueringsoppsett |
+| **Faseoversikter** | **`max-width: 1060px`, sentrert** | **Registrering, konkurranse, tildeling, kontrakt** |
 | Datatett/matrise | Full bredde (side-padding 100px) | Evalueringsmatrise, oversiktstabeller |
 | Begrunnelsestekst | `max-width: 760px`, venstrejustert | Samlet vurdering per kriterium |
 
-Panelet (`.eval-card`) wrapper innholdet med border og radius. Bredden tilpasser seg innholdstypen via CSS-klasse (f.eks. `.eval-card-narrow`). På skjermer under 1200px faller side-padding tilbake til `--spacing-6`.
+**Fasesider bruker 1060px** i stedet for 880px. Ved 1080p/100% zoom gir dette ~57% utnyttelse av tilgjengelig bredde — tydelig sentrert med pusterom, men bred nok for to-kolonne metadata-grids (2 × 500px) og bredere lister. Ved 125% zoom (effektiv 1484px) brukes ~71%, som fortsatt er komfortabelt. Ved 150% zoom (effektiv 1228px) nærmer det seg full bredde — akseptabelt.
+
+Prosebredde (880px) holdes for protokoll, meddelelse, og andre dokumentorienterte sider. Lange tekstlinjer over 65–75 tegn er vanskeligere å lese — 880px holder prosa i optimal lesebredde.
+
+Panelet (`.eval-card`) wrapper innholdet med border og radius. Bredden tilpasser seg innholdstypen via CSS-klasse. På skjermer under 1200px faller side-padding tilbake til `--spacing-6`.
 
 ---
 
 ## Depth Strategy
 
-**Context-dependent.** Two depth strategies for two visual modes.
+**Borders-only.** One depth strategy for the entire application.
 
-### Arbeidsmodus (matrices, scoring)
-Borders-only. Dense data + dark mode = borders define structure quietly.
+- Cards and sections: `1px solid var(--color-wire)`, `--radius-md`
+- Group dividers: `var(--color-wire-strong)`
+- Accent emphasis: `border-left: 3px solid var(--color-vekt)` for weight spine, hero sections, deadline cards
+- Faded accent: `border-left: 3px solid rgba(232, 168, 56, 0.15)` for sub-rows
+- No box-shadows on cards. No hover elevation. No scale transforms.
+- The only shadow: `--shadow-overlay` for drawers and modals.
+- Material metaphor: *felt and paper*, not glass. Warm opaque surfaces (`--color-felt` on `--color-canvas`).
 
-- Group rows: `border-left: 3px solid var(--color-vekt)` (weight spine)
-- Sub-rows: `border-left: 3px solid rgba(232, 168, 56, 0.15)` (faded spine)
-- Separators: `1px solid var(--color-wire)` standard, `var(--color-wire-strong)` for group dividers
-- Annotation panel: `border-left: 3px solid var(--color-vekt)` (connects to spine)
+### Hover
 
-### Orienteringsmodus (bento phase pages)
-Shadow-based. Cards float on canvas, borders are invisible or minimal.
+Cards and interactive rows: `background: var(--color-felt-hover)` (200ms ease). No shadow, no lift, no scale. The felt surface *warms* on hover — it doesn't levitate.
 
-- Cards: `0 1px 6px rgba(0,0,0,0.03)` at rest
-- Hover: `0 6px 24px rgba(0,0,0,0.08)` + `translateY(-1px)` + `scale(1.02)` (200ms ease)
-- Hero cards: accent left-border (3px `--color-vekt`) for emphasis
-- No visible card borders — depth comes from shadow alone
-- Radius: `--radius-bento: 10px` for bento cards (larger than work mode's 4-8px)
+### Progressive Disclosure (Click-to-Expand)
 
-### Bento Grid Pattern
-
-Used for orientation/phase pages. Size encodes importance.
-
-```
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-gap: 14px;
-```
-
-- **Hero card** (span 2 columns): Primary content — deadline countdown, key action, summary
-- **Standard card** (span 1): Supporting content — leverandører, dokumenter, metadata
-- **Responsive**: 3 columns at 1200px+, 2 at 768-1199px, 1 (stacked) below 768px
-- Reorder by importance on small screens, not by desktop position
-
-Card anatomy:
-- Section label (10px uppercase, ghost) at top
-- Content area with generous padding (20-24px)
-- Optional footer with actions or meta
-
-### Bento Interaction
-
-- **Hover elevation**: card lifts 1px + shadow deepens + `scale(1.02)` (200ms ease)
-- **No glassmorphism**: We use warm opaque surfaces, not translucent glass. The material metaphor is *felt* and *paper*, not *glass*.
-- **Staggered entry**: cards fade-up on page load (60-100ms stagger). Respect `prefers-reduced-motion`.
-- **Click-to-expand**: cards with hidden depth (hendelser, leverandører) show truncated content with inline expand. Not for navigation cards — those link via routes.
-
-### Kinetic Typography
-
-Deadline countdowns (tilbudsfrist, vedståelsesfrist, karensperiode) use animated number transitions on page load — a brief count-up to the current value. Subtle `letter-spacing` or `font-variation-settings` shift on hover. Reserved for time-sensitive values where urgency matters. The effect should feel precise and authoritative, not playful.
+Cards with hidden depth (hendelser, leverandører) show truncated content with inline expand. Not for navigation cards — those link via routes. Expand animation: `max-height` transition + fadeIn for new content.
 
 ### Time-Sensitive Urgency
 
-Deadline cards change visual character based on proximity:
-- `>30 days`: calm, standard bento card. Teal accent (`--color-vekt`).
-- `10–30 days`: amber accent (`--color-warn`), slightly more prominent.
-- `<10 days`: warn colors, possibly neo-brutal style. The card "escalates" visually.
-- `Expired`: rose/score-low (`--color-score-low`), muted. Not alarm — just clear.
+Deadline values change color based on proximity. The card structure stays the same — only the accent color shifts:
 
-### Neo-Brutal Accent Card
+- `>30 days`: teal accent (`--color-vekt`). Calm, standard.
+- `10–30 days`: amber accent (`--color-warn`). Slightly more attention.
+- `<10 days`: warn colors (`--color-warn` text, `--color-warn-bg` background). Clear urgency.
+- `Expired`: rose/score-low (`--color-score-low`), muted. Not alarm — just clear that the deadline has passed.
 
-One card per bento grid may break the soft style to prevent visual monotony: solid accent color background, hard shadow (`4px 4px 0`), thick border. Used sparingly — max one per grid. Color from existing palette. Candidates: deadline urgency, key financial figures, "next action" prompts.
+The deadline number itself (48px monospace) carries the information. No animated count-ups, no kinetic typography — the number should be immediately readable, not theatrical.
 
 ---
 
