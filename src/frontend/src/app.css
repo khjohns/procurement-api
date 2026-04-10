@@ -228,3 +228,48 @@ input[type='number']::-webkit-inner-spin-button {
 .page-inner.wide {
   max-width: 1060px;
 }
+
+/* ── Shared empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-4);
+  min-height: 200px;
+  color: var(--color-ink-ghost);
+  font-size: 13px;
+}
+
+.empty-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.empty-retry {
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--color-felt);
+  border: 1px solid var(--color-wire);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.empty-retry:hover {
+  background: var(--color-felt-hover);
+}
+
+.empty-back {
+  font-size: 13px;
+  color: var(--color-ink-ghost);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.empty-back:hover {
+  color: var(--color-ink-secondary);
+}

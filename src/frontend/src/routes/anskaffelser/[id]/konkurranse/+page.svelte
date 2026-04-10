@@ -9,11 +9,6 @@
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
 
-  // ── Phase state ──
-
-  const hasBids = $derived(activities.some((a) => a.action === 'SUBMIT_BID'));
-  const faseFullfort = $derived(hasBids);
-
   // ── Frist ──
 
   const tilbudFrist = $derived(
@@ -61,6 +56,8 @@
         : tilbud.map((l) => ({ navn: l.name, status: 'Tilbud', kvalifisert: false }));
     return { kval: kval.length, avvist: avvist.length, tilbud: tilbud.length, rader };
   });
+
+  const hasBids = $derived(stats.tilbud > 0);
 
   const levDefaultCount = 4;
   let levExpanded = $state(false);
@@ -129,7 +126,7 @@
   {:else}
     <div class="page-inner wide">
       <!-- Frist -->
-      {#if faseFullfort}
+      {#if hasBids}
         <div class="frist-card frist-done">
           <div class="frist-header">
             <span class="section-label">Tilbudsfrist</span>
@@ -142,7 +139,6 @@
       {:else}
         <div
           class="frist-card"
-          class:frist-calm={urgency === 'calm'}
           class:frist-attention={urgency === 'attention'}
           class:frist-urgent={urgency === 'urgent'}
           class:frist-expired={urgency === 'expired'}
@@ -235,51 +231,6 @@
     overflow-y: auto;
   }
 
-  /* ── Empty state ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-4);
-    min-height: 200px;
-    color: var(--color-ink-ghost);
-    font-size: 13px;
-  }
-
-  .empty-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-  }
-
-  .empty-retry {
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.12s;
-  }
-
-  .empty-retry:hover {
-    background: var(--color-felt-hover);
-  }
-
-  .empty-back {
-    font-size: 13px;
-    color: var(--color-ink-ghost);
-    text-decoration: none;
-    transition: color 0.12s;
-  }
-
-  .empty-back:hover {
-    color: var(--color-ink-secondary);
-  }
-
   /* ── Grid ── */
   .grid-two {
     display: grid;
@@ -295,9 +246,10 @@
 
   /* ── Frist card ── */
   .frist-card {
+    --frist-accent: var(--color-vekt);
     background: var(--color-felt);
     border: 1px solid var(--color-wire);
-    border-left: 3px solid var(--color-vekt);
+    border-left: 3px solid var(--frist-accent);
     border-radius: var(--radius-md);
     padding: var(--spacing-5);
   }
@@ -331,7 +283,7 @@
     font-size: 48px;
     font-weight: 300;
     line-height: 1;
-    color: var(--color-vekt);
+    color: var(--frist-accent);
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
@@ -359,42 +311,10 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Urgency: calm (>30d) — default teal */
-  .frist-calm {
-    border-left-color: var(--color-vekt);
-  }
-
-  .frist-calm .frist-tall {
-    color: var(--color-vekt);
-  }
-
-  /* Urgency: attention (10-30d) — amber */
-  .frist-attention {
-    border-left-color: var(--color-warn);
-  }
-
-  .frist-attention .frist-tall {
-    color: var(--color-warn);
-  }
-
-  /* Urgency: urgent (<10d) — amber with background */
-  .frist-urgent {
-    border-left-color: var(--color-warn);
-    background: var(--color-warn-bg);
-  }
-
-  .frist-urgent .frist-tall {
-    color: var(--color-warn);
-  }
-
-  /* Urgency: expired — rose, muted */
-  .frist-expired {
-    border-left-color: var(--color-score-low);
-  }
-
-  .frist-expired .frist-tall {
-    color: var(--color-score-low);
-  }
+  /* Urgency variants — override --frist-accent */
+  .frist-attention { --frist-accent: var(--color-warn); }
+  .frist-urgent    { --frist-accent: var(--color-warn); background: var(--color-warn-bg); }
+  .frist-expired   { --frist-accent: var(--color-score-low); }
 
   /* Frist done — phase complete */
   .frist-done {
