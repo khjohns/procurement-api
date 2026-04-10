@@ -1,19 +1,13 @@
 <script lang="ts">
-  import SaksmappeTeam from '$lib/components/saksmappe/SaksmappeTeam.svelte';
   import { formatNOK } from '$lib/utils/format';
-  import { demoSaksmappe } from '$lib/data/saksmappe-demo';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
 
-  // Team from demo data until API supports it
-  const { team } = demoSaksmappe;
-
   interface MetaItem {
     label: string;
     value: string;
-    mono?: boolean;
     ref?: string;
   }
 
@@ -34,15 +28,15 @@
       proc.estimated_value && {
         label: 'Anslått verdi',
         value: formatNOK(proc.estimated_value),
-        mono: true,
       },
       proc.total_value && {
         label: 'Kontraktsverdi',
         value: formatNOK(proc.total_value),
-        mono: true,
       },
     ].filter(Boolean) as MetaItem[];
   });
+
+  const procId = $derived(proc?.id);
 </script>
 
 <div class="reg-page">
@@ -90,29 +84,39 @@
         </div>
       {/if}
 
-      <!-- Team -->
-      <div class="card">
-        <SaksmappeTeam {team} />
-      </div>
-
       <!-- Verktøy -->
       <div class="card">
         <div class="section-label">Verktøy</div>
         <div class="tools-grid">
-          <a href="/verktoy/unntak" class="tool-link">
+          <a
+            href="/verktoy/unntak"
+            target="_blank"
+            rel="noopener"
+            class="tool-link"
+          >
             <span class="tool-label">Unntaksveiviser</span>
             <span class="tool-desc">Sjekk om unntak fra forskriften gjelder</span>
-            <span class="tool-arrow">›</span>
+            <span class="tool-ext">↗</span>
           </a>
-          <a href="/verktoy/kalkulator" class="tool-link">
+          <a
+            href="/verktoy/kalkulator"
+            target="_blank"
+            rel="noopener"
+            class="tool-link"
+          >
             <span class="tool-label">Terskelverdikalkulator</span>
             <span class="tool-desc">Beregn terskelverdi og gjeldende del</span>
-            <span class="tool-arrow">›</span>
+            <span class="tool-ext">↗</span>
           </a>
-          <a href="/verktoy/fristberegner" class="tool-link">
+          <a
+            href="/verktoy/fristberegner"
+            target="_blank"
+            rel="noopener"
+            class="tool-link"
+          >
             <span class="tool-label">Fristberegner</span>
             <span class="tool-desc">Beregn minimumsfrister for prosedyren</span>
-            <span class="tool-arrow">›</span>
+            <span class="tool-ext">↗</span>
           </a>
         </div>
       </div>
@@ -266,9 +270,9 @@
     flex: 1;
   }
 
-  .tool-arrow {
-    font-size: 14px;
-    color: var(--color-vekt);
+  .tool-ext {
+    font-size: 12px;
+    color: var(--color-ink-ghost);
     flex-shrink: 0;
   }
 
