@@ -20,7 +20,20 @@
         .map((s) => evaluation.evaluatedPrices[s.id] ?? Infinity)
     )
   );
+  let ranked = $derived(evaluation.ranking);
 </script>
+
+{#if ranked.length >= 2}
+  <div class="ranking-badges">
+    {#each ranked.slice(0, 3) as item, i (item.supplier.id)}
+      <span class="rank-item">
+        <span class="rank-badge" class:rank-badge-leader={i === 0}>{i + 1}</span>
+        <span class="rank-name" class:rank-name-leader={i === 0}>{item.supplier.name}</span>
+        <span class="rank-score">{item.score.toFixed(2)}</span>
+      </span>
+    {/each}
+  </div>
+{/if}
 
 <div class="matrix-scroll" class:matrix-compact={compact}>
   <table class="matrix">
@@ -126,6 +139,61 @@
 </div>
 
 <style>
+  /* ── Ranking badges ── */
+  .ranking-badges {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-4);
+    flex-wrap: wrap;
+  }
+
+  .rank-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-right: var(--spacing-2);
+  }
+
+  .rank-badge {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--font-data);
+    background: var(--color-felt-raised);
+    color: var(--color-ink-ghost);
+    border: 1px solid var(--color-wire);
+  }
+
+  .rank-badge-leader {
+    background: var(--color-score-high);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .rank-name {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--color-ink);
+  }
+
+  .rank-name-leader {
+    font-weight: 600;
+    color: var(--color-score-high);
+  }
+
+  .rank-score {
+    font-size: 10px;
+    font-family: var(--font-data);
+    color: var(--color-ink-ghost);
+  }
+
+  /* ── Matrix ── */
   .matrix-scroll {
     overflow-x: auto;
   }

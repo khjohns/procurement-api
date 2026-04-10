@@ -2,18 +2,24 @@
   import { evaluation, weightedItemScore } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
+  import AutoTextarea from './AutoTextarea.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS } from './shared';
 
   let { criterion }: { criterion: Criterion } = $props();
 
   let suppliers = $derived(evaluation.data.suppliers);
+  let useVertical = $derived(suppliers.length >= 5);
   let compact = $derived(suppliers.length > 3);
   let roles = $derived(criterion.roles ?? []);
   let moments = $derived(criterion.subcriteria);
   let activeRoleId = $state('');
 
   let activeRole = $derived(roles.find((r) => r.id === activeRoleId) ?? roles[0] ?? null);
+
+  // Vertical layout state
+  let focusId = $state<string | null>(null);
+  let sortBy = $state<'original' | 'score'>('original');
 
   /** Get the item for a supplier + role. */
   function getItem(supplierId: string, roleId: string) {
@@ -34,6 +40,22 @@
   function criterionScore(supplierId: string): number | null {
     const gs = evaluation.groupScores[criterion.id];
     return gs?.[supplierId] ?? null;
+  }
+
+  let sortedSuppliers = $derived.by(() => {
+    if (!useVertical || sortBy === 'original' || !activeRole) return suppliers;
+    return [...suppliers].sort((a, b) => {
+      const sa = personScore(a.id, activeRole!.id) ?? -1;
+      const sb = personScore(b.id, activeRole!.id) ?? -1;
+      return sb - sa;
+    });
+  });
+
+  function focusDist(lid: string): number {
+    if (!focusId) return 0;
+    const fi = suppliers.findIndex((s) => s.id === focusId);
+    const ci = suppliers.findIndex((s) => s.id === lid);
+    return Math.abs(fi - ci);
   }
 </script>
 
@@ -57,67 +79,154 @@
   {/each}
 </div>
 
-<!-- Supplier cards for active role -->
+<!-- Supplier evaluation for active role -->
 {#if activeRole}
-  <div
-    class="cards-grid"
-    style:--card-columns="repeat({suppliers.length}, minmax({compact ? '185px' : '210px'}, 1fr))"
-  >
-    {#each suppliers as lev (lev.id)}
-      {@const item = getItem(lev.id, activeRole.id)}
-      {@const avg = personScore(lev.id, activeRole.id)}
-      <div class="card">
-        <div class="card-supplier">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</div>
-
-        <!-- Person name -->
-        <input
-          class="card-person"
-          type="text"
-          value={item?.label ?? ''}
-          oninput={(e) =>
-            evaluation.setRoleLabel(criterion.id, lev.id, activeRole!.id, e.currentTarget.value)}
-          placeholder="Personens navn"
-        />
-
-        <!-- Dimensions with scores -->
+  {#if useVertical}
+    <!-- Vertical row layout with dimension columns -->
+    <div class="vrow-container">
+      <div class="vrow-header">
+        <span class="vrow-col-supplier">Leverandør</span>
         {#each moments as dim (dim.id)}
-          <div class="dim-row">
-            <span class="dim-label">{dim.name}</span>
-            <span class="dim-weight">{dim.weight}%</span>
-            <ScoreField
-              size="small"
-              value={item?.scores?.[dim.id] ?? null}
-              onchange={(v) => {
-                if (v != null)
-                  evaluation.setRoleScore(criterion.id, lev.id, activeRole!.id, dim.id, v);
-              }}
+          <span class="vrow-col-dim">
+            {dim.name}<br />
+            <span class="vrow-col-dim-weight">{dim.weight}%</span>
+          </span>
+        {/each}
+        <span class="vrow-col-avg">Snitt</span>
+        <span class="vrow-col-note">Begrunnelse</span>
+        <select class="vrow-sort" bind:value={sortBy}>
+          <option value="original">Original</option>
+          <option value="score">Etter snitt</option>
+        </select>
+      </div>
+      {#each sortedSuppliers as lev, i (lev.id)}
+        {@const item = getItem(lev.id, activeRole.id)}
+        {@const avg = personScore(lev.id, activeRole.id)}
+        {@const isFocus = focusId === lev.id}
+        {@const dist = focusDist(lev.id)}
+        <div
+          class="vrow vrow-res"
+          class:vrow-focus={isFocus}
+          style:opacity={focusId && !isFocus && dist > 3 ? 0.85 : 1}
+          style:border-top={i > 0 ? '1px solid var(--color-wire)' : 'none'}
+        >
+          <!-- Supplier + person name -->
+          <div class="vrow-supplier">
+            <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
+            <input
+              class="vrow-person-input"
+              type="text"
+              value={item?.label ?? ''}
+              oninput={(e) =>
+                evaluation.setRoleLabel(
+                  criterion.id,
+                  lev.id,
+                  activeRole!.id,
+                  e.currentTarget.value
+                )}
+              onfocus={() => (focusId = lev.id)}
+              placeholder="Person"
             />
           </div>
-        {/each}
-
-        <!-- Average -->
-        <div class="card-avg">
-          <span class="card-avg-label">Snitt</span>
-          <span class="card-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
+          <!-- Dimension scores -->
+          {#each moments as dim (dim.id)}
+            <div class="vrow-dim">
+              <ScoreField
+                size="small"
+                value={item?.scores?.[dim.id] ?? null}
+                onchange={(v) => {
+                  if (v != null)
+                    evaluation.setRoleScore(criterion.id, lev.id, activeRole!.id, dim.id, v);
+                }}
+              />
+            </div>
+          {/each}
+          <!-- Average -->
+          <div class="vrow-avg">
+            <span class="vrow-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
+          </div>
+          <!-- Note -->
+          <div class="vrow-note">
+            <AutoTextarea
+              value={item?.note ?? ''}
+              oninput={(v) =>
+                evaluation.setRoleResourceNote(criterion.id, lev.id, activeRole!.id, v)}
+              placeholder="Begrunnelse..."
+              onfocus={() => (focusId = lev.id)}
+            />
+          </div>
         </div>
+      {/each}
+    </div>
+  {:else}
+    <!-- Card grid for ≤4 suppliers -->
+    <div
+      class="cards-grid"
+      style:--card-columns="repeat({suppliers.length}, minmax({compact ? '185px' : '210px'}, 1fr))"
+    >
+      {#each suppliers as lev (lev.id)}
+        {@const item = getItem(lev.id, activeRole.id)}
+        {@const avg = personScore(lev.id, activeRole.id)}
+        <div class="card">
+          <div class="card-supplier">
+            {compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}
+          </div>
 
-        <!-- Note -->
-        <textarea
-          class="card-textarea"
-          value={item?.note ?? ''}
-          oninput={(e) =>
-            evaluation.setRoleResourceNote(
-              criterion.id,
-              lev.id,
-              activeRole!.id,
-              e.currentTarget.value
-            )}
-          placeholder="Begrunnelse for denne rollen..."
-          rows="2"
-        ></textarea>
-      </div>
-    {/each}
-  </div>
+          <!-- Person name -->
+          <input
+            class="card-person"
+            type="text"
+            value={item?.label ?? ''}
+            oninput={(e) =>
+              evaluation.setRoleLabel(
+                criterion.id,
+                lev.id,
+                activeRole!.id,
+                e.currentTarget.value
+              )}
+            placeholder="Personens navn"
+          />
+
+          <!-- Dimensions with scores -->
+          {#each moments as dim (dim.id)}
+            <div class="dim-row">
+              <span class="dim-label">{dim.name}</span>
+              <span class="dim-weight">{dim.weight}%</span>
+              <ScoreField
+                size="small"
+                value={item?.scores?.[dim.id] ?? null}
+                onchange={(v) => {
+                  if (v != null)
+                    evaluation.setRoleScore(criterion.id, lev.id, activeRole!.id, dim.id, v);
+                }}
+              />
+            </div>
+          {/each}
+
+          <!-- Average -->
+          <div class="card-avg">
+            <span class="card-avg-label">Snitt</span>
+            <span class="card-avg-value" style:color={scoreColor(avg)}>{fS(avg)}</span>
+          </div>
+
+          <!-- Note -->
+          <textarea
+            class="card-textarea"
+            value={item?.note ?? ''}
+            oninput={(e) =>
+              evaluation.setRoleResourceNote(
+                criterion.id,
+                lev.id,
+                activeRole!.id,
+                e.currentTarget.value
+              )}
+            placeholder="Begrunnelse for denne rollen..."
+            rows="2"
+          ></textarea>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 <!-- Summary table: all roles -->
@@ -167,6 +276,7 @@
 <SamletVurdering label={criterion.name} criterionId={criterion.id} {criterion} />
 
 <style>
+  /* ── Role tabs ── */
   .role-tabs {
     display: flex;
     align-items: center;
@@ -210,6 +320,149 @@
     color: var(--color-score-high);
   }
 
+  /* ── Vertical row layout ── */
+  .vrow-container {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-wire);
+  }
+
+  .vrow-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-felt-raised);
+    border-bottom: 1px solid var(--color-wire);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-ink-ghost);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: var(--font-ui);
+  }
+
+  .vrow-col-supplier {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .vrow-col-dim {
+    width: 52px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+
+  .vrow-col-dim-weight {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+  .vrow-col-avg {
+    width: 48px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 9px;
+  }
+
+  .vrow-col-note {
+    flex: 1;
+  }
+
+  .vrow-sort {
+    margin-left: auto;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-wire);
+    font-size: 10px;
+    font-family: var(--font-ui);
+    color: var(--color-ink-muted);
+    background: var(--color-felt);
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .vrow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-felt);
+    transition: background 0.15s, opacity 0.2s;
+  }
+
+  .vrow-res {
+    align-items: flex-start;
+    padding-top: var(--spacing-3);
+    padding-bottom: var(--spacing-3);
+  }
+
+  .vrow-focus {
+    background: var(--color-vekt-bg);
+  }
+
+  .vrow-supplier {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .vrow-supplier-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .vrow-person-input {
+    width: 100%;
+    padding: 2px 0;
+    border: none;
+    border-bottom: 1px solid var(--color-wire);
+    font-size: 11px;
+    color: var(--color-vekt);
+    font-family: var(--font-ui);
+    font-weight: 500;
+    background: transparent;
+    outline: none;
+    margin-top: 3px;
+  }
+
+  .vrow-person-input:focus {
+    border-bottom-color: var(--color-vekt);
+  }
+
+  .vrow-dim {
+    width: 52px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .vrow-avg {
+    width: 48px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .vrow-avg-value {
+    font-family: var(--font-data);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .vrow-note {
+    flex: 1;
+    max-width: 440px;
+  }
+
+  /* ── Card grid layout ── */
   .cards-grid {
     display: grid;
     grid-template-columns: var(--card-columns);
@@ -318,7 +571,7 @@
     box-shadow: 0 0 0 2px var(--color-vekt-bg);
   }
 
-  /* Summary table */
+  /* ── Summary table ── */
   .summary {
     margin-top: var(--spacing-5);
     padding: var(--spacing-3) var(--spacing-4);

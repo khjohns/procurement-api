@@ -2,17 +2,39 @@
   import { evaluation, fmt1 } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
+  import AutoTextarea from './AutoTextarea.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS } from './shared';
 
   let { criterion }: { criterion: Criterion } = $props();
 
   let suppliers = $derived(evaluation.data.suppliers);
+  let useVertical = $derived(suppliers.length >= 5);
   let compact = $derived(suppliers.length > 3);
   let subs = $derived(criterion.subcriteria);
   let activeSubId = $state('');
 
   let activeSub = $derived(subs.find((s) => s.id === activeSubId) ?? subs[0] ?? null);
+
+  // Vertical layout state
+  let focusId = $state<string | null>(null);
+  let sortBy = $state<'original' | 'score'>('original');
+
+  let sortedSuppliers = $derived.by(() => {
+    if (!useVertical || sortBy === 'original' || !activeSub) return suppliers;
+    return [...suppliers].sort((a, b) => {
+      const sa = activeSub!.scores?.[a.id] ?? -1;
+      const sb = activeSub!.scores?.[b.id] ?? -1;
+      return sb - sa;
+    });
+  });
+
+  function focusDist(lid: string): number {
+    if (!focusId) return 0;
+    const fi = suppliers.findIndex((s) => s.id === focusId);
+    const ci = suppliers.findIndex((s) => s.id === lid);
+    return Math.abs(fi - ci);
+  }
 
   /** Weighted score for a supplier on this criterion. */
   function tradScore(supplierId: string): number | null {
@@ -39,34 +61,82 @@
   {/each}
 </div>
 
-<!-- Supplier cards for active sub-criterion -->
+<!-- Supplier evaluation for active sub-criterion -->
 {#if activeSub}
-  <div
-    class="cards-grid"
-    style:--card-columns="repeat({suppliers.length}, minmax({compact ? '170px' : '200px'}, 1fr))"
-  >
-    {#each suppliers as lev (lev.id)}
-      {@const score = activeSub.scores?.[lev.id] ?? null}
-      <div class="card">
-        <div class="card-header">
-          <span class="card-name">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</span>
-          <ScoreField
-            value={score}
-            onchange={(v) => {
-              if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
-            }}
-          />
-        </div>
-        <textarea
-          class="card-textarea"
-          value={activeSub.notes?.[lev.id] ?? ''}
-          oninput={(e) => evaluation.setNote(activeSub!.id, lev.id, e.currentTarget.value)}
-          placeholder="Begrunnelse..."
-          rows="3"
-        ></textarea>
+  {#if useVertical}
+    <!-- Vertical row layout for 5+ suppliers -->
+    <div class="vrow-container">
+      <div class="vrow-header">
+        <span class="vrow-col-supplier">Leverandør</span>
+        <span class="vrow-col-score">Score</span>
+        <span class="vrow-col-note">Begrunnelse</span>
+        <select class="vrow-sort" bind:value={sortBy}>
+          <option value="original">Original rekkefølge</option>
+          <option value="score">Sorter etter score</option>
+        </select>
       </div>
-    {/each}
-  </div>
+      {#each sortedSuppliers as lev, i (lev.id)}
+        {@const isFocus = focusId === lev.id}
+        {@const dist = focusDist(lev.id)}
+        <div
+          class="vrow"
+          class:vrow-focus={isFocus}
+          style:opacity={focusId && !isFocus && dist > 3 ? 0.85 : 1}
+          style:border-top={i > 0 ? '1px solid var(--color-wire)' : 'none'}
+        >
+          <div class="vrow-supplier">
+            <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
+          </div>
+          <div class="vrow-score">
+            <ScoreField
+              value={activeSub.scores?.[lev.id] ?? null}
+              onchange={(v) => {
+                if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
+              }}
+            />
+          </div>
+          <div class="vrow-note">
+            <AutoTextarea
+              value={activeSub.notes?.[lev.id] ?? ''}
+              oninput={(v) => evaluation.setNote(activeSub!.id, lev.id, v)}
+              placeholder="Begrunnelse..."
+              onfocus={() => (focusId = lev.id)}
+            />
+          </div>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <!-- Card grid for ≤4 suppliers -->
+    <div
+      class="cards-grid"
+      style:--card-columns="repeat({suppliers.length}, minmax({compact ? '170px' : '200px'}, 1fr))"
+    >
+      {#each suppliers as lev (lev.id)}
+        {@const score = activeSub.scores?.[lev.id] ?? null}
+        <div class="card">
+          <div class="card-header">
+            <span class="card-name"
+              >{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</span
+            >
+            <ScoreField
+              value={score}
+              onchange={(v) => {
+                if (v != null) evaluation.setScore(activeSub!.id, lev.id, v);
+              }}
+            />
+          </div>
+          <textarea
+            class="card-textarea"
+            value={activeSub.notes?.[lev.id] ?? ''}
+            oninput={(e) => evaluation.setNote(activeSub!.id, lev.id, e.currentTarget.value)}
+            placeholder="Begrunnelse..."
+            rows="3"
+          ></textarea>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 
 <!-- Summary table -->
@@ -117,6 +187,7 @@
 <SamletVurdering label={criterion.name} criterionId={criterion.id} {criterion} />
 
 <style>
+  /* ── Sub-criterion tabs ── */
   .sub-tabs {
     display: flex;
     align-items: center;
@@ -160,6 +231,97 @@
     color: var(--color-score-high);
   }
 
+  /* ── Vertical row layout ── */
+  .vrow-container {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-wire);
+  }
+
+  .vrow-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-felt-raised);
+    border-bottom: 1px solid var(--color-wire);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-ink-ghost);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: var(--font-ui);
+  }
+
+  .vrow-col-supplier {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .vrow-col-score {
+    width: 44px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .vrow-col-note {
+    flex: 1;
+  }
+
+  .vrow-sort {
+    margin-left: auto;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-wire);
+    font-size: 10px;
+    font-family: var(--font-ui);
+    color: var(--color-ink-muted);
+    background: var(--color-felt);
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .vrow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-felt);
+    transition: background 0.15s, opacity 0.2s;
+  }
+
+  .vrow-focus {
+    background: var(--color-vekt-bg);
+  }
+
+  .vrow-supplier {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .vrow-supplier-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .vrow-score {
+    width: 44px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .vrow-note {
+    flex: 1;
+    max-width: 600px;
+  }
+
+  /* ── Card grid layout ── */
   .cards-grid {
     display: grid;
     grid-template-columns: var(--card-columns);
@@ -207,7 +369,7 @@
     box-shadow: 0 0 0 2px var(--color-vekt-bg);
   }
 
-  /* Summary table */
+  /* ── Summary table ── */
   .summary {
     margin-top: var(--spacing-5);
     padding: var(--spacing-3) var(--spacing-4);
