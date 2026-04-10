@@ -213,7 +213,7 @@
     justify-content: space-between;
   }
 
-  .frist-header :global(.section-label) {
+  .frist-header .section-label {
     margin-bottom: 0;
   }
 

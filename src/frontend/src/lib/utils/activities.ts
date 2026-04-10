@@ -1,5 +1,7 @@
+import type { Activity } from '$lib/types/activity';
+
 /** Extract unique bidders (SUBMIT_BID actors) from procurement activities. */
-export function extractBidders(activities: any[]): { id: string; name: string }[] {
+export function extractBidders(activities: Activity[]): { id: string; name: string }[] {
   const seen = new Map<string, string>();
   for (const a of activities) {
     if (a.action === 'SUBMIT_BID') {

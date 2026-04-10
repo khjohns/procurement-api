@@ -33,7 +33,7 @@
   }
 
   function handlePhaseClick() {
-    if (mobileOpen) onclose?.();
+    onclose?.();
   }
 </script>
 
@@ -105,7 +105,7 @@
 
     {#if href !== null}
       <a
-        class="phase-item phase-item-mobile"
+        class="phase-item"
         class:phase-current={isActive}
         class:status-fullfort={phase.status === 'fullfort'}
         class:status-aktiv={phase.status === 'aktiv'}
@@ -118,7 +118,7 @@
       </a>
     {:else}
       <div
-        class="phase-item phase-item-mobile phase-disabled"
+        class="phase-item phase-disabled"
         class:status-fullfort={phase.status === 'fullfort'}
         class:status-aktiv={phase.status === 'aktiv'}
         class:status-kommende={phase.status === 'kommende'}

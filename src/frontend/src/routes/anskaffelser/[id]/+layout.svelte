@@ -22,6 +22,12 @@
   const procName = $derived(data?.proc?.name || data?.proc?.title || id);
 
   let mobileMenuOpen = $state(false);
+
+  // Close mobile menu on any navigation (back/forward, goto, etc.)
+  $effect(() => {
+    page.url.pathname;
+    mobileMenuOpen = false;
+  });
 </script>
 
 <div class="app-shell">
