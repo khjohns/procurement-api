@@ -39,12 +39,14 @@
   $effect(() => {
     const codes = cpvRawCodes;
     if (!codes.length) return;
-    fetch(`/api/cpv/${codes.join(',')}`)
+    const controller = new AbortController();
+    fetch(`/api/cpv/${codes.join(',')}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : {}))
       .then((data) => {
         cpvLabels = data;
       })
       .catch(() => {});
+    return () => controller.abort();
   });
 
   const cpvKoder = $derived.by((): CpvDisplay[] => {

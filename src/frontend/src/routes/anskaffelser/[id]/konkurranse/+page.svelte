@@ -15,7 +15,7 @@
   const procId = $derived(page.params.id ?? '');
 
   const getPhaseStates = getContext<() => Record<string, PhaseState>>('phaseStates');
-  const hasBids = $derived(getPhaseStates().konkurranse?.status === 'fullfort');
+  const konkFullfort = $derived(getPhaseStates().konkurranse?.status === 'fullfort');
 
   // ── Frist ──
 
@@ -44,14 +44,14 @@
 
   // ── Leverandører ──
 
+  const bidders = $derived(extractBidders(activities));
+  const bidCount = $derived(bidders.length);
+
   const leverandorer = $derived.by(() => {
     const kval = activities.filter((a) => a.action === 'QUALIFYING_PARTICIPANTS');
-    const tilbud = extractBidders(activities);
-    const rader =
-      kval.length > 0
-        ? kval.map((a) => a.organization?.name ?? a.supplier?.name ?? '\u2014')
-        : tilbud.map((l) => l.name);
-    return rader;
+    return kval.length > 0
+      ? kval.map((a) => a.organization?.name ?? a.supplier?.name ?? '\u2014')
+      : bidders.map((l) => l.name);
   });
 
   const levCount = $derived(leverandorer.length);
@@ -94,8 +94,7 @@
   const hendHasMore = $derived(alleHendelser.length > hendDefaultCount);
   const hendRest = $derived(alleHendelser.length - hendDefaultCount);
 
-  // ── Bidder count for done state ──
-  const bidCount = $derived(extractBidders(activities).length);
+
 </script>
 
 <div class="konkurranse-page">
@@ -115,7 +114,7 @@
         <!-- Left column: Frist + Arbeidsflater -->
         <div class="left-col">
           <!-- Frist -->
-          {#if hasBids}
+          {#if konkFullfort}
             <div class="card frist-card frist-done">
               <div class="frist-header">
                 <span class="section-label">Tilbudsfrist</span>
