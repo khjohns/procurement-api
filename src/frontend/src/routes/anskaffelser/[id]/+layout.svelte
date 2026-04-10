@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { beforeNavigate } from '$app/navigation';
   import { themeStore } from '$lib/stores/theme.svelte';
   import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
   import { routeLabels } from '$lib/config/phases';
@@ -23,9 +24,7 @@
 
   let mobileMenuOpen = $state(false);
 
-  // Close mobile menu on any navigation (back/forward, goto, etc.)
-  $effect(() => {
-    page.url.pathname;
+  beforeNavigate(() => {
     mobileMenuOpen = false;
   });
 </script>
