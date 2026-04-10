@@ -14,17 +14,21 @@
   let suppliers = $derived(data.suppliers);
 
   let isPrismodell = $derived(evaluation.activeMethod === 'pris');
+  let kvalKrit = $derived(criteria.filter((c) => c.type !== 'price'));
+  let totalFradrag = $derived(kvalKrit.reduce((s, c) => s + (c.maxPriceDeduction ?? 0), 0));
 
-  // In prismodell, only quality criteria have weights (price criterion is just "the price")
-  let vektSum = $derived(
-    isPrismodell
-      ? criteria.filter((c) => c.type !== 'price').reduce((s, c) => s + c.weight, 0)
-      : criteria.reduce((s, c) => s + c.weight, 0)
-  );
+  // Poengmodell: all criteria weights must sum to 100%
+  // Prismodell: no weight inputs — validity is based on maks fradrag
+  let vektSum = $derived(criteria.reduce((s, c) => s + c.weight, 0));
   let hasPris = $derived(criteria.some((c) => c.type === 'price'));
   let hasKval = $derived(criteria.some((c) => c.type === 'quality'));
   let hasEnoughLev = $derived(suppliers.filter((s) => s.name.trim()).length >= 2);
-  let isValid = $derived(vektSum === 100 && hasPris && hasKval && hasEnoughLev);
+  let hasFradrag = $derived(kvalKrit.some((c) => (c.maxPriceDeduction ?? 0) > 0));
+  let isValid = $derived.by(() => {
+    if (!hasPris || !hasKval || !hasEnoughLev) return false;
+    if (isPrismodell) return hasFradrag;
+    return vektSum === 100;
+  });
 
   let subWeightOk = $derived(
     criteria.every((c) => {
@@ -38,8 +42,6 @@
       return true;
     })
   );
-  let kvalKrit = $derived(criteria.filter((c) => c.type !== 'price'));
-  let totalFradrag = $derived(kvalKrit.reduce((s, c) => s + (c.maxPriceDeduction ?? 0), 0));
 
   // Track which criteria are expanded
   let expandedIds = $state<Set<string>>(new Set());
@@ -159,12 +161,19 @@
       <h2 class="section-label">Kriteriestruktur</h2>
     </div>
     <p class="section-desc">
-      Definer tildelingskriterier med vekter. Klikk ▶ for å utvide underkriterier, roller og
-      dimensjoner.
+      {#if isPrismodell}
+        Definer tildelingskriterier og maks fradrag i kroner. Klikk ▶ for underkriterier.
+      {:else}
+        Definer tildelingskriterier med vekter. Klikk ▶ for å utvide underkriterier, roller og
+        dimensjoner.
+      {/if}
     </p>
 
-    {#if vektSum !== 100}
+    {#if !isPrismodell && vektSum !== 100}
       <div class="warn">Hovedvekter summerer til {vektSum}% — forventet 100%.</div>
+    {/if}
+    {#if isPrismodell && !hasFradrag}
+      <div class="warn">Angi maks fradrag for minst ett kvalitetskriterium.</div>
     {/if}
     {#if !hasPris}
       <div class="warn">Priskriterium mangler.</div>
@@ -172,8 +181,11 @@
     {#if !hasKval}
       <div class="warn">Minst ett kvalitetskriterium kreves.</div>
     {/if}
-    {#if vektSum === 100 && hasPris && hasKval}
+    {#if !isPrismodell && vektSum === 100 && hasPris && hasKval}
       <div class="ok">Kriteriestrukturen er gyldig. Vekter summerer til 100%.</div>
+    {/if}
+    {#if isPrismodell && hasFradrag && hasPris && hasKval}
+      <div class="ok">Kvalitetsbudsjett: {fN(totalFradrag)} kr. Klar for evaluering.</div>
     {/if}
 
     <div class="list-box">
@@ -181,7 +193,7 @@
       <div class="krit-header">
         <span></span>
         <span>Kriterium</span>
-        <span class="krit-header-right">Vekt</span>
+        <span class="krit-header-right">{isPrismodell ? 'Maks fradrag' : 'Vekt'}</span>
         <span>Type</span>
         <span></span>
       </div>
@@ -225,9 +237,22 @@
           </div>
 
           <div class="krit-weight">
-            {#if isPris && isPrismodell}
-              <!-- Price criterion has no weight in prismodell -->
-              <span class="krit-type-fixed">—</span>
+            {#if isPrismodell}
+              {#if isPris}
+                <span class="krit-type-fixed">—</span>
+              {:else}
+                <input
+                  class="fradrag-input"
+                  type="number"
+                  value={k.maxPriceDeduction ?? ''}
+                  oninput={(e) => {
+                    const v = e.currentTarget.value;
+                    evaluation.setCriterionMaxPriceDeduction(k.id, v === '' ? 0 : parseFloat(v));
+                  }}
+                  placeholder="0"
+                />
+                <span class="weight-suffix">kr</span>
+              {/if}
             {:else}
               <input
                 class="weight-input"
@@ -268,31 +293,6 @@
             ×
           </button>
         </div>
-
-        <!-- Expanded: Prismodell inline fradrag (for any non-price criterion) -->
-        {#if isExpanded && isPrismodell && !isPris}
-          <div class="expand-panel">
-            <div class="fradrag-inline">
-              <span class="fradrag-inline-label">Maks fradrag:</span>
-              <input
-                class="fradrag-input"
-                type="number"
-                value={k.maxPriceDeduction ?? ''}
-                oninput={(e) => {
-                  const v = e.currentTarget.value;
-                  evaluation.setCriterionMaxPriceDeduction(k.id, v === '' ? 0 : parseFloat(v));
-                }}
-                placeholder="0"
-              />
-              <span class="weight-suffix">kr</span>
-              {#if (k.maxPriceDeduction ?? 0) > 0 && k.weight > 0}
-                <span class="fradrag-inline-krp">
-                  ({fN(Math.round((k.maxPriceDeduction ?? 0) / 10))} kr/poeng)
-                </span>
-              {/if}
-            </div>
-          </div>
-        {/if}
 
         <!-- Expanded: Traditional sub-criteria -->
         {#if isExpanded && mode === 'traditional'}
@@ -442,42 +442,48 @@
       <button class="add-btn" onclick={() => evaluation.addCriterion('', 'quality')}>
         + Legg til kriterium
       </button>
-      <span class="sum-display" class:sum-ok={vektSum === 100} class:sum-warn={vektSum !== 100}>
-        Σ {vektSum}%
-      </span>
+      {#if isPrismodell}
+        <span class="sum-display" class:sum-ok={hasFradrag} class:sum-warn={!hasFradrag}>
+          Σ {fN(totalFradrag)} kr
+        </span>
+      {:else}
+        <span class="sum-display" class:sum-ok={vektSum === 100} class:sum-warn={vektSum !== 100}>
+          Σ {vektSum}%
+        </span>
+      {/if}
     </div>
   </div>
 
-  <!-- 04 Prismodell — maks fradrag (only for pris method) -->
+  <!-- 04 Prismodell — kvalitetsbudsjett (only for pris method) -->
   {#if isPrismodell}
     <div class="section">
       <div class="section-header">
         <span class="section-num">04</span>
-        <h2 class="section-label">Prismodell — maks fradrag</h2>
+        <h2 class="section-label">Kvalitetsbudsjett</h2>
       </div>
       <p class="section-desc">
-        Angi maksimalt kvalitetsfradrag per kriterium. Fradrag gjøres mot tilbudt pris — laveste
-        evaluerte pris etter alle fradrag vinner.
+        Maks fradrag per kriterium uttrykker din betalingsvilje for kvalitet utover minimumskrav.
+        Summen er kvalitetsbudsjettet — den totale kroneverdien kvalitet kan påvirke evaluert pris.
       </p>
 
       <div class="fradrag-table">
         <div class="fradrag-header">
           <span>Kriterium</span>
-          <span class="fradrag-center">Vekt</span>
           <span class="fradrag-right">Maks fradrag</span>
+          <span class="fradrag-center">Andel</span>
           <span class="fradrag-right">Kr/poeng</span>
         </div>
         {#each kvalKrit as k, i (k.id)}
-          {@const krp =
-            (k.maxPriceDeduction ?? 0) > 0 ? Math.round((k.maxPriceDeduction ?? 0) / 10) : 0}
+          {@const fradrag = k.maxPriceDeduction ?? 0}
+          {@const krp = fradrag > 0 ? Math.round(fradrag / 10) : 0}
+          {@const andel = totalFradrag > 0 ? Math.round((fradrag / totalFradrag) * 100) : 0}
           <div class="fradrag-row">
             <span class="fradrag-name">{k.name || '(uten navn)'}</span>
-            <span class="fradrag-center fradrag-weight">{k.weight}%</span>
             <div class="fradrag-right">
               <input
                 class="fradrag-input"
                 type="number"
-                value={k.maxPriceDeduction ?? ''}
+                value={fradrag || ''}
                 oninput={(e) => {
                   const v = e.currentTarget.value;
                   evaluation.setCriterionMaxPriceDeduction(k.id, v === '' ? 0 : parseFloat(v));
@@ -486,15 +492,18 @@
               />
               <span class="weight-suffix">kr</span>
             </div>
+            <span class="fradrag-center fradrag-weight">
+              {fradrag > 0 ? andel + '%' : '–'}
+            </span>
             <span class="fradrag-right fradrag-krp">
               {krp > 0 ? fN(krp) + ' kr' : '–'}
             </span>
           </div>
         {/each}
         <div class="fradrag-total">
-          <span class="fradrag-total-label">Totalt maks fradrag</span>
-          <span></span>
+          <span class="fradrag-total-label">Kvalitetsbudsjett</span>
           <span class="fradrag-right fradrag-total-val">{fN(totalFradrag)} kr</span>
+          <span></span>
           <span></span>
         </div>
       </div>
@@ -514,7 +523,10 @@
         {#if !hasKval}
           <div class="footer-issue">· Minst ett kvalitetskriterium kreves</div>
         {/if}
-        {#if vektSum !== 100}
+        {#if isPrismodell && !hasFradrag}
+          <div class="footer-issue">· Angi maks fradrag for minst ett kvalitetskriterium</div>
+        {/if}
+        {#if !isPrismodell && vektSum !== 100}
           <div class="footer-issue">· Hovedvekter summerer til {vektSum}%, forventet 100%</div>
         {/if}
         {#if !subWeightOk}
