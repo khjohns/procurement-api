@@ -14,6 +14,7 @@
   // Vertical layout state
   let focusId = $state<string | null>(null);
   let sortBy = $state<'original' | 'score'>('original');
+  let focusIndex = $derived(focusId ? suppliers.findIndex((s) => s.id === focusId) : -1);
 
   let sortedSuppliers = $derived.by(() => {
     if (!useVertical || sortBy === 'original') return suppliers;
@@ -23,13 +24,6 @@
       return sb - sa;
     });
   });
-
-  function focusDist(lid: string): number {
-    if (!focusId) return 0;
-    const fi = suppliers.findIndex((s) => s.id === focusId);
-    const ci = suppliers.findIndex((s) => s.id === lid);
-    return Math.abs(fi - ci);
-  }
 </script>
 
 {#if useVertical}
@@ -46,12 +40,12 @@
     </div>
     {#each sortedSuppliers as lev, i (lev.id)}
       {@const isFocus = focusId === lev.id}
-      {@const dist = focusDist(lev.id)}
+      {@const dimmed = focusIndex >= 0 && !isFocus && Math.abs(focusIndex - i) > 3}
       <div
         class="vrow"
         class:vrow-focus={isFocus}
-        style:opacity={focusId && !isFocus && dist > 3 ? 0.85 : 1}
-        style:border-top={i > 0 ? '1px solid var(--color-wire)' : 'none'}
+        class:vrow-dimmed={dimmed}
+        class:vrow-separator={i > 0}
       >
         <div class="vrow-supplier">
           <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
@@ -174,6 +168,14 @@
 
   .vrow-focus {
     background: var(--color-vekt-bg);
+  }
+
+  .vrow-dimmed {
+    opacity: 0.85;
+  }
+
+  .vrow-separator {
+    border-top: 1px solid var(--color-wire);
   }
 
   .vrow-supplier {

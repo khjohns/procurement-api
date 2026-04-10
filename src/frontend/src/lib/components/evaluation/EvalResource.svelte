@@ -20,6 +20,7 @@
   // Vertical layout state
   let focusId = $state<string | null>(null);
   let sortBy = $state<'original' | 'score'>('original');
+  let focusIndex = $derived(focusId ? suppliers.findIndex((s) => s.id === focusId) : -1);
 
   /** Get the item for a supplier + role. */
   function getItem(supplierId: string, roleId: string) {
@@ -50,13 +51,6 @@
       return sb - sa;
     });
   });
-
-  function focusDist(lid: string): number {
-    if (!focusId) return 0;
-    const fi = suppliers.findIndex((s) => s.id === focusId);
-    const ci = suppliers.findIndex((s) => s.id === lid);
-    return Math.abs(fi - ci);
-  }
 </script>
 
 <!-- Role tabs -->
@@ -103,12 +97,12 @@
         {@const item = getItem(lev.id, activeRole.id)}
         {@const avg = personScore(lev.id, activeRole.id)}
         {@const isFocus = focusId === lev.id}
-        {@const dist = focusDist(lev.id)}
+        {@const dimmed = focusIndex >= 0 && !isFocus && Math.abs(focusIndex - i) > 3}
         <div
           class="vrow vrow-res"
           class:vrow-focus={isFocus}
-          style:opacity={focusId && !isFocus && dist > 3 ? 0.85 : 1}
-          style:border-top={i > 0 ? '1px solid var(--color-wire)' : 'none'}
+          class:vrow-dimmed={dimmed}
+          class:vrow-separator={i > 0}
         >
           <!-- Supplier + person name -->
           <div class="vrow-supplier">
@@ -405,6 +399,14 @@
 
   .vrow-focus {
     background: var(--color-vekt-bg);
+  }
+
+  .vrow-dimmed {
+    opacity: 0.85;
+  }
+
+  .vrow-separator {
+    border-top: 1px solid var(--color-wire);
   }
 
   .vrow-supplier {

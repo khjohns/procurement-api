@@ -20,7 +20,6 @@
   }
 
   $effect(() => {
-    // Re-measure whenever value changes (including external updates)
     void value;
     resize();
   });
