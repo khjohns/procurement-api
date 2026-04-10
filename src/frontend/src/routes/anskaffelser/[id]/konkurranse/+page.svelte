@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { getContext } from 'svelte';
   import { extractBidders } from '$lib/utils/activities';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
@@ -10,6 +11,8 @@
 
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
+
+  const procId = $derived(page.params.id ?? '');
 
   const getPhaseStates = getContext<() => Record<string, PhaseState>>('phaseStates');
   const hasBids = $derived(getPhaseStates().konkurranse?.status === 'fullfort');
@@ -41,44 +44,20 @@
 
   // ── Leverandører ──
 
-  interface LevRow {
-    navn: string;
-    status: string;
-    kvalifisert: boolean;
-  }
-
-  const stats = $derived.by(() => {
+  const leverandorer = $derived.by(() => {
     const kval = activities.filter((a) => a.action === 'QUALIFYING_PARTICIPANTS');
-    const avvist = activities.filter((a) => a.action === 'REJECT_PARTICIPATION');
     const tilbud = extractBidders(activities);
-    const rader: LevRow[] =
+    const rader =
       kval.length > 0
-        ? kval.map((a) => ({
-            navn: a.organization?.name ?? a.supplier?.name ?? '—',
-            status: 'Kvalifisert',
-            kvalifisert: true,
-          }))
-        : tilbud.map((l) => ({ navn: l.name, status: 'Tilbud', kvalifisert: false }));
-    return { kval: kval.length, avvist: avvist.length, tilbud: tilbud.length, rader };
+        ? kval.map((a) => a.organization?.name ?? a.supplier?.name ?? '\u2014')
+        : tilbud.map((l) => l.name);
+    return rader;
   });
 
-  const levDefaultCount = 4;
+  const levCount = $derived(leverandorer.length);
+  const levPreview = $derived(leverandorer.slice(0, 3));
+  const levRest = $derived(leverandorer.length - 3);
   let levExpanded = $state(false);
-  const levVisible = $derived(
-    levExpanded ? stats.rader : stats.rader.slice(0, levDefaultCount),
-  );
-  const levHasMore = $derived(stats.rader.length > levDefaultCount);
-
-  // ── Dokumenter ──
-
-  const dokumenter = $derived.by(() => {
-    const pub = activities.find((a) => a.action === 'PUBLISH_TO_DOFFIN');
-    const kval = activities.find((a) => a.action === 'QUALIFYING_PARTICIPANTS');
-    const docs: { navn: string; dato: string }[] = [];
-    if (pub) docs.push({ navn: 'Kunngjøring', dato: formatDatoMndAar(pub.date) });
-    if (kval) docs.push({ navn: 'Tilbudsinnbydelse', dato: formatDatoMndAar(kval.date) });
-    return docs;
-  });
 
   // ── Hendelser ──
 
@@ -90,10 +69,10 @@
   ]);
 
   const actionLabels: Record<string, (navn: string) => string> = {
-    PUBLISH_TO_DOFFIN: () => 'Kunngjøring publisert i Doffin',
-    ASK_TO_QUALIFY: (n) => `Forespørsel om deltakelse fra ${n}`,
+    PUBLISH_TO_DOFFIN: () => 'Kunngjøring',
+    ASK_TO_QUALIFY: (n) => `Forespørsel fra ${n}`,
     QUALIFYING_PARTICIPANTS: (n) => `${n} kvalifisert`,
-    SUBMIT_BID: (n) => `Tilbud mottatt fra ${n}`,
+    SUBMIT_BID: (n) => `Tilbud fra ${n}`,
   };
 
   const alleHendelser = $derived.by(() => {
@@ -107,12 +86,16 @@
       });
   });
 
-  const hendDefaultCount = 4;
+  const hendDefaultCount = 3;
   let hendExpanded = $state(false);
   const hendVisible = $derived(
     hendExpanded ? alleHendelser : alleHendelser.slice(0, hendDefaultCount),
   );
   const hendHasMore = $derived(alleHendelser.length > hendDefaultCount);
+  const hendRest = $derived(alleHendelser.length - hendDefaultCount);
+
+  // ── Bidder count for done state ──
+  const bidCount = $derived(extractBidders(activities).length);
 </script>
 
 <div class="konkurranse-page">
@@ -128,102 +111,119 @@
     </div>
   {:else}
     <div class="page-inner wide">
-      <!-- Frist -->
-      {#if hasBids}
-        <div class="frist-card frist-done">
-          <div class="frist-header">
-            <span class="section-label">Tilbudsfrist</span>
-            <span class="frist-dato">{formatDatoMndAar(tilbudFrist)}</span>
-          </div>
-          <div class="frist-summary">
-            Frist utløpt · {stats.tilbud} tilbud mottatt
-          </div>
-        </div>
-      {:else}
-        <div
-          class="frist-card"
-          class:frist-attention={urgency === 'attention'}
-          class:frist-urgent={urgency === 'urgent'}
-          class:frist-expired={urgency === 'expired'}
-        >
-          <div class="frist-header">
-            <span class="section-label">Tilbudsfrist</span>
-            <span class="frist-dato">{formatDatoMndAar(tilbudFrist)}</span>
-          </div>
-          <div class="frist-countdown">
-            <span class="frist-tall">{dagerIgjen !== null ? Math.abs(dagerIgjen) : '—'}</span>
-            <span class="frist-enhet">{fristLabel}</span>
-          </div>
-          <div class="frist-meta">
-            <span>{proc?.procedure ?? ''}</span>
-            <span class="frist-meta-sep">&middot;</span>
-            <span class="mono">{formatNOK(proc?.estimated_value)}</span>
-          </div>
-        </div>
-      {/if}
-
-      <div class="grid-two">
-        <!-- Leverandører -->
-        <div class="card">
-          <div class="section-label">Leverandører</div>
-          <div class="stat-row">
-            <span class="stat-value">{stats.kval || stats.tilbud}</span>
-            <span class="stat-label">{stats.kval > 0 ? 'kvalifisert' : 'leverandører'}</span>
-          </div>
-          {#if levVisible.length > 0}
-            <div class="lev-list">
-              {#each levVisible as rad}
-                <div class="lev-row">
-                  <span class="lev-navn">{rad.navn}</span>
-                  <span class="lev-status" class:lev-kvalifisert={rad.kvalifisert}
-                    >{rad.status}</span
-                  >
-                </div>
-              {/each}
-            </div>
-            {#if levHasMore}
-              <button class="expand-btn" onclick={() => (levExpanded = !levExpanded)}>
-                {levExpanded ? 'Vis færre' : `Vis alle ${stats.rader.length}`}
-              </button>
-            {/if}
-          {/if}
-        </div>
-
-        <!-- Dokumenter -->
-        {#if dokumenter.length > 0}
-          <div class="card">
-            <div class="section-label">Dokumenter</div>
-            <div class="doc-list">
-              {#each dokumenter as doc}
-                <div class="doc-row">
-                  <span class="doc-navn">{doc.navn}</span>
-                  <span class="doc-dato">{doc.dato}</span>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Hendelser -->
-      {#if alleHendelser.length > 0}
-        <div class="card">
-          <div class="section-label">Hendelser</div>
-          <div class="hendelse-list">
-            {#each hendVisible as h}
-              <div class="hendelse-row">
-                <span class="hendelse-dato">{h.dato}</span>
-                <span class="hendelse-tekst">{h.tekst}</span>
+      <div class="two-col">
+        <!-- Left column: Frist + Arbeidsflater -->
+        <div class="left-col">
+          <!-- Frist -->
+          {#if hasBids}
+            <div class="card frist-card frist-done">
+              <div class="frist-header">
+                <span class="section-label">Tilbudsfrist</span>
+                <span class="frist-dato">{formatDatoMndAar(tilbudFrist)}</span>
               </div>
-            {/each}
+              <div class="frist-summary">
+                Frist utløpt &middot; {bidCount} tilbud mottatt
+              </div>
+            </div>
+          {:else}
+            <div
+              class="card frist-card"
+              class:frist-attention={urgency === 'attention'}
+              class:frist-urgent={urgency === 'urgent'}
+              class:frist-expired={urgency === 'expired'}
+            >
+              <div class="frist-header">
+                <span class="section-label">Frist</span>
+              </div>
+              <div class="frist-countdown">
+                <span class="frist-tall">{dagerIgjen !== null ? Math.abs(dagerIgjen) : '\u2014'}</span>
+                <span class="frist-enhet">{fristLabel}</span>
+              </div>
+              <div class="frist-dato">{formatDatoMndAar(tilbudFrist)}</div>
+              <div class="frist-meta">
+                <span>{proc?.procedure ?? ''}</span>
+                <span class="frist-meta-sep">&middot;</span>
+                <span class="mono">{formatNOK(proc?.estimated_value)}</span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Arbeidsflater -->
+          <div class="card">
+            <div class="section-label">Arbeidsflater</div>
+            <div class="tool-links">
+              <a href="/anskaffelser/{procId}/kvalifisering" class="tool-link">
+                <span class="tool-link-label">Kvalifisering</span>
+                <span class="tool-link-icon">&#8250;</span>
+              </a>
+              <a href="/anskaffelser/{procId}/evaluering" class="tool-link">
+                <span class="tool-link-label">Evaluering</span>
+                <span class="tool-link-icon">&#8250;</span>
+              </a>
+              <a href="/anskaffelser/{procId}/protokoll" class="tool-link">
+                <span class="tool-link-label">Protokoll</span>
+                <span class="tool-link-icon">&#8250;</span>
+              </a>
+              <a href="/anskaffelser/{procId}/meddelelse" class="tool-link">
+                <span class="tool-link-label">Meddelelse</span>
+                <span class="tool-link-icon">&#8250;</span>
+              </a>
+            </div>
           </div>
-          {#if hendHasMore}
-            <button class="expand-btn" onclick={() => (hendExpanded = !hendExpanded)}>
-              {hendExpanded ? 'Vis færre' : `Vis alle ${alleHendelser.length}`}
-            </button>
+        </div>
+
+        <!-- Right column: Leverandører + Hendelser -->
+        <div class="right-col">
+          <!-- Leverandører -->
+          <div class="card">
+            <div class="lev-header">
+              <span class="section-label">Leverandører</span>
+              {#if levCount > 0}
+                <span class="lev-count">{levCount}</span>
+              {/if}
+            </div>
+            {#if levCount === 0}
+              <div class="meta-empty">Ingen leverandører registrert ennå.</div>
+            {:else if !levExpanded}
+              <div class="lev-inline">
+                {levPreview.join(' \u00b7 ')}
+                {#if levRest > 0}
+                  <button class="expand-inline" onclick={() => (levExpanded = true)}>
+                    +{levRest} til &#9656;
+                  </button>
+                {/if}
+              </div>
+            {:else}
+              <div class="lev-expanded">
+                {#each leverandorer as navn}
+                  <div class="lev-row">{navn}</div>
+                {/each}
+                <button class="expand-inline" onclick={() => (levExpanded = false)}>Vis færre</button>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Hendelser -->
+          {#if alleHendelser.length > 0}
+            <div class="card">
+              <div class="section-label">Hendelser</div>
+              <div class="hendelse-list">
+                {#each hendVisible as h}
+                  <div class="hendelse-row">
+                    <span class="hendelse-dato">{h.dato}</span>
+                    <span class="hendelse-tekst">{h.tekst}</span>
+                  </div>
+                {/each}
+              </div>
+              {#if hendHasMore}
+                <button class="expand-btn" onclick={() => (hendExpanded = !hendExpanded)}>
+                  {hendExpanded ? 'Vis færre' : `+${hendRest} til \u25B8`}
+                </button>
+              {/if}
+            </div>
           {/if}
         </div>
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -234,27 +234,24 @@
     overflow-y: auto;
   }
 
-  /* ── Grid ── */
-  .grid-two {
+  /* ── 2-column grid ── */
+  .two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--spacing-4);
   }
 
-  @media (max-width: 768px) {
-    .grid-two {
-      grid-template-columns: 1fr;
-    }
+  .left-col,
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
   }
 
   /* ── Frist card ── */
   .frist-card {
     --frist-accent: var(--color-vekt);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
     border-left: 3px solid var(--frist-accent);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-5);
   }
 
   .frist-header {
@@ -267,18 +264,11 @@
     margin-bottom: 0;
   }
 
-  .frist-dato {
-    font-family: var(--font-data);
-    font-size: 13px;
-    color: var(--color-ink);
-    font-variant-numeric: tabular-nums;
-  }
-
   .frist-countdown {
     display: flex;
     align-items: baseline;
     gap: var(--spacing-2);
-    margin: var(--spacing-4) 0;
+    margin: var(--spacing-3) 0 var(--spacing-2);
   }
 
   .frist-tall {
@@ -296,6 +286,13 @@
     color: var(--color-ink-secondary);
   }
 
+  .frist-dato {
+    font-family: var(--font-data);
+    font-size: 13px;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
   .frist-meta {
     font-size: 12px;
     color: var(--color-ink-muted);
@@ -303,6 +300,7 @@
     align-items: center;
     gap: var(--spacing-2);
     flex-wrap: wrap;
+    margin-top: var(--spacing-2);
   }
 
   .frist-meta-sep {
@@ -314,12 +312,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Urgency variants — override --frist-accent */
+  /* Urgency variants */
   .frist-attention { --frist-accent: var(--color-warn); }
   .frist-urgent    { --frist-accent: var(--color-warn); background: var(--color-warn-bg); }
   .frist-expired   { --frist-accent: var(--color-score-low); }
 
-  /* Frist done — phase complete */
+  /* Frist done */
   .frist-done {
     border-left-color: var(--color-ink-ghost);
   }
@@ -335,80 +333,67 @@
   }
 
   /* ── Leverandører ── */
-  .stat-row {
+  .lev-header {
     display: flex;
     align-items: baseline;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-3);
+    justify-content: space-between;
   }
 
-  .stat-value {
+  .lev-header .section-label {
+    margin-bottom: var(--spacing-2);
+  }
+
+  .lev-count {
     font-family: var(--font-data);
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--color-ink);
+    color: var(--color-ink-secondary);
   }
 
-  .stat-label {
-    font-size: 12px;
-    color: var(--color-ink-muted);
+  .lev-inline {
+    font-size: 13px;
+    color: var(--color-ink-secondary);
+    line-height: 1.5;
   }
 
-  .lev-list {
+  .lev-expanded {
     display: flex;
     flex-direction: column;
   }
 
   .lev-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-2) 0;
-    border-top: 1px solid var(--color-wire);
-  }
-
-  .lev-navn {
     font-size: 12px;
     font-weight: 500;
     color: var(--color-ink);
-  }
-
-  .lev-status {
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-ghost);
-  }
-
-  .lev-kvalifisert {
-    color: var(--color-score-high);
-  }
-
-  /* ── Dokumenter ── */
-  .doc-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .doc-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-2) 0;
+    padding: var(--spacing-1) 0;
     border-top: 1px solid var(--color-wire);
   }
 
-  .doc-navn {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-vekt);
+  .lev-row:first-child {
+    border-top: none;
   }
 
-  .doc-dato {
-    font-family: var(--font-data);
-    font-size: 11px;
+  .meta-empty {
+    font-size: 12px;
     color: var(--color-ink-ghost);
-    font-variant-numeric: tabular-nums;
+  }
+
+  .expand-inline {
+    display: inline;
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-vekt);
+    cursor: pointer;
+    padding: 0;
+    margin-left: var(--spacing-1);
+  }
+
+  .expand-inline:hover {
+    text-decoration: underline;
   }
 
   /* ── Hendelser ── */
@@ -422,6 +407,10 @@
     gap: var(--spacing-3);
     padding: var(--spacing-2) 0;
     border-top: 1px solid var(--color-wire);
+  }
+
+  .hendelse-row:first-child {
+    border-top: none;
   }
 
   .hendelse-dato {
@@ -459,5 +448,12 @@
 
   .expand-btn:hover {
     color: var(--color-ink-secondary);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .two-col {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
