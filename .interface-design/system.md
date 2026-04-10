@@ -30,14 +30,23 @@ All pages share one consistent visual language. There is no modal split between 
 
 Pages differ in *layout and content density* — a phase overview has stacked sections with metadata grids, while an evaluation workspace has a matrix with a side panel. But the visual vocabulary (borders, radius, surfaces, typography) is the same.
 
-### Signature Element: Fasepanelet
+### Signature Element: Faselinjen
 
-En vertikal prosessnavigator som *alltid* er synlig. Viser hele livssyklusen fra registrering til kontrakt. Transformerer innholdsområdet når du klikker mellom faser. Det er et *prosess-termometer* som er meningsløst utenfor anskaffelsesdomenet.
+En horisontal tidslinje med tre noder som viser hvor i anskaffelsesprosessen brukeren er. Plassert mellom header og innhold (36px). Erstatter det gamle vertikale fasepanelet (sidebar).
 
-- Collapsed (52px): Ikoner fargekodet etter status (grønn = fullført, teal = aktiv, dempet = kommende). Aktiv fase har pulserende prikk. Valgt fase har tykkere ikon-strek og teal venstre-border.
-- Expanded (230px): Ikon + label + meta. Fullførte faser viser `✓ 14. feb`. Aktiv konkurranse viser `Frist: 12. mai · 36d`. Labels fader inn med 60ms delay.
-- Cubic-bezier(0.22,1,0.36,1) transition, 0.25s.
-- Mobile: hamburger i header, slide-in overlay fra venstre (240px).
+Tre faser:
+- **Registrering** — forberede og klassifisere
+- **Konkurranse** — gjennomføre (inkl. kvalifisering, evaluering, protokoll, meddelelse som arbeidsflater)
+- **Tildeling** — avslutte (inkl. karensperiode, kontraktssignering)
+
+Noder:
+- **● Fullført** — fylt sirkel `--color-ink-muted`, dato under
+- **◉ Aktiv** — fylt sirkel `--color-vekt` med subtil ring, status under (f.eks. "Frist: 22. mai · 42d")
+- **○ Kommende** — tom sirkel `--color-ink-ghost`
+
+Linje mellom noder: solid `--color-ink-muted` for fullført-strekning, stiplet `--color-wire` for kommende.
+
+Klikk på node → navigerer til fasen. Hovering viser `--color-felt-hover` bakgrunn.
 
 ---
 
@@ -51,36 +60,35 @@ Alle arbeidsflater tilhører én spesifikk anskaffelse. Navigasjonen gjenspeiler
 
 ```
 /anskaffelser                          → Kontrollbordet (oversikt)
-/anskaffelser/[id]                     → Registrering (fase 01)
-/anskaffelser/[id]/konkurranse         → Konkurranse (fase 02)
-/anskaffelser/[id]/kvalifisering       → Kvalifisering (fase 03)
-/anskaffelser/[id]/evaluering          → Evaluering (fase 04)
-/anskaffelser/[id]/tildeling           → Tildeling — oversikt (fase 05)
-/anskaffelser/[id]/protokoll           → Arbeidsflate: anskaffelsesprotokoll
-/anskaffelser/[id]/meddelelse          → Arbeidsflate: meddelelsesbrev
-/anskaffelser/[id]/kontrakt            → Kontrakt (fase 06)
+/anskaffelser/[id]                     → Registrering (fase 1)
+/anskaffelser/[id]/konkurranse         → Konkurranse (fase 2)
+/anskaffelser/[id]/kvalifisering       → Arbeidsflate: kvalifiseringsmatrise (under konkurranse)
+/anskaffelser/[id]/evaluering          → Arbeidsflate: evalueringsmatrise (under konkurranse)
+/anskaffelser/[id]/protokoll           → Arbeidsflate: anskaffelsesprotokoll (under konkurranse)
+/anskaffelser/[id]/meddelelse          → Arbeidsflate: meddelelsesbrev (under konkurranse)
+/anskaffelser/[id]/tildeling           → Tildeling (fase 3, inkl. kontrakt)
 ```
 
 ### App-shell
 
 All pages under `/anskaffelser/[id]` share a persistent shell:
-- **Header** (48px): Breadcrumbs + theme toggle + user info
-- **Case-info strip**: Procurement reference, Del II/III badge, oppdragsgiver, kontraktstype, verdi
-- **Phase panel** (left): 6-phase navigator (registrering → kontrakt)
-- **Content header**: Phase number + label + status badge (fullført/aktiv/kommende)
-- **Main content**: Workspace component
+- **Header** (48px, `--color-header-bg`): Breadcrumbs + theme toggle + user info
+- **Phase line** (36px): Horizontal 3-node timeline (registrering → konkurranse → tildeling)
+- **Main content**: Full-width workspace (no sidebar)
+
+No case-info strip — breadcrumb shows procurement name, registrering page shows all details. Total app chrome: 84px (down from 128px with old sidebar+case-info).
 
 ### Narrativskille
 
 | Nivå | Rute | Metafor | Formål | Layout |
 |---|---|---|---|---|
 | 1 | `/anskaffelser` | **Kontrollbordet** | Scan alle anskaffelser, triage | Tidslinje / tabell |
-| 2 | `/anskaffelser/[id]` | **Faseoversikt** | Status, fremdrift, neste steg | Stablede seksjoner |
+| 2 | `/anskaffelser/[id]` | **Faseoversikt** | Status, fremdrift, neste steg | Kompakt 2-kolonne |
 | 3 | `/anskaffelser/[id]/*` | **Arbeidsflaten** | Kvalifisering / evaluering / protokoll | Oppgavespesifikt |
 
-**Fasesider** (registrering, konkurranse, tildeling, kontrakt) bruker stablede seksjoner — vertikal scanning med typografisk hierarki for å kommunisere viktighet. Store monospace-tall for nøkkelverdier (frist, verdi), kompakte metadata-grids for klassifisering, lister for hendelser og leverandører. Innholdet bestemmer seksjonslayout, ikke en forhåndsdefinert grid.
+**Fasesider** (registrering, konkurranse, tildeling) bruker kompakte 2-kolonne layouts — alt synlig i én viewport uten scroll. Venstre kolonne: primærinnhold (frist, klassifisering, karensperiode). Høyre kolonne: støttende (leverandører, hendelser, aktiviteter). Overflow håndteres med "N til ▸" og "Les mer", aldri med at innholdet vokser ut av viewporten.
 
-**Arbeidsflater** (evaluering, kvalifisering, protokoll, meddelelse) har oppgavespesifikke layouts — matrise med sidepanel for evaluering, dokumentstruktur for protokoll. Ulike oppgaver fortjener ulike grensesnitt, men samme visuelle vokabular (borders, radius, fonter, farger).
+**Arbeidsflater** (evaluering, kvalifisering, protokoll, meddelelse) har oppgavespesifikke layouts — matrise med sidepanel for evaluering, dokumentstruktur for protokoll. Navigeres via lenker fra faseoversiktene. Tilbake-navigasjon: "← Konkurranse" / "← Tildeling".
 
 ### Kontrollbordet — visninger
 
@@ -342,7 +350,7 @@ The primary user is an innkjøpsrådgiver on a standard office monitor. Design e
 
 Mobilvisning er irrelevant — innkjøpsrådgivere evaluerer ikke tilbud på telefonen. Mobil-breakpoints (≤768px) sikrer at siden ikke *brekker*, men er ikke et designmål.
 
-**Vertikal plass er premium.** Med ~832px tilgjengelig (primærmål) etter header, case-info og content-header, bør fasesider vise alt viktig innhold uten scrolling. Card-padding og section-gaps skal være nøkterne, ikke generøse.
+**Vertikal plass er premium.** Med ~876px tilgjengelig (primærmål) etter header (48px) + faselinje (36px), og ~656px på MacBook Air 13", bør fasesider vise alt viktig innhold uten scrolling. Kompakte 2-kolonne layouts — aldri vertikal stabling som krever scroll.
 
 **Horisontal plass: bruk den formålsdrevet.** Med fasepanelet (52px collapsed) har innholdsområdet ~1868px. `.page-inner` begrenser dette til maks-bredde. Bredden tilpasses innholdstypen — se Content Width nedenfor.
 
@@ -549,15 +557,15 @@ Two-panel workspace: matrix left, panel right.
 
 The `/anskaffelser/[id]` layout provides a persistent shell:
 
-- **Header** (48px, `--color-header-bg`): hamburger (mobile only) + breadcrumbs + theme toggle + user info
-- **Case-info strip** (`--color-felt`, `--color-wire` bottom border): procurement reference, Del badge, oppdragsgiver, kontraktstype, verdi
-- **Phase panel** (left): 52px collapsed → 230px on hover, 6 phases with status indicators
-- **Content header**: phase number + label + status badge (only on workspace pages)
-- **Main content**: scrollable workspace
+- **Header** (48px, `--color-header-bg`): breadcrumbs + theme toggle + user info
+- **Phase line** (36px, `--color-wire` bottom border): horizontal 3-node timeline
+- **Main content**: full-width scrollable workspace (no sidebar)
 
-### Phase Panel
+Total chrome: 84px. No case-info strip (redundant — breadcrumb shows name, registrering shows details).
 
-See "Signature Element: Fasepanelet" above. Navigation: clicking a phase navigates via SvelteKit routes. Phase status derived from activities via `derivePhaseStates()`.
+### Phase Line
+
+See "Signature Element: Faselinjen" above. Three phases derived from activities via `derivePhaseStates()`. Phase gates: `PUBLISH_TO_DOFFIN` (registrering→konkurranse), `areAwardLettersSent` (konkurranse→tildeling).
 
 ### Breadcrumbs
 
