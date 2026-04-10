@@ -30,7 +30,7 @@ Den opprinnelige planen var å konvertere fasesidene til bento-grid layout med s
 - **Borders, ikke shadows**: Alle kort bruker `1px solid var(--color-wire)`, `--radius-md` (6px). Ingen box-shadows, ingen hover-elevation, ingen scale-transforms.
 - **Tidssensitiv urgency**: Fristkortet endrer aksent-farge basert på nærhet (teal → amber → warn → expired). Ingen animasjon.
 - **Click-to-expand**: Progressiv avsløring for hendelser og leverandører. Vis 3-4, expand inline.
-- **Bredere container**: `.page-inner-wide` med `max-width: 1060px` for fasesider (vs 880px for prose).
+- **Bredere container**: `.page-inner.wide` med `max-width: 1060px` for fasesider (vs 880px for prose).
 - **11px minimum**: Ingen tekst under 11px. Bumper section-labels, badges, compact metadata.
 
 ## Oppgave

@@ -1,18 +1,11 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS } from '$lib/utils/protokoll-helpers';
+  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, lookupLabel } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
   const eforms = $derived(data?.eforms);
-
-  function labelFor(map: Record<string, string>, key: string | undefined): string | null {
-    if (!key) return null;
-    if (map[key]) return map[key];
-    const cap = key.charAt(0).toUpperCase() + key.slice(1);
-    return map[cap] ?? key;
-  }
 
   interface MetaItem {
     label: string;
@@ -22,8 +15,8 @@
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
-    const cat = labelFor(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
-    const prosed = labelFor(PROCEDURE_LABELS, proc.procedure);
+    const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
+    const prosed = lookupLabel(PROCEDURE_LABELS, proc.procedure);
 
     // Framework details
     let ramme: string | null = null;
@@ -80,9 +73,7 @@
   // Award criteria from eforms
   interface KriteriumDisplay {
     name: string;
-    type: string | null;
     weight: string | null;
-    indent: boolean;
   }
 
   const tildelingskriterier = $derived.by((): KriteriumDisplay[] => {
@@ -90,9 +81,7 @@
     if (!criteria?.length) return [];
     return criteria.map((c: { name?: string; type?: string; weight_percent?: number }) => ({
       name: c.name ?? c.type ?? '—',
-      type: c.type ?? null,
       weight: c.weight_percent != null ? `${c.weight_percent} %` : null,
-      indent: false,
     }));
   });
 
@@ -108,14 +97,14 @@
 
 <div class="reg-page">
   {#if !proc}
-    <div class="page-inner-wide">
+    <div class="page-inner wide">
       <div class="empty-state">
         <p>Kunne ikke laste anskaffelsen.</p>
         <button class="empty-retry" onclick={() => location.reload()}>Prøv igjen</button>
       </div>
     </div>
   {:else}
-    <div class="page-inner-wide">
+    <div class="page-inner wide">
       <!-- Beskrivelse -->
       {#if beskrivelse}
         <div class="card">

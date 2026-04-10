@@ -91,6 +91,14 @@ export function addDays(isoDate: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
+/** Case-insensitive label lookup. Returns the raw key as fallback if no match. */
+export function lookupLabel(map: Record<string, string>, key: string | undefined): string | null {
+  if (!key) return null;
+  if (map[key]) return map[key];
+  const cap = key.charAt(0).toUpperCase() + key.slice(1);
+  return map[cap] ?? key;
+}
+
 /** Procedure code → Norwegian label. */
 export const PROCEDURE_LABELS: Record<string, string> = {
   Open: 'Åpen anbudskonkurranse',
