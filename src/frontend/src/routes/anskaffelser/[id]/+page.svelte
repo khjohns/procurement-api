@@ -161,11 +161,11 @@
           <p class="beskrivelse">
             {#if beskrivelseTruncated && !beskrivelseExpanded}
               {beskrivelseTruncated}
-              <button class="les-mer-btn" onclick={() => (beskrivelseExpanded = true)}>Les mer</button>
+              <button class="inline-toggle" onclick={() => (beskrivelseExpanded = true)}>Les mer</button>
             {:else}
               {beskrivelse}
               {#if beskrivelseTruncated}
-                <button class="les-mer-btn" onclick={() => (beskrivelseExpanded = false)}>Vis mindre</button>
+                <button class="inline-toggle" onclick={() => (beskrivelseExpanded = false)}>Vis mindre</button>
               {/if}
             {/if}
           </p>
@@ -288,36 +288,6 @@
     white-space: pre-line;
   }
 
-  .les-mer-btn {
-    display: inline;
-    background: none;
-    border: none;
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-vekt);
-    cursor: pointer;
-    padding: 0;
-    margin-left: var(--spacing-1);
-  }
-
-  .les-mer-btn:hover {
-    text-decoration: underline;
-  }
-
-  /* ── 2-column grid ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-4);
-  }
-
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
-  }
-
   /* ── Klassifisering ── */
   .klass-list {
     display: flex;
@@ -336,24 +306,10 @@
     border-top: 1px solid var(--color-wire);
   }
 
-  .meta-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-ink-ghost);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-
   .klass-value {
     font-size: 13px;
     font-weight: 500;
     color: var(--color-ink);
-  }
-
-  .meta-empty {
-    font-size: 12px;
-    color: var(--color-ink-ghost);
   }
 
   /* ── CPV ── */
@@ -451,10 +407,6 @@
 
   /* ── Responsive ── */
   @media (max-width: 768px) {
-    .two-col {
-      grid-template-columns: 1fr;
-    }
-
     .verktoy-row {
       flex-direction: column;
     }

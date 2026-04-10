@@ -155,20 +155,6 @@
     overflow-y: auto;
   }
 
-  /* ── 2-column grid ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-4);
-  }
-
-  .left-col,
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
-  }
-
   /* ── Karensperiode card ── */
   .karens-card {
     --frist-accent: var(--color-vekt);
@@ -225,11 +211,6 @@
     font-style: italic;
   }
 
-  /* Urgency variants */
-  .frist-attention { --frist-accent: var(--color-warn); }
-  .frist-urgent    { --frist-accent: var(--color-warn); background: var(--color-warn-bg); }
-  .frist-expired   { --frist-accent: var(--color-score-low); }
-
   /* ── Checklist ── */
   .checklist {
     display: flex;
@@ -267,12 +248,5 @@
 
   .check-done .check-label {
     color: var(--color-ink-muted);
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .two-col {
-      grid-template-columns: 1fr;
-    }
   }
 </style>

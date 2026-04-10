@@ -187,7 +187,7 @@
               <div class="lev-inline">
                 {levPreview.join(' \u00b7 ')}
                 {#if levRest > 0}
-                  <button class="expand-inline" onclick={() => (levExpanded = true)}>
+                  <button class="inline-toggle" onclick={() => (levExpanded = true)}>
                     +{levRest} til &#9656;
                   </button>
                 {/if}
@@ -197,7 +197,7 @@
                 {#each leverandorer as navn}
                   <div class="lev-row">{navn}</div>
                 {/each}
-                <button class="expand-inline" onclick={() => (levExpanded = false)}>Vis færre</button>
+                <button class="inline-toggle" onclick={() => (levExpanded = false)}>Vis færre</button>
               </div>
             {/if}
           </div>
@@ -231,20 +231,6 @@
   .konkurranse-page {
     height: 100%;
     overflow-y: auto;
-  }
-
-  /* ── 2-column grid ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-4);
-  }
-
-  .left-col,
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
   }
 
   /* ── Frist card ── */
@@ -311,10 +297,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Urgency variants */
-  .frist-attention { --frist-accent: var(--color-warn); }
-  .frist-urgent    { --frist-accent: var(--color-warn); background: var(--color-warn-bg); }
-  .frist-expired   { --frist-accent: var(--color-score-low); }
 
   /* Frist done */
   .frist-done {
@@ -373,28 +355,6 @@
     border-top: none;
   }
 
-  .meta-empty {
-    font-size: 12px;
-    color: var(--color-ink-ghost);
-  }
-
-  .expand-inline {
-    display: inline;
-    background: none;
-    border: none;
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-vekt);
-    cursor: pointer;
-    padding: 0;
-    margin-left: var(--spacing-1);
-  }
-
-  .expand-inline:hover {
-    text-decoration: underline;
-  }
-
   /* ── Hendelser ── */
   .hendelse-list {
     display: flex;
@@ -447,12 +407,5 @@
 
   .expand-btn:hover {
     color: var(--color-ink-secondary);
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .two-col {
-      grid-template-columns: 1fr;
-    }
   }
 </style>
