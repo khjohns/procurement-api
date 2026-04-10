@@ -125,8 +125,7 @@
   <div class="shell-body">
     <PhasePanel
       procId={id}
-      {activities}
-      {proc}
+      {phaseStates}
       mobileOpen={mobileMenuOpen}
       onclose={() => (mobileMenuOpen = false)}
     />

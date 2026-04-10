@@ -14,6 +14,11 @@ export interface PhaseState {
   meta: string;
 }
 
+export interface ProcDeadlineInfo {
+  currentDeadline?: string;
+  timeline?: { submission?: string };
+}
+
 /** SVG path data per phase icon (viewBox="0 0 18 18", stroke="currentColor") */
 export const phaseIcons: Record<string, string> = {
   registrering:
@@ -84,7 +89,7 @@ function doneMeta(date: string | null): string {
  */
 export function derivePhaseStates(
   activities: Activity[],
-  proc?: { currentDeadline?: string; timeline?: { submission?: string } },
+  proc?: ProcDeadlineInfo,
 ): Record<string, PhaseState> {
   const actions = new Set(activities.map((a) => a.action));
   const has = (action: string) => actions.has(action);

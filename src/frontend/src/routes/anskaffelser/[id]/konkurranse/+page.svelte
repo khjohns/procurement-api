@@ -161,15 +161,6 @@
     overflow-y: auto;
   }
 
-  .page-inner {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: var(--spacing-5) var(--spacing-6);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
-  }
-
   .empty-state {
     display: flex;
     align-items: center;
@@ -177,13 +168,6 @@
     min-height: 200px;
     color: var(--color-ink-ghost);
     font-size: 13px;
-  }
-
-  .card {
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-4) var(--spacing-5);
   }
 
   .grid-two {

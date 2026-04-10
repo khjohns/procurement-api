@@ -4,27 +4,21 @@
     phases,
     phaseIcons,
     routeToPhase,
-    derivePhaseStates,
     type PhaseDefinition,
     type PhaseState,
   } from '$lib/config/phases';
-  import type { Activity } from '$lib/types/activity';
 
   let {
     procId,
-    activities = [],
-    proc,
+    phaseStates,
     mobileOpen = false,
     onclose,
   }: {
     procId: string;
-    activities?: Activity[];
-    proc?: { currentDeadline?: string; timeline?: { submission?: string } };
+    phaseStates: Record<string, PhaseState>;
     mobileOpen?: boolean;
     onclose?: () => void;
   } = $props();
-
-  const states = $derived(derivePhaseStates(activities, proc));
 
   const activePhaseId = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -45,7 +39,7 @@
   }
 
   function stateFor(phase: PhaseDefinition): PhaseState {
-    return states[phase.id] ?? { status: 'kommende', meta: 'Kommende' };
+    return phaseStates[phase.id] ?? { status: 'kommende', meta: 'Kommende' };
   }
 </script>
 

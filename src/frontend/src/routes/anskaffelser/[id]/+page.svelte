@@ -35,8 +35,6 @@
       },
     ].filter(Boolean) as MetaItem[];
   });
-
-  const procId = $derived(proc?.id);
 </script>
 
 <div class="reg-page">
@@ -128,22 +126,6 @@
   .reg-page {
     height: 100%;
     overflow-y: auto;
-  }
-
-  .page-inner {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: var(--spacing-5) var(--spacing-6);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
-  }
-
-  .card {
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-4) var(--spacing-5);
   }
 
   /* ── Empty state ── */
