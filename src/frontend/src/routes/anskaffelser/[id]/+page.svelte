@@ -13,46 +13,33 @@
     mono?: boolean;
   }
 
-  /** CPV group (2-digit prefix) → Norwegian label. */
-  const CPV_GROUP_LABELS: Record<string, string> = {
-    '09': 'Petroleumsprodukter og energi',
-    '18': 'Klær og tekstiler',
-    '30': 'Kontor- og datautstyr',
-    '34': 'Transportutstyr',
-    '35': 'Sikkerhetsutstyr',
-    '38': 'Laboratorium- og presisjonsutstyr',
-    '39': 'Møbler og innredning',
-    '42': 'Industrimaskiner',
-    '43': 'Anleggsmaskiner',
-    '44': 'Byggevarer',
-    '45': 'Bygg og anlegg',
-    '48': 'Programvare',
-    '50': 'Vedlikehold og reparasjon',
-    '55': 'Hotell og restaurant',
-    '60': 'Transporttjenester',
-    '64': 'Post og telekommunikasjon',
-    '65': 'Energiforsyning',
-    '71': 'Arkitekt- og rådgivningstjenester',
-    '72': 'IT-tjenester',
-    '77': 'Landbruk og hagebruk',
-    '79': 'Konsulenttjenester',
-    '85': 'Helse og sosial',
-    '90': 'Avfall og rengjøring',
-    '92': 'Kultur og fritid',
-    '98': 'Andre tjenester',
-  };
-
   interface CpvDisplay {
     code: string;
-    group: string;
+    label: string;
   }
 
-  const cpvKoder = $derived.by((): CpvDisplay[] => {
+  const cpvRawCodes = $derived.by((): string[] => {
     const cpvList = proc?.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
-    if (!cpvList?.length) return [];
-    return cpvList.map((code: string) => ({
+    return cpvList?.length ? cpvList : [];
+  });
+
+  let cpvLabels = $state<Record<string, string>>({});
+
+  $effect(() => {
+    const codes = cpvRawCodes;
+    if (!codes.length) return;
+    fetch(`/api/cpv/${codes.join(',')}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => {
+        cpvLabels = data;
+      })
+      .catch(() => {});
+  });
+
+  const cpvKoder = $derived.by((): CpvDisplay[] => {
+    return cpvRawCodes.map((code) => ({
       code,
-      group: CPV_GROUP_LABELS[code.slice(0, 2)] ?? '',
+      label: cpvLabels[code] ?? '',
     }));
   });
 
@@ -184,8 +171,8 @@
             {#each cpvKoder as cpv}
               <div class="cpv-row">
                 <span class="cpv-code">{cpv.code}</span>
-                {#if cpv.group}
-                  <span class="cpv-group">{cpv.group}</span>
+                {#if cpv.label}
+                  <span class="cpv-label">{cpv.label}</span>
                 {/if}
               </div>
             {/each}
@@ -300,7 +287,7 @@
     flex-shrink: 0;
   }
 
-  .cpv-group {
+  .cpv-label {
     font-size: 12px;
     color: var(--color-ink-muted);
   }

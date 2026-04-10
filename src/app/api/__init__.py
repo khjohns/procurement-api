@@ -515,6 +515,35 @@ def get_eforms(doffin_id: str):
         return jsonify({"error": str(e)}), 404
 
 
+# ── CPV labels ──
+
+_cpv_labels: dict[str, str] | None = None
+
+
+def _get_cpv_labels() -> dict[str, str]:
+    """Lazy-load Norwegian CPV labels from bundled JSON."""
+    global _cpv_labels
+    if _cpv_labels is None:
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).parent.parent / "data" / "cpv_labels_nb.json"
+        _cpv_labels = json.loads(path.read_text()) if path.exists() else {}
+    return _cpv_labels
+
+
+@bp.route("/cpv/<codes>")
+def get_cpv_labels(codes: str):
+    """Look up Norwegian labels for CPV codes (comma-separated)."""
+    labels = _get_cpv_labels()
+    result = {}
+    for code in codes.split(","):
+        code = code.strip()
+        if code:
+            result[code] = labels.get(code)
+    return jsonify(result)
+
+
 # ── Protokoll generation ──
 
 
