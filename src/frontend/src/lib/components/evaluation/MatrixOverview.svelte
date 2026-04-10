@@ -1,6 +1,6 @@
 <script lang="ts">
   import { evaluation, criterionMode, formatNOK, fmt2 } from '$lib/stores/evaluation.svelte';
-  import { scoreColor, fS, countDone, fN } from './shared';
+  import { scoreColor, fS, countDone, fN, shortName, COMPACT_THRESHOLD } from './shared';
 
   let {
     onselect,
@@ -10,7 +10,7 @@
 
   let suppliers = $derived(evaluation.data.suppliers);
   let criteria = $derived(evaluation.data.criteria);
-  let compact = $derived(suppliers.length > 3);
+  let compact = $derived(suppliers.length >= COMPACT_THRESHOLD);
   let isPrismodell = $derived(evaluation.activeMethod === 'pris');
   let bestTotal = $derived(Math.max(...suppliers.map((s) => evaluation.totals[s.id] ?? 0)));
   let bestEvaluatedPrice = $derived(
@@ -42,7 +42,7 @@
         <th class="th" style="width: 170px;">Kriterium</th>
         <th class="th th-center" style="width: 48px;">Vekt</th>
         {#each suppliers as lev (lev.id)}
-          <th class="th th-center">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</th>
+          <th class="th th-center">{compact ? shortName(lev.name) : lev.name}</th>
         {/each}
         <th class="th th-center" style="width: 48px;"></th>
       </tr>

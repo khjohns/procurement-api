@@ -32,10 +32,7 @@
   {placeholder}
   rows="1"
   {onfocus}
-  oninput={(e) => {
-    oninput(e.currentTarget.value);
-    resize();
-  }}
+  oninput={(e) => oninput(e.currentTarget.value)}
 ></textarea>
 
 <style>

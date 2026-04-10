@@ -5,12 +5,13 @@
   import AutoTextarea from './AutoTextarea.svelte';
   import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
+  import { shortName, VERTICAL_THRESHOLD, COMPACT_THRESHOLD } from './shared';
 
   let { criterion }: { criterion: Criterion } = $props();
 
   let suppliers = $derived(evaluation.data.suppliers);
-  let useVertical = $derived(suppliers.length >= 5);
-  let compact = $derived(suppliers.length > 3);
+  let useVertical = $derived(suppliers.length >= VERTICAL_THRESHOLD);
+  let compact = $derived(suppliers.length >= COMPACT_THRESHOLD);
 </script>
 
 {#if useVertical}
@@ -24,7 +25,7 @@
     {/snippet}
     {#snippet row({ supplier: lev, setFocus })}
       <div class="vrow-supplier">
-        <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
+        <div class="vrow-supplier-name">{shortName(lev.name)}</div>
         <div class="vrow-supplier-full">{lev.name}</div>
       </div>
       <div class="vrow-score">
@@ -54,7 +55,7 @@
       {@const score = criterion.scores?.[lev.id] ?? null}
       <div class="card">
         <div class="card-header">
-          <span class="card-name">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</span>
+          <span class="card-name">{compact ? shortName(lev.name) : lev.name}</span>
           <ScoreField
             value={score}
             onchange={(v) => {

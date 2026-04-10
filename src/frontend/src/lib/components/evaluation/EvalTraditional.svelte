@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { evaluation, fmt1 } from '$lib/stores/evaluation.svelte';
+  import { evaluation } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
   import AutoTextarea from './AutoTextarea.svelte';
   import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
-  import { scoreColor, fS } from './shared';
+  import { scoreColor, fS, shortName, VERTICAL_THRESHOLD, COMPACT_THRESHOLD } from './shared';
 
   let { criterion }: { criterion: Criterion } = $props();
 
   let suppliers = $derived(evaluation.data.suppliers);
-  let useVertical = $derived(suppliers.length >= 5);
-  let compact = $derived(suppliers.length > 3);
+  let useVertical = $derived(suppliers.length >= VERTICAL_THRESHOLD);
+  let compact = $derived(suppliers.length >= COMPACT_THRESHOLD);
   let subs = $derived(criterion.subcriteria);
   let activeSubId = $state('');
 
@@ -55,7 +55,7 @@
       {/snippet}
       {#snippet row({ supplier: lev, setFocus })}
         <div class="vrow-supplier">
-          <div class="vrow-supplier-name">{lev.name.split(' ')[0] ?? lev.name}</div>
+          <div class="vrow-supplier-name">{shortName(lev.name)}</div>
         </div>
         <div class="vrow-score">
           <ScoreField
@@ -85,7 +85,7 @@
         <div class="card">
           <div class="card-header">
             <span class="card-name"
-              >{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</span
+              >{compact ? shortName(lev.name) : lev.name}</span
             >
             <ScoreField
               value={score}
@@ -117,7 +117,7 @@
           <th class="th" style="width: 140px;">Underkriterium</th>
           <th class="th th-center" style="width: 40px;">Vekt</th>
           {#each suppliers as lev (lev.id)}
-            <th class="th th-center">{compact ? (lev.name.split(' ')[0] ?? lev.name) : lev.name}</th
+            <th class="th th-center">{compact ? shortName(lev.name) : lev.name}</th
             >
           {/each}
         </tr>
