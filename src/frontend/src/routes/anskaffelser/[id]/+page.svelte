@@ -10,7 +10,6 @@
   interface MetaItem {
     label: string;
     value: string;
-    mono?: boolean;
   }
 
   interface CpvDisplay {
@@ -18,12 +17,24 @@
     label: string;
   }
 
+  // ── Beskrivelse ──
+
+  const rawBeskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
+  const beskrivelse = $derived(rawBeskrivelse ? stripHtml(rawBeskrivelse) : null);
+  let beskrivelseExpanded = $state(false);
+  const beskrivelseTruncated = $derived(
+    beskrivelse && beskrivelse.length > 200 ? beskrivelse.slice(0, 200).trimEnd() + '...' : null,
+  );
+
+  // ── CPV ──
+
   const cpvRawCodes = $derived.by((): string[] => {
     const cpvList = proc?.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
     return cpvList?.length ? cpvList : [];
   });
 
   let cpvLabels = $state<Record<string, string>>({});
+  let cpvExpanded = $state(false);
 
   $effect(() => {
     const codes = cpvRawCodes;
@@ -43,20 +54,20 @@
     }));
   });
 
+  // ── Klassifisering ──
+
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
     const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature);
     const prosed = lookupLabel(PROCEDURE_LABELS, proc.procedure);
     const terskel = lookupLabel(THRESHOLD_LABELS, proc.threshold);
 
-    // Framework details
     let ramme: string | null = null;
     if (proc.framework_agreement_involved) {
       const maks = proc.framework_agreement_maximum_participants;
       ramme = maks ? `Ja (maks ${maks})` : 'Ja';
     }
 
-    // Duration
     let varighet: string | null = null;
     const durationMonths = proc.duration_months ?? eforms?.duration_months;
     if (durationMonths) {
@@ -67,10 +78,9 @@
     if (varighet && proc.duration_start && proc.duration_end) {
       const start = new Date(proc.duration_start).getFullYear();
       const end = new Date(proc.duration_end).getFullYear();
-      if (start !== end) varighet += ` (${start}–${end})`;
+      if (start !== end) varighet += ` (${start}\u2013${end})`;
     }
 
-    // Publication date
     const publisert = proc.publicationDate ?? eforms?.issue_date ?? null;
 
     return [
@@ -82,6 +92,8 @@
       publisert && { label: 'Kunngjort', value: formatDatoMndAar(publisert) },
     ].filter(Boolean) as MetaItem[];
   });
+
+  // ── Økonomi ──
 
   const okonomi = $derived.by((): MetaItem[] => {
     if (!proc) return [];
@@ -97,7 +109,8 @@
     ].filter(Boolean) as MetaItem[];
   });
 
-  // Award criteria from eforms
+  // ── Tildelingskriterier ──
+
   interface KriteriumDisplay {
     name: string;
     weight: string | null;
@@ -107,20 +120,23 @@
     const criteria = eforms?.award_criteria;
     if (!criteria?.length) return [];
     return criteria.map((c: { name?: string; type?: string; weight_percent?: number }) => ({
-      name: c.name ?? c.type ?? '—',
-      weight: c.weight_percent != null ? `${c.weight_percent} %` : null,
+      name: c.name ?? c.type ?? '\u2014',
+      weight: c.weight_percent != null ? `${c.weight_percent}\u00a0%` : null,
     }));
   });
 
-  // Doffin link
+  const kriterierInline = $derived(
+    tildelingskriterier
+      .map((k) => (k.weight ? `${k.name} ${k.weight}` : k.name))
+      .join(' \u00b7 '),
+  );
+
+  // ── Doffin ──
+
   const doffinId = $derived(proc?.doffinId ?? proc?.doffinReferenceId ?? proc?.doffin_id ?? null);
   const doffinUrl = $derived(
     doffinId ? `https://doffin.no/notices/${doffinId}` : null,
   );
-
-  // Description
-  const rawBeskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
-  const beskrivelse = $derived(rawBeskrivelse ? stripHtml(rawBeskrivelse) : null);
 </script>
 
 <div class="reg-page">
@@ -140,101 +156,111 @@
       {#if beskrivelse}
         <div class="card">
           <div class="section-label">Beskrivelse</div>
-          <p class="beskrivelse">{beskrivelse}</p>
+          <p class="beskrivelse">
+            {#if beskrivelseTruncated && !beskrivelseExpanded}
+              {beskrivelseTruncated}
+              <button class="les-mer-btn" onclick={() => (beskrivelseExpanded = true)}>Les mer</button>
+            {:else}
+              {beskrivelse}
+              {#if beskrivelseTruncated}
+                <button class="les-mer-btn" onclick={() => (beskrivelseExpanded = false)}>Vis mindre</button>
+              {/if}
+            {/if}
+          </p>
         </div>
       {/if}
 
-      <!-- Klassifisering -->
-      <div class="card">
-        <div class="section-label">Klassifisering</div>
-        {#if klassifisering.length > 0}
-          <div class="meta-grid">
-            {#each klassifisering as m}
-              <div class="meta-cell">
-                <div class="meta-label">{m.label}</div>
-                <div class="meta-value" class:mono={m.mono}>
-                  {m.value}
+      <!-- 2-column grid: Klassifisering left, Økonomi+Kriterier right -->
+      <div class="two-col">
+        <!-- Left: Klassifisering -->
+        <div class="card">
+          <div class="section-label">Klassifisering</div>
+          {#if klassifisering.length > 0}
+            <div class="klass-list">
+              {#each klassifisering as m}
+                <div class="klass-item">
+                  <div class="meta-label">{m.label}</div>
+                  <div class="klass-value">{m.value}</div>
                 </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="meta-empty">Ingen klassifiseringsdata tilgjengelig.</div>
+          {/if}
+
+          <!-- CPV inline -->
+          {#if cpvKoder.length > 0}
+            <div class="klass-item cpv-toggle-item">
+              <div class="meta-label">CPV</div>
+              {#if !cpvExpanded}
+                <button class="cpv-toggle" onclick={() => (cpvExpanded = true)}>
+                  {cpvKoder.length} koder &#9656;
+                </button>
+              {:else}
+                <div class="cpv-expanded">
+                  {#each cpvKoder as cpv}
+                    <div class="cpv-row">
+                      <span class="cpv-code">{cpv.code}</span>
+                      {#if cpv.label}
+                        <span class="cpv-label">{cpv.label}</span>
+                      {/if}
+                    </div>
+                  {/each}
+                  <button class="cpv-toggle" onclick={() => (cpvExpanded = false)}>Skjul</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Right: Økonomi + Tildelingskriterier -->
+        <div class="right-col">
+          {#if okonomi.length > 0}
+            <div class="card okonomi-card">
+              <div class="section-label">Økonomi</div>
+              <div class="okonomi-items">
+                {#each okonomi as m}
+                  <div class="okonomi-item">
+                    <div class="meta-label">{m.label}</div>
+                    <div class="okonomi-value">{m.value}</div>
+                  </div>
+                {/each}
               </div>
-            {/each}
-          </div>
-        {:else}
-          <div class="meta-empty">Ingen klassifiseringsdata tilgjengelig.</div>
-        {/if}
+              {#if tildelingskriterier.length > 0}
+                <div class="kriterier-section">
+                  <div class="section-label">Tildelingskriterier</div>
+                  <div class="kriterier-inline">{kriterierInline}</div>
+                </div>
+              {/if}
+            </div>
+          {:else if tildelingskriterier.length > 0}
+            <div class="card">
+              <div class="section-label">Tildelingskriterier</div>
+              <div class="kriterier-inline">{kriterierInline}</div>
+            </div>
+          {/if}
+        </div>
       </div>
 
-      <!-- CPV-koder -->
-      {#if cpvKoder.length > 0}
-        <div class="card">
-          <div class="section-label">CPV-koder</div>
-          <div class="cpv-list">
-            {#each cpvKoder as cpv}
-              <div class="cpv-row">
-                <span class="cpv-code">{cpv.code}</span>
-                {#if cpv.label}
-                  <span class="cpv-label">{cpv.label}</span>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Økonomi -->
-      {#if okonomi.length > 0}
-        <div class="card okonomi-card">
-          <div class="section-label">Økonomi</div>
-          <div class="okonomi-row">
-            {#each okonomi as m}
-              <div class="okonomi-item">
-                <div class="meta-label">{m.label}</div>
-                <div class="okonomi-value">{m.value}</div>
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Tildelingskriterier -->
-      {#if tildelingskriterier.length > 0}
-        <div class="card">
-          <div class="section-label">Tildelingskriterier</div>
-          <div class="kriterier-list">
-            {#each tildelingskriterier as k}
-              <div class="kriterie-row">
-                <span class="kriterie-name">{k.name}</span>
-                {#if k.weight}
-                  <span class="kriterie-weight">{k.weight}</span>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Verktøy -->
-      <div class="card">
+      <!-- Verktøy — horizontal row -->
+      <div class="card verktoy-card">
         <div class="section-label">Verktøy</div>
-        <div class="tool-links">
+        <div class="verktoy-row">
           <a href="/verktoy/unntak" target="_blank" rel="noopener" class="tool-link">
-            <span class="tool-link-label">Unntaksveiviser</span>
-            <span class="tool-link-desc">Sjekk om unntak fra forskriften gjelder</span>
+            <span class="tool-link-label">Unntak</span>
             <span class="tool-link-icon">↗</span>
           </a>
           <a href="/verktoy/kalkulator" target="_blank" rel="noopener" class="tool-link">
-            <span class="tool-link-label">Terskelverdikalkulator</span>
-            <span class="tool-link-desc">Beregn terskelverdi og gjeldende del</span>
+            <span class="tool-link-label">Kalkulator</span>
             <span class="tool-link-icon">↗</span>
           </a>
           <a href="/verktoy/fristberegner" target="_blank" rel="noopener" class="tool-link">
             <span class="tool-link-label">Fristberegner</span>
-            <span class="tool-link-desc">Beregn minimumsfrister for prosedyren</span>
             <span class="tool-link-icon">↗</span>
           </a>
           {#if doffinUrl}
             <a href={doffinUrl} target="_blank" rel="noopener" class="tool-link tool-link-ref">
-              <span class="tool-link-label">Doffin-kunngjøring</span>
-              <span class="tool-link-desc">Se kunngjøringen på doffin.no</span>
+              <span class="tool-link-label">Doffin</span>
               <span class="tool-link-icon">↗</span>
             </a>
           {/if}
@@ -253,63 +279,59 @@
   /* ── Beskrivelse ── */
   .beskrivelse {
     font-family: var(--font-prose);
-    font-size: 14px;
+    font-size: 13px;
     color: var(--color-ink-secondary);
-    line-height: 1.6;
+    line-height: 1.55;
     max-width: 680px;
     white-space: pre-line;
   }
 
-  /* ── CPV-koder ── */
-  .cpv-list {
+  .les-mer-btn {
+    display: inline;
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-vekt);
+    cursor: pointer;
+    padding: 0;
+    margin-left: var(--spacing-1);
+  }
+
+  .les-mer-btn:hover {
+    text-decoration: underline;
+  }
+
+  /* ── 2-column grid ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-4);
+  }
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+  }
+
+  /* ── Klassifisering ── */
+  .klass-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .klass-item {
     display: flex;
     flex-direction: column;
   }
 
-  .cpv-row {
-    display: flex;
-    align-items: baseline;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) 0;
+  .cpv-toggle-item {
+    margin-top: var(--spacing-3);
+    padding-top: var(--spacing-3);
     border-top: 1px solid var(--color-wire);
-  }
-
-  .cpv-row:first-child {
-    border-top: none;
-  }
-
-  .cpv-code {
-    font-family: var(--font-data);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-ink);
-    min-width: 80px;
-    flex-shrink: 0;
-  }
-
-  .cpv-label {
-    font-size: 12px;
-    color: var(--color-ink-muted);
-  }
-
-  /* ── Metadata grid ── */
-  .meta-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1px;
-    background: var(--color-wire);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--color-wire);
-  }
-
-  .meta-cell {
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-felt);
-  }
-
-  .meta-cell:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
   }
 
   .meta-label {
@@ -318,18 +340,13 @@
     color: var(--color-ink-ghost);
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
 
-  .meta-value {
+  .klass-value {
     font-size: 13px;
     font-weight: 500;
     color: var(--color-ink);
-  }
-
-  .meta-value.mono {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
   }
 
   .meta-empty {
@@ -337,22 +354,62 @@
     color: var(--color-ink-ghost);
   }
 
+  /* ── CPV ── */
+  .cpv-toggle {
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-vekt);
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+  }
+
+  .cpv-toggle:hover {
+    text-decoration: underline;
+  }
+
+  .cpv-expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .cpv-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-2);
+    padding: var(--spacing-1) 0;
+  }
+
+  .cpv-code {
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    flex-shrink: 0;
+  }
+
+  .cpv-label {
+    font-size: 12px;
+    color: var(--color-ink-muted);
+  }
+
   /* ── Økonomi ── */
   .okonomi-card {
     border-left: 3px solid var(--color-vekt);
   }
 
-  .okonomi-card .meta-label {
-    margin-bottom: var(--spacing-2);
-  }
-
-  .okonomi-row {
+  .okonomi-items {
     display: flex;
-    gap: var(--spacing-6);
+    flex-direction: column;
+    gap: var(--spacing-4);
   }
 
-  .okonomi-item {
-    flex: 1;
+  .okonomi-item .meta-label {
+    margin-bottom: var(--spacing-2);
   }
 
   .okonomi-value {
@@ -362,49 +419,46 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-ink);
     line-height: 1.2;
-    margin-top: var(--spacing-1);
   }
 
   /* ── Tildelingskriterier ── */
-  .kriterier-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .kriterie-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-2) 0;
+  .kriterier-section {
+    margin-top: var(--spacing-4);
+    padding-top: var(--spacing-4);
     border-top: 1px solid var(--color-wire);
   }
 
-  .kriterie-row:first-child {
-    border-top: none;
-  }
-
-  .kriterie-name {
+  .kriterier-inline {
     font-size: 13px;
-    font-weight: 500;
-    color: var(--color-ink);
+    color: var(--color-ink-secondary);
+    line-height: 1.5;
   }
 
-  .kriterie-weight {
-    font-family: var(--font-data);
-    font-size: 13px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-vekt);
+  /* ── Verktøy ── */
+  .verktoy-row {
+    display: flex;
+    gap: var(--spacing-2);
+    flex-wrap: wrap;
   }
 
+  .verktoy-row .tool-link {
+    flex: none;
+    padding: var(--spacing-2) var(--spacing-3);
+    gap: var(--spacing-2);
+  }
+
+  /* ── Responsive ── */
   @media (max-width: 768px) {
-    .meta-grid {
+    .two-col {
       grid-template-columns: 1fr;
     }
 
-    .okonomi-row {
+    .verktoy-row {
       flex-direction: column;
-      gap: var(--spacing-3);
+    }
+
+    .verktoy-row .tool-link {
+      flex: auto;
     }
   }
 </style>
