@@ -387,10 +387,26 @@ Card anatomy:
 
 ### Bento Interaction
 
-- **Hover elevation**: card lifts 1px + shadow deepens (200ms ease)
+- **Hover elevation**: card lifts 1px + shadow deepens + `scale(1.02)` (200ms ease)
 - **No glassmorphism**: We use warm opaque surfaces, not translucent glass. The material metaphor is *felt* and *paper*, not *glass*.
 - **Staggered entry**: cards fade-up on page load (60-100ms stagger). Respect `prefers-reduced-motion`.
-- **Click-to-navigate**: bento cards link to detail pages or workspaces, not expand inline
+- **Click-to-expand**: cards with hidden depth (hendelser, leverandører) show truncated content with inline expand. Not for navigation cards — those link via routes.
+
+### Kinetic Typography
+
+Deadline countdowns (tilbudsfrist, vedståelsesfrist, karensperiode) use animated number transitions on page load — a brief count-up to the current value. Subtle `letter-spacing` or `font-variation-settings` shift on hover. Reserved for time-sensitive values where urgency matters. The effect should feel precise and authoritative, not playful.
+
+### Time-Sensitive Urgency
+
+Deadline cards change visual character based on proximity:
+- `>30 days`: calm, standard bento card. Teal accent (`--color-vekt`).
+- `10–30 days`: amber accent (`--color-warn`), slightly more prominent.
+- `<10 days`: warn colors, possibly neo-brutal style. The card "escalates" visually.
+- `Expired`: rose/score-low (`--color-score-low`), muted. Not alarm — just clear.
+
+### Neo-Brutal Accent Card
+
+One card per bento grid may break the soft style to prevent visual monotony: solid accent color background, hard shadow (`4px 4px 0`), thick border. Used sparingly — max one per grid. Color from existing palette. Candidates: deadline urgency, key financial figures, "next action" prompts.
 
 ---
 

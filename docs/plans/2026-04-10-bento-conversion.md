@@ -23,25 +23,46 @@ Konverter de fire orienteringssidene til bento-grid layout der kortstørrelse ko
 - **Ingen glassmorphism**: Varme, opake overflater (`--color-felt`). Materialmetaforen er *filt og papir*, ikke glass.
 - **Entry-animasjon**: Kort fader opp ved sidelast (fadeUp, 60-100ms stagger). Respekter `prefers-reduced-motion`.
 
+### Avanserte teknikker å vurdere
+
+**Kinetisk typografi** — for frist-nedtellinger:
+- Dager gjenstående i fristkortet (tilbudsfrist, vedståelsesfrist) kan telle ned/opp ved innlasting. Subtil `font-variation-settings`-endring ved hover. Ikke for alle tall — kun frister der urgency er relevant. Effekten skal føles presis og seriøs, ikke leken.
+
+**Neo-brutal aksentkort** — for å bryte monotoni:
+- Ett kort per side som bryter med den myke stilen: solid aksentfarge, hard skygge (`4px 4px 0`), tykk border. Kandidater: fristkortet på konkurranse-siden (urgency), verdi-kortet på registrering (nøkkeltall), "neste steg"-kort. Bruk sparsomt — maks ett per bento-grid. Fargen bør hentes fra eksisterende palette (`--color-vekt`, `--color-warn`).
+
+**Tidssensitiv urgency** — fristkortet endrer karakter:
+- `>30 dager`: rolig, standard bento-kort. Teal aksentfarge.
+- `10-30 dager`: amber aksentfarge, litt mer prominent.
+- `<10 dager`: warn-farger, mulig neo-brutal stil. Fristkortet "eskalerer" visuelt.
+- `Utgått`: rose/score-low, dempet. Ikke alarm — bare tydelig at fristen er passert.
+
+**Click-to-expand** — for kort med skjult dybde:
+- Hendelseskortet (konkurranse): vis 3-4 siste, expand inline for full historikk.
+- Leverandørkortet: vis antall + topp 3, expand for komplett liste med detaljer.
+- Ikke for hero-kort eller navigasjons-kort (verktøy, arbeidsflater) — de lenker videre.
+- Expand-animasjon: `max-height` transition + fadeIn for nytt innhold.
+
 ### Per side
 
 **Registrering** — eksisterende data fra `data.proc`:
-- Hero: Sammendrag (kontraktstype, prosedyre, terskel, verdi — alt i ett kort)
+- Hero (span 2): Sammendrag (kontraktstype, prosedyre, terskel, verdi — alt i ett kort)
 - Standard: Verktøy-lenker (unntak, kalkulator, fristberegner)
-- Standard: Tom plass for fremtidig team/dokumenter
+- Kandidat for neo-brutal: verdi-kortet (anslått verdi som stort tall)
 
 **Konkurranse** — data fra `data.proc` + `data.activities`:
-- Hero: Fristkort med stor nedtelling (allerede implementert som `.frist-card` med teal venstre-border)
-- Standard: Leverandører (kvalifiserte/tilbud)
+- Hero (span 2): Fristkort med kinetisk nedtelling, tidssensitiv urgency
+- Standard: Leverandører (click-to-expand for full liste)
 - Standard: Dokumenter (utledet fra aktiviteter)
-- Standard: Hendelser (sortert, nyeste først)
+- Standard: Hendelser (click-to-expand for full historikk, vis siste 3-4 default)
 
 **Tildeling**:
-- Hero: Arbeidsflater (protokoll + meddelelse som prominente lenker)
+- Hero (span 2): Arbeidsflater (protokoll + meddelelse som prominente lenker)
 - Standard: Kommende aktiviteter (karensperiode, klager)
+- Kandidat for tidssensitiv: karensperiode-nedtelling (når relevant)
 
 **Kontrakt**:
-- Hero: Fasebeskrivelse + forutsetninger
+- Hero (span 2): Fasebeskrivelse + forutsetninger
 - Standard: Forventede aktiviteter
 
 ### Viktige filer
@@ -53,6 +74,7 @@ Konverter de fire orienteringssidene til bento-grid layout der kortstørrelse ko
 - `src/frontend/src/routes/anskaffelser/[id]/tildeling/+page.svelte` — Tildeling
 - `src/frontend/src/routes/anskaffelser/[id]/kontrakt/+page.svelte` — Kontrakt
 - `src/frontend/src/lib/config/phases.ts` — Fasedefinisjoner, statusutledning
+- React-prototypen ble delt i samtalen som startet dette arbeidet — den viser bento-mønsteret for BentoReg, BentoKonk, BentoFuture.
 
 ### Ikke endre
 
@@ -67,3 +89,4 @@ Konverter de fire orienteringssidene til bento-grid layout der kortstørrelse ko
 - Bruk eksisterende CSS-tokens fra `app.css`, ikke opprett nye farger
 - Bruk `$lib/utils/format.ts` for formatering (formatNOK, formatDatoMndAar)
 - Bruk `$lib/utils/protokoll-helpers.ts` for label-mapping (PROCEDURE_LABELS, CONTRACT_NATURE_LABELS)
+- Les `.interface-design/system.md` grundig før implementering — spesielt "Two Visual Modes" og "Bento Grid Pattern"
