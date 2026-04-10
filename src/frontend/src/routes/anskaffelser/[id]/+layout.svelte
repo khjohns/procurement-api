@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { beforeNavigate } from '$app/navigation';
+  import { setContext } from 'svelte';
   import { themeStore } from '$lib/stores/theme.svelte';
   import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
   import {
@@ -15,6 +16,7 @@
     CONTRACT_NATURE_LABELS,
     PROCEDURE_LABELS,
     getTimelineDate,
+    lookupLabel,
   } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
 
@@ -23,15 +25,6 @@
   const id = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
-
-  // Case-insensitive label lookup (API returns "open", labels have "Open")
-  function lookupLabel(map: Record<string, string>, key: string | undefined): string | null {
-    if (!key) return null;
-    if (map[key]) return map[key];
-    // Try capitalized
-    const cap = key.charAt(0).toUpperCase() + key.slice(1);
-    return map[cap] ?? null;
-  }
 
   const contractLabel = $derived(lookupLabel(CONTRACT_NATURE_LABELS, proc?.contractCategory ?? proc?.contract_nature));
   const procedureLabel = $derived(lookupLabel(PROCEDURE_LABELS, proc?.procedure));
@@ -63,6 +56,8 @@
   const activePhaseStatus = $derived(
     activePhaseId ? (phaseStates[activePhaseId]?.status ?? null) : null,
   );
+
+  setContext('phaseStates', () => phaseStates);
 
   let mobileMenuOpen = $state(false);
 

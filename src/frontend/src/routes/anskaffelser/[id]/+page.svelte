@@ -1,34 +1,58 @@
 <script lang="ts">
-  import { formatNOK } from '$lib/utils/format';
-  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS } from '$lib/utils/protokoll-helpers';
+  import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
+  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, lookupLabel } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
-
-  function labelFor(map: Record<string, string>, key: string | undefined): string | null {
-    if (!key) return null;
-    if (map[key]) return map[key];
-    const cap = key.charAt(0).toUpperCase() + key.slice(1);
-    return map[cap] ?? key;
-  }
+  const eforms = $derived(data?.eforms);
 
   interface MetaItem {
     label: string;
     value: string;
-    ref?: string;
+    mono?: boolean;
   }
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
-    const cat = labelFor(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
-    const prosed = labelFor(PROCEDURE_LABELS, proc.procedure);
+    const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature);
+    const prosed = lookupLabel(PROCEDURE_LABELS, proc.procedure);
+
+    // Framework details
+    let ramme: string | null = null;
+    if (proc.framework_agreement_involved) {
+      const maks = proc.framework_agreement_maximum_participants;
+      ramme = maks ? `Ja (maks ${maks})` : 'Ja';
+    }
+
+    // Duration
+    let varighet: string | null = null;
+    if (proc.duration_months) {
+      varighet = `${proc.duration_months} mnd`;
+    } else if (proc.duration) {
+      varighet = proc.duration;
+    }
+    if (varighet && proc.duration_start && proc.duration_end) {
+      const start = new Date(proc.duration_start).getFullYear();
+      const end = new Date(proc.duration_end).getFullYear();
+      if (start !== end) varighet += ` (${start}–${end})`;
+    }
+
+    // CPV
+    const cpv = proc.cpv_codes?.length ? proc.cpv_codes.join(', ') : null;
+
+    // Publication date
+    const publisert = proc.publicationDate ?? eforms?.issue_date ?? null;
+
     return [
       cat && { label: 'Kontraktstype', value: cat },
       prosed && { label: 'Prosedyre', value: prosed },
-      proc.framework_agreement_involved && { label: 'Rammeavtale', value: 'Ja' },
       proc.threshold === 'ABOVE_EEA' && { label: 'Terskel', value: 'Over EØS-terskel (Del III)' },
       proc.threshold === 'BELOW_EEA' && { label: 'Terskel', value: 'Under EØS-terskel (Del II)' },
+      ramme && { label: 'Rammeavtale', value: ramme },
+      cpv && { label: 'CPV', value: cpv, mono: true },
+      varighet && { label: 'Varighet', value: varighet },
+      publisert && { label: 'Kunngjort', value: formatDatoMndAar(publisert) },
     ].filter(Boolean) as MetaItem[];
   });
 
@@ -45,18 +69,53 @@
       },
     ].filter(Boolean) as MetaItem[];
   });
+
+  // Award criteria from eforms
+  interface KriteriumDisplay {
+    name: string;
+    weight: string | null;
+  }
+
+  const tildelingskriterier = $derived.by((): KriteriumDisplay[] => {
+    const criteria = eforms?.award_criteria;
+    if (!criteria?.length) return [];
+    return criteria.map((c: { name?: string; type?: string; weight_percent?: number }) => ({
+      name: c.name ?? c.type ?? '—',
+      weight: c.weight_percent != null ? `${c.weight_percent} %` : null,
+    }));
+  });
+
+  // Doffin link
+  const doffinId = $derived(proc?.doffinId ?? proc?.doffinReferenceId ?? proc?.doffin_id ?? null);
+  const doffinUrl = $derived(
+    doffinId ? `https://doffin.no/notices/${doffinId}` : null,
+  );
+
+  // Description
+  const beskrivelse = $derived(proc?.description ?? eforms?.description ?? null);
 </script>
 
 <div class="reg-page">
   {#if !proc}
-    <div class="page-inner">
+    <div class="page-inner wide">
       <div class="empty-state">
-        <p>Ingen anskaffelse lastet.</p>
-        <a href="/anskaffelser/ny" class="empty-link">Opprett ny anskaffelse</a>
+        <p>Kunne ikke laste anskaffelsen.</p>
+        <div class="empty-actions">
+          <button class="empty-retry" onclick={() => location.reload()}>Prøv igjen</button>
+          <a href="/anskaffelser" class="empty-back">Tilbake til oversikt</a>
+        </div>
       </div>
     </div>
   {:else}
-    <div class="page-inner">
+    <div class="page-inner wide">
+      <!-- Beskrivelse -->
+      {#if beskrivelse}
+        <div class="card">
+          <div class="section-label">Beskrivelse</div>
+          <p class="beskrivelse">{beskrivelse}</p>
+        </div>
+      {/if}
+
       <!-- Klassifisering -->
       <div class="card">
         <div class="section-label">Klassifisering</div>
@@ -65,9 +124,8 @@
             {#each klassifisering as m}
               <div class="meta-cell">
                 <div class="meta-label">{m.label}</div>
-                <div class="meta-value">
+                <div class="meta-value" class:mono={m.mono}>
                   {m.value}
-                  {#if m.ref}<span class="meta-ref">{m.ref}</span>{/if}
                 </div>
               </div>
             {/each}
@@ -79,7 +137,7 @@
 
       <!-- Økonomi -->
       {#if okonomi.length > 0}
-        <div class="card">
+        <div class="card okonomi-card">
           <div class="section-label">Økonomi</div>
           <div class="okonomi-row">
             {#each okonomi as m}
@@ -92,40 +150,49 @@
         </div>
       {/if}
 
+      <!-- Tildelingskriterier -->
+      {#if tildelingskriterier.length > 0}
+        <div class="card">
+          <div class="section-label">Tildelingskriterier</div>
+          <div class="kriterier-list">
+            {#each tildelingskriterier as k}
+              <div class="kriterie-row">
+                <span class="kriterie-name">{k.name}</span>
+                {#if k.weight}
+                  <span class="kriterie-weight">{k.weight}</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <!-- Verktøy -->
       <div class="card">
         <div class="section-label">Verktøy</div>
-        <div class="tools-grid">
-          <a
-            href="/verktoy/unntak"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Unntaksveiviser</span>
-            <span class="tool-desc">Sjekk om unntak fra forskriften gjelder</span>
-            <span class="tool-ext">↗</span>
+        <div class="tool-links">
+          <a href="/verktoy/unntak" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Unntaksveiviser</span>
+            <span class="tool-link-desc">Sjekk om unntak fra forskriften gjelder</span>
+            <span class="tool-link-icon">↗</span>
           </a>
-          <a
-            href="/verktoy/kalkulator"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Terskelverdikalkulator</span>
-            <span class="tool-desc">Beregn terskelverdi og gjeldende del</span>
-            <span class="tool-ext">↗</span>
+          <a href="/verktoy/kalkulator" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Terskelverdikalkulator</span>
+            <span class="tool-link-desc">Beregn terskelverdi og gjeldende del</span>
+            <span class="tool-link-icon">↗</span>
           </a>
-          <a
-            href="/verktoy/fristberegner"
-            target="_blank"
-            rel="noopener"
-            class="tool-link"
-          >
-            <span class="tool-label">Fristberegner</span>
-            <span class="tool-desc">Beregn minimumsfrister for prosedyren</span>
-            <span class="tool-ext">↗</span>
+          <a href="/verktoy/fristberegner" target="_blank" rel="noopener" class="tool-link">
+            <span class="tool-link-label">Fristberegner</span>
+            <span class="tool-link-desc">Beregn minimumsfrister for prosedyren</span>
+            <span class="tool-link-icon">↗</span>
           </a>
+          {#if doffinUrl}
+            <a href={doffinUrl} target="_blank" rel="noopener" class="tool-link tool-link-ref">
+              <span class="tool-link-label">Doffin-kunngjøring</span>
+              <span class="tool-link-desc">Se kunngjøringen på doffin.no</span>
+              <span class="tool-link-icon">↗</span>
+            </a>
+          {/if}
         </div>
       </div>
     </div>
@@ -138,31 +205,13 @@
     overflow-y: auto;
   }
 
-  /* ── Empty state ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-4);
-    min-height: 200px;
-    color: var(--color-ink-ghost);
-    font-size: 13px;
-  }
-
-  .empty-link {
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-vekt-bg);
-    border-radius: var(--radius-sm);
-    color: var(--color-vekt);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background-color 0.12s;
-  }
-
-  .empty-link:hover {
-    background: var(--color-vekt-bg-strong);
+  /* ── Beskrivelse ── */
+  .beskrivelse {
+    font-family: var(--font-prose);
+    font-size: 14px;
+    color: var(--color-ink-secondary);
+    line-height: 1.6;
+    max-width: 680px;
   }
 
   /* ── Metadata grid ── */
@@ -181,8 +230,12 @@
     background: var(--color-felt);
   }
 
+  .meta-cell:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .meta-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--color-ink-ghost);
     letter-spacing: 0.04em;
@@ -191,16 +244,14 @@
   }
 
   .meta-value {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--color-ink);
   }
 
-  .meta-ref {
-    font-size: 9px;
-    color: var(--color-ink-ghost);
+  .meta-value.mono {
     font-family: var(--font-data);
-    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
   }
 
   .meta-empty {
@@ -209,6 +260,14 @@
   }
 
   /* ── Økonomi ── */
+  .okonomi-card {
+    border-left: 3px solid var(--color-vekt);
+  }
+
+  .okonomi-card .meta-label {
+    margin-bottom: var(--spacing-2);
+  }
+
   .okonomi-row {
     display: flex;
     gap: var(--spacing-6);
@@ -228,44 +287,36 @@
     margin-top: var(--spacing-1);
   }
 
-  /* ── Tools ── */
-  .tools-grid {
+  /* ── Tildelingskriterier ── */
+  .kriterier-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-2);
   }
 
-  .tool-link {
+  .kriterie-row {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-4);
-    background: var(--color-vekt-bg);
-    border-radius: var(--radius-sm);
-    text-decoration: none;
-    transition: background-color 0.12s;
+    padding: var(--spacing-2) 0;
+    border-top: 1px solid var(--color-wire);
   }
 
-  .tool-link:hover {
-    background: var(--color-vekt-bg-strong);
+  .kriterie-row:first-child {
+    border-top: none;
   }
 
-  .tool-label {
+  .kriterie-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  .kriterie-weight {
+    font-family: var(--font-data);
     font-size: 13px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: var(--color-vekt);
-  }
-
-  .tool-desc {
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    flex: 1;
-  }
-
-  .tool-ext {
-    font-size: 12px;
-    color: var(--color-ink-ghost);
-    flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
