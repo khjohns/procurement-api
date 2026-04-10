@@ -1,98 +1,88 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { beforeNavigate } from '$app/navigation';
   import { themeStore } from '$lib/stores/theme.svelte';
+  import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
+  import {
+    routeLabels,
+    routeToPhase,
+    phases,
+    statusLabels,
+    derivePhaseStates,
+  } from '$lib/config/phases';
+  import { formatNOK } from '$lib/utils/format';
+  import type { Activity } from '$lib/types/activity';
 
   let { children, data } = $props();
 
-  const id = $derived(page.params.id);
+  const id = $derived(page.params.id ?? '');
+  const proc = $derived(data?.proc);
+  const activities: Activity[] = $derived(data?.activities ?? []);
 
-  const workspaces = [
-    { path: 'kvalifisering', label: 'Kvalifisering' },
-    { path: 'evaluering', label: 'Evaluering' },
-    { path: 'protokoll', label: 'Protokoll' },
-    { path: 'meddelelse', label: 'Meddelelse' },
-  ];
-
-  // Determine current sub-route
-  const currentWorkspace = $derived.by(() => {
-    const path = page.url.pathname;
-    return workspaces.find((w) => path.includes(`/${w.path}`)) ?? null;
+  const currentSubRoute = $derived.by(() => {
+    const pathname = page.url.pathname;
+    const base = `/anskaffelser/${id}`;
+    const rest = pathname.slice(base.length + 1).split('/')[0];
+    return rest || null;
   });
 
-  const subRoute = $derived(currentWorkspace?.label ?? null);
+  const subRouteLabel = $derived(
+    currentSubRoute ? (routeLabels[currentSubRoute] ?? null) : null,
+  );
 
-  // Dropdown state
-  let dropdownOpen = $state(false);
+  const procName = $derived(proc?.name || proc?.title || id);
 
-  function handleDropdownToggle(e: MouseEvent) {
-    e.stopPropagation();
-    dropdownOpen = !dropdownOpen;
-  }
+  // Active phase (from URL) and its status (from activities)
+  const activePhaseId = $derived(
+    currentSubRoute ? (routeToPhase[currentSubRoute] ?? null) : null,
+  );
 
-  function handleWindowClick() {
-    if (dropdownOpen) dropdownOpen = false;
-  }
+  const activePhase = $derived(
+    activePhaseId ? phases.find((p) => p.id === activePhaseId) : null,
+  );
+
+  const phaseStates = $derived(derivePhaseStates(activities, proc));
+  const activePhaseStatus = $derived(
+    activePhaseId ? (phaseStates[activePhaseId]?.status ?? null) : null,
+  );
+
+  let mobileMenuOpen = $state(false);
+
+  beforeNavigate(() => {
+    mobileMenuOpen = false;
+  });
 </script>
-
-<svelte:window onclick={handleWindowClick} />
 
 <div class="app-shell">
   <header class="top-nav">
-    <nav class="nav-breadcrumbs" aria-label="Brødsmuler">
-      <a href="/anskaffelser" class="crumb">Anskaffelser</a>
-      <span class="sep">/</span>
-      {#if subRoute}
-        <a href="/anskaffelser/{id}" class="crumb">
-          {data?.proc?.name || data?.proc?.title || id}
-        </a>
+    <div class="nav-left">
+      <button
+        class="mobile-menu-btn"
+        onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+        aria-label={mobileMenuOpen ? 'Lukk fasemeny' : 'Åpne fasemeny'}
+        aria-expanded={mobileMenuOpen}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M2 4h12M2 8h12M2 12h12"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <nav class="nav-breadcrumbs" aria-label="Brødsmuler">
+        <a href="/anskaffelser" class="crumb">Anskaffelser</a>
         <span class="sep">/</span>
-        <div class="workspace-switcher">
-          <button
-            class="current"
-            onclick={handleDropdownToggle}
-            aria-expanded={dropdownOpen}
-            aria-haspopup="listbox"
-          >
-            {subRoute}
-            <svg
-              class="chevron"
-              class:chevron-open={dropdownOpen}
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
-            >
-              <path
-                d="M2.5 4L5 6.5L7.5 4"
-                stroke="currentColor"
-                stroke-width="1.25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          {#if dropdownOpen}
-            <div class="workspace-dropdown" role="listbox">
-              {#each workspaces as ws}
-                {@const isActive = ws.path === currentWorkspace?.path}
-                <a
-                  href="/anskaffelser/{id}/{ws.path}"
-                  class="workspace-item"
-                  class:workspace-active={isActive}
-                  role="option"
-                  aria-selected={isActive}
-                  onclick={() => (dropdownOpen = false)}
-                >
-                  {ws.label}
-                </a>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <span class="current-static">{id}</span>
-      {/if}
-    </nav>
+        {#if subRouteLabel}
+          <a href="/anskaffelser/{id}" class="crumb">{procName}</a>
+          <span class="sep">/</span>
+          <span class="crumb-current">{subRouteLabel}</span>
+        {:else}
+          <span class="crumb-current">{procName}</span>
+        {/if}
+      </nav>
+    </div>
     <div class="nav-actions">
       <button
         class="theme-toggle"
@@ -105,9 +95,60 @@
       <div class="avatar">KJ</div>
     </div>
   </header>
-  <main class="app-main">
-    {@render children()}
-  </main>
+
+  {#if proc}
+    <div class="case-info">
+      <div class="case-id-row">
+        <span class="case-ref">{proc.sequenceId ?? id}</span>
+        {#if proc.threshold === 'ABOVE_EEA' || proc.regulation === 'del3'}
+          <span class="case-del">Del III</span>
+        {:else if proc.threshold === 'BELOW_EEA' || proc.regulation === 'del2'}
+          <span class="case-del">Del II</span>
+        {/if}
+      </div>
+      <div class="case-meta">
+        {#if proc.about_procurer?.name}
+          <span>{proc.about_procurer.name}</span>
+          <span class="case-meta-sep">&middot;</span>
+        {/if}
+        {#if proc.contractCategory}
+          <span>{proc.contractCategory}</span>
+          <span class="case-meta-sep">&middot;</span>
+        {/if}
+        {#if proc.estimated_value}
+          <span class="case-value">{formatNOK(proc.estimated_value)}</span>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  <div class="shell-body">
+    <PhasePanel
+      procId={id}
+      {phaseStates}
+      mobileOpen={mobileMenuOpen}
+      onclose={() => (mobileMenuOpen = false)}
+    />
+    <div class="shell-content">
+      {#if activePhase && activePhaseStatus}
+        <div class="content-header">
+          <span class="phase-num">{activePhase.number}</span>
+          <span class="phase-title">{activePhase.label}</span>
+          <span
+            class="phase-badge"
+            class:badge-fullfort={activePhaseStatus === 'fullfort'}
+            class:badge-aktiv={activePhaseStatus === 'aktiv'}
+            class:badge-kommende={activePhaseStatus === 'kommende'}
+          >
+            {statusLabels[activePhaseStatus]}
+          </span>
+        </div>
+      {/if}
+      <main class="app-main">
+        {@render children()}
+      </main>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -120,6 +161,7 @@
     color: var(--color-ink);
   }
 
+  /* ── Header ── */
   .top-nav {
     height: var(--header-height);
     display: flex;
@@ -128,6 +170,16 @@
     padding: 0 24px;
     flex-shrink: 0;
     background: var(--color-header-bg);
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-menu-btn {
+    display: none;
   }
 
   .nav-breadcrumbs {
@@ -152,94 +204,12 @@
     color: var(--color-header-muted);
   }
 
-  .current-static {
+  .crumb-current {
     color: var(--color-header-fg);
     font-weight: 500;
-  }
-
-  /* ── Workspace switcher ── */
-
-  .workspace-switcher {
-    position: relative;
-  }
-
-  .workspace-switcher .current {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--color-header-fg);
-    font-weight: 500;
-    font-size: 12px;
-    font-family: inherit;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 2px 4px;
-    margin: -2px -4px;
-    border-radius: var(--radius-sm);
-    transition: background-color 0.1s;
-  }
-
-  .workspace-switcher .current:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .workspace-switcher .current:focus-visible {
-    outline: none;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .chevron {
-    transition: transform 0.15s ease;
-    color: var(--color-header-muted);
-  }
-
-  .chevron-open {
-    transform: rotate(180deg);
-  }
-
-  .workspace-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: -4px;
-    min-width: 160px;
-    background: var(--color-felt-raised);
-    border: 1px solid var(--color-wire-strong);
-    border-radius: var(--radius-md);
-    padding: 4px 0;
-    z-index: 40;
-  }
-
-  .workspace-item {
-    display: block;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-ink-secondary);
-    text-decoration: none;
-    transition:
-      background-color 0.08s,
-      color 0.08s;
-  }
-
-  .workspace-item:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
-  }
-
-  .workspace-item:focus-visible {
-    outline: none;
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
-  }
-
-  .workspace-active {
-    color: var(--color-ink);
-    font-weight: 600;
   }
 
   /* ── Nav actions ── */
-
   .nav-actions {
     display: flex;
     align-items: center;
@@ -283,16 +253,157 @@
     color: var(--color-header-bg);
   }
 
+  /* ── Case info strip ── */
+  .case-info {
+    flex-shrink: 0;
+    padding: var(--spacing-2) 24px;
+    border-bottom: 1px solid var(--color-wire);
+    background: var(--color-felt);
+  }
+
+  .case-id-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .case-ref {
+    font-family: var(--font-data);
+    font-size: 11px;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .case-del {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-vekt);
+    color: var(--color-felt);
+  }
+
+  .case-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: 11px;
+    color: var(--color-ink-ghost);
+    margin-top: 2px;
+    flex-wrap: wrap;
+  }
+
+  .case-meta-sep {
+    color: var(--color-ink-ghost);
+  }
+
+  .case-value {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Shell body ── */
+  .shell-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .shell-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Content header (phase title + badge) ── */
+  .content-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-5);
+    border-bottom: 1px solid var(--color-wire);
+  }
+
+  .phase-num {
+    font-family: var(--font-data);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-ink-ghost);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .phase-title {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .phase-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+  }
+
+  .badge-fullfort {
+    color: var(--color-score-high);
+    background: var(--color-score-high-bg);
+  }
+
+  .badge-aktiv {
+    color: var(--color-vekt);
+    background: var(--color-vekt-bg);
+  }
+
+  .badge-kommende {
+    color: var(--color-ink-ghost);
+    background: var(--color-felt-active);
+  }
+
   .app-main {
     flex: 1;
     min-height: 0;
+    min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
   }
 
+  /* ── Mobile ── */
   @media (max-width: 1023px) {
     .top-nav {
       padding: 0 16px;
+    }
+
+    .case-info {
+      padding: var(--spacing-2) 16px;
+    }
+
+    .mobile-menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--color-header-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition:
+        background 0.12s,
+        color 0.12s;
+    }
+
+    .mobile-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--color-header-fg);
     }
 
     .nav-breadcrumbs .crumb {
@@ -305,6 +416,10 @@
     .nav-actions .user-org,
     .nav-actions .avatar {
       display: none;
+    }
+
+    .content-header {
+      padding: var(--spacing-3) var(--spacing-4);
     }
   }
 </style>

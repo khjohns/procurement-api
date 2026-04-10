@@ -39,6 +39,20 @@ export function formatDatoMndKort(d: Date): string {
   return d.toLocaleDateString(NB, { day: 'numeric', month: 'short' });
 }
 
+/** 3. mar 2026 — short date with month name and year */
+export function formatDatoMndAar(iso: string | null | undefined): string {
+  if (!iso) return '\u2014';
+  try {
+    return new Date(iso).toLocaleDateString(NB, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return String(iso);
+  }
+}
+
 /** dd.mm.yyyy kl. HH:MM — date with time */
 export function formatDatoTid(iso: string | null | undefined): string {
   if (!iso) return '\u2014';
