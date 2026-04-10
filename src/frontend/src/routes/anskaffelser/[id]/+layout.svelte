@@ -2,20 +2,11 @@
   import { page } from '$app/state';
   import { themeStore } from '$lib/stores/theme.svelte';
   import PhasePanel from '$lib/components/phase/PhasePanel.svelte';
+  import { routeLabels } from '$lib/config/phases';
 
   let { children, data } = $props();
 
   const id = $derived(page.params.id ?? '');
-
-  // Map sub-routes to display labels for breadcrumbs
-  const routeLabels: Record<string, string> = {
-    konkurranse: 'Konkurranse',
-    kvalifisering: 'Kvalifisering',
-    evaluering: 'Evaluering',
-    protokoll: 'Protokoll',
-    meddelelse: 'Meddelelse',
-    kontrakt: 'Kontrakt',
-  };
 
   const currentSubRoute = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -29,21 +20,40 @@
   );
 
   const procName = $derived(data?.proc?.name || data?.proc?.title || id);
+
+  let mobileMenuOpen = $state(false);
 </script>
 
 <div class="app-shell">
   <header class="top-nav">
-    <nav class="nav-breadcrumbs" aria-label="Brødsmuler">
-      <a href="/anskaffelser" class="crumb">Anskaffelser</a>
-      <span class="sep">/</span>
-      {#if subRouteLabel}
-        <a href="/anskaffelser/{id}" class="crumb">{procName}</a>
+    <div class="nav-left">
+      <button
+        class="mobile-menu-btn"
+        onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+        aria-label={mobileMenuOpen ? 'Lukk fasemeny' : 'Åpne fasemeny'}
+        aria-expanded={mobileMenuOpen}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M2 4h12M2 8h12M2 12h12"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <nav class="nav-breadcrumbs" aria-label="Brødsmuler">
+        <a href="/anskaffelser" class="crumb">Anskaffelser</a>
         <span class="sep">/</span>
-        <span class="crumb-current">{subRouteLabel}</span>
-      {:else}
-        <span class="crumb-current">{procName}</span>
-      {/if}
-    </nav>
+        {#if subRouteLabel}
+          <a href="/anskaffelser/{id}" class="crumb">{procName}</a>
+          <span class="sep">/</span>
+          <span class="crumb-current">{subRouteLabel}</span>
+        {:else}
+          <span class="crumb-current">{procName}</span>
+        {/if}
+      </nav>
+    </div>
     <div class="nav-actions">
       <button
         class="theme-toggle"
@@ -58,7 +68,11 @@
   </header>
 
   <div class="shell-body">
-    <PhasePanel procId={id} />
+    <PhasePanel
+      procId={id}
+      mobileOpen={mobileMenuOpen}
+      onclose={() => (mobileMenuOpen = false)}
+    />
     <main class="app-main">
       {@render children()}
     </main>
@@ -84,6 +98,16 @@
     padding: 0 24px;
     flex-shrink: 0;
     background: var(--color-header-bg);
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-menu-btn {
+    display: none;
   }
 
   .nav-breadcrumbs {
@@ -157,7 +181,7 @@
     color: var(--color-header-bg);
   }
 
-  /* ── Shell body (phase panel + content) ── */
+  /* ── Shell body ── */
   .shell-body {
     flex: 1;
     display: flex;
@@ -173,10 +197,31 @@
     overflow-x: hidden;
   }
 
-  /* ── Responsive ── */
+  /* ── Mobile ── */
   @media (max-width: 1023px) {
     .top-nav {
       padding: 0 16px;
+    }
+
+    .mobile-menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--color-header-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition:
+        background 0.12s,
+        color 0.12s;
+    }
+
+    .mobile-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--color-header-fg);
     }
 
     .nav-breadcrumbs .crumb {

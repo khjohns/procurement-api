@@ -1,51 +1,22 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import type { FaseStatus } from '$lib/types/saksmappe';
+  import {
+    phases,
+    phaseIcons,
+    routeToPhase,
+    statusLabels,
+    type PhaseDefinition,
+  } from '$lib/config/phases';
 
-  interface Phase {
-    id: string;
-    number: string;
-    label: string;
-    route: string | null;
-    status: FaseStatus;
-  }
-
-  let { procId }: { procId: string } = $props();
-
-  const phases: Phase[] = [
-    { id: 'registrering', number: '01', label: 'Registrering', route: '', status: 'fullfort' },
-    { id: 'konkurranse', number: '02', label: 'Konkurranse', route: 'konkurranse', status: 'aktiv' },
-    { id: 'kvalifisering', number: '03', label: 'Kvalifisering', route: 'kvalifisering', status: 'fullfort' },
-    { id: 'evaluering', number: '04', label: 'Evaluering', route: 'evaluering', status: 'kommende' },
-    { id: 'tildeling', number: '05', label: 'Tildeling', route: 'protokoll', status: 'kommende' },
-    { id: 'kontrakt', number: '06', label: 'Kontrakt', route: 'kontrakt', status: 'kommende' },
-  ];
-
-  // SVG path data per phase icon (viewBox="0 0 18 18")
-  const iconPaths: Record<string, string> = {
-    registrering:
-      '<rect x="3.5" y="1.5" width="11" height="15" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 5.5h6M6 8.5h6M6 11.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
-    konkurranse:
-      '<path d="M13.5 3L7 6H4a1 1 0 00-1 1v4a1 1 0 001 1h3l6.5 3V3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
-    kvalifisering:
-      '<path d="M9 2v5M5 4.5L9 7l4-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8h12M3 11.5h12M5 15h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
-    evaluering:
-      '<path d="M3.5 14V8.5M7 14V5M10.5 14V9.5M14.5 14V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
-    tildeling:
-      '<circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 9l2 2.5 4-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-    kontrakt:
-      '<path d="M10.5 2.5l5 5-8.5 8.5H2V11L10.5 2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2 16.5h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
-  };
-
-  // Static map: sub-route → phase id
-  const routeToPhase: Record<string, string> = {
-    konkurranse: 'konkurranse',
-    kvalifisering: 'kvalifisering',
-    evaluering: 'evaluering',
-    protokoll: 'tildeling',
-    meddelelse: 'tildeling',
-    kontrakt: 'kontrakt',
-  };
+  let {
+    procId,
+    mobileOpen = false,
+    onclose,
+  }: {
+    procId: string;
+    mobileOpen?: boolean;
+    onclose?: () => void;
+  } = $props();
 
   const activePhaseId = $derived.by(() => {
     const pathname = page.url.pathname;
@@ -55,23 +26,22 @@
     return routeToPhase[sub] ?? null;
   });
 
-  function getHref(phase: Phase): string | null {
+  function getHref(phase: PhaseDefinition): string | null {
     if (phase.route === null) return null;
     if (phase.route === '') return `/anskaffelser/${procId}`;
     return `/anskaffelser/${procId}/${phase.route}`;
   }
 
-  const statusLabels: Record<FaseStatus, string> = {
-    fullfort: 'Fullført',
-    aktiv: 'Aktiv',
-    kommende: 'Kommende',
-  };
+  function handlePhaseClick() {
+    if (mobileOpen) onclose?.();
+  }
 </script>
 
-{#snippet phaseContent(phase: Phase)}
+{#snippet phaseContent(phase: PhaseDefinition)}
   <div class="phase-icon-col">
+    <!-- SVG data is hardcoded trusted content from phaseIcons config -->
     <svg class="phase-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
-      {@html iconPaths[phase.id]}
+      {@html phaseIcons[phase.id]}
     </svg>
     {#if phase.status !== 'kommende'}
       <span class="phase-dot"></span>
@@ -88,6 +58,7 @@
   </div>
 {/snippet}
 
+<!-- Desktop: sidebar in flow -->
 <nav class="phase-panel" aria-label="Faser">
   <div class="phase-panel-inner">
     {#each phases as phase}
@@ -122,8 +93,46 @@
   </div>
 </nav>
 
+<!-- Mobile: slide-in overlay -->
+{#if mobileOpen}
+  <button class="mobile-backdrop" onclick={onclose} aria-label="Lukk fasemeny" tabindex="-1">
+  </button>
+{/if}
+<nav class="mobile-panel" class:mobile-panel-open={mobileOpen} aria-label="Faser">
+  {#each phases as phase}
+    {@const isActive = phase.id === activePhaseId}
+    {@const href = getHref(phase)}
+
+    {#if href !== null}
+      <a
+        class="phase-item phase-item-mobile"
+        class:phase-current={isActive}
+        class:status-fullfort={phase.status === 'fullfort'}
+        class:status-aktiv={phase.status === 'aktiv'}
+        class:status-kommende={phase.status === 'kommende'}
+        {href}
+        aria-current={isActive ? 'step' : undefined}
+        onclick={handlePhaseClick}
+      >
+        {@render phaseContent(phase)}
+      </a>
+    {:else}
+      <div
+        class="phase-item phase-item-mobile phase-disabled"
+        class:status-fullfort={phase.status === 'fullfort'}
+        class:status-aktiv={phase.status === 'aktiv'}
+        class:status-kommende={phase.status === 'kommende'}
+      >
+        {@render phaseContent(phase)}
+      </div>
+    {/if}
+  {/each}
+</nav>
+
 <style>
-  /* ── Panel container ── */
+  /* ══════════════════════════════════════════
+     Desktop: collapsible sidebar
+     ══════════════════════════════════════════ */
   .phase-panel {
     width: 52px;
     flex-shrink: 0;
@@ -156,7 +165,9 @@
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
   }
 
-  /* ── Phase item ── */
+  /* ══════════════════════════════════════════
+     Shared phase item styles
+     ══════════════════════════════════════════ */
   .phase-item {
     display: flex;
     align-items: center;
@@ -186,7 +197,6 @@
     background: transparent;
   }
 
-  /* ── Selected state: left accent border ── */
   .phase-current {
     color: var(--color-vekt);
     background: var(--color-vekt-bg);
@@ -197,7 +207,6 @@
     background: var(--color-vekt-bg-strong);
   }
 
-  /* ── Status coloring ── */
   .status-fullfort:not(.phase-current) {
     color: var(--color-score-high);
   }
@@ -206,7 +215,7 @@
     color: var(--color-ink-ghost);
   }
 
-  /* ── Icon column (vertically stacked: icon + dot) ── */
+  /* ── Icon column ── */
   .phase-icon-col {
     width: 28px;
     flex-shrink: 0;
@@ -220,7 +229,6 @@
     display: block;
   }
 
-  /* ── Status dot (below icon, only for fullfort/aktiv) ── */
   .phase-dot {
     width: 5px;
     height: 5px;
@@ -238,7 +246,7 @@
     box-shadow: 0 0 6px var(--color-vekt);
   }
 
-  /* ── Text (visible on expand) ── */
+  /* ── Text ── */
   .phase-text {
     display: flex;
     flex-direction: column;
@@ -282,16 +290,56 @@
     margin-right: 2px;
   }
 
-  /* ── Focus ── */
   .phase-item:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 2px var(--color-wire-focus);
   }
 
-  /* ── Mobile: hide panel ── */
+  /* ══════════════════════════════════════════
+     Mobile: slide-in from left
+     ══════════════════════════════════════════ */
+  .mobile-panel {
+    display: none;
+  }
+
+  .mobile-backdrop {
+    display: none;
+  }
+
   @media (max-width: 1023px) {
     .phase-panel {
       display: none;
+    }
+
+    .mobile-panel {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      bottom: 0;
+      width: 240px;
+      padding: var(--spacing-3) 0;
+      gap: var(--spacing-1);
+      background: var(--color-canvas);
+      border-right: 1px solid var(--color-wire);
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease-out;
+    }
+
+    .mobile-panel-open {
+      transform: translateX(0);
+    }
+
+    .mobile-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: var(--color-overlay);
+      z-index: 99;
+      border: none;
+      cursor: default;
     }
   }
 </style>

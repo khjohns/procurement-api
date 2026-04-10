@@ -1,11 +1,12 @@
 <script lang="ts">
   import { extractBidders } from '$lib/utils/activities';
-  import { formatNOK } from '$lib/utils/format';
+  import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
+  import type { Activity } from '$lib/types/activity';
 
   let { data } = $props();
 
   const proc = $derived(data?.proc);
-  const activities: any[] = $derived(data?.activities ?? []);
+  const activities: Activity[] = $derived(data?.activities ?? []);
 
   // ── Derived data ──
 
@@ -13,17 +14,13 @@
 
   const dagerIgjen = $derived.by(() => {
     if (!tilbudFrist) return null;
-    const diff = Math.ceil(
-      (new Date(tilbudFrist).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    );
-    return diff;
+    return Math.ceil((new Date(tilbudFrist).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   });
 
   const fristLabel = $derived(
     dagerIgjen !== null ? (dagerIgjen >= 0 ? 'dager igjen' : 'dager siden') : '',
   );
 
-  // Pre-compute stats to keep template simple
   interface LevRow {
     navn: string;
     status: string;
@@ -31,12 +28,12 @@
   }
 
   const stats = $derived.by(() => {
-    const kval = activities.filter((a: any) => a.action === 'QUALIFYING_PARTICIPANTS');
-    const avvist = activities.filter((a: any) => a.action === 'REJECT_PARTICIPATION');
+    const kval = activities.filter((a) => a.action === 'QUALIFYING_PARTICIPANTS');
+    const avvist = activities.filter((a) => a.action === 'REJECT_PARTICIPATION');
     const tilbud = extractBidders(activities);
     const rader: LevRow[] =
       kval.length > 0
-        ? kval.map((a: any) => ({
+        ? kval.map((a) => ({
             navn: a.organization?.name ?? a.supplier?.name ?? '—',
             status: 'Kvalifisert',
             kvalifisert: true,
@@ -45,18 +42,16 @@
     return { kval: kval.length, avvist: avvist.length, tilbud: tilbud.length, rader };
   });
 
-  // Documents derived from activities
   const dokumenter = $derived.by(() => {
-    const pub = activities.find((a: any) => a.action === 'PUBLISH_TO_DOFFIN');
-    const kval = activities.find((a: any) => a.action === 'QUALIFYING_PARTICIPANTS');
+    const pub = activities.find((a) => a.action === 'PUBLISH_TO_DOFFIN');
+    const kval = activities.find((a) => a.action === 'QUALIFYING_PARTICIPANTS');
     const docs: { navn: string; dato: string }[] = [];
-    if (pub) docs.push({ navn: 'Kunngjøring', dato: formatDato(pub.date) });
-    docs.push({ navn: 'Konkurransegrunnlag', dato: formatDato(pub?.date ?? null) });
-    if (kval) docs.push({ navn: 'Tilbudsinnbydelse', dato: formatDato(kval.date) });
+    if (pub) docs.push({ navn: 'Kunngjøring', dato: formatDatoMndAar(pub.date) });
+    docs.push({ navn: 'Konkurransegrunnlag', dato: formatDatoMndAar(pub?.date) });
+    if (kval) docs.push({ navn: 'Tilbudsinnbydelse', dato: formatDatoMndAar(kval.date) });
     return docs;
   });
 
-  // Events
   const relevantActions = new Set([
     'PUBLISH_TO_DOFFIN',
     'QUALIFYING_PARTICIPANTS',
@@ -73,91 +68,91 @@
 
   const hendelser = $derived.by(() => {
     return activities
-      .filter((a: any) => relevantActions.has(a.action))
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .filter((a) => relevantActions.has(a.action))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 6)
-      .map((a: any) => {
+      .map((a) => {
         const navn = a.organization?.name ?? a.supplier?.name ?? '';
         const fn = actionLabels[a.action];
-        return { dato: formatDato(a.date), tekst: fn ? fn(navn) : a.action };
+        return { dato: formatDatoMndAar(a.date), tekst: fn ? fn(navn) : a.action };
       });
   });
-
-  function formatDato(iso: string | null): string {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('nb-NO', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  }
-
 </script>
 
 <div class="konkurranse-page">
-  <div class="page-inner">
-    <!-- Frist -->
-    <div class="frist-card">
-      <div class="frist-header">
-        <span class="section-label">Tilbudsfrist</span>
-        <span class="frist-dato">{formatDato(tilbudFrist)}</span>
-      </div>
-      <div class="frist-countdown" class:frist-past={dagerIgjen !== null && dagerIgjen < 0}>
-        <span class="frist-tall">{dagerIgjen !== null ? Math.abs(dagerIgjen) : '—'}</span>
-        <span class="frist-enhet">{fristLabel}</span>
-      </div>
-      <div class="frist-meta">
-        <span>{proc?.procedure ?? ''}</span>
-        <span class="frist-meta-sep">&middot;</span>
-        <span class="mono">{formatNOK(proc?.estimated_value)}</span>
-      </div>
+  {#if !proc}
+    <div class="page-inner">
+      <div class="empty-state">Laster anskaffelsesdata...</div>
     </div>
-
-    <div class="grid-two">
-      <!-- Leverandører -->
-      <div class="card">
-        <div class="section-label">Leverandører</div>
-        <div class="stat-row">
-          <span class="stat-value">{stats.kval || stats.tilbud}</span>
-          <span class="stat-label">{stats.kval > 0 ? 'kvalifisert' : 'leverandører'}</span>
+  {:else}
+    <div class="page-inner">
+      <!-- Frist -->
+      <div class="frist-card">
+        <div class="frist-header">
+          <span class="section-label">Tilbudsfrist</span>
+          <span class="frist-dato">{formatDatoMndAar(tilbudFrist)}</span>
         </div>
-        <div class="lev-list">
-          {#each stats.rader as rad}
-            <div class="lev-row">
-              <span class="lev-navn">{rad.navn}</span>
-              <span class="lev-status" class:lev-kvalifisert={rad.kvalifisert}>{rad.status}</span>
-            </div>
-          {/each}
+        <div class="frist-countdown" class:frist-past={dagerIgjen !== null && dagerIgjen < 0}>
+          <span class="frist-tall">{dagerIgjen !== null ? Math.abs(dagerIgjen) : '—'}</span>
+          <span class="frist-enhet">{fristLabel}</span>
         </div>
-      </div>
-
-      <!-- Dokumenter -->
-      <div class="card">
-        <div class="section-label">Dokumenter</div>
-        <div class="doc-list">
-          {#each dokumenter as doc}
-            <div class="doc-row">
-              <span class="doc-navn">{doc.navn}</span>
-              <span class="doc-dato">{doc.dato}</span>
-            </div>
-          {/each}
+        <div class="frist-meta">
+          <span>{proc?.procedure ?? ''}</span>
+          <span class="frist-meta-sep">&middot;</span>
+          <span class="mono">{formatNOK(proc?.estimated_value)}</span>
         </div>
       </div>
-    </div>
 
-    <!-- Hendelser -->
-    <div class="card">
-      <div class="section-label">Hendelser</div>
-      <div class="hendelse-list">
-        {#each hendelser as h}
-          <div class="hendelse-row">
-            <span class="hendelse-dato">{h.dato}</span>
-            <span class="hendelse-tekst">{h.tekst}</span>
+      <div class="grid-two">
+        <!-- Leverandører -->
+        <div class="card">
+          <div class="section-label">Leverandører</div>
+          <div class="stat-row">
+            <span class="stat-value">{stats.kval || stats.tilbud}</span>
+            <span class="stat-label">{stats.kval > 0 ? 'kvalifisert' : 'leverandører'}</span>
           </div>
-        {/each}
+          <div class="lev-list">
+            {#each stats.rader as rad}
+              <div class="lev-row">
+                <span class="lev-navn">{rad.navn}</span>
+                <span class="lev-status" class:lev-kvalifisert={rad.kvalifisert}
+                  >{rad.status}</span
+                >
+              </div>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Dokumenter -->
+        <div class="card">
+          <div class="section-label">Dokumenter</div>
+          <div class="doc-list">
+            {#each dokumenter as doc}
+              <div class="doc-row">
+                <span class="doc-navn">{doc.navn}</span>
+                <span class="doc-dato">{doc.dato}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
       </div>
+
+      <!-- Hendelser -->
+      {#if hendelser.length > 0}
+        <div class="card">
+          <div class="section-label">Hendelser</div>
+          <div class="hendelse-list">
+            {#each hendelser as h}
+              <div class="hendelse-row">
+                <span class="hendelse-dato">{h.dato}</span>
+                <span class="hendelse-tekst">{h.tekst}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
-  </div>
+  {/if}
 </div>
 
 <style>
@@ -173,6 +168,15 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
+  }
+
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--color-ink-ghost);
+    font-size: 13px;
   }
 
   .card {
@@ -209,7 +213,7 @@
     justify-content: space-between;
   }
 
-  .frist-header .section-label {
+  .frist-header :global(.section-label) {
     margin-bottom: 0;
   }
 
@@ -368,5 +372,4 @@
     font-size: 12px;
     color: var(--color-ink-secondary);
   }
-
 </style>
