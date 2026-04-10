@@ -13,6 +13,36 @@
     mono?: boolean;
   }
 
+  interface CpvDisplay {
+    code: string;
+    label: string;
+  }
+
+  const cpvRawCodes = $derived.by((): string[] => {
+    const cpvList = proc?.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
+    return cpvList?.length ? cpvList : [];
+  });
+
+  let cpvLabels = $state<Record<string, string>>({});
+
+  $effect(() => {
+    const codes = cpvRawCodes;
+    if (!codes.length) return;
+    fetch(`/api/cpv/${codes.join(',')}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => {
+        cpvLabels = data;
+      })
+      .catch(() => {});
+  });
+
+  const cpvKoder = $derived.by((): CpvDisplay[] => {
+    return cpvRawCodes.map((code) => ({
+      code,
+      label: cpvLabels[code] ?? '',
+    }));
+  });
+
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
     const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature);
@@ -40,10 +70,6 @@
       if (start !== end) varighet += ` (${start}–${end})`;
     }
 
-    // CPV
-    const cpvList = proc.cpv_codes?.length ? proc.cpv_codes : eforms?.cpv_codes;
-    const cpv = cpvList?.length ? cpvList.join(', ') : null;
-
     // Publication date
     const publisert = proc.publicationDate ?? eforms?.issue_date ?? null;
 
@@ -52,7 +78,6 @@
       prosed && { label: 'Prosedyre', value: prosed },
       terskel && { label: 'Terskel', value: terskel },
       ramme && { label: 'Rammeavtale', value: ramme },
-      cpv && { label: 'CPV', value: cpv, mono: true },
       varighet && { label: 'Varighet', value: varighet },
       publisert && { label: 'Kunngjort', value: formatDatoMndAar(publisert) },
     ].filter(Boolean) as MetaItem[];
@@ -138,6 +163,23 @@
         {/if}
       </div>
 
+      <!-- CPV-koder -->
+      {#if cpvKoder.length > 0}
+        <div class="card">
+          <div class="section-label">CPV-koder</div>
+          <div class="cpv-list">
+            {#each cpvKoder as cpv}
+              <div class="cpv-row">
+                <span class="cpv-code">{cpv.code}</span>
+                {#if cpv.label}
+                  <span class="cpv-label">{cpv.label}</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <!-- Økonomi -->
       {#if okonomi.length > 0}
         <div class="card okonomi-card">
@@ -216,6 +258,38 @@
     line-height: 1.6;
     max-width: 680px;
     white-space: pre-line;
+  }
+
+  /* ── CPV-koder ── */
+  .cpv-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cpv-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) 0;
+    border-top: 1px solid var(--color-wire);
+  }
+
+  .cpv-row:first-child {
+    border-top: none;
+  }
+
+  .cpv-code {
+    font-family: var(--font-data);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .cpv-label {
+    font-size: 12px;
+    color: var(--color-ink-muted);
   }
 
   /* ── Metadata grid ── */
