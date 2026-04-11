@@ -497,9 +497,8 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     id: 'andre-opplysninger',
     title: 'Andre opplysninger',
     chapter: 'AVSLUTNING',
-    dataSource: 'mixed',
+    dataSource: 'manual',
     fields: [
-      { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
       {
         key: 'underleverandorer',
         type: 'textarea',
@@ -938,9 +937,8 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     id: 'andre-opplysninger',
     title: 'Andre opplysninger',
     chapter: 'AVSLUTNING',
-    dataSource: 'mixed',
+    dataSource: 'manual',
     fields: [
-      { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
       {
         key: 'underleverandorer',
         type: 'textarea',

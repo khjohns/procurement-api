@@ -16,7 +16,6 @@
     valgtTilbudRows,
     meddelelseRows,
     rammeavtaleRows,
-    andreOpplysningerRows,
     avlysningInfoRows,
     kvalifikasjonskravRows,
     tildelingskriterierRows,
@@ -190,7 +189,6 @@
       kvalifikasjonsvurdering: () => kvalifikasjonskravRows(protokoll.eforms),
       rammeavtaler: () => rammeavtaleRows(proc, protokoll.eforms),
       'avlysning-beslutning': () => avlysningInfoRows(proc),
-      'andre-opplysninger': () => andreOpplysningerRows(proc),
     };
 
     const builder = sectionBuilders[section.id];
