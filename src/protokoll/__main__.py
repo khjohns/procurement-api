@@ -205,22 +205,10 @@ def _list_procurements(client: ArtifikClient) -> list[dict]:
     return mature
 
 
-THRESHOLD_SHORT = {
-    "over_eea_threshold_value": "Over EØS",
-    "below_eea_threshold_value": "Under EØS",
-    "national_threshold": "Nasjonal",
-    "below_national_threshold": "Under terskel",
-}
+from eforms_labels import get_labels  # noqa: E402
 
-PROCEDURE_SHORT = {
-    "Open": "Åpen",
-    "Limited": "Begrenset",
-    "Competitive negotiated": "Forhandl.",
-    "Competitive dialogue": "Dialog",
-    "Innovation partnership": "Innovasjon",
-    "Negotiated without publication": "Utenkunng.",
-    "Direct award": "Direkte",
-}
+THRESHOLD_SHORT = get_labels("threshold-short")
+PROCEDURE_SHORT = get_labels("procedure-short")
 
 
 def _color_threshold(raw: str, label: str) -> str:

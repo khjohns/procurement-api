@@ -3,6 +3,8 @@
  * Extracted from +page.svelte to reduce component complexity.
  */
 
+import { eformsLabel } from './eforms-labels';
+
 /** Strip HTML tags and normalize whitespace. */
 export function stripHtml(text: string): string {
   if (!text) return '';
@@ -65,17 +67,10 @@ export function fmtCurrency(value: number | null | undefined, currency?: string)
   return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
 }
 
-/** Threshold code → Norwegian label (with Del suffix). Artifik API values. */
-export const THRESHOLD_LABELS: Record<string, string> = {
-  over_eea_threshold_value: 'Over EØS-terskel (Del III)',
-  below_eea_threshold_value: 'Under EØS-terskel (Del II)',
-  national_threshold: 'Nasjonal terskel (Del II)',
-  below_national_threshold: 'Under nasjonal terskel (Del I)',
-};
-
 /** Format threshold code to Norwegian label. */
 export function formatThreshold(t: string | null | undefined): string {
-  return t ? (THRESHOLD_LABELS[t] ?? t) : '—';
+  if (!t) return '—';
+  return eformsLabel('threshold', t);
 }
 
 /** Procurement display name with HTML stripping. */

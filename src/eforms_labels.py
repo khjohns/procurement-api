@@ -71,6 +71,8 @@ def _load() -> dict[str, dict[str, str]]:
             _cache = {}
         for codelist, overrides in OVERRIDES.items():
             _cache.setdefault(codelist, {}).update(overrides)
+        for codelist, labels in _ARTIFIK_CODELISTS.items():
+            _cache.setdefault(codelist, {}).update(labels)
     return _cache
 
 
@@ -107,6 +109,41 @@ ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
     "SERVICES": "services",
     "SUPPLIES": "supplies",
     "WORKS": "works",
+}
+
+# ── Artifik-only codelists (not from eForms SDK) ──
+# These are injected into _cache at load time alongside SDK data.
+
+_ARTIFIK_CODELISTS: dict[str, dict[str, str]] = {
+    # Short procedure labels for compact list views
+    "procedure-short": {
+        "Open": "Åpen",
+        "Limited": "Begrenset",
+        "Competitive negotiated": "Forhandling",
+        "Competitive dialogue": "Dialog",
+        "Innovation partnership": "Innovasjon",
+        "Negotiated without publication": "Uten kunngj.",
+        "Direct award": "Direkte",
+    },
+    # Del II uses "tilbudskonkurranse" instead of "anbudskonkurranse"
+    "procedure-del2": {
+        "Open": "Åpen tilbudskonkurranse",
+        "Limited": "Begrenset tilbudskonkurranse",
+    },
+    # Artifik threshold codes
+    "threshold": {
+        "over_eea_threshold_value": "Over EØS-terskel (Del III)",
+        "below_eea_threshold_value": "Under EØS-terskel (Del II)",
+        "national_threshold": "Nasjonal terskel (Del II)",
+        "below_national_threshold": "Under nasjonal terskel (Del I)",
+    },
+    # Short threshold labels for list views
+    "threshold-short": {
+        "over_eea_threshold_value": "Over EØS",
+        "below_eea_threshold_value": "Under EØS",
+        "national_threshold": "Nasjonal",
+        "below_national_threshold": "Under terskel",
+    },
 }
 
 

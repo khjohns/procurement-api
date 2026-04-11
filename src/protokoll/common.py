@@ -29,7 +29,7 @@ from app.constants import (  # noqa: E402, F401
 
 # -- Procedure mappings -------------------------------------------------------
 
-from eforms_labels import ARTIFIK_PROCEDURE_TO_EFORMS, get_label
+from eforms_labels import ARTIFIK_PROCEDURE_TO_EFORMS, get_label, get_labels
 
 # Built dynamically from eForms labels + Artifik mapping
 PROCEDURE_MAP = {
@@ -39,11 +39,7 @@ PROCEDURE_MAP = {
 
 ALL_PROCEDURES = list(PROCEDURE_MAP.values())
 
-# Del II uses "tilbudskonkurranse" instead of "anbudskonkurranse"
-DEL2_PROCEDURE_MAP = {
-    "Open": "Åpen tilbudskonkurranse",
-    "Limited": "Begrenset tilbudskonkurranse",
-}
+DEL2_PROCEDURE_MAP = get_labels("procedure-del2")
 
 ALL_DEL2_PROCEDURES = list(DEL2_PROCEDURE_MAP.values())
 
