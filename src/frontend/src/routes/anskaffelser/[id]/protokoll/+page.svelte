@@ -17,9 +17,15 @@
     meddelelseRows,
     rammeavtaleRows,
     andreOpplysningerRows,
+    kvalifikasjonskravRows,
+    tildelingskriterierRows,
   } from '$lib/utils/protokoll-info-rows';
+  import { prefetchLabels } from '$lib/utils/eforms-labels';
 
   let { data } = $props();
+
+  // Pre-fetch eForms Norwegian labels (cached, non-blocking)
+  prefetchLabels();
 
   // Auto-load from route data (proc + activities + eforms fetched by +page.ts)
   if (data?.proc) {
@@ -180,9 +186,11 @@
       'mottak-tilbud': () => mottakTilbudRows(protokoll.activities),
       prosedyre: () => prosedyreRows(proc, protokoll.eforms, protokoll.activities),
       'ettersending-avklaring': () => ettersendingRows(proc, protokoll.activities),
+      'tilbud-vurdering': () => tildelingskriterierRows(protokoll.eforms),
       'valgt-tilbud': () => valgtTilbudRows(proc, protokoll.activities),
       'meddelelse-klagefrist': () => meddelelseRows(proc),
       'meddelelse-karens': () => meddelelseRows(proc),
+      kvalifikasjonsvurdering: () => kvalifikasjonskravRows(protokoll.eforms),
       rammeavtaler: () => rammeavtaleRows(proc, protokoll.eforms),
       'andre-opplysninger': () => andreOpplysningerRows(proc),
     };
