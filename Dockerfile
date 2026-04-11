@@ -25,6 +25,7 @@ RUN adduser --disabled-password --gecos '' appuser
 COPY src/app/ src/app/
 COPY src/artifik_mcp/ src/artifik_mcp/
 COPY src/protokoll/ src/protokoll/
+COPY src/eforms_labels.py src/eforms_labels.py
 
 # Copy SvelteKit build output (app/__init__.py resolves ../frontend/build)
 COPY --from=frontend /app/src/frontend/build src/frontend/build
