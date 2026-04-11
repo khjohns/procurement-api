@@ -7,6 +7,8 @@
   import PerSupplierCards from './PerSupplierCards.svelte';
   import AvvisningCard from './AvvisningCard.svelte';
   import DataQualityTable from './DataQualityTable.svelte';
+  import SubcontractorTable from './SubcontractorTable.svelte';
+  import type { SubcontractorRow } from '$lib/stores/protokoll-sections';
   import RichTextEditor from './RichTextEditor.svelte';
   import CodelistSelect from './CodelistSelect.svelte';
   import DateInput from './DateInput.svelte';
@@ -123,6 +125,13 @@
     foaRef={field.foaRef}
     hint={field.hint}
     onchange={(sid, avv) => protokoll.setAvvisning(field.key, sid, avv)}
+  />
+{:else if field.type === 'subcontractor-table'}
+  <SubcontractorTable
+    rows={(protokoll.manual[field.key] as SubcontractorRow[]) ?? []}
+    label={field.label}
+    hint={field.hint}
+    onchange={(rows) => protokoll.setManualField(field.key, rows)}
   />
 {:else if field.type === 'data-quality-table'}
   <DataQualityTable sections={protokoll.sections} />

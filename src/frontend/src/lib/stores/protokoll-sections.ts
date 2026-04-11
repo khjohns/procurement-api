@@ -28,6 +28,7 @@ export type FieldType =
   | 'avvisning-card'
   | 'data-quality-table'
   | 'evaluation-summary'
+  | 'subcontractor-table'
   | 'justification-generator';
 
 /** Context passed to computeFilled for field status resolution. */
@@ -107,6 +108,21 @@ function computeFilledAvvisningCard(value: unknown): ComputeFilledResult {
     if (entry.kategori && entry.begrunnelse?.trim()) filled++;
   }
   return { total: entries.length, filled };
+}
+
+export interface SubcontractorRow {
+  navn: string;
+  ytelse: string;
+}
+
+function computeFilledSubcontractorTable(value: unknown): ComputeFilledResult {
+  const rows = Array.isArray(value) ? (value as SubcontractorRow[]) : [];
+  if (rows.length === 0) return { total: 1, filled: 1 }; // no subcontractors is valid
+  let filled = 0;
+  for (const row of rows) {
+    if (row.navn?.trim() && row.ytelse?.trim()) filled++;
+  }
+  return { total: rows.length, filled };
 }
 
 /**
@@ -501,10 +517,10 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     fields: [
       {
         key: 'underleverandorer',
-        type: 'textarea',
+        type: 'subcontractor-table',
         label: 'Underleverandører',
-        hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.',
-        computeFilled: computeFilledText,
+        hint: 'Oppgi underleverandører og hvilke deler av kontrakten de utfører.',
+        computeFilled: computeFilledSubcontractorTable,
       },
       {
         key: 'andreOpplysninger',
@@ -941,10 +957,10 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     fields: [
       {
         key: 'underleverandorer',
-        type: 'textarea',
+        type: 'subcontractor-table',
         label: 'Underleverandører',
-        hint: 'Oppgi eventuelle underleverandører og hvilke deler av kontrakten.',
-        computeFilled: computeFilledText,
+        hint: 'Oppgi underleverandører og hvilke deler av kontrakten de utfører.',
+        computeFilled: computeFilledSubcontractorTable,
       },
       {
         key: 'andreOpplysninger',
