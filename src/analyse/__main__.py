@@ -26,6 +26,9 @@ GCP_PROJECT = "procurement-mcp"
 
 _MAX_CRITERIA_COLS = 4
 
+from eforms_labels import get_labels  # noqa: E402
+
+# Artifik API notice types — not from eForms SDK, kept here.
 _NOTICE_TYPE_LABELS = {
     "PLANNING": "Planlegging",
     "NOTICE_ON_BUYER_PROFILE": "Kjøperprofil",
@@ -42,29 +45,12 @@ _NOTICE_TYPE_LABELS = {
     "CANCELLED_OR_MISSING_CONCLUSION_OF_CONTRACT": "Avlyst/ingen tildeling",
 }
 
+# eForms labels from eforms-sdk-nor (with our UI overrides)
+_PROCEDURE_LABELS = get_labels("procurement-procedure-type")
+_CONTRACT_NATURE_LABELS = get_labels("contract-nature")
 _FRAMEWORK_TYPE_LABELS = {
-    "fa-mix": "Rammeavtale (blandet)",
-    "fa-w-rc": "Rammeavtale med gjenåpning",
-    "fa-wo-rc": "Rammeavtale uten gjenåpning",
-    "none": "Ingen rammeavtale",
-    "dps": "Dynamisk innkjøpsordning",
-}
-
-_PROCEDURE_LABELS = {
-    "open": "Åpen anbudskonkurranse",
-    "restricted": "Begrenset anbudskonkurranse",
-    "neg-w-call": "Konkurranse med forhandling",
-    "neg-wo-call": "Forhandling uten kunngjøring",
-    "comp-dial": "Konkurransepreget dialog",
-    "innovation": "Innovasjonspartnerskap",
-    "oth-single": "Direkte anskaffelse",
-    "oth-mult": "Annet (flere prosedyrer)",
-}
-
-_CONTRACT_NATURE_LABELS = {
-    "services": "Tjeneste",
-    "supplies": "Varer",
-    "works": "Bygg og anlegg",
+    **get_labels("framework-agreement"),
+    "dps": "Dynamisk innkjøpsordning",  # from dps-usage, merged here for convenience
 }
 
 _CPV_GROUP_LABELS = {

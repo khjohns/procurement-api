@@ -5,7 +5,7 @@ anskaffelser/eforms-sdk-nor) with support for per-codelist overrides
 where SDK labels are too verbose or don't match our UI conventions.
 
 Usage:
-    from app.eforms_labels import get_label, get_labels
+    from eforms_labels import get_label, get_labels
 
     get_label("procurement-procedure-type", "open")   # "Åpen anbudskonkurranse"
     get_labels("contract-nature")                       # {"services": "Tjenester", ...}
@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-_DATA_PATH = Path(__file__).parent / "data" / "eforms_labels_nb.json"
+_DATA_PATH = Path(__file__).parent / "app" / "data" / "eforms_labels_nb.json"
 
 _cache: dict[str, dict[str, str]] | None = None
 
