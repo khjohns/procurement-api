@@ -18,20 +18,20 @@
 
   let { suppliers, avvisninger, isDel2, foaRef = '', hint = '', onchange }: Props = $props();
 
-  const categories: { value: AvvisningKategori; del2: string; del3: string }[] = [
+  const categories: { value: AvvisningKategori; del2: string; del3: string; del3Only?: boolean }[] = [
     { value: 'formalfeil', del2: '§ 9-4 Formalfeil', del3: '§ 24-1 Formalfeil' },
     { value: 'leverandor', del2: '§ 9-5 Kvalifikasjonssvikt', del3: '§ 24-2 Kvalifikasjonssvikt' },
     { value: 'tilbud', del2: '§ 9-6 Avvisning av tilbud', del3: '§ 24-8 Avvisning av tilbud' },
+    { value: 'unormalt-lavt', del2: '', del3: '§ 24-9 Unormalt lavt tilbud', del3Only: true },
   ];
+
+  let visibleCategories = $derived(
+    isDel2 ? categories.filter((c) => !c.del3Only) : categories
+  );
 
   function handleKategori(supplierId: string, kategori: AvvisningKategori) {
     const current = avvisninger[supplierId] ?? { kategori: '', begrunnelse: '' };
     onchange(supplierId, { ...current, kategori });
-  }
-
-  function handleBegrunnelse(supplierId: string, begrunnelse: string) {
-    const current = avvisninger[supplierId] ?? { kategori: 'formalfeil', begrunnelse: '' };
-    onchange(supplierId, { ...current, begrunnelse });
   }
 
   function handleDato(supplierId: string, datoAvvist: string) {
@@ -43,7 +43,7 @@
 <div class="avvisning-cards">
   {#each suppliers as supplier (supplier.id)}
     {@const avv = avvisninger[supplier.id]}
-    <div class="supplier-card" class:supplier-card-filled={avv?.begrunnelse?.trim()}>
+    <div class="supplier-card" class:supplier-card-filled={!!avv?.kategori}>
       <div class="supplier-card-header">
         <span class="supplier-name">{supplier.name}</span>
         <DateInput
@@ -55,7 +55,7 @@
 
       <div class="kategori-group" role="radiogroup" aria-label="Hjemmel for {supplier.name}">
         <div class="kategori-label">HJEMMEL</div>
-        {#each categories as cat}
+        {#each visibleCategories as cat}
           <label class="kategori-option">
             <input
               type="radio"
@@ -67,17 +67,6 @@
             <span class="kategori-text">{isDel2 ? cat.del2 : cat.del3}</span>
           </label>
         {/each}
-      </div>
-
-      <textarea
-        class="field-textarea"
-        value={avv?.begrunnelse ?? ''}
-        oninput={(e) => handleBegrunnelse(supplier.id, (e.target as HTMLTextAreaElement).value)}
-        placeholder="Begrunnelse for avvisning..."
-        rows="3"
-      ></textarea>
-      <div class="field-footer">
-        <span class="char-count">{(avv?.begrunnelse ?? '').length} tegn</span>
       </div>
     </div>
   {/each}
@@ -157,45 +146,6 @@
     font-family: var(--font-data);
     font-size: 12px;
     color: var(--color-ink-secondary);
-  }
-
-  .field-textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: var(--spacing-3);
-    background: var(--color-canvas);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    line-height: 1.5;
-    outline: none;
-    resize: vertical;
-    transition: border-color 0.12s;
-    field-sizing: content;
-  }
-
-  .field-textarea:focus {
-    border-color: var(--color-wire-focus);
-  }
-
-  .field-textarea::placeholder {
-    color: var(--color-ink-ghost);
-    font-style: italic;
-  }
-
-  .field-footer {
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-end;
-  }
-
-  .char-count {
-    font-family: var(--font-data);
-    font-size: 11px;
-    color: var(--color-ink-muted);
-    font-variant-numeric: tabular-nums;
   }
 
   .field-hint {

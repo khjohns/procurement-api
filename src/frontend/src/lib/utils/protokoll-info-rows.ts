@@ -273,8 +273,3 @@ export function avlysningInfoRows(proc: any): InfoRow[] {
   return rows;
 }
 
-export function andreOpplysningerRows(proc: any): InfoRow[] {
-  // Cancellation info now in dedicated AVLYSNING chapter
-  if (proc.isCancelled) return [];
-  return [{ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' }];
-}
