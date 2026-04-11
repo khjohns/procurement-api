@@ -3,7 +3,8 @@
   import { getContext } from 'svelte';
   import { extractBidders } from '$lib/utils/activities';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { getTimelineDate, artifikProcedureLabel } from '$lib/utils/protokoll-helpers';
+  import { getTimelineDate } from '$lib/utils/protokoll-helpers';
+  import { artifikProcedureLabel } from '$lib/utils/eforms-labels.svelte';
   import type { Activity } from '$lib/types/activity';
   import type { PhaseState } from '$lib/config/phases';
 

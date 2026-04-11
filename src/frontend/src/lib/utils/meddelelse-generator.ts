@@ -8,7 +8,8 @@
 
 import { type Supplier, fmt1 } from '$lib/stores/evaluation.svelte';
 import { esc, type JustificationInput } from './justification-generator';
-import { artifikProcedureLabel, getProcName } from './protokoll-helpers';
+import { getProcName } from './protokoll-helpers';
+import { artifikProcedureLabel } from './eforms-labels.svelte';
 import { formatDato } from './format';
 
 // ── Types ──

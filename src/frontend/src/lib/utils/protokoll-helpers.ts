@@ -1,9 +1,9 @@
 /**
  * Pure helper functions for the protokoll page.
  * Extracted from +page.svelte to reduce component complexity.
+ * No Svelte runtime dependencies — import from eforms-labels.svelte
+ * for label lookups.
  */
-
-import { eformsLabel } from './eforms-labels.svelte';
 
 /** Strip HTML tags and normalize whitespace. */
 export function stripHtml(text: string): string {
@@ -67,12 +67,6 @@ export function fmtCurrency(value: number | null | undefined, currency?: string)
   return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
 }
 
-/** Format threshold code to Norwegian label. */
-export function formatThreshold(t: string | null | undefined): string {
-  if (!t) return '—';
-  return eformsLabel('threshold', t);
-}
-
 /** Procurement display name with HTML stripping. */
 export function getProcName(proc: any): string {
   const raw = proc?.name || proc?.title || '';
@@ -86,14 +80,3 @@ export function addDays(isoDate: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-/** Translate Artifik procedure code to Norwegian label. */
-export function artifikProcedureLabel(code: string | undefined, fallback?: string): string {
-  if (!code) return fallback ?? '';
-  return eformsLabel('artifik-procedure', code, fallback);
-}
-
-/** Translate Artifik contract nature code to Norwegian label. */
-export function artifikNatureLabel(code: string | undefined, fallback?: string): string {
-  if (!code) return fallback ?? '';
-  return eformsLabel('artifik-nature', code, eformsLabel('contract-nature', code.toLowerCase(), fallback));
-}

@@ -43,3 +43,25 @@ export function eformsLabel(
 export function eformsLabels(codelist: string): Record<string, string> {
 	return cache?.[codelist] ?? {};
 }
+
+// ── Convenience helpers for Artifik API codes ──
+
+/** Translate Artifik procedure code (e.g. "Open") to Norwegian. */
+export function artifikProcedureLabel(code: string | undefined, fallback?: string): string {
+	if (!code) return fallback ?? '';
+	return eformsLabel('artifik-procedure', code, fallback);
+}
+
+/** Translate Artifik contract nature code (e.g. "SERVICES") to Norwegian. */
+export function artifikNatureLabel(code: string | undefined, fallback?: string): string {
+	if (!code) return fallback ?? '';
+	// Try pre-resolved Artifik label, then eForms lowercase lookup
+	return eformsLabel('artifik-nature', code)
+		?? eformsLabel('contract-nature', code.toLowerCase(), fallback);
+}
+
+/** Format Artifik threshold code to Norwegian label. */
+export function formatThreshold(t: string | null | undefined): string {
+	if (!t) return '—';
+	return eformsLabel('threshold', t);
+}

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { getProcName, artifikProcedureLabel } from '$lib/utils/protokoll-helpers';
+  import { getProcName } from '$lib/utils/protokoll-helpers';
+  import { artifikProcedureLabel } from '$lib/utils/eforms-labels.svelte';
 
   interface Props {
     procurement: any;

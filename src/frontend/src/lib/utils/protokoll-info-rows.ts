@@ -13,11 +13,13 @@ import {
   getOrgNameWithLookup,
   buildOrgLookup,
   fmtCurrency,
+} from './protokoll-helpers';
+import {
+  eformsLabel,
   formatThreshold,
   artifikProcedureLabel,
   artifikNatureLabel,
-} from './protokoll-helpers';
-import { eformsLabel } from './eforms-labels.svelte';
+} from './eforms-labels.svelte';
 
 export type InfoRow = { label: string; value: any; mono?: boolean };
 

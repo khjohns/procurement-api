@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { artifikProcedureLabel, artifikNatureLabel, stripHtml, formatThreshold } from '$lib/utils/protokoll-helpers';
+  import { stripHtml } from '$lib/utils/protokoll-helpers';
+  import { artifikProcedureLabel, artifikNatureLabel, formatThreshold } from '$lib/utils/eforms-labels.svelte';
 
   let { data } = $props();
 
