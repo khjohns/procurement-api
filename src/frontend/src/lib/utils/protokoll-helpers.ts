@@ -87,7 +87,7 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 /** Artifik API procedure code → eForms code mapping. */
-export const ARTIFIK_PROCEDURE_TO_EFORMS: Record<string, string> = {
+const ARTIFIK_PROCEDURE_TO_EFORMS: Record<string, string> = {
   Open: 'open',
   Limited: 'restricted',
   'Competitive negotiated': 'neg-w-call',
@@ -98,9 +98,25 @@ export const ARTIFIK_PROCEDURE_TO_EFORMS: Record<string, string> = {
 };
 
 /** Artifik API nature code → eForms code mapping. */
-export const ARTIFIK_NATURE_TO_EFORMS: Record<string, string> = {
+const ARTIFIK_NATURE_TO_EFORMS: Record<string, string> = {
   SERVICES: 'services',
   SUPPLIES: 'supplies',
   WORKS: 'works',
   goods_and_services: 'combined',
 };
+
+/** Translate Artifik procedure code to Norwegian label. */
+export function artifikProcedureLabel(code: string | undefined, fallback?: string): string {
+  if (!code) return fallback ?? '';
+  const eformsCode = ARTIFIK_PROCEDURE_TO_EFORMS[code];
+  return eformsCode
+    ? eformsLabel('procurement-procedure-type', eformsCode, fallback ?? code)
+    : fallback ?? code;
+}
+
+/** Translate Artifik contract nature code to Norwegian label. */
+export function artifikNatureLabel(code: string | undefined, fallback?: string): string {
+  if (!code) return fallback ?? '';
+  const eformsCode = ARTIFIK_NATURE_TO_EFORMS[code] ?? code.toLowerCase();
+  return eformsLabel('contract-nature', eformsCode, fallback ?? code);
+}

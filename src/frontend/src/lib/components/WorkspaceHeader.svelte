@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { getProcName, ARTIFIK_PROCEDURE_TO_EFORMS } from '$lib/utils/protokoll-helpers';
-  import { eformsLabel } from '$lib/utils/eforms-labels';
+  import { getProcName, artifikProcedureLabel } from '$lib/utils/protokoll-helpers';
 
   interface Props {
     procurement: any;
@@ -11,13 +10,7 @@
 
   let procName = $derived(getProcName(procurement));
   let externalRef = $derived(procurement?.externalId ?? '');
-  let procedureLabel = $derived.by(() => {
-    const code = procurement?.procedure ?? '';
-    const eformsCode = ARTIFIK_PROCEDURE_TO_EFORMS[code];
-    return eformsCode
-      ? eformsLabel('procurement-procedure-type', eformsCode, code)
-      : code;
-  });
+  let procedureLabel = $derived(artifikProcedureLabel(procurement?.procedure));
 </script>
 
 <header class="workspace-header">

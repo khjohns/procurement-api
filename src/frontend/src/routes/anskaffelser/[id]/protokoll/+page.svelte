@@ -21,12 +21,8 @@
     kvalifikasjonskravRows,
     tildelingskriterierRows,
   } from '$lib/utils/protokoll-info-rows';
-  import { prefetchLabels } from '$lib/utils/eforms-labels';
 
   let { data } = $props();
-
-  // Pre-fetch eForms Norwegian labels (cached, non-blocking)
-  prefetchLabels();
 
   // Auto-load from route data (proc + activities + eforms fetched by +page.ts)
   if (data?.proc) {

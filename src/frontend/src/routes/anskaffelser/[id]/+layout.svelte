@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import { setContext } from 'svelte';
   import { themeStore } from '$lib/stores/theme.svelte';
+  import { prefetchLabels } from '$lib/utils/eforms-labels';
   import PhaseLine from '$lib/components/phase/PhaseLine.svelte';
   import {
     routeLabels,
@@ -11,6 +12,8 @@
   import type { Activity } from '$lib/types/activity';
 
   let { children, data } = $props();
+
+  prefetchLabels();
 
   const id = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);

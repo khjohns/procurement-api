@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { ARTIFIK_PROCEDURE_TO_EFORMS, ARTIFIK_NATURE_TO_EFORMS, stripHtml } from '$lib/utils/protokoll-helpers';
-  import { eformsLabel } from '$lib/utils/eforms-labels';
+  import { artifikProcedureLabel, artifikNatureLabel, stripHtml, formatThreshold } from '$lib/utils/protokoll-helpers';
 
   let { data } = $props();
 
@@ -61,12 +60,10 @@
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
-    const rawNature = proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature ?? '';
-    const eformsNature = ARTIFIK_NATURE_TO_EFORMS[rawNature] ?? rawNature.toLowerCase();
-    const cat = eformsLabel('contract-nature', eformsNature, rawNature) || null;
-    const eformsProc = ARTIFIK_PROCEDURE_TO_EFORMS[proc.procedure ?? ''];
-    const prosed = eformsProc ? eformsLabel('procurement-procedure-type', eformsProc, proc.procedure) : proc.procedure || null;
-    const terskel = proc.threshold ? eformsLabel('threshold', proc.threshold) : null;
+    const rawNature = proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature;
+    const cat = rawNature ? artifikNatureLabel(rawNature) : null;
+    const prosed = proc.procedure ? artifikProcedureLabel(proc.procedure) : null;
+    const terskel = proc.threshold ? formatThreshold(proc.threshold) : null;
 
     let ramme: string | null = null;
     if (proc.framework_agreement_involved) {

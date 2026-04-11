@@ -109,6 +109,7 @@ ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
     "SERVICES": "services",
     "SUPPLIES": "supplies",
     "WORKS": "works",
+    "goods_and_services": "combined",
 }
 
 # ── Artifik-only codelists (not from eForms SDK) ──
@@ -147,15 +148,3 @@ _ARTIFIK_CODELISTS: dict[str, dict[str, str]] = {
 }
 
 
-def artifik_procedure_label(artifik_code: str, default: str | None = None) -> str | None:
-    """Translate an Artifik procedure code to Norwegian via eForms labels."""
-    eforms_code = ARTIFIK_PROCEDURE_TO_EFORMS.get(artifik_code)
-    if eforms_code:
-        return get_label("procurement-procedure-type", eforms_code, default)
-    return default
-
-
-def artifik_nature_label(artifik_code: str, default: str | None = None) -> str | None:
-    """Translate an Artifik contract nature code to Norwegian via eForms labels."""
-    eforms_code = ARTIFIK_NATURE_TO_EFORMS.get(artifik_code, artifik_code.lower())
-    return get_label("contract-nature", eforms_code, default)

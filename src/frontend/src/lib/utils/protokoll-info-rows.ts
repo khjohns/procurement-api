@@ -14,8 +14,8 @@ import {
   buildOrgLookup,
   fmtCurrency,
   formatThreshold,
-  ARTIFIK_PROCEDURE_TO_EFORMS,
-  ARTIFIK_NATURE_TO_EFORMS,
+  artifikProcedureLabel,
+  artifikNatureLabel,
 } from './protokoll-helpers';
 import { eformsLabel } from './eforms-labels';
 
@@ -82,24 +82,13 @@ function directAwardJustification(proc: any): string | null {
 
 export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRow[] {
   const procedure = proc.procedure ?? '';
-  const eformsProc = ARTIFIK_PROCEDURE_TO_EFORMS[procedure];
   const rows: InfoRow[] = [
-    {
-      label: 'Prosedyre',
-      value: eformsProc
-        ? eformsLabel('procurement-procedure-type', eformsProc, procedure)
-        : procedure,
-    },
+    { label: 'Prosedyre', value: artifikProcedureLabel(procedure) },
   ];
 
-  // Contract nature: prefer eForms value, fall back to Artifik
   const nature = eforms?.contract_nature ?? proc.contractCategory;
   if (nature) {
-    const eformsNature = ARTIFIK_NATURE_TO_EFORMS[nature] ?? nature;
-    rows.push({
-      label: 'Kontraktstype',
-      value: eformsLabel('contract-nature', eformsNature, nature),
-    });
+    rows.push({ label: 'Kontraktstype', value: artifikNatureLabel(nature) });
   }
 
   const kunngj = kunngjoringStr(proc, activities);

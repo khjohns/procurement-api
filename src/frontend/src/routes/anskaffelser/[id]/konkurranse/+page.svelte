@@ -3,8 +3,7 @@
   import { getContext } from 'svelte';
   import { extractBidders } from '$lib/utils/activities';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { getTimelineDate, ARTIFIK_PROCEDURE_TO_EFORMS } from '$lib/utils/protokoll-helpers';
-  import { eformsLabel } from '$lib/utils/eforms-labels';
+  import { getTimelineDate, artifikProcedureLabel } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
   import type { PhaseState } from '$lib/config/phases';
 
@@ -141,7 +140,7 @@
               </div>
               <div class="frist-dato">{formatDatoMndAar(tilbudFrist)}</div>
               <div class="frist-meta">
-                <span>{eformsLabel('procurement-procedure-type', ARTIFIK_PROCEDURE_TO_EFORMS[proc?.procedure ?? ''], proc?.procedure ?? '')}</span>
+                <span>{artifikProcedureLabel(proc?.procedure)}</span>
                 <span class="frist-meta-sep">&middot;</span>
                 <span class="mono">{formatNOK(proc?.estimated_value)}</span>
               </div>
