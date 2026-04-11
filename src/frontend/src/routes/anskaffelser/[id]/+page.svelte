@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { ARTIFIK_PROCEDURE_TO_EFORMS, ARTIFIK_NATURE_TO_EFORMS, THRESHOLD_LABELS, lookupLabel, stripHtml } from '$lib/utils/protokoll-helpers';
+  import { ARTIFIK_PROCEDURE_TO_EFORMS, ARTIFIK_NATURE_TO_EFORMS, THRESHOLD_LABELS, stripHtml } from '$lib/utils/protokoll-helpers';
   import { eformsLabel } from '$lib/utils/eforms-labels';
 
   let { data } = $props();
@@ -66,7 +66,7 @@
     const cat = eformsLabel('contract-nature', eformsNature, rawNature) || null;
     const eformsProc = ARTIFIK_PROCEDURE_TO_EFORMS[proc.procedure ?? ''];
     const prosed = eformsProc ? eformsLabel('procurement-procedure-type', eformsProc, proc.procedure) : proc.procedure || null;
-    const terskel = lookupLabel(THRESHOLD_LABELS, proc.threshold);
+    const terskel = proc.threshold ? (THRESHOLD_LABELS[proc.threshold] ?? proc.threshold) : null;
 
     let ramme: string | null = null;
     if (proc.framework_agreement_involved) {
