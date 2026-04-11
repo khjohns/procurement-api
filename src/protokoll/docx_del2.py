@@ -254,8 +254,16 @@ def _qualification(doc, eforms=None):
     if eforms:
         sel = eforms.get("selection_criteria") or []
         if sel:
+            from eforms_labels import get_label
+
             doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
-            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            rows = [
+                (
+                    get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or ""),
+                    s.get("description") or "",
+                )
+                for s in sel
+            ]
             docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     # Tier 1: Full qualification

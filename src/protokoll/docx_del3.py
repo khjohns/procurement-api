@@ -30,6 +30,7 @@ from .common import (
     safe_int,
     strip_html,
 )
+from eforms_labels import get_label
 from .docx_helpers import (
     add_checkbox,
     add_instruction,
@@ -243,7 +244,13 @@ def _qualification(doc, eforms=None):
         sel = eforms.get("selection_criteria") or []
         if sel:
             doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
-            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            rows = [
+                (
+                    get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or ""),
+                    s.get("description") or "",
+                )
+                for s in sel
+            ]
             docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     docx_info_table(
@@ -528,22 +535,17 @@ def _award_criteria(doc, eforms):
     rows = []
     for c in criteria:
         name = c.get("name") or "Ukjent"
-        ctype = c.get("type") or ""
+        ctype = get_label("award-criterion-type", c.get("type") or "", c.get("type") or "")
         weight = c.get("weight_percent")
         weight_str = f"{weight:.0f} %" if weight is not None else None
         rows.append((name, ctype, weight_str))
 
     docx_add_table_with_manual(doc, ["Kriterium", "Type", "Vekt"], rows)
 
-    # Norwegian env criterion
+    # Norwegian env criterion (FOA § 7-9)
     env = eforms.get("env_criterion_code")
     if env:
-        env_labels = {
-            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (\u00a7 7-9 (2)\u2013(3))",
-            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (\u00a7 7-9 (4))",
-            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (\u00a7 7-9 (5))",
-        }
-        label = env_labels.get(env, env)
+        label = get_label("award-criterion-type-no", env, env)
         p = doc.add_paragraph()
         p.add_run("Miljøkrav FOA \u00a7 7-9: ").bold = True
         p.add_run(label)

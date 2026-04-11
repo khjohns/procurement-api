@@ -29,6 +29,7 @@ from .common import (
     safe_int,
     strip_html,
 )
+from eforms_labels import get_label
 
 
 # -- Section generators ------------------------------------------------------
@@ -249,8 +250,9 @@ def _section_qualification(eforms=None) -> str:
             lines.append("| Type | Beskrivelse |")
             lines.append("| --- | --- |")
             for s in sel:
+                type_label = get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or "")
                 lines.append(
-                    f"| {s.get('type_code') or ''} | {s.get('description') or ''} |"
+                    f"| {type_label} | {s.get('description') or ''} |"
                 )
             lines.append("")
 
@@ -474,7 +476,7 @@ def _section_award_criteria(eforms=None) -> str:
     lines.append("| --- | --- | --- |")
     for c in criteria:
         name = c.get("name") or "Ukjent"
-        ctype = c.get("type") or ""
+        ctype = get_label("award-criterion-type", c.get("type") or "", c.get("type") or "")
         weight = c.get("weight_percent")
         weight_str = f"{weight:.0f} %" if weight is not None else "<!-- MANUELT -->"
         lines.append(f"| {name} | {ctype} | {weight_str} |")
@@ -482,12 +484,7 @@ def _section_award_criteria(eforms=None) -> str:
 
     env = eforms.get("env_criterion_code")
     if env:
-        env_labels = {
-            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (§ 7-9 (2)–(3))",
-            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (§ 7-9 (4))",
-            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (§ 7-9 (5))",
-        }
-        label = env_labels.get(env, env)
+        label = get_label("award-criterion-type-no", env, env)
         lines.append(f"**Miljøkrav FOA § 7-9:** {label}")
         lines.append("")
 

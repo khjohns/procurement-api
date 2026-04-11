@@ -26,7 +26,7 @@ GCP_PROJECT = "procurement-mcp"
 
 _MAX_CRITERIA_COLS = 4
 
-from eforms_labels import get_labels  # noqa: E402
+from eforms_labels import get_label as _get_label, get_labels  # noqa: E402
 
 # Artifik API notice types — not from eForms SDK, kept here.
 _NOTICE_TYPE_LABELS = {
@@ -168,7 +168,7 @@ def _to_csv(notices: list[dict]) -> str:
             if isinstance(n.get("estimated_value"), dict)
             else "",
             "selection_criteria_count": len(n.get("selection_criteria") or []),
-            "env_criterion_code": n.get("env_criterion_code"),
+            "env_criterion_code": _get_label("award-criterion-type-no", n.get("env_criterion_code") or "", n.get("env_criterion_code") or ""),
             "received_tenders": n.get("received_tenders"),
             "framework_type": _FRAMEWORK_TYPE_LABELS.get(fw_type, fw_type),
             "framework_max_value": n.get("framework_max_value"),
