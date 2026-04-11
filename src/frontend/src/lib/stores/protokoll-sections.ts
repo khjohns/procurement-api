@@ -6,7 +6,7 @@
 
 // ── Types shared with protokoll store ──
 
-export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud';
+export type AvvisningKategori = 'formalfeil' | 'leverandor' | 'tilbud' | 'unormalt-lavt';
 
 export interface Avvisning {
   kategori: AvvisningKategori;
@@ -105,7 +105,7 @@ function computeFilledAvvisningCard(value: unknown): ComputeFilledResult {
   if (entries.length === 0) return { total: 1, filled: 0 };
   let filled = 0;
   for (const entry of entries) {
-    if (entry.kategori && entry.begrunnelse?.trim()) filled++;
+    if (entry.kategori) filled++;
   }
   return { total: entries.length, filled };
 }
@@ -274,54 +274,20 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
 
   // AVVISNING
   {
-    id: 'avvisning-formalfeil',
-    title: 'Avvisning — formalfeil',
+    id: 'avvisning',
+    title: 'Avvisning',
     chapter: 'AVVISNING',
     dataSource: 'mixed',
     fields: [
       {
-        key: 'avvisningerFormalfeil',
+        key: 'avvisninger',
         type: 'avvisning-card',
         label: 'Avvisning per leverandør',
-        foaRef: 'FOA § 9-4',
-        hint: 'Avvisning på grunn av formalfeil.',
+        hint: 'Velg hjemmel og begrunn avvisning for hver leverandør.',
         computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
-  },
-  {
-    id: 'avvisning-leverandor',
-    title: 'Avviste leverandører',
-    chapter: 'AVVISNING',
-    dataSource: 'mixed',
-    fields: [
-      {
-        key: 'avvisningerLeverandor',
-        type: 'avvisning-card',
-        label: 'Avvisning per leverandør',
-        foaRef: 'FOA § 9-5',
-        hint: 'Avvisning på grunn av kvalifikasjonssvikt.',
-        computeFilled: computeFilledAvvisningCard,
-      },
-    ],
-    condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
-  },
-  {
-    id: 'avviste-tilbud',
-    title: 'Avviste tilbud',
-    chapter: 'AVVISNING',
-    dataSource: 'manual',
-    fields: [
-      {
-        key: 'forkastedeTilbud',
-        type: 'checkbox-textarea',
-        label: 'Forkastede tilbud',
-        foaRef: 'FOA § 9-6',
-        hint: 'Begrunn avvisning av tilbud.',
-        computeFilled: makeCheckboxTextareaFilled('forkastedeTilbud'),
-      },
-    ],
   },
 
   // TILDELING (hidden when cancelled)
@@ -542,7 +508,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
   },
 ];
 
-// ── Del III ──
+// ── Del III (EØS-terskelverdi) ──
 
 export const DEL3_SECTIONS: SectionDefinition[] = [
   // RAMMEVERK
@@ -648,62 +614,20 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
 
   // AVVISNING
   {
-    id: 'avvisning-formalfeil',
-    title: 'Avvisning — formalfeil',
+    id: 'avvisning',
+    title: 'Avvisning',
     chapter: 'AVVISNING',
     dataSource: 'mixed',
     fields: [
       {
-        key: 'avvisningerFormalfeil',
+        key: 'avvisninger',
         type: 'avvisning-card',
         label: 'Avvisning per leverandør',
-        foaRef: 'FOA § 24-1',
-        hint: 'Avvisning på grunn av formalfeil.',
+        hint: 'Velg hjemmel og begrunn avvisning for hver leverandør.',
         computeFilled: computeFilledAvvisningCard,
       },
     ],
     condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
-  },
-  {
-    id: 'avvisning-leverandor',
-    title: 'Avviste leverandører',
-    chapter: 'AVVISNING',
-    dataSource: 'mixed',
-    fields: [
-      {
-        key: 'avvisningerLeverandor',
-        type: 'avvisning-card',
-        label: 'Avvisning per leverandør',
-        foaRef: 'FOA § 24-2',
-        hint: 'Avvisning på grunn av kvalifikasjonssvikt.',
-        computeFilled: computeFilledAvvisningCard,
-      },
-    ],
-    condition: (ctx) => ctx.activities.some((a) => a.action === 'REJECT_PARTICIPATION'),
-  },
-  {
-    id: 'avviste-tilbud',
-    title: 'Avviste tilbud',
-    chapter: 'AVVISNING',
-    dataSource: 'manual',
-    fields: [
-      {
-        key: 'forkastedeTilbud',
-        type: 'checkbox-textarea',
-        label: 'Forkastede tilbud',
-        foaRef: 'FOA § 24-8',
-        hint: 'Begrunn avvisning av tilbud.',
-        computeFilled: makeCheckboxTextareaFilled('forkastedeTilbud'),
-      },
-      {
-        key: 'unormaltLavtTilbud',
-        type: 'checkbox-textarea',
-        label: 'Unormalt lavt tilbud',
-        foaRef: 'FOA § 24-9',
-        hint: 'Begrunn vurdering av unormalt lave tilbud.',
-        computeFilled: makeCheckboxTextareaFilled('unormaltLavtTilbud'),
-      },
-    ],
   },
 
   // ETTERSENDING, FORHANDLINGER OG DIALOG
@@ -961,6 +885,14 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         label: 'Underleverandører',
         hint: 'Oppgi underleverandører og hvilke deler av kontrakten de utfører.',
         computeFilled: computeFilledSubcontractorTable,
+      },
+      {
+        key: 'unormaltLavtTilbud',
+        type: 'checkbox-textarea',
+        label: 'Unormalt lavt tilbud vurdert',
+        foaRef: 'FOA § 24-9',
+        hint: 'Beskriv vurderingen av unormalt lavt tilbud som ikke ble avvist.',
+        computeFilled: makeCheckboxTextareaFilled('unormaltLavtTilbud'),
       },
       {
         key: 'andreOpplysninger',
