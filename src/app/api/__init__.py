@@ -550,14 +550,12 @@ def get_cpv_labels(codes: str):
 @bp.route("/eforms-labels")
 def get_eforms_labels():
     """Return all eForms codelist labels, or a specific codelist via ?codelist=name."""
-    from eforms_labels import get_labels, _load
+    from eforms_labels import get_all_labels, get_labels
 
     codelist = request.args.get("codelist")
     if codelist:
         return jsonify(get_labels(codelist))
-    # Return all codelists
-    data = _load()
-    return jsonify({k: get_labels(k) for k in data})
+    return jsonify(get_all_labels())
 
 
 @bp.route("/eforms-labels/<codelist>/<code>")

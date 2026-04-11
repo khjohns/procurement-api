@@ -61,31 +61,29 @@ OVERRIDES: dict[str, dict[str, str]] = {
 
 
 def _load() -> dict[str, dict[str, str]]:
-    """Lazy-load the label data from JSON."""
+    """Lazy-load the label data from JSON, with overrides pre-merged."""
     global _cache
     if _cache is None:
         if _DATA_PATH.exists():
             raw = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
-            # Strip _meta key, keep only codelist dicts
             _cache = {k: v for k, v in raw.items() if not k.startswith("_")}
         else:
             _cache = {}
+        for codelist, overrides in OVERRIDES.items():
+            _cache.setdefault(codelist, {}).update(overrides)
     return _cache
 
 
+def get_all_labels() -> dict[str, dict[str, str]]:
+    """Return all codelists with overrides applied. Safe for serialization."""
+    return _load()
+
+
 def get_labels(codelist: str) -> dict[str, str]:
-    """Return the full {code: label} dict for a codelist, with overrides applied."""
-    data = _load()
-    base = dict(data.get(codelist, {}))
-    overrides = OVERRIDES.get(codelist, {})
-    base.update(overrides)
-    return base
+    """Return the {code: label} dict for a codelist."""
+    return _load().get(codelist, {})
 
 
 def get_label(codelist: str, code: str, default: str | None = None) -> str | None:
     """Look up a single label.  Returns default (or None) if not found."""
-    overrides = OVERRIDES.get(codelist, {})
-    if code in overrides:
-        return overrides[code]
-    data = _load()
-    return data.get(codelist, {}).get(code, default)
+    return _load().get(codelist, {}).get(code, default)

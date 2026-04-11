@@ -15,7 +15,6 @@ import {
   fmtCurrency,
   formatThreshold,
   PROCEDURE_LABELS,
-  CONTRACT_NATURE_LABELS,
 } from './protokoll-helpers';
 import { eformsLabel } from './eforms-labels';
 
@@ -88,7 +87,7 @@ export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRo
   if (eforms?.contract_nature) {
     rows.push({
       label: 'Kontraktstype',
-      value: CONTRACT_NATURE_LABELS[eforms.contract_nature] ?? eforms.contract_nature,
+      value: eformsLabel('contract-nature', eforms.contract_nature),
     });
   }
 

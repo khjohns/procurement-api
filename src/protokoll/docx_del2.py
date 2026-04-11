@@ -40,6 +40,8 @@ from .docx_helpers import (
     docx_subtitle,
 )
 
+from eforms_labels import get_label
+
 # Reuse shared sections from Del III
 from .docx_del3 import (
     _award_criteria,
@@ -133,14 +135,9 @@ def _procedure(doc, procurement, activities, eforms=None):
     if eforms:
         nature = eforms.get("contract_nature")
         if nature:
-            nature_labels = {
-                "services": "Tjeneste",
-                "supplies": "Varer",
-                "works": "Bygg og anlegg",
-            }
             p2 = doc.add_paragraph()
             p2.add_run("Kontraktstype: ").bold = True
-            p2.add_run(nature_labels.get(nature, nature))
+            p2.add_run(get_label("contract-nature", nature, nature))
 
     # Kunngjøring
     announcement_date, doffin_ref, ted_ref = parse_announcement(activities)
@@ -254,8 +251,6 @@ def _qualification(doc, eforms=None):
     if eforms:
         sel = eforms.get("selection_criteria") or []
         if sel:
-            from eforms_labels import get_label
-
             doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
             rows = [
                 (

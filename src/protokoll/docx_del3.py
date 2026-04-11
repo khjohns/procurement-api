@@ -125,14 +125,9 @@ def _procedure(doc, procurement, activities, eforms=None):
     if eforms:
         nature = eforms.get("contract_nature")
         if nature:
-            nature_labels = {
-                "services": "Tjeneste",
-                "supplies": "Varer",
-                "works": "Bygg og anlegg",
-            }
             p2 = doc.add_paragraph()
             p2.add_run("Kontraktstype: ").bold = True
-            p2.add_run(nature_labels.get(nature, nature))
+            p2.add_run(get_label("contract-nature", nature, nature))
 
     # -- Begrunnelse for prosedyrevalg --
     if procedure in ("Competitive negotiated", "Competitive dialogue"):

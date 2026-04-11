@@ -17,7 +17,8 @@ async function ensureLoaded(): Promise<void> {
 			cache = data;
 		})
 		.catch(() => {
-			cache = {};
+			// Allow retry on next call
+			loading = null;
 		});
 	return loading;
 }
