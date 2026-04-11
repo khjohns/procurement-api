@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "ruff",
     "pytest",
+    "pyyaml",
 ]
 protokoll = [
     "python-docx",
