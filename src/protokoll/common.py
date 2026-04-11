@@ -197,9 +197,16 @@ def parse_announcement(activities: list[dict]) -> tuple[str, str, str]:
 
 
 def is_mature(procurement: dict) -> bool:
-    """Check if procurement is past submission deadline and not a template/cancelled."""
-    if procurement.get("isTemplate") or procurement.get("isCancelled"):
+    """Check if procurement is ready for protokoll generation.
+
+    Cancelled procurements are always mature (FOA requires documenting
+    the cancellation decision). Active procurements must be past
+    submission deadline.
+    """
+    if procurement.get("isTemplate"):
         return False
+    if procurement.get("isCancelled"):
+        return True
     deadline = parse_submission_deadline(procurement)
     if not deadline:
         return False
