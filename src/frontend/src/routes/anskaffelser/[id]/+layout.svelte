@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { setContext } from 'svelte';
   import { themeStore } from '$lib/stores/theme.svelte';
-  import { prefetchLabels } from '$lib/utils/eforms-labels';
+  import { prefetchLabels } from '$lib/utils/eforms-labels.svelte';
   import PhaseLine from '$lib/components/phase/PhaseLine.svelte';
   import {
     routeLabels,

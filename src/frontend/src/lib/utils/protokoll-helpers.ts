@@ -3,7 +3,7 @@
  * Extracted from +page.svelte to reduce component complexity.
  */
 
-import { eformsLabel } from './eforms-labels';
+import { eformsLabel } from './eforms-labels.svelte';
 
 /** Strip HTML tags and normalize whitespace. */
 export function stripHtml(text: string): string {
@@ -86,37 +86,14 @@ export function addDays(isoDate: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-/** Artifik API procedure code → eForms code mapping. */
-const ARTIFIK_PROCEDURE_TO_EFORMS: Record<string, string> = {
-  Open: 'open',
-  Limited: 'restricted',
-  'Competitive negotiated': 'neg-w-call',
-  'Competitive dialogue': 'comp-dial',
-  'Innovation partnership': 'innovation',
-  'Negotiated without publication': 'neg-wo-call',
-  'Direct award': 'oth-single',
-};
-
-/** Artifik API nature code → eForms code mapping. */
-const ARTIFIK_NATURE_TO_EFORMS: Record<string, string> = {
-  SERVICES: 'services',
-  SUPPLIES: 'supplies',
-  WORKS: 'works',
-  goods_and_services: 'combined',
-};
-
 /** Translate Artifik procedure code to Norwegian label. */
 export function artifikProcedureLabel(code: string | undefined, fallback?: string): string {
   if (!code) return fallback ?? '';
-  const eformsCode = ARTIFIK_PROCEDURE_TO_EFORMS[code];
-  return eformsCode
-    ? eformsLabel('procurement-procedure-type', eformsCode, fallback ?? code)
-    : fallback ?? code;
+  return eformsLabel('artifik-procedure', code, fallback);
 }
 
 /** Translate Artifik contract nature code to Norwegian label. */
 export function artifikNatureLabel(code: string | undefined, fallback?: string): string {
   if (!code) return fallback ?? '';
-  const eformsCode = ARTIFIK_NATURE_TO_EFORMS[code] ?? code.toLowerCase();
-  return eformsLabel('contract-nature', eformsCode, fallback ?? code);
+  return eformsLabel('artifik-nature', code, eformsLabel('contract-nature', code.toLowerCase(), fallback));
 }

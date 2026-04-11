@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { eformsLabels } from '$lib/utils/eforms-labels';
+  import { eformsLabels } from '$lib/utils/eforms-labels.svelte';
 
   interface Props {
     value: string;

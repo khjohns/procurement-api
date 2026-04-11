@@ -1,14 +1,15 @@
-"""Norwegian labels for eForms codelist values.
+"""Norwegian label registry for eForms codelist values and Artifik codes.
 
 Loads translations from the bundled eforms_labels_nb.json (synced from
-anskaffelser/eforms-sdk-nor) with support for per-codelist overrides
-where SDK labels are too verbose or don't match our UI conventions.
+anskaffelser/eforms-sdk-nor) with support for overrides and Artifik API
+code mappings.
 
 Usage:
     from eforms_labels import get_label, get_labels
 
     get_label("procurement-procedure-type", "open")   # "Åpen anbudskonkurranse"
-    get_labels("contract-nature")                       # {"services": "Tjenester", ...}
+    get_label("artifik-procedure", "Open")             # "Åpen anbudskonkurranse"
+    get_labels("contract-nature")                       # {"services": "Tjeneste", ...}
 """
 
 from __future__ import annotations
@@ -20,80 +21,33 @@ _DATA_PATH = Path(__file__).parent / "app" / "data" / "eforms_labels_nb.json"
 
 _cache: dict[str, dict[str, str]] | None = None
 
-# ── Overrides ──
-# Where SDK labels are too terse, verbose, or don't match our UI conventions,
-# we override specific entries here.  Keys not listed fall through to SDK.
-#
-# Principle: only override when there's a real UX reason.  Keep this dict
-# small — most SDK labels are fine as-is.
+# ── eForms SDK label overrides ──
+# Where SDK labels are too terse/verbose for our UI. Keys not listed fall
+# through to SDK values.
 
 OVERRIDES: dict[str, dict[str, str]] = {
     "procurement-procedure-type": {
-        # SDK says just "Åpen" / "Begrenset" — too terse without context
         "open": "Åpen anbudskonkurranse",
         "restricted": "Begrenset anbudskonkurranse",
-        # SDK: "Konkurranse med forhandling med  forhåndskunngjøring/..."
         "neg-w-call": "Konkurranse med forhandling",
-        # SDK: "Konkurranse med forhandling uten forutgående kunngjøring"
         "neg-wo-call": "Forhandling uten kunngjøring",
-        # SDK: "andre ett-trinnsprosedyrer" — our convention for this code
         "oth-single": "Direkte anskaffelse",
-        # SDK: "andre flertrinnsprosedyrer"
         "oth-mult": "Annet (flere prosedyrer)",
     },
     "contract-nature": {
-        # Singularis passer bedre i tabeller/filtre
         "services": "Tjeneste",
-        # Kortere enn SDK "Bygge- og anleggsarbeid"
         "works": "Bygg og anlegg",
     },
     "framework-agreement": {
-        # SDK: "Rammeavtale. delvis uten gjenåpning og delvis med gjenåpning..."
         "fa-mix": "Rammeavtale (blandet)",
-        # SDK: "Rammeavtale med gjenåpning av konkurransen"
         "fa-w-rc": "Rammeavtale med gjenåpning",
-        # SDK: "Rammeavtale uten gjenåpning av konkurransen"
         "fa-wo-rc": "Rammeavtale uten gjenåpning",
-        # SDK: "Ingen/nei" — vi er mer eksplisitt
         "none": "Ingen rammeavtale",
     },
 }
 
-
-def _load() -> dict[str, dict[str, str]]:
-    """Lazy-load the label data from JSON, with overrides pre-merged."""
-    global _cache
-    if _cache is None:
-        if _DATA_PATH.exists():
-            raw = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
-            _cache = {k: v for k, v in raw.items() if not k.startswith("_")}
-        else:
-            _cache = {}
-        for codelist, overrides in OVERRIDES.items():
-            _cache.setdefault(codelist, {}).update(overrides)
-        for codelist, labels in _ARTIFIK_CODELISTS.items():
-            _cache.setdefault(codelist, {}).update(labels)
-    return _cache
-
-
-def get_all_labels() -> dict[str, dict[str, str]]:
-    """Return all codelists with overrides applied. Safe for serialization."""
-    return _load()
-
-
-def get_labels(codelist: str) -> dict[str, str]:
-    """Return the {code: label} dict for a codelist."""
-    return _load().get(codelist, {})
-
-
-def get_label(codelist: str, code: str, default: str | None = None) -> str | None:
-    """Look up a single label.  Returns default (or None) if not found."""
-    return _load().get(codelist, {}).get(code, default)
-
-
-# ── Artifik API → eForms code mapping ──
-# Artifik uses English phrases for procedure codes; eForms uses short codes.
-# This mapping lets us use one label source for both systems.
+# ── Artifik API → eForms code mappings ──
+# Artifik uses English phrases; eForms uses short codes.
 
 ARTIFIK_PROCEDURE_TO_EFORMS: dict[str, str] = {
     "Open": "open",
@@ -112,11 +66,9 @@ ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
     "goods_and_services": "combined",
 }
 
-# ── Artifik-only codelists (not from eForms SDK) ──
-# These are injected into _cache at load time alongside SDK data.
+# ── Artifik-only codelists (static, not from eForms SDK) ──
 
-_ARTIFIK_CODELISTS: dict[str, dict[str, str]] = {
-    # Short procedure labels for compact list views
+_ARTIFIK_STATIC: dict[str, dict[str, str]] = {
     "procedure-short": {
         "Open": "Åpen",
         "Limited": "Begrenset",
@@ -126,19 +78,16 @@ _ARTIFIK_CODELISTS: dict[str, dict[str, str]] = {
         "Negotiated without publication": "Uten kunngj.",
         "Direct award": "Direkte",
     },
-    # Del II uses "tilbudskonkurranse" instead of "anbudskonkurranse"
     "procedure-del2": {
         "Open": "Åpen tilbudskonkurranse",
         "Limited": "Begrenset tilbudskonkurranse",
     },
-    # Artifik threshold codes
     "threshold": {
         "over_eea_threshold_value": "Over EØS-terskel (Del III)",
         "below_eea_threshold_value": "Under EØS-terskel (Del II)",
         "national_threshold": "Nasjonal terskel (Del II)",
         "below_national_threshold": "Under nasjonal terskel (Del I)",
     },
-    # Short threshold labels for list views
     "threshold-short": {
         "over_eea_threshold_value": "Over EØS",
         "below_eea_threshold_value": "Under EØS",
@@ -148,3 +97,52 @@ _ARTIFIK_CODELISTS: dict[str, dict[str, str]] = {
 }
 
 
+def _load() -> dict[str, dict[str, str]]:
+    """Lazy-load all label data: SDK JSON + overrides + Artifik codelists."""
+    global _cache
+    if _cache is not None:
+        return _cache
+
+    if _DATA_PATH.exists():
+        raw = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
+        _cache = {k: v for k, v in raw.items() if not k.startswith("_")}
+    else:
+        _cache = {}
+
+    # Apply our label overrides on top of SDK data
+    for codelist, overrides in OVERRIDES.items():
+        _cache.setdefault(codelist, {}).update(overrides)
+
+    # Inject static Artifik codelists
+    for codelist, labels in _ARTIFIK_STATIC.items():
+        _cache.setdefault(codelist, {}).update(labels)
+
+    # Build pre-resolved Artifik→Norwegian labels from the mapping tables.
+    # This lets the frontend do a single lookup without needing the mappings.
+    proc_labels = _cache.get("procurement-procedure-type", {})
+    _cache["artifik-procedure"] = {
+        artifik: proc_labels.get(eforms, artifik)
+        for artifik, eforms in ARTIFIK_PROCEDURE_TO_EFORMS.items()
+    }
+    nature_labels = _cache.get("contract-nature", {})
+    _cache["artifik-nature"] = {
+        artifik: nature_labels.get(eforms, artifik)
+        for artifik, eforms in ARTIFIK_NATURE_TO_EFORMS.items()
+    }
+
+    return _cache
+
+
+def get_all_labels() -> dict[str, dict[str, str]]:
+    """Return all codelists with overrides applied. Safe for serialization."""
+    return _load()
+
+
+def get_labels(codelist: str) -> dict[str, str]:
+    """Return the {code: label} dict for a codelist."""
+    return _load().get(codelist, {})
+
+
+def get_label(codelist: str, code: str, default: str | None = None) -> str | None:
+    """Look up a single label.  Returns default (or None) if not found."""
+    return _load().get(codelist, {}).get(code, default)

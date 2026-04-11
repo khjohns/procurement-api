@@ -17,7 +17,7 @@ import {
   artifikProcedureLabel,
   artifikNatureLabel,
 } from './protokoll-helpers';
-import { eformsLabel } from './eforms-labels';
+import { eformsLabel } from './eforms-labels.svelte';
 
 export type InfoRow = { label: string; value: any; mono?: boolean };
 

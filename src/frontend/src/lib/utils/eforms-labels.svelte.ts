@@ -1,11 +1,11 @@
 /**
- * eForms codelist label lookup.
+ * Reactive eForms codelist label lookup.
  *
- * Fetches Norwegian labels from /api/eforms-labels once and caches them.
- * Falls back to raw code if labels aren't loaded yet.
+ * Fetches Norwegian labels from /api/eforms-labels once and caches them
+ * in $state so that Svelte components re-render when labels arrive.
  */
 
-let cache: Record<string, Record<string, string>> | null = null;
+let cache = $state<Record<string, Record<string, string>> | null>(null);
 let loading: Promise<void> | null = null;
 
 async function ensureLoaded(): Promise<void> {
