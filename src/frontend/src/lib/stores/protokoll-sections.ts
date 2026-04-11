@@ -22,6 +22,7 @@ export type FieldType =
   | 'richtext'
   | 'date'
   | 'checkbox-textarea'
+  | 'codelist-select'
   | 'per-supplier-textarea'
   | 'per-supplier-richtext'
   | 'avvisning-card'
@@ -48,6 +49,8 @@ export interface FieldDefinition {
   hint?: string;
   required?: boolean;
   foaRef?: string;
+  /** For codelist-select: which eForms codelist to show options from. */
+  codelistId?: string;
   /** Optional co-located status logic. When present, the store delegates to this. */
   computeFilled?: (value: unknown, context: ComputeFilledContext) => ComputeFilledResult;
 }
@@ -404,6 +407,14 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     condition: (ctx) => ctx.isCancelled,
     fields: [
       { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
+      {
+        key: 'avlysningAarsak',
+        type: 'codelist-select',
+        label: 'Årsak til avlysning',
+        codelistId: 'non-award-justification',
+        hint: 'Velg årsak fra eForms-kodelisten.',
+        computeFilled: computeFilledText,
+      },
       {
         key: 'avlysningBegrunnelse',
         type: 'textarea',
@@ -837,6 +848,14 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     condition: (ctx) => ctx.isCancelled,
     fields: [
       { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
+      {
+        key: 'avlysningAarsak',
+        type: 'codelist-select',
+        label: 'Årsak til avlysning',
+        codelistId: 'non-award-justification',
+        hint: 'Velg årsak fra eForms-kodelisten.',
+        computeFilled: computeFilledText,
+      },
       {
         key: 'avlysningBegrunnelse',
         type: 'textarea',
