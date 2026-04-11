@@ -74,8 +74,9 @@ export function mottakTilbudRows(activities: any[]): InfoRow[] {
 function directAwardJustification(proc: any): string | null {
   const code = proc.direct_award_justification_code ?? '';
   const reason = proc.direct_award_justification_reason ?? '';
-  if (code && reason) return `Hjemmel: ${code}. ${reason}`;
-  return code || reason || null;
+  const label = code ? eformsLabel('direct-award-justification', code) : '';
+  if (label && reason) return `${label}. ${reason}`;
+  return label || reason || null;
 }
 
 export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRow[] {

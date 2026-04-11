@@ -146,14 +146,15 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
 
     if procedure in ("Negotiated without publication", "Direct award"):
         code = procurement.get("direct_award_justification_code") or ""
+        label = get_label("direct-award-justification", code, code) if code else ""
         reason = (
             procurement.get("direct_award_justification_reason") or "<!-- MANUELT -->"
         )
         lines.append(
             "**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**"
         )
-        if code:
-            lines.append(f"Hjemmel: {code}. {reason}")
+        if label:
+            lines.append(f"{label}. {reason}")
         else:
             lines.append(reason)
     else:

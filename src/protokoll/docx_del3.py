@@ -137,9 +137,10 @@ def _procedure(doc, procurement, activities, eforms=None):
 
     if procedure in ("Negotiated without publication", "Direct award"):
         code = procurement.get("direct_award_justification_code") or ""
+        label = get_label("direct-award-justification", code, code) if code else ""
         reason = procurement.get("direct_award_justification_reason") or ""
-        if code or reason:
-            no_pub_str = f"Hjemmel: {code}. {reason}" if code else reason
+        if label or reason:
+            no_pub_str = f"{label}. {reason}" if label and reason else (label or reason)
         else:
             no_pub_str = None
     else:
