@@ -1,19 +1,14 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { getContext } from 'svelte';
   import { formatDatoMndAar } from '$lib/utils/format';
   import { getTimelineDate, addDays } from '$lib/utils/protokoll-helpers';
   import type { Activity } from '$lib/types/activity';
-  import type { PhaseState } from '$lib/config/phases';
 
   let { data } = $props();
 
   const procId = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
   const activities: Activity[] = $derived(data?.activities ?? []);
-
-  const getPhaseStates = getContext<() => Record<string, PhaseState>>('phaseStates');
-  const tildelingState = $derived(getPhaseStates().tildeling);
 
   // ── Karensperiode ──
   // Karensperiode starts when award letters are sent. Default 10 calendar days.
@@ -57,8 +52,6 @@
   }
 
   const aktiviteter = $derived.by((): CheckItem[] => {
-    const actions = new Set(activities.map((a) => a.action));
-    const awarded = actions.has('AWARDING_PARTICIPANTS');
     const karensOver = karensGjenstar !== null && karensGjenstar <= 0;
 
     return [
@@ -69,15 +62,6 @@
       { done: false, label: 'Arkivere dokumentasjon' },
     ];
   });
-
-  // ── Arbeidsflater status hints ──
-  const protokollHint = $derived.by(() => {
-    const actions = new Set(activities.map((a) => a.action));
-    if (actions.has('AWARDING_PARTICIPANTS')) return '(ferdig)';
-    return '';
-  });
-
-  const meddelelseHint = $derived(awardLettersSent ? '(sendt)' : '');
 </script>
 
 <div class="tildeling-page">
@@ -136,16 +120,10 @@
             <div class="tool-links">
               <a href="/anskaffelser/{procId}/protokoll" class="tool-link">
                 <span class="tool-link-label">Protokoll</span>
-                {#if protokollHint}
-                  <span class="tool-link-desc">{protokollHint}</span>
-                {/if}
                 <span class="tool-link-icon">&#8250;</span>
               </a>
               <a href="/anskaffelser/{procId}/meddelelse" class="tool-link">
                 <span class="tool-link-label">Meddelelsesbrev</span>
-                {#if meddelelseHint}
-                  <span class="tool-link-desc">{meddelelseHint}</span>
-                {/if}
                 <span class="tool-link-icon">&#8250;</span>
               </a>
             </div>
@@ -175,20 +153,6 @@
   .tildeling-page {
     height: 100%;
     overflow-y: auto;
-  }
-
-  /* ── 2-column grid ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-4);
-  }
-
-  .left-col,
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-4);
   }
 
   /* ── Karensperiode card ── */
@@ -247,11 +211,6 @@
     font-style: italic;
   }
 
-  /* Urgency variants */
-  .frist-attention { --frist-accent: var(--color-warn); }
-  .frist-urgent    { --frist-accent: var(--color-warn); background: var(--color-warn-bg); }
-  .frist-expired   { --frist-accent: var(--color-score-low); }
-
   /* ── Checklist ── */
   .checklist {
     display: flex;
@@ -289,12 +248,5 @@
 
   .check-done .check-label {
     color: var(--color-ink-muted);
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .two-col {
-      grid-template-columns: 1fr;
-    }
   }
 </style>
