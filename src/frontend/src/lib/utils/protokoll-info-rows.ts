@@ -264,14 +264,16 @@ export function rammeavtaleRows(proc: any, eforms: any): InfoRow[] {
   return rows;
 }
 
-export function andreOpplysningerRows(proc: any): InfoRow[] {
-  if (proc.isCancelled) {
-    return [
-      {
-        label: 'Avlysning',
-        value: proc.cancelingReason ? stripHtml(proc.cancelingReason) : '(ingen begrunnelse oppgitt)',
-      },
-    ];
+export function avlysningInfoRows(proc: any): InfoRow[] {
+  const rows: InfoRow[] = [{ label: 'Status', value: 'Konkurransen er avlyst' }];
+  if (proc.cancelingReason) {
+    rows.push({ label: 'Begrunnelse fra system', value: stripHtml(proc.cancelingReason) });
   }
+  return rows;
+}
+
+export function andreOpplysningerRows(proc: any): InfoRow[] {
+  // Cancellation info now in dedicated AVLYSNING chapter
+  if (proc.isCancelled) return [];
   return [{ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' }];
 }

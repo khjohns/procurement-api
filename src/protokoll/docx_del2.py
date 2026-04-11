@@ -46,6 +46,8 @@ from eforms_labels import get_label
 from .docx_del3 import (
     _award_criteria,
     _bids_in_evaluation,
+    _cancellation,
+    _contract_modifications,
     _framework_agreement,
 )
 
@@ -678,12 +680,21 @@ def generate_protokoll_docx_del2(
     _supplier_rejection(doc, activities, org_lookup)
     _bid_rejection(doc)
 
-    doc.add_heading("Tildeling", level=2)
-    _award_criteria(doc, eforms)
-    _bids_in_evaluation(doc, activities, org_lookup)
-    _award(doc, procurement, activities)
-    _award_notification(doc, procurement)
-    _framework_agreement(doc, procurement, eforms)
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        doc.add_heading("Avlysning", level=2)
+        _cancellation(doc, procurement)
+    else:
+        doc.add_heading("Tildeling", level=2)
+        _award_criteria(doc, eforms)
+        _bids_in_evaluation(doc, activities, org_lookup)
+        _award(doc, procurement, activities)
+        _award_notification(doc, procurement)
+        _framework_agreement(doc, procurement, eforms)
+
+        doc.add_heading("Kontraktsendringer", level=2)
+        _contract_modifications(doc)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)

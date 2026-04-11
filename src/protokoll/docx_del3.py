@@ -587,6 +587,29 @@ def _framework_agreement(doc, procurement, eforms=None):
     docx_info_table(doc, rows)
 
 
+def _cancellation(doc, procurement):
+    """Avlysning av konkurransen."""
+    doc.add_heading("Beslutning om avlysning", level=3)
+    reason = procurement.get("cancelingReason") or ""
+    if reason:
+        doc.add_paragraph(f"Begrunnelse: {strip_html(reason)}")
+    else:
+        p = doc.add_paragraph()
+        add_manual(p, "[Begrunnelse for avlysning mangler i systemet]")
+
+    doc.add_heading("Meddelelse om avlysning", level=3)
+    p = doc.add_paragraph()
+    add_manual(p, "[Dato meddelelse sendt og eventuelle merknader]")
+
+
+def _contract_modifications(doc):
+    """Kontraktsendringer, jf. FOA § 11-2 / § 28-1."""
+    doc.add_heading("Kontraktsendringer", level=3)
+    p = doc.add_paragraph()
+    add_checkbox(p, "Ingen kontraktsendringer")
+    add_manual(p, " [Bekreft, eller dokumenter endringer med hjemmel og begrunnelse]")
+
+
 def _market_dialogue_and_conflicts(doc):
     """Dialog med markedet og habilitet, jf. FOA kap. 12 og § 7-5."""
     doc.add_heading("Dialog med markedet og habilitet", level=3)
@@ -789,11 +812,20 @@ def generate_protokoll_docx(
     _negotiations(doc, procedure)
     _dialog(doc, procedure)
 
-    doc.add_heading("Tildeling", level=2)
-    _award_criteria(doc, eforms)
-    _bids_in_evaluation(doc, activities, org_lookup)
-    _award(doc, procurement, activities)
-    _framework_agreement(doc, procurement, eforms)
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        doc.add_heading("Avlysning", level=2)
+        _cancellation(doc, procurement)
+    else:
+        doc.add_heading("Tildeling", level=2)
+        _award_criteria(doc, eforms)
+        _bids_in_evaluation(doc, activities, org_lookup)
+        _award(doc, procurement, activities)
+        _framework_agreement(doc, procurement, eforms)
+
+        doc.add_heading("Kontraktsendringer", level=2)
+        _contract_modifications(doc)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)

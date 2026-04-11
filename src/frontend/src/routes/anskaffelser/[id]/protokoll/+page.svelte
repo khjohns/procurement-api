@@ -17,6 +17,7 @@
     meddelelseRows,
     rammeavtaleRows,
     andreOpplysningerRows,
+    avlysningInfoRows,
     kvalifikasjonskravRows,
     tildelingskriterierRows,
   } from '$lib/utils/protokoll-info-rows';
@@ -192,6 +193,7 @@
       'meddelelse-karens': () => meddelelseRows(proc),
       kvalifikasjonsvurdering: () => kvalifikasjonskravRows(protokoll.eforms),
       rammeavtaler: () => rammeavtaleRows(proc, protokoll.eforms),
+      'avlysning-beslutning': () => avlysningInfoRows(proc),
       'andre-opplysninger': () => andreOpplysningerRows(proc),
     };
 

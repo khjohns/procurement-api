@@ -625,6 +625,34 @@ def _section_framework_agreement(procurement: dict) -> str:
     return "\n".join(lines)
 
 
+def _section_cancellation(procurement: dict) -> str:
+    lines = []
+    lines.append("## Avlysning")
+    lines.append("")
+    reason = procurement.get("cancelingReason") or ""
+    if reason:
+        lines.append(f"**Begrunnelse:** {strip_html(reason)}")
+    else:
+        lines.append("**Begrunnelse:** <!-- MANUELT -->")
+    lines.append("")
+    lines.append("**Dato meddelelse sendt:** <!-- MANUELT -->")
+    lines.append("")
+    lines.append("**Merknader:** <!-- MANUELT -->")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _section_contract_modifications() -> str:
+    lines = []
+    lines.append("## Kontraktsendringer")
+    lines.append("")
+    lines.append("- [ ] Ingen kontraktsendringer")
+    lines.append("")
+    lines.append("<!-- MANUELT: Dokumenter eventuelle kontraktsendringer med hjemmel (FOA § 11-2 / § 28-1) og begrunnelse. -->")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _section_other(procurement: dict) -> str:
     lines = []
     lines.append("## Andre opplysninger og avslutning")
@@ -787,14 +815,23 @@ def generate_protokoll(procurement: dict, activities: list[dict], eforms=None) -
     sections.append("---\n")
     sections.append(_section_dialog(procedure))
     sections.append("---\n")
-    sections.append(_section_award_criteria(eforms))
-    sections.append("---\n")
-    sections.append(_section_bids_in_evaluation(activities, org_lookup))
-    sections.append("---\n")
-    sections.append(_section_award(procurement, activities))
-    sections.append("---\n")
-    sections.append(_section_framework_agreement(procurement))
-    sections.append("---\n")
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        sections.append(_section_cancellation(procurement))
+        sections.append("---\n")
+    else:
+        sections.append(_section_award_criteria(eforms))
+        sections.append("---\n")
+        sections.append(_section_bids_in_evaluation(activities, org_lookup))
+        sections.append("---\n")
+        sections.append(_section_award(procurement, activities))
+        sections.append("---\n")
+        sections.append(_section_framework_agreement(procurement))
+        sections.append("---\n")
+        sections.append(_section_contract_modifications())
+        sections.append("---\n")
+
     sections.append(_section_other(procurement))
     sections.append("---\n")
     sections.append(_section_data_quality(procurement, activities))
