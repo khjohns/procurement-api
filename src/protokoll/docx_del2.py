@@ -40,10 +40,14 @@ from .docx_helpers import (
     docx_subtitle,
 )
 
+from eforms_labels import get_label
+
 # Reuse shared sections from Del III
 from .docx_del3 import (
     _award_criteria,
     _bids_in_evaluation,
+    _cancellation,
+    _contract_modifications,
     _framework_agreement,
 )
 
@@ -133,14 +137,9 @@ def _procedure(doc, procurement, activities, eforms=None):
     if eforms:
         nature = eforms.get("contract_nature")
         if nature:
-            nature_labels = {
-                "services": "Tjeneste",
-                "supplies": "Varer",
-                "works": "Bygg og anlegg",
-            }
             p2 = doc.add_paragraph()
             p2.add_run("Kontraktstype: ").bold = True
-            p2.add_run(nature_labels.get(nature, nature))
+            p2.add_run(get_label("contract-nature", nature, nature))
 
     # Kunngjøring
     announcement_date, doffin_ref, ted_ref = parse_announcement(activities)
@@ -255,7 +254,13 @@ def _qualification(doc, eforms=None):
         sel = eforms.get("selection_criteria") or []
         if sel:
             doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
-            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            rows = [
+                (
+                    get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or ""),
+                    s.get("description") or "",
+                )
+                for s in sel
+            ]
             docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     # Tier 1: Full qualification
@@ -675,12 +680,21 @@ def generate_protokoll_docx_del2(
     _supplier_rejection(doc, activities, org_lookup)
     _bid_rejection(doc)
 
-    doc.add_heading("Tildeling", level=2)
-    _award_criteria(doc, eforms)
-    _bids_in_evaluation(doc, activities, org_lookup)
-    _award(doc, procurement, activities)
-    _award_notification(doc, procurement)
-    _framework_agreement(doc, procurement, eforms)
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        doc.add_heading("Avlysning", level=2)
+        _cancellation(doc, procurement)
+    else:
+        doc.add_heading("Tildeling", level=2)
+        _award_criteria(doc, eforms)
+        _bids_in_evaluation(doc, activities, org_lookup)
+        _award(doc, procurement, activities)
+        _award_notification(doc, procurement)
+        _framework_agreement(doc, procurement, eforms)
+
+        doc.add_heading("Kontraktsendringer", level=2)
+        _contract_modifications(doc)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)

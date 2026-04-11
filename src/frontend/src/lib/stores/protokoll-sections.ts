@@ -125,6 +125,7 @@ export interface SectionContext {
   hasEforms: boolean;
   hasFramework: boolean;
   activities: any[];
+  isCancelled: boolean;
 }
 
 export interface SectionDefinition {
@@ -304,12 +305,13 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     ],
   },
 
-  // TILDELING
+  // TILDELING (hidden when cancelled)
   {
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' },
       {
@@ -331,6 +333,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     title: 'Valgt tilbud + begrunnelse',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
@@ -348,6 +351,7 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
     title: 'Meddelelse og klagefrist',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'awardLetterInfo', type: 'info-table', label: 'Meddelelse' },
       {
@@ -388,7 +392,69 @@ export const DEL2_SECTIONS: SectionDefinition[] = [
         computeFilled: computeFilledText,
       },
     ],
-    condition: (ctx) => ctx.hasFramework,
+    condition: (ctx) => ctx.hasFramework && !ctx.isCancelled,
+  },
+
+  // AVLYSNING (replaces TILDELING when cancelled)
+  {
+    id: 'avlysning-beslutning',
+    title: 'Beslutning om avlysning',
+    chapter: 'AVLYSNING',
+    dataSource: 'mixed',
+    condition: (ctx) => ctx.isCancelled,
+    fields: [
+      { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
+      {
+        key: 'avlysningBegrunnelse',
+        type: 'textarea',
+        label: 'Begrunnelse for avlysning',
+        hint: 'Utdypende begrunnelse for hvorfor konkurransen ble avlyst.',
+        required: true,
+        computeFilled: computeFilledText,
+      },
+    ],
+  },
+  {
+    id: 'avlysning-meddelelse',
+    title: 'Meddelelse om avlysning',
+    chapter: 'AVLYSNING',
+    dataSource: 'manual',
+    condition: (ctx) => ctx.isCancelled,
+    fields: [
+      {
+        key: 'avlysningMeddelelseDato',
+        type: 'date',
+        label: 'Dato meddelelse sendt',
+        hint: 'Dato da meddelelse om avlysning ble sendt til leverandørene.',
+        computeFilled: computeFilledDate,
+      },
+      {
+        key: 'avlysningMerknader',
+        type: 'textarea',
+        label: 'Merknader',
+        hint: 'Eventuelle merknader til avlysningen.',
+        computeFilled: computeFilledText,
+      },
+    ],
+  },
+
+  // KONTRAKTSENDRINGER (only when not cancelled)
+  {
+    id: 'kontraktsendringer',
+    title: 'Kontraktsendringer',
+    chapter: 'KONTRAKTSENDRINGER',
+    dataSource: 'manual',
+    condition: (ctx) => !ctx.isCancelled,
+    fields: [
+      {
+        key: 'ingenKontraktsendringer',
+        type: 'checkbox-textarea',
+        label: 'Ingen kontraktsendringer',
+        foaRef: 'FOA § 11-2',
+        hint: 'Dokumenter eventuelle kontraktsendringer med hjemmel og begrunnelse.',
+        computeFilled: makeCheckboxTextareaFilled('ingenKontraktsendringer'),
+      },
+    ],
   },
 
   // AVSLUTNING
@@ -658,12 +724,13 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     ],
   },
 
-  // TILDELING
+  // TILDELING (hidden when cancelled)
   {
     id: 'tilbud-vurdering',
     title: 'Tilbud i vurderingen',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'bidSuppliers', type: 'supplier-list', label: 'Leverandører med tilbud' },
       {
@@ -685,6 +752,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     title: 'Valgt tilbud + begrunnelse',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'awardInfo', type: 'info-table', label: 'Tildeling' },
       {
@@ -702,6 +770,7 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
     title: 'Meddelelse og karensperiode',
     chapter: 'TILDELING',
     dataSource: 'mixed',
+    condition: (ctx) => !ctx.isCancelled,
     fields: [
       { key: 'awardLetterInfo', type: 'info-table', label: 'Meddelelse' },
       {
@@ -756,7 +825,69 @@ export const DEL3_SECTIONS: SectionDefinition[] = [
         computeFilled: computeFilledText,
       },
     ],
-    condition: (ctx) => ctx.hasFramework,
+    condition: (ctx) => ctx.hasFramework && !ctx.isCancelled,
+  },
+
+  // AVLYSNING (replaces TILDELING when cancelled)
+  {
+    id: 'avlysning-beslutning',
+    title: 'Beslutning om avlysning',
+    chapter: 'AVLYSNING',
+    dataSource: 'mixed',
+    condition: (ctx) => ctx.isCancelled,
+    fields: [
+      { key: 'cancellationInfo', type: 'info-table', label: 'Avlysning' },
+      {
+        key: 'avlysningBegrunnelse',
+        type: 'textarea',
+        label: 'Begrunnelse for avlysning',
+        hint: 'Utdypende begrunnelse for hvorfor konkurransen ble avlyst.',
+        required: true,
+        computeFilled: computeFilledText,
+      },
+    ],
+  },
+  {
+    id: 'avlysning-meddelelse',
+    title: 'Meddelelse om avlysning',
+    chapter: 'AVLYSNING',
+    dataSource: 'manual',
+    condition: (ctx) => ctx.isCancelled,
+    fields: [
+      {
+        key: 'avlysningMeddelelseDato',
+        type: 'date',
+        label: 'Dato meddelelse sendt',
+        hint: 'Dato da meddelelse om avlysning ble sendt til leverandørene.',
+        computeFilled: computeFilledDate,
+      },
+      {
+        key: 'avlysningMerknader',
+        type: 'textarea',
+        label: 'Merknader',
+        hint: 'Eventuelle merknader til avlysningen.',
+        computeFilled: computeFilledText,
+      },
+    ],
+  },
+
+  // KONTRAKTSENDRINGER (only when not cancelled)
+  {
+    id: 'kontraktsendringer',
+    title: 'Kontraktsendringer',
+    chapter: 'KONTRAKTSENDRINGER',
+    dataSource: 'manual',
+    condition: (ctx) => !ctx.isCancelled,
+    fields: [
+      {
+        key: 'ingenKontraktsendringer',
+        type: 'checkbox-textarea',
+        label: 'Ingen kontraktsendringer',
+        foaRef: 'FOA § 11-2',
+        hint: 'Dokumenter eventuelle kontraktsendringer med hjemmel og begrunnelse.',
+        computeFilled: makeCheckboxTextareaFilled('ingenKontraktsendringer'),
+      },
+    ],
   },
 
   // AVSLUTNING

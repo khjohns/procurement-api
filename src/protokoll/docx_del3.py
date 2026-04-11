@@ -30,6 +30,7 @@ from .common import (
     safe_int,
     strip_html,
 )
+from eforms_labels import get_label
 from .docx_helpers import (
     add_checkbox,
     add_instruction,
@@ -124,14 +125,9 @@ def _procedure(doc, procurement, activities, eforms=None):
     if eforms:
         nature = eforms.get("contract_nature")
         if nature:
-            nature_labels = {
-                "services": "Tjeneste",
-                "supplies": "Varer",
-                "works": "Bygg og anlegg",
-            }
             p2 = doc.add_paragraph()
             p2.add_run("Kontraktstype: ").bold = True
-            p2.add_run(nature_labels.get(nature, nature))
+            p2.add_run(get_label("contract-nature", nature, nature))
 
     # -- Begrunnelse for prosedyrevalg --
     if procedure in ("Competitive negotiated", "Competitive dialogue"):
@@ -141,9 +137,10 @@ def _procedure(doc, procurement, activities, eforms=None):
 
     if procedure in ("Negotiated without publication", "Direct award"):
         code = procurement.get("direct_award_justification_code") or ""
+        label = get_label("direct-award-justification", code, code) if code else ""
         reason = procurement.get("direct_award_justification_reason") or ""
-        if code or reason:
-            no_pub_str = f"Hjemmel: {code}. {reason}" if code else reason
+        if label or reason:
+            no_pub_str = f"{label}. {reason}" if label and reason else (label or reason)
         else:
             no_pub_str = None
     else:
@@ -243,7 +240,13 @@ def _qualification(doc, eforms=None):
         sel = eforms.get("selection_criteria") or []
         if sel:
             doc.add_paragraph("Kvalifikasjonskrav fra kunngjøringen:")
-            rows = [(s.get("type_code") or "", s.get("description") or "") for s in sel]
+            rows = [
+                (
+                    get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or ""),
+                    s.get("description") or "",
+                )
+                for s in sel
+            ]
             docx_add_table(doc, ["Type", "Beskrivelse"], rows)
 
     docx_info_table(
@@ -528,22 +531,17 @@ def _award_criteria(doc, eforms):
     rows = []
     for c in criteria:
         name = c.get("name") or "Ukjent"
-        ctype = c.get("type") or ""
+        ctype = get_label("award-criterion-type", c.get("type") or "", c.get("type") or "")
         weight = c.get("weight_percent")
         weight_str = f"{weight:.0f} %" if weight is not None else None
         rows.append((name, ctype, weight_str))
 
     docx_add_table_with_manual(doc, ["Kriterium", "Type", "Vekt"], rows)
 
-    # Norwegian env criterion
+    # Norwegian env criterion (FOA § 7-9)
     env = eforms.get("env_criterion_code")
     if env:
-        env_labels = {
-            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (\u00a7 7-9 (2)\u2013(3))",
-            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (\u00a7 7-9 (4))",
-            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (\u00a7 7-9 (5))",
-        }
-        label = env_labels.get(env, env)
+        label = get_label("award-criterion-type-no", env, env)
         p = doc.add_paragraph()
         p.add_run("Miljøkrav FOA \u00a7 7-9: ").bold = True
         p.add_run(label)
@@ -587,6 +585,29 @@ def _framework_agreement(doc, procurement, eforms=None):
         rows.append(("Rammeavtalens maksimale verdi:", max_val))
 
     docx_info_table(doc, rows)
+
+
+def _cancellation(doc, procurement):
+    """Avlysning av konkurransen."""
+    doc.add_heading("Beslutning om avlysning", level=3)
+    reason = procurement.get("cancelingReason") or ""
+    if reason:
+        doc.add_paragraph(f"Begrunnelse: {strip_html(reason)}")
+    else:
+        p = doc.add_paragraph()
+        add_manual(p, "[Begrunnelse for avlysning mangler i systemet]")
+
+    doc.add_heading("Meddelelse om avlysning", level=3)
+    p = doc.add_paragraph()
+    add_manual(p, "[Dato meddelelse sendt og eventuelle merknader]")
+
+
+def _contract_modifications(doc):
+    """Kontraktsendringer, jf. FOA § 11-2 / § 28-1."""
+    doc.add_heading("Kontraktsendringer", level=3)
+    p = doc.add_paragraph()
+    add_checkbox(p, "Ingen kontraktsendringer")
+    add_manual(p, " [Bekreft, eller dokumenter endringer med hjemmel og begrunnelse]")
 
 
 def _market_dialogue_and_conflicts(doc):
@@ -791,11 +812,20 @@ def generate_protokoll_docx(
     _negotiations(doc, procedure)
     _dialog(doc, procedure)
 
-    doc.add_heading("Tildeling", level=2)
-    _award_criteria(doc, eforms)
-    _bids_in_evaluation(doc, activities, org_lookup)
-    _award(doc, procurement, activities)
-    _framework_agreement(doc, procurement, eforms)
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        doc.add_heading("Avlysning", level=2)
+        _cancellation(doc, procurement)
+    else:
+        doc.add_heading("Tildeling", level=2)
+        _award_criteria(doc, eforms)
+        _bids_in_evaluation(doc, activities, org_lookup)
+        _award(doc, procurement, activities)
+        _framework_agreement(doc, procurement, eforms)
+
+        doc.add_heading("Kontraktsendringer", level=2)
+        _contract_modifications(doc)
 
     doc.add_heading("Avslutning", level=2)
     _market_dialogue_and_conflicts(doc)

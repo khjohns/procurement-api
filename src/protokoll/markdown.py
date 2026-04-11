@@ -29,6 +29,7 @@ from .common import (
     safe_int,
     strip_html,
 )
+from eforms_labels import get_label
 
 
 # -- Section generators ------------------------------------------------------
@@ -145,14 +146,15 @@ def _section_procedure(procurement: dict, activities: list[dict]) -> str:
 
     if procedure in ("Negotiated without publication", "Direct award"):
         code = procurement.get("direct_award_justification_code") or ""
+        label = get_label("direct-award-justification", code, code) if code else ""
         reason = (
             procurement.get("direct_award_justification_reason") or "<!-- MANUELT -->"
         )
         lines.append(
             "**Begrunnelse for å bruke konkurranse med forhandling uten forutgående kunngjøring eller anskaffelse uten konkurranse:**"
         )
-        if code:
-            lines.append(f"Hjemmel: {code}. {reason}")
+        if label:
+            lines.append(f"{label}. {reason}")
         else:
             lines.append(reason)
     else:
@@ -249,8 +251,9 @@ def _section_qualification(eforms=None) -> str:
             lines.append("| Type | Beskrivelse |")
             lines.append("| --- | --- |")
             for s in sel:
+                type_label = get_label("selection-criterion", s.get("type_code") or "", s.get("type_code") or "")
                 lines.append(
-                    f"| {s.get('type_code') or ''} | {s.get('description') or ''} |"
+                    f"| {type_label} | {s.get('description') or ''} |"
                 )
             lines.append("")
 
@@ -474,7 +477,7 @@ def _section_award_criteria(eforms=None) -> str:
     lines.append("| --- | --- | --- |")
     for c in criteria:
         name = c.get("name") or "Ukjent"
-        ctype = c.get("type") or ""
+        ctype = get_label("award-criterion-type", c.get("type") or "", c.get("type") or "")
         weight = c.get("weight_percent")
         weight_str = f"{weight:.0f} %" if weight is not None else "<!-- MANUELT -->"
         lines.append(f"| {name} | {ctype} | {weight_str} |")
@@ -482,12 +485,7 @@ def _section_award_criteria(eforms=None) -> str:
 
     env = eforms.get("env_criterion_code")
     if env:
-        env_labels = {
-            "quality-nor-env-criteria": "Klima/miljø vektet i tildelingskriteriene (§ 7-9 (2)–(3))",
-            "quality-nor-env-spec": "Klima/miljø ivaretatt i kravspesifikasjonen (§ 7-9 (4))",
-            "quality-nor-env-none": "Ubetydelig klima-/miljøavtrykk — unntak (§ 7-9 (5))",
-        }
-        label = env_labels.get(env, env)
+        label = get_label("award-criterion-type-no", env, env)
         lines.append(f"**Miljøkrav FOA § 7-9:** {label}")
         lines.append("")
 
@@ -624,6 +622,34 @@ def _section_framework_agreement(procurement: dict) -> str:
             lines.append("- **Rammeavtale med flere leverandører?** <!-- MANUELT -->")
     lines.append("")
 
+    return "\n".join(lines)
+
+
+def _section_cancellation(procurement: dict) -> str:
+    lines = []
+    lines.append("## Avlysning")
+    lines.append("")
+    reason = procurement.get("cancelingReason") or ""
+    if reason:
+        lines.append(f"**Begrunnelse:** {strip_html(reason)}")
+    else:
+        lines.append("**Begrunnelse:** <!-- MANUELT -->")
+    lines.append("")
+    lines.append("**Dato meddelelse sendt:** <!-- MANUELT -->")
+    lines.append("")
+    lines.append("**Merknader:** <!-- MANUELT -->")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _section_contract_modifications() -> str:
+    lines = []
+    lines.append("## Kontraktsendringer")
+    lines.append("")
+    lines.append("- [ ] Ingen kontraktsendringer")
+    lines.append("")
+    lines.append("<!-- MANUELT: Dokumenter eventuelle kontraktsendringer med hjemmel (FOA § 11-2 / § 28-1) og begrunnelse. -->")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -789,14 +815,23 @@ def generate_protokoll(procurement: dict, activities: list[dict], eforms=None) -
     sections.append("---\n")
     sections.append(_section_dialog(procedure))
     sections.append("---\n")
-    sections.append(_section_award_criteria(eforms))
-    sections.append("---\n")
-    sections.append(_section_bids_in_evaluation(activities, org_lookup))
-    sections.append("---\n")
-    sections.append(_section_award(procurement, activities))
-    sections.append("---\n")
-    sections.append(_section_framework_agreement(procurement))
-    sections.append("---\n")
+    is_cancelled = procurement.get("isCancelled", False)
+
+    if is_cancelled:
+        sections.append(_section_cancellation(procurement))
+        sections.append("---\n")
+    else:
+        sections.append(_section_award_criteria(eforms))
+        sections.append("---\n")
+        sections.append(_section_bids_in_evaluation(activities, org_lookup))
+        sections.append("---\n")
+        sections.append(_section_award(procurement, activities))
+        sections.append("---\n")
+        sections.append(_section_framework_agreement(procurement))
+        sections.append("---\n")
+        sections.append(_section_contract_modifications())
+        sections.append("---\n")
+
     sections.append(_section_other(procurement))
     sections.append("---\n")
     sections.append(_section_data_quality(procurement, activities))

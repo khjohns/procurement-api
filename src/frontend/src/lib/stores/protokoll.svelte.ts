@@ -269,6 +269,7 @@ class ProtokollStore {
     hasEforms: this.hasEforms,
     hasFramework: this.hasFramework,
     activities: this.activities,
+    isCancelled: !!(this.procurement?.isCancelled),
   });
 
   // Derived: base section definitions

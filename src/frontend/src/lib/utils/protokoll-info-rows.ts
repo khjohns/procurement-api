@@ -15,8 +15,8 @@ import {
   fmtCurrency,
   formatThreshold,
   PROCEDURE_LABELS,
-  CONTRACT_NATURE_LABELS,
 } from './protokoll-helpers';
+import { eformsLabel } from './eforms-labels';
 
 export type InfoRow = { label: string; value: any; mono?: boolean };
 
@@ -74,8 +74,9 @@ export function mottakTilbudRows(activities: any[]): InfoRow[] {
 function directAwardJustification(proc: any): string | null {
   const code = proc.direct_award_justification_code ?? '';
   const reason = proc.direct_award_justification_reason ?? '';
-  if (code && reason) return `Hjemmel: ${code}. ${reason}`;
-  return code || reason || null;
+  const label = code ? eformsLabel('direct-award-justification', code) : '';
+  if (label && reason) return `${label}. ${reason}`;
+  return label || reason || null;
 }
 
 export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRow[] {
@@ -87,7 +88,7 @@ export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRo
   if (eforms?.contract_nature) {
     rows.push({
       label: 'Kontraktstype',
-      value: CONTRACT_NATURE_LABELS[eforms.contract_nature] ?? eforms.contract_nature,
+      value: eformsLabel('contract-nature', eforms.contract_nature),
     });
   }
 
@@ -99,6 +100,14 @@ export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRo
   }
 
   rows.push({ label: 'Terskel', value: formatThreshold(proc.threshold) });
+
+  if (eforms?.env_criterion_code) {
+    rows.push({
+      label: 'Miljøkrav FOA § 7-9',
+      value: eformsLabel('award-criterion-type-no', eforms.env_criterion_code),
+    });
+  }
+
   return rows;
 }
 
@@ -182,6 +191,15 @@ export function tildelingskriterierRows(eforms: any): InfoRow[] {
   return [{ label: 'Tildelingskriterier', value: 'Ikke tilgjengelig fra eForms' }];
 }
 
+export function kvalifikasjonskravRows(eforms: any): InfoRow[] {
+  const sel = eforms?.selection_criteria;
+  if (!sel?.length) return [{ label: 'Kvalifikasjonskrav', value: 'Ikke tilgjengelig fra eForms' }];
+  return sel.map((s: any) => ({
+    label: eformsLabel('selection-criterion', s.type_code, s.type_code ?? 'Krav'),
+    value: s.description ?? '—',
+  }));
+}
+
 export function valgtTilbudRows(proc: any, activities: any[]): InfoRow[] {
   const totalValue = proc.contracts_total_value_amount;
   const estimated = proc.estimated_value;
@@ -214,6 +232,13 @@ export function rammeavtaleRows(proc: any, eforms: any): InfoRow[] {
   const maxPart =
     proc.framework_agreement_maximum_participants ?? proc.frameworkAgreementMaximumParticipants;
   const rows: InfoRow[] = [];
+
+  if (eforms?.framework_type && eforms.framework_type !== 'none') {
+    rows.push({
+      label: 'Rammeavtaletype',
+      value: eformsLabel('framework-agreement', eforms.framework_type),
+    });
+  }
   if (maxPart && Number(maxPart) === 1) {
     rows.push({ label: 'Rammeavtale med én leverandør', value: 'Ja' });
     rows.push({ label: 'Rammeavtale med flere leverandører', value: 'Nei' });
@@ -239,14 +264,16 @@ export function rammeavtaleRows(proc: any, eforms: any): InfoRow[] {
   return rows;
 }
 
-export function andreOpplysningerRows(proc: any): InfoRow[] {
-  if (proc.isCancelled) {
-    return [
-      {
-        label: 'Avlysning',
-        value: proc.cancelingReason ? stripHtml(proc.cancelingReason) : '(ingen begrunnelse oppgitt)',
-      },
-    ];
+export function avlysningInfoRows(proc: any): InfoRow[] {
+  const rows: InfoRow[] = [{ label: 'Status', value: 'Konkurransen er avlyst' }];
+  if (proc.cancelingReason) {
+    rows.push({ label: 'Begrunnelse fra system', value: stripHtml(proc.cancelingReason) });
   }
+  return rows;
+}
+
+export function andreOpplysningerRows(proc: any): InfoRow[] {
+  // Cancellation info now in dedicated AVLYSNING chapter
+  if (proc.isCancelled) return [];
   return [{ label: 'Avlysning', value: 'Ikke relevant (konkurransen ble ikke avlyst)' }];
 }
