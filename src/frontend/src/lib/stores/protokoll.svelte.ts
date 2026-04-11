@@ -262,6 +262,18 @@ class ProtokollStore {
     this._scheduleSave();
   }
 
+  // Derived: cancelled — from API or local override (for pre-announcement workflow)
+  isCancelled = $derived(!!(this.procurement?.isCancelled || this.manual._markedAsCancelled));
+
+  /** Mark/unmark the procurement as cancelled locally (before Artifik is updated). */
+  toggleCancelled() {
+    this.manual = {
+      ...this.manual,
+      _markedAsCancelled: !this.manual._markedAsCancelled,
+    };
+    this._scheduleSave();
+  }
+
   // Derived: section context for condition evaluation
   sectionContext = $derived<SectionContext>({
     isDel2: this.isDel2,
@@ -269,7 +281,7 @@ class ProtokollStore {
     hasEforms: this.hasEforms,
     hasFramework: this.hasFramework,
     activities: this.activities,
-    isCancelled: !!(this.procurement?.isCancelled),
+    isCancelled: this.isCancelled,
   });
 
   // Derived: base section definitions

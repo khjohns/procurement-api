@@ -276,7 +276,19 @@
           <div class="page-meta">
             Ref: <span class="page-meta-ref">{protokoll.procurement?.sequenceId ?? '—'}</span>
             &middot; {protokoll.delLabel}
+            {#if protokoll.isCancelled}
+              <span class="cancel-badge">Avlyst</span>
+            {/if}
           </div>
+          {#if !protokoll.procurement?.isCancelled}
+            <button
+              class="cancel-toggle"
+              class:cancel-toggle-active={protokoll.isCancelled}
+              onclick={() => protokoll.toggleCancelled()}
+            >
+              {protokoll.isCancelled ? 'Angre avlysning' : 'Marker som avlyst'}
+            </button>
+          {/if}
         </div>
       </header>
 
@@ -552,6 +564,48 @@
 
   .page-meta-ref {
     font-family: var(--font-data);
+  }
+
+  .cancel-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    margin-left: var(--spacing-2);
+    background: var(--color-score-low);
+    color: var(--color-canvas);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--radius-sm);
+    vertical-align: middle;
+  }
+
+  .cancel-toggle {
+    margin-top: var(--spacing-2);
+    padding: var(--spacing-1) var(--spacing-3);
+    background: transparent;
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-secondary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .cancel-toggle:hover {
+    border-color: var(--color-score-low);
+    color: var(--color-score-low);
+  }
+
+  .cancel-toggle-active {
+    border-color: var(--color-score-low);
+    color: var(--color-score-low);
+  }
+
+  .cancel-toggle-active:hover {
+    border-color: var(--color-wire);
+    color: var(--color-ink-secondary);
   }
 
   /* ── Generate button ── */
