@@ -30,6 +30,12 @@ class SelectionCriterion:
 
 
 @dataclass
+class ContractModification:
+    reason_code: str | None = None
+    description: str | None = None
+
+
+@dataclass
 class ExclusionGround:
     code: str | None = None
     description: str | None = None
@@ -64,6 +70,8 @@ class EFormsNotice:
     env_criterion_code: str | None = None
     env_justification: str | None = None
     submission_deadline: str | None = None
+
+    contract_modifications: list[ContractModification] = field(default_factory=list)
 
     lots: list[dict] = field(default_factory=list)
 
@@ -188,6 +196,9 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
 
     # Framework agreement
     _parse_framework(root, notice)
+
+    # Contract modifications (CAN-MODIF notices)
+    _parse_contract_modifications(root, notice)
 
     return notice
 
@@ -320,3 +331,20 @@ def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
             pass
         if not notice.currency:
             notice.currency = fma.get("currencyID")
+
+
+def _parse_contract_modifications(root: ET.Element, notice: EFormsNotice) -> None:
+    """Parse contract modification data from CAN-MODIF notices."""
+    for cm in root.findall(
+        ".//efac:ContractModification", _NS
+    ):
+        reason_el = cm.find("efac:ChangeReason", _NS)
+        if reason_el is None:
+            continue
+        mod = ContractModification()
+        code_el = reason_el.find("efbc:ReasonCode", _NS)
+        if code_el is not None:
+            mod.reason_code = code_el.text
+        mod.description = _text(reason_el, "efbc:ReasonDescription")
+        if mod.reason_code or mod.description:
+            notice.contract_modifications.append(mod)

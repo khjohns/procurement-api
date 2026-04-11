@@ -13,10 +13,13 @@ import {
   getOrgNameWithLookup,
   buildOrgLookup,
   fmtCurrency,
-  formatThreshold,
-  PROCEDURE_LABELS,
 } from './protokoll-helpers';
-import { eformsLabel } from './eforms-labels';
+import {
+  eformsLabel,
+  formatThreshold,
+  artifikProcedureLabel,
+  artifikNatureLabel,
+} from './eforms-labels.svelte';
 
 export type InfoRow = { label: string; value: any; mono?: boolean };
 
@@ -82,14 +85,12 @@ function directAwardJustification(proc: any): string | null {
 export function prosedyreRows(proc: any, eforms: any, activities: any[]): InfoRow[] {
   const procedure = proc.procedure ?? '';
   const rows: InfoRow[] = [
-    { label: 'Prosedyre', value: PROCEDURE_LABELS[procedure] ?? procedure },
+    { label: 'Prosedyre', value: artifikProcedureLabel(procedure) },
   ];
 
-  if (eforms?.contract_nature) {
-    rows.push({
-      label: 'Kontraktstype',
-      value: eformsLabel('contract-nature', eforms.contract_nature),
-    });
+  const nature = eforms?.contract_nature ?? proc.contractCategory;
+  if (nature) {
+    rows.push({ label: 'Kontraktstype', value: artifikNatureLabel(nature) });
   }
 
   const kunngj = kunngjoringStr(proc, activities);

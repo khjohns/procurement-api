@@ -29,35 +29,19 @@ from app.constants import (  # noqa: E402, F401
 
 # -- Procedure mappings -------------------------------------------------------
 
+from eforms_labels import ARTIFIK_PROCEDURE_TO_EFORMS, get_label, get_labels
+
+# Built dynamically from eForms labels + Artifik mapping
 PROCEDURE_MAP = {
-    "Open": "Åpen anbudskonkurranse",
-    "Limited": "Begrenset anbudskonkurranse",
-    "Competitive negotiated": "Konkurranse med forhandling etter forutgående kunngjøring",
-    "Competitive dialogue": "Konkurransepreget dialog",
-    "Innovation partnership": "Innovasjonspartnerskap",
-    "Negotiated without publication": "Konkurranse med forhandling uten forutgående kunngjøring",
-    "Direct award": "Anskaffelse uten konkurranse",
+    artifik: get_label("procurement-procedure-type", eforms, artifik)
+    for artifik, eforms in ARTIFIK_PROCEDURE_TO_EFORMS.items()
 }
 
-ALL_PROCEDURES = [
-    "Åpen anbudskonkurranse",
-    "Begrenset anbudskonkurranse",
-    "Konkurranse med forhandling etter forutgående kunngjøring",
-    "Konkurransepreget dialog",
-    "Innovasjonspartnerskap",
-    "Konkurranse med forhandling uten forutgående kunngjøring",
-    "Anskaffelse uten konkurranse",
-]
+ALL_PROCEDURES = list(PROCEDURE_MAP.values())
 
-DEL2_PROCEDURE_MAP = {
-    "Open": "Åpen tilbudskonkurranse",
-    "Limited": "Begrenset tilbudskonkurranse",
-}
+DEL2_PROCEDURE_MAP = get_labels("procedure-del2")
 
-ALL_DEL2_PROCEDURES = [
-    "Åpen tilbudskonkurranse",
-    "Begrenset tilbudskonkurranse",
-]
+ALL_DEL2_PROCEDURES = list(DEL2_PROCEDURE_MAP.values())
 
 
 # -- Formatting helpers -------------------------------------------------------

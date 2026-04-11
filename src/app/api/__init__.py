@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Blueprint, current_app, jsonify, request, send_file
 
 from app.client import ArtifikAPIError
+from eforms_labels import get_labels as _get_labels
 from app.constants import (
     ACTION_ASK_TO_QUALIFY,
     ACTION_AWARD_LETTERS_SENT,
@@ -354,22 +355,8 @@ def _fetch_hendelser_and_doffin_parallel(
 
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
 
-THRESHOLD_SHORT = {
-    "over_eea_threshold_value": "Over EØS",
-    "below_eea_threshold_value": "Under EØS",
-    "national_threshold": "Nasjonal",
-    "below_national_threshold": "Under terskel",
-}
-
-PROCEDURE_SHORT = {
-    "Open": "Åpen",
-    "Limited": "Begrenset",
-    "Competitive negotiated": "Forhandling",
-    "Competitive dialogue": "Dialog",
-    "Innovation partnership": "Innovasjon",
-    "Negotiated without publication": "Uten kunngj.",
-    "Direct award": "Direkte",
-}
+THRESHOLD_SHORT = _get_labels("threshold-short")
+PROCEDURE_SHORT = _get_labels("procedure-short")
 
 
 def _client():

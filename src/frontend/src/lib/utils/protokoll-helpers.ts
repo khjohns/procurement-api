@@ -1,6 +1,8 @@
 /**
  * Pure helper functions for the protokoll page.
  * Extracted from +page.svelte to reduce component complexity.
+ * No Svelte runtime dependencies — import from eforms-labels.svelte
+ * for label lookups.
  */
 
 /** Strip HTML tags and normalize whitespace. */
@@ -65,19 +67,6 @@ export function fmtCurrency(value: number | null | undefined, currency?: string)
   return `${new Intl.NumberFormat('nb-NO').format(value)} ${currency ?? 'NOK'}`;
 }
 
-/** Threshold code → Norwegian label (with Del suffix). Artifik API values. */
-export const THRESHOLD_LABELS: Record<string, string> = {
-  over_eea_threshold_value: 'Over EØS-terskel (Del III)',
-  below_eea_threshold_value: 'Under EØS-terskel (Del II)',
-  national_threshold: 'Nasjonal terskel (Del II)',
-  below_national_threshold: 'Under nasjonal terskel (Del I)',
-};
-
-/** Format threshold code to Norwegian label. */
-export function formatThreshold(t: string | null | undefined): string {
-  return t ? (THRESHOLD_LABELS[t] ?? t) : '—';
-}
-
 /** Procurement display name with HTML stripping. */
 export function getProcName(proc: any): string {
   const raw = proc?.name || proc?.title || '';
@@ -91,32 +80,3 @@ export function addDays(isoDate: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-/** Case-insensitive label lookup. Returns the raw key as fallback if no match. */
-export function lookupLabel(map: Record<string, string>, key: string | undefined): string | null {
-  if (!key) return null;
-  if (map[key]) return map[key];
-  const cap = key.charAt(0).toUpperCase() + key.slice(1);
-  return map[cap] ?? key;
-}
-
-/** Procedure code → Norwegian label. */
-export const PROCEDURE_LABELS: Record<string, string> = {
-  Open: 'Åpen anbudskonkurranse',
-  Limited: 'Begrenset anbudskonkurranse',
-  'Competitive negotiated': 'Konkurranse med forhandling etter forutgående kunngjøring',
-  'Competitive dialogue': 'Konkurransepreget dialog',
-  'Innovation partnership': 'Innovasjonspartnerskap',
-  'Negotiated without publication': 'Konkurranse med forhandling uten forutgående kunngjøring',
-  'Direct award': 'Anskaffelse uten konkurranse',
-};
-
-/** Contract nature code → Norwegian label. Covers both Artifik and eForms values. */
-export const CONTRACT_NATURE_LABELS: Record<string, string> = {
-  services: 'Tjeneste',
-  supplies: 'Varer',
-  works: 'Bygg og anlegg',
-  goods_and_services: 'Varer og tjenester',
-  SERVICES: 'Tjeneste',
-  SUPPLIES: 'Varer',
-  WORKS: 'Bygg og anlegg',
-};

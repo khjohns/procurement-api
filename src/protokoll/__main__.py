@@ -24,6 +24,7 @@ sys.path.insert(0, str(_SRC_DIR))
 
 from app.client import ArtifikClient  # noqa: E402
 from app.doffin import DoffinClient  # noqa: E402
+from eforms_labels import get_labels  # noqa: E402
 from protokoll.common import (  # noqa: E402
     ACTION_AWARDING_PARTICIPANTS,
     ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED,
@@ -205,22 +206,8 @@ def _list_procurements(client: ArtifikClient) -> list[dict]:
     return mature
 
 
-THRESHOLD_SHORT = {
-    "over_eea_threshold_value": "Over EØS",
-    "below_eea_threshold_value": "Under EØS",
-    "national_threshold": "Nasjonal",
-    "below_national_threshold": "Under terskel",
-}
-
-PROCEDURE_SHORT = {
-    "Open": "Åpen",
-    "Limited": "Begrenset",
-    "Competitive negotiated": "Forhandl.",
-    "Competitive dialogue": "Dialog",
-    "Innovation partnership": "Innovasjon",
-    "Negotiated without publication": "Utenkunng.",
-    "Direct award": "Direkte",
-}
+THRESHOLD_SHORT = get_labels("threshold-short")
+PROCEDURE_SHORT = get_labels("procedure-short")
 
 
 def _color_threshold(raw: str, label: str) -> str:

@@ -8,6 +8,7 @@
   import AvvisningCard from './AvvisningCard.svelte';
   import DataQualityTable from './DataQualityTable.svelte';
   import RichTextEditor from './RichTextEditor.svelte';
+  import CodelistSelect from './CodelistSelect.svelte';
   import DateInput from './DateInput.svelte';
   import EvaluationSummaryTable from './EvaluationSummaryTable.svelte';
   import JustificationGenerator from './JustificationGenerator.svelte';
@@ -16,7 +17,7 @@
   import type { FieldType } from '$lib/stores/protokoll-sections';
 
   interface Props {
-    field: { key: string; type: FieldType; label: string; hint?: string; foaRef?: string };
+    field: { key: string; type: FieldType; label: string; hint?: string; foaRef?: string; codelistId?: string };
     infoRows: InfoRow[];
     suppliers: { id: string; name: string }[];
     rejectedSuppliers: { id: string; name: string }[];
@@ -74,6 +75,15 @@
       </button>
     {/if}
   </div>
+{:else if field.type === 'codelist-select' && field.codelistId}
+  <CodelistSelect
+    value={(protokoll.manual[field.key] as string) ?? ''}
+    codelistId={field.codelistId}
+    label={field.label}
+    hint={field.hint}
+    foaRef={field.foaRef}
+    onchange={(v) => protokoll.setManualField(field.key, v)}
+  />
 {:else if field.type === 'richtext'}
   <div class="manual-field">
     <div class="field-label">{field.label}</div>

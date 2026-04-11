@@ -8,7 +8,8 @@
 
 import { type Supplier, fmt1 } from '$lib/stores/evaluation.svelte';
 import { esc, type JustificationInput } from './justification-generator';
-import { PROCEDURE_LABELS, getProcName } from './protokoll-helpers';
+import { getProcName } from './protokoll-helpers';
+import { artifikProcedureLabel } from './eforms-labels.svelte';
 import { formatDato } from './format';
 
 // ── Types ──
@@ -62,8 +63,7 @@ function saksbehandler(proc: MeddelelseInput['procurement']): string {
 }
 
 function procedureLabel(proc: MeddelelseInput['procurement']): string {
-  const code = proc.procedure ?? '';
-  return PROCEDURE_LABELS[code] ?? (code || 'tilbudskonkurranse');
+  return artifikProcedureLabel(proc.procedure, 'tilbudskonkurranse');
 }
 
 /** Determine which klageadgang alternative applies. */
