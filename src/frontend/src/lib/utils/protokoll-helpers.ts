@@ -99,24 +99,21 @@ export function lookupLabel(map: Record<string, string>, key: string | undefined
   return map[cap] ?? key;
 }
 
-/** Procedure code → Norwegian label. */
-export const PROCEDURE_LABELS: Record<string, string> = {
-  Open: 'Åpen anbudskonkurranse',
-  Limited: 'Begrenset anbudskonkurranse',
-  'Competitive negotiated': 'Konkurranse med forhandling etter forutgående kunngjøring',
-  'Competitive dialogue': 'Konkurransepreget dialog',
-  'Innovation partnership': 'Innovasjonspartnerskap',
-  'Negotiated without publication': 'Konkurranse med forhandling uten forutgående kunngjøring',
-  'Direct award': 'Anskaffelse uten konkurranse',
+/** Artifik API procedure code → eForms code mapping. */
+export const ARTIFIK_PROCEDURE_TO_EFORMS: Record<string, string> = {
+  Open: 'open',
+  Limited: 'restricted',
+  'Competitive negotiated': 'neg-w-call',
+  'Competitive dialogue': 'comp-dial',
+  'Innovation partnership': 'innovation',
+  'Negotiated without publication': 'neg-wo-call',
+  'Direct award': 'oth-single',
 };
 
-/** Contract nature code → Norwegian label. Covers both Artifik and eForms values. */
-export const CONTRACT_NATURE_LABELS: Record<string, string> = {
-  services: 'Tjeneste',
-  supplies: 'Varer',
-  works: 'Bygg og anlegg',
-  goods_and_services: 'Varer og tjenester',
-  SERVICES: 'Tjeneste',
-  SUPPLIES: 'Varer',
-  WORKS: 'Bygg og anlegg',
+/** Artifik API nature code → eForms code mapping. */
+export const ARTIFIK_NATURE_TO_EFORMS: Record<string, string> = {
+  SERVICES: 'services',
+  SUPPLIES: 'supplies',
+  WORKS: 'works',
+  goods_and_services: 'combined',
 };

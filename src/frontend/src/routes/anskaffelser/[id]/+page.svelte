@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
-  import { CONTRACT_NATURE_LABELS, PROCEDURE_LABELS, THRESHOLD_LABELS, lookupLabel, stripHtml } from '$lib/utils/protokoll-helpers';
+  import { ARTIFIK_PROCEDURE_TO_EFORMS, ARTIFIK_NATURE_TO_EFORMS, THRESHOLD_LABELS, lookupLabel, stripHtml } from '$lib/utils/protokoll-helpers';
+  import { eformsLabel } from '$lib/utils/eforms-labels';
 
   let { data } = $props();
 
@@ -60,8 +61,11 @@
 
   const klassifisering = $derived.by((): MetaItem[] => {
     if (!proc) return [];
-    const cat = lookupLabel(CONTRACT_NATURE_LABELS, proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature);
-    const prosed = lookupLabel(PROCEDURE_LABELS, proc.procedure);
+    const rawNature = proc.contractCategory ?? proc.contract_nature ?? eforms?.contract_nature ?? '';
+    const eformsNature = ARTIFIK_NATURE_TO_EFORMS[rawNature] ?? rawNature.toLowerCase();
+    const cat = eformsLabel('contract-nature', eformsNature, rawNature) || null;
+    const eformsProc = ARTIFIK_PROCEDURE_TO_EFORMS[proc.procedure ?? ''];
+    const prosed = eformsProc ? eformsLabel('procurement-procedure-type', eformsProc, proc.procedure) : proc.procedure || null;
     const terskel = lookupLabel(THRESHOLD_LABELS, proc.threshold);
 
     let ramme: string | null = null;
