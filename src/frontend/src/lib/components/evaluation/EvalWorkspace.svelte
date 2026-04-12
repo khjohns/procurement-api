@@ -49,18 +49,36 @@
 
   {#if isOverview}
     <AnalysisStripe onopendrawer={() => (drawerOpen = true)} />
-    <MatrixOverview onselect={selectCriterion} />
+    <svelte:boundary onerror={(e) => console.error('MatrixOverview feilet:', e)}>
+      <MatrixOverview onselect={selectCriterion} />
+      {#snippet failed(error, reset)}
+        <div class="boundary-error">
+          <p class="boundary-error-title">Matrisen kunne ikke vises</p>
+          <p class="boundary-error-detail">{error instanceof Error ? error.message : 'Ukjent feil'}</p>
+          <button class="boundary-error-btn" onclick={reset}>Prøv igjen</button>
+        </div>
+      {/snippet}
+    </svelte:boundary>
   {:else if activeCriterion}
     <NavStripe aktivId={activeCriterion.id} onselect={selectCriterion} onback={goOverview} />
     <AnalysisStripe onopendrawer={() => (drawerOpen = true)} />
 
-    {#if mode === 'leaf'}
-      <EvalLeaf criterion={activeCriterion} />
-    {:else if mode === 'traditional'}
-      <EvalTraditional criterion={activeCriterion} />
-    {:else if mode === 'resource'}
-      <EvalResource criterion={activeCriterion} />
-    {/if}
+    <svelte:boundary onerror={(e) => console.error('Kriterieevaluering feilet:', e)}>
+      {#if mode === 'leaf'}
+        <EvalLeaf criterion={activeCriterion} />
+      {:else if mode === 'traditional'}
+        <EvalTraditional criterion={activeCriterion} />
+      {:else if mode === 'resource'}
+        <EvalResource criterion={activeCriterion} />
+      {/if}
+      {#snippet failed(error, reset)}
+        <div class="boundary-error">
+          <p class="boundary-error-title">Evalueringsskjemaet kunne ikke vises</p>
+          <p class="boundary-error-detail">{error instanceof Error ? error.message : 'Ukjent feil'}</p>
+          <button class="boundary-error-btn" onclick={reset}>Prøv igjen</button>
+        </div>
+      {/snippet}
+    </svelte:boundary>
 
     <!-- Bottom prev/next navigation -->
     <div class="criterion-nav">
@@ -150,6 +168,43 @@
   }
 
   .nav-btn:hover {
+    background: var(--color-felt-hover);
+    color: var(--color-ink);
+  }
+
+  .boundary-error {
+    padding: var(--spacing-6);
+    text-align: center;
+  }
+
+  .boundary-error-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink-secondary);
+    margin-bottom: var(--spacing-2);
+  }
+
+  .boundary-error-detail {
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    font-family: var(--font-data);
+    margin-bottom: var(--spacing-4);
+  }
+
+  .boundary-error-btn {
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-secondary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .boundary-error-btn:hover {
     background: var(--color-felt-hover);
     color: var(--color-ink);
   }

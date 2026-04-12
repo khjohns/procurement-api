@@ -88,54 +88,63 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="rte-wrap" class:rte-expanded={expanded} onkeydown={handleKeydown}>
-  {#if label && !expanded}
-    <div class="rte-label">{label}</div>
-  {/if}
-
-  <div class="rte-container" style="--rte-max-height: {expanded ? 'none' : maxHeight}">
-    <div class="rte-toolbar-row">
-      {#if editor}
-        <EditorMenu {editor} />
-      {/if}
-      <button
-        class="rte-expand-btn"
-        onclick={toggleExpand}
-        title={expanded ? 'Lukk fullskjerm (Esc)' : 'Fullskjerm'}
-      >
-        {#if expanded}
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path
-              d="M9 1v4h4M5 13V9H1M1 5h4V1M13 9h-4v4"
-              stroke="currentColor"
-              stroke-width="1.25"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        {:else}
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path
-              d="M1 5V1h4M13 9v4H9M9 1h4v4M5 13H1V9"
-              stroke="currentColor"
-              stroke-width="1.25"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        {/if}
-      </button>
-    </div>
-    <div bind:this={editorContainer} class="rte-editor"></div>
-  </div>
-
-  <div class="rte-footer">
-    <span class="rte-char-count">{charCount} tegn</span>
-    {#if hint}
-      <span class="rte-hint">{hint}</span>
+<svelte:boundary onerror={(e) => console.error('RichTextEditor feilet:', e)}>
+  <div class="rte-wrap" class:rte-expanded={expanded} onkeydown={handleKeydown}>
+    {#if label && !expanded}
+      <div class="rte-label">{label}</div>
     {/if}
+
+    <div class="rte-container" style="--rte-max-height: {expanded ? 'none' : maxHeight}">
+      <div class="rte-toolbar-row">
+        {#if editor}
+          <EditorMenu {editor} />
+        {/if}
+        <button
+          class="rte-expand-btn"
+          onclick={toggleExpand}
+          title={expanded ? 'Lukk fullskjerm (Esc)' : 'Fullskjerm'}
+        >
+          {#if expanded}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M9 1v4h4M5 13V9H1M1 5h4V1M13 9h-4v4"
+                stroke="currentColor"
+                stroke-width="1.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          {:else}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M1 5V1h4M13 9v4H9M9 1h4v4M5 13H1V9"
+                stroke="currentColor"
+                stroke-width="1.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          {/if}
+        </button>
+      </div>
+      <div bind:this={editorContainer} class="rte-editor"></div>
+    </div>
+
+    <div class="rte-footer">
+      <span class="rte-char-count">{charCount} tegn</span>
+      {#if hint}
+        <span class="rte-hint">{hint}</span>
+      {/if}
+    </div>
   </div>
-</div>
+
+  {#snippet failed(error, reset)}
+    <div class="rte-error">
+      <p class="rte-error-text">Editoren kunne ikke lastes</p>
+      <button class="rte-error-btn" onclick={reset}>Prøv igjen</button>
+    </div>
+  {/snippet}
+</svelte:boundary>
 
 <style>
   .rte-wrap {
@@ -375,5 +384,37 @@
 
   .rte-hint {
     text-align: right;
+  }
+
+  .rte-error {
+    padding: var(--spacing-4);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+
+  .rte-error-text {
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    margin-bottom: var(--spacing-3);
+  }
+
+  .rte-error-btn {
+    padding: var(--spacing-1) var(--spacing-3);
+    background: var(--color-felt);
+    border: 1px solid var(--color-wire);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-secondary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .rte-error-btn:hover {
+    background: var(--color-felt-hover);
+    color: var(--color-ink);
   }
 </style>
