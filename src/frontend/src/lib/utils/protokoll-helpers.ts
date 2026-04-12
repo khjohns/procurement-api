@@ -74,9 +74,9 @@ export function getProcName(proc: any): string {
 }
 
 /** Add calendar days to an ISO date string. */
-export function addDays(isoDate: string, days: number): string {
+export function addDays(isoDate: string, days: number): string | null {
   const dt = new Date(isoDate + 'T00:00:00');
+  if (isNaN(dt.getTime())) return null;
   dt.setDate(dt.getDate() + days);
   return dt.toISOString().slice(0, 10);
 }
-
