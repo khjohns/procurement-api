@@ -1,11 +1,9 @@
 <script lang="ts">
-  import { qualification } from '$lib/stores/qualification.svelte';
+  import { qualification, type QualificationRequirement } from '$lib/stores/qualification.svelte';
   import QualificationCell from './QualificationCell.svelte';
+  import { shortName, COMPACT_THRESHOLD } from '../evaluation/shared';
 
-  /** Count how many suppliers have been assessed for a requirement. */
-  function countAssessed(reqId: string): { done: number; total: number } {
-    const req = qualification.data.requirements.find((r) => r.id === reqId);
-    if (!req) return { done: 0, total: 0 };
+  function countAssessed(req: QualificationRequirement): { done: number; total: number } {
     const total = qualification.data.suppliers.length;
     let done = 0;
     for (const s of qualification.data.suppliers) {
@@ -15,12 +13,7 @@
     return { done, total };
   }
 
-  /** First word of supplier name for compact display. */
-  function shortName(name: string): string {
-    return name.split(' ')[0] ?? name;
-  }
-
-  let useCompactNames = $derived(qualification.data.suppliers.length >= 4);
+  let useCompactNames = $derived(qualification.data.suppliers.length >= COMPACT_THRESHOLD);
 </script>
 
 <div class="section-label">Kvalifikasjonsmatrise</div>
@@ -37,7 +30,7 @@
       <tr>
         <th class="th th-supplier">Leverandør</th>
         {#each qualification.data.requirements as req (req.id)}
-          {@const c = countAssessed(req.id)}
+          {@const c = countAssessed(req)}
           <th
             class="th th-req th-clickable"
             onclick={() => qualification.setActiveView(req.id)}
@@ -117,9 +110,6 @@
   .col-supplier {
     width: 150px;
   }
-  .col-req {
-    width: auto;
-  }
   .col-result {
     width: 90px;
   }
@@ -165,7 +155,6 @@
 
   .drill-chevron {
     font-size: 12px;
-    color: var(--color-ink-ghost);
     margin-left: var(--spacing-1);
     opacity: 0;
     transition: opacity 0.1s;
