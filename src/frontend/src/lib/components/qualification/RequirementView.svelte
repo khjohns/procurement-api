@@ -438,7 +438,7 @@
 
   .entity-scope-input {
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     background: none;
     border: none;
@@ -528,7 +528,7 @@
   .toggle-sm {
     width: 24px;
     height: 24px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   /* ── Verdict button ── */
@@ -579,7 +579,7 @@
   .basis-btn {
     padding: var(--spacing-1) var(--spacing-2);
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-muted);
     background: var(--color-felt);
@@ -660,7 +660,7 @@
   .add-confirm {
     padding: var(--spacing-1) var(--spacing-2);
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     background: var(--color-felt-active);
     color: var(--color-ink);

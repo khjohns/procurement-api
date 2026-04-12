@@ -189,7 +189,7 @@
   }
 
   .sub-tab-meta {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     margin-left: var(--spacing-2);
     color: var(--color-ink-ghost);
@@ -268,8 +268,8 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
     background: var(--color-felt-raised);
-    font-family: var(--font-ui);
-    font-size: 12px;
+    font-family: var(--font-prose);
+    font-size: 13px;
     color: var(--color-ink);
     line-height: 1.55;
     resize: vertical;
@@ -291,7 +291,7 @@
   }
 
   .summary-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.08em;
@@ -312,7 +312,7 @@
   .th {
     padding: var(--spacing-2) var(--spacing-3);
     text-align: left;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -341,7 +341,7 @@
 
   .td-weight {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
   }
 

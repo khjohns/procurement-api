@@ -114,7 +114,7 @@
   }
 
   .frist-dager {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
@@ -131,13 +131,13 @@
   }
 
   .frist-dato {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-secondary);
   }
 
   .frist-ref {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }

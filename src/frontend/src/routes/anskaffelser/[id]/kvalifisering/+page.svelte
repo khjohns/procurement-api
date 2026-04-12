@@ -105,7 +105,7 @@
 
   .context-ref {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
   }
 

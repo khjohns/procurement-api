@@ -609,7 +609,7 @@
   }
   .bv-table th {
     padding: var(--spacing-2) var(--spacing-3);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -678,7 +678,7 @@
     display: inline-block;
     margin-left: var(--spacing-2);
     padding: 1px var(--spacing-2);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -789,7 +789,7 @@
     border-left: 3px solid var(--color-vekt);
   }
   .robusthet-insight-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -899,7 +899,7 @@
     margin-top: var(--spacing-4);
   }
   .mk-section-header {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;

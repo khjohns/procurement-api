@@ -101,7 +101,7 @@
   }
 
   .vrow-supplier-full {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     white-space: nowrap;
     overflow: hidden;
@@ -155,8 +155,8 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
     background: var(--color-felt-raised);
-    font-family: var(--font-ui);
-    font-size: 12px;
+    font-family: var(--font-prose);
+    font-size: 13px;
     color: var(--color-ink);
     line-height: 1.55;
     resize: vertical;

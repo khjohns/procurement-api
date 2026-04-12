@@ -102,7 +102,7 @@
 
   .nav-tab-weight {
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     margin-left: 2px;
@@ -114,7 +114,7 @@
 
   .nav-tab-count {
     display: block;
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     margin-top: 1px;

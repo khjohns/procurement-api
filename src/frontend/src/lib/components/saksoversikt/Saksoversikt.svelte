@@ -98,7 +98,7 @@
     width: 260px;
     flex-shrink: 0;
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -115,7 +115,7 @@
   .akse-merke {
     position: absolute;
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     text-transform: uppercase;
@@ -128,7 +128,7 @@
     position: absolute;
     right: 0;
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--color-ink);
     text-transform: uppercase;

@@ -143,7 +143,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     font-family: var(--font-data);
     background: var(--color-felt-raised);
@@ -169,7 +169,7 @@
   }
 
   .rank-score {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
@@ -188,7 +188,7 @@
   .th {
     padding: var(--spacing-2) var(--spacing-3);
     text-align: left;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -213,12 +213,12 @@
   }
 
   .th-criterion {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
   }
 
   .th-meta {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     letter-spacing: 0;
@@ -256,7 +256,7 @@
   }
 
   .td-supplier-full {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     white-space: nowrap;
     overflow: hidden;
