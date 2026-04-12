@@ -110,7 +110,7 @@
   }
 
   .panel-sub {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     margin-bottom: 20px;
@@ -123,7 +123,7 @@
   }
 
   .section-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.08em;
@@ -149,7 +149,7 @@
     display: inline-block;
     padding: 1px 7px;
     border-radius: var(--radius-sm);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     font-family: var(--font-data);
     color: #fff;
@@ -200,7 +200,7 @@
 
   .krav-ref {
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     flex-shrink: 0;
   }

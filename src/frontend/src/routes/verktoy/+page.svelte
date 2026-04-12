@@ -82,7 +82,7 @@
   }
 
   .card-ref {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }

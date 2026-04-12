@@ -68,7 +68,7 @@
     padding: var(--spacing-2) var(--spacing-4);
     background: var(--color-felt-raised);
     border-bottom: 1px solid var(--color-wire);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -86,7 +86,7 @@
     padding: var(--spacing-1) var(--spacing-2);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-ui);
     color: var(--color-ink-muted);
     background: var(--color-felt);

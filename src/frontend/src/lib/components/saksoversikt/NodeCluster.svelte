@@ -66,7 +66,7 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-data);
-    font-size: 8px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--color-ink-secondary);
     transition:

@@ -98,7 +98,7 @@
   }
 
   .source-dot {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .source-label {

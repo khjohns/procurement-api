@@ -135,7 +135,7 @@
   }
 
   .panel-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -170,7 +170,7 @@
     width: 18px;
     height: 18px;
     border-radius: var(--radius-sm);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1;
     flex-shrink: 0;
@@ -258,7 +258,7 @@
     flex-direction: column;
     gap: var(--spacing-1);
     padding: var(--spacing-2);
-    background: var(--color-felt);
+    background: var(--color-felt-raised);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
   }
@@ -289,7 +289,7 @@
   }
 
   .metric-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     text-transform: uppercase;
@@ -313,7 +313,7 @@
 
   .progress-count {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-ghost);
     min-width: 32px;
@@ -345,7 +345,7 @@
   }
 
   .panel-status-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -354,7 +354,7 @@
 
   .panel-status-progress {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-ghost);
   }

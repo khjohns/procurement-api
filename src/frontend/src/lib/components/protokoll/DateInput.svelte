@@ -148,7 +148,7 @@
   }
 
   .date-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -302,7 +302,7 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;

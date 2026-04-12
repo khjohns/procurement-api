@@ -66,14 +66,9 @@ let nextEntityId = 1;
 
 class QualificationStore {
   activeView = $state<string>('overview');
-  selectedSupplierId = $state<string | null>(null);
 
   setActiveView(view: string) {
     this.activeView = view;
-  }
-
-  selectSupplier(id: string) {
-    this.selectedSupplierId = id;
   }
 
   data = $state<QualificationData>({

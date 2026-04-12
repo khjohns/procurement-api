@@ -86,7 +86,7 @@
 
 <style>
   .section-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -118,7 +118,7 @@
   .th {
     padding: var(--spacing-2) var(--spacing-3);
     text-align: left;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -165,7 +165,7 @@
   }
 
   .th-meta {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     letter-spacing: 0;
@@ -208,7 +208,7 @@
   }
 
   .td-supplier-full {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     white-space: nowrap;
     overflow: hidden;

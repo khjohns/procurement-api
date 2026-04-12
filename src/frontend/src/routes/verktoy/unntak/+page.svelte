@@ -156,7 +156,7 @@
     border-radius: var(--radius-sm);
     background: var(--color-felt-raised);
     border: 1px solid var(--color-felt-active);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-muted);
   }
 
@@ -181,7 +181,7 @@
     background: none;
     cursor: pointer;
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 400;
     color: var(--color-ink-ghost);
     text-decoration: underline;
@@ -270,7 +270,7 @@
   }
 
   .conclusion-hjemmel {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
@@ -304,7 +304,7 @@
 
   .krav-type {
     flex-shrink: 0;
-    font-size: 8px;
+    font-size: 11px;
     margin-top: 3px;
   }
 
@@ -315,7 +315,7 @@
   }
 
   .kofa-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.08em;

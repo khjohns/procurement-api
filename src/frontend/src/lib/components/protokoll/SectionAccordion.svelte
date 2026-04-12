@@ -103,7 +103,7 @@
   }
 
   .chevron {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     transition: transform 150ms ease-out;
     flex-shrink: 0;
@@ -138,7 +138,7 @@
     flex-shrink: 0;
     padding: 2px 8px;
     border-radius: var(--radius-sm);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;

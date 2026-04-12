@@ -2,7 +2,7 @@
   import { evaluation, weightedItemScore } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
-  import AutoTextarea from './AutoTextarea.svelte';
+  import AutoTextarea from '$lib/components/shared/AutoTextarea.svelte';
   import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS, shortName, VERTICAL_THRESHOLD, COMPACT_THRESHOLD } from './shared';
@@ -273,7 +273,7 @@
   }
 
   .role-tab-count {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     margin-left: var(--spacing-2);
     color: var(--color-ink-ghost);
@@ -288,7 +288,7 @@
     width: 52px;
     text-align: center;
     flex-shrink: 0;
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.3;
   }
 
@@ -301,7 +301,7 @@
     width: 48px;
     text-align: center;
     flex-shrink: 0;
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .vrow-col-note {
@@ -431,7 +431,7 @@
   }
 
   .dim-weight {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     margin: 0 var(--spacing-2);
@@ -465,8 +465,8 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
     background: var(--color-felt-raised);
-    font-family: var(--font-ui);
-    font-size: 12px;
+    font-family: var(--font-prose);
+    font-size: 13px;
     color: var(--color-ink);
     line-height: 1.55;
     resize: vertical;
@@ -488,7 +488,7 @@
   }
 
   .summary-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.08em;
@@ -509,7 +509,7 @@
   .th {
     padding: var(--spacing-2) var(--spacing-3);
     text-align: left;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -543,7 +543,7 @@
   }
 
   .td-person {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     margin-top: 1px;
   }
