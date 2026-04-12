@@ -376,7 +376,8 @@ def _fetch_hendelser_and_doffin_parallel(
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
 
 THRESHOLD_SHORT = _get_labels("threshold-short")
-PROCEDURE_SHORT = _get_labels("procedure-short")
+PROCEDURE_LABEL = _get_labels("artifik-procedure")
+NATURE_LABEL = _get_labels("artifik-nature")
 
 
 def _client():
@@ -407,7 +408,7 @@ def list_procurements():
 
 @bp.route("/procurements/mature")
 def list_mature_procurements():
-    """Filtered list: past deadline, no templates/cancelled, deduplicated."""
+    """Filtered list: past deadline (incl. cancelled), no templates, deduplicated."""
     all_procs = _cached_list_procurements()
     mature = [p for p in all_procs if is_mature(p)]
     mature = dedup_by_sequence_id(mature)
@@ -430,6 +431,7 @@ def list_mature_procurements():
             description = description[:399] + "\u2026"
         raw_proc = p.get("procedure") or ""
         raw_thresh = p.get("threshold") or ""
+        raw_nature = p.get("contractCategory") or p.get("contract_nature") or ""
         deadline_str = get_timeline_date(p, TIMELINE_SUBMISSION) or ""
         procurer = p.get("about_procurer") or {}
         pid = p.get("id")
@@ -439,11 +441,13 @@ def list_mature_procurements():
             "sequenceId": p.get("sequenceId"),
             "name": name or f"Anskaffelse {pid}",
             "description": description,
-            "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
+            "procedure": PROCEDURE_LABEL.get(raw_proc, raw_proc or "?"),
             "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
+            "nature": NATURE_LABEL.get(raw_nature, ""),
             "deadline": deadline_str[:10] if deadline_str else "",
             "contactPerson": procurer.get("contact_person") or "",
             "awarded": bool(p.get("areAwardLettersSent")),
+            "cancelled": bool(p.get("isCancelled")),
             "framework": bool(p.get("framework_agreement_involved")),
             "hendelser": hendelser_map.get(pid, _fallback_hendelser(p)),
         }

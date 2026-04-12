@@ -19,19 +19,22 @@ export interface AnskaffelsesOversiktItem {
   description: string;
   procedure: string;
   threshold: string;
+  nature: string;
   deadline: string;
   contactPerson: string;
   awarded: boolean;
+  cancelled: boolean;
   framework: boolean;
   hendelser: AnskaffelsesHendelse[];
 }
 
-export type StatusFilter = 'alle' | 'pågående' | 'tildelt';
+export type StatusFilter = 'alle' | 'pågående' | 'tildelt' | 'avlyst';
 
 export interface AnskaffelsesFilter {
   status: StatusFilter;
   prosedyrer: Set<string>;
   terskler: Set<string>;
+  kontraktstyper: Set<string>;
   rammeavtale: boolean | null;
   saksbehandlere: Set<string>;
 }

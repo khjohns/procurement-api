@@ -22,7 +22,7 @@
     </a>
   </td>
   <td class="cell cell-tittel">
-    <span class="cell-text">{sak.name}</span>
+    <span class="cell-text">{sak.name}{#if sak.cancelled}<span class="avlyst-badge">Avlyst</span>{/if}</span>
   </td>
   <td class="cell cell-prosedyre">
     <span class="cell-text cell-text-muted">{sak.procedure}</span>
@@ -70,6 +70,11 @@
     font-family: var(--font-data);
     font-size: 12px;
     color: var(--color-ink-muted);
+  }
+
+  /* .avlyst-badge: margin-left variant for inline use in table cells */
+  .avlyst-badge {
+    margin-left: 6px;
   }
 
   .row-link {
