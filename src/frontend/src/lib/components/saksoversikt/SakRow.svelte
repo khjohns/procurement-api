@@ -78,7 +78,7 @@
 
   .sak-id {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-muted);
     line-height: 1;
     display: flex;
@@ -86,9 +86,8 @@
     gap: 4px;
   }
 
-  /* Scale down global .avlyst-badge to fit beside 10px sak-id text */
+  /* Adjust global .avlyst-badge padding to fit beside sak-id text */
   .avlyst-badge {
-    font-size: 9px;
     padding: 0 3px;
   }
 
