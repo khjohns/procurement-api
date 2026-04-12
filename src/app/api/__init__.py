@@ -284,15 +284,30 @@ def _fallback_hendelser(procurement: dict) -> list[dict]:
 
 
 def _extract_doffin_id(activities: list[dict]) -> str | None:
-    """Extract Doffin notice ID (NGOJ) from activities."""
+    """Extract first Doffin notice ID (NGOJ) from activities."""
+    ids = _extract_all_doffin_ids(activities)
+    return ids[0] if ids else None
+
+
+def _extract_all_doffin_ids(activities: list[dict]) -> list[str]:
+    """Extract all unique Doffin notice IDs (NGOJ) from activities.
+
+    A procurement may have multiple notices (CN, CAN, CAN-MODIF).
+    Returns IDs in chronological order (oldest first).
+    """
     doffin_acts = get_activities_by_action(
         activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED
     )
-    if not doffin_acts:
-        return None
-    desc = doffin_acts[0].get("description") or {}
-    doffin_notice = desc.get("doffinNotice") or {}
-    return doffin_notice.get("ngoj") or None
+    seen: set[str] = set()
+    ids: list[str] = []
+    for act in doffin_acts:
+        desc = act.get("description") or {}
+        doffin_notice = desc.get("doffinNotice") or {}
+        ngoj = doffin_notice.get("ngoj")
+        if ngoj and ngoj not in seen:
+            seen.add(ngoj)
+            ids.append(ngoj)
+    return ids
 
 
 def _fetch_hendelser_parallel(
@@ -443,9 +458,11 @@ def get_procurement(procurement_id: int):
         if p.get("id") == procurement_id:
             result = dict(p)
             activities = _cached_activities(_client(), procurement_id)
-            doffin_id = _extract_doffin_id(activities)
-            if doffin_id:
-                result["doffinId"] = doffin_id
+            all_ids = _extract_all_doffin_ids(activities)
+            if all_ids:
+                result["doffinId"] = all_ids[0]
+                if len(all_ids) > 1:
+                    result["doffinIds"] = all_ids
             return jsonify(result)
     return jsonify({"error": "Not found"}), 404
 

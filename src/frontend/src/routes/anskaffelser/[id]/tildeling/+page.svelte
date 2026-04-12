@@ -1,13 +1,15 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { formatDatoMndAar } from '$lib/utils/format';
+  import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
   import { getTimelineDate, addDays } from '$lib/utils/protokoll-helpers';
+  import { eformsLabel } from '$lib/utils/eforms-labels.svelte';
   import type { Activity } from '$lib/types/activity';
 
   let { data } = $props();
 
   const procId = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
+  const eformsCan = $derived(data?.eformsCan);
   const activities: Activity[] = $derived(data?.activities ?? []);
 
   // ── Karensperiode ──
@@ -44,6 +46,37 @@
     return 'calm';
   });
 
+  // ── Tildelingsresultat fra CAN ──
+
+  interface AwardDisplay {
+    lotId: string | null;
+    resultLabel: string;
+    winners: { name: string; orgId: string | null }[];
+    contractValue: number | null;
+    currency: string | null;
+    receivedTenders: number | null;
+  }
+
+  const awardResults = $derived.by((): AwardDisplay[] => {
+    const results = eformsCan?.award_results;
+    if (!results?.length) return [];
+    return results.map((r: any) => ({
+      lotId: r.lot_id,
+      resultLabel: r.result_code
+        ? eformsLabel('winner-selection-status', r.result_code)
+        : null,
+      winners: (r.winners ?? []).map((w: any) => ({
+        name: w.name ?? '\u2014',
+        orgId: w.org_id ?? null,
+      })),
+      contractValue: r.contract_value,
+      currency: r.currency,
+      receivedTenders: r.received_tenders,
+    }));
+  });
+
+  const hasCanData = $derived(awardResults.length > 0);
+
   // ── Activity checklist ──
 
   interface CheckItem {
@@ -58,7 +91,7 @@
       { done: awardLettersSent, label: 'Meddelelsesbrev sendt' },
       { done: karensOver, label: 'Karensperiode utløper' },
       { done: false, label: 'Signere kontrakt' },
-      { done: false, label: 'Kunngjøre kontraktsinngåelse' },
+      { done: hasCanData, label: 'Kunngjøre kontraktsinngåelse' },
       { done: false, label: 'Arkivere dokumentasjon' },
     ];
   });
@@ -130,8 +163,45 @@
           </div>
         </div>
 
-        <!-- Right: Aktiviteter checklist -->
+        <!-- Right: Tildelingsresultat + Aktiviteter -->
         <div class="right-col">
+          {#if hasCanData}
+            {#each awardResults as result}
+              <div class="card tildeling-result-card">
+                <div class="section-label">
+                  Tildelingsresultat{result.lotId ? ` — Delkontrakt ${result.lotId}` : ''}
+                </div>
+                {#if result.winners.length > 0}
+                  <div class="result-winners">
+                    <div class="meta-label">Tildelt</div>
+                    {#each result.winners as w}
+                      <div class="winner-row">
+                        <span class="winner-name">{w.name}</span>
+                        {#if w.orgId}
+                          <span class="winner-org">org.nr. {w.orgId}</span>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+                <div class="result-meta">
+                  {#if result.contractValue}
+                    <div class="result-meta-item">
+                      <div class="meta-label">Kontraktsverdi</div>
+                      <div class="result-value">{formatNOK(result.contractValue)}</div>
+                    </div>
+                  {/if}
+                  {#if result.receivedTenders}
+                    <div class="result-meta-item">
+                      <div class="meta-label">Mottatte tilbud</div>
+                      <div class="result-count">{result.receivedTenders}</div>
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          {/if}
+
           <div class="card">
             <div class="section-label">Aktiviteter</div>
             <div class="checklist">
@@ -209,6 +279,62 @@
     font-size: 13px;
     color: var(--color-ink-muted);
     font-style: italic;
+  }
+
+  /* ── Tildelingsresultat ── */
+  .tildeling-result-card {
+    border-left: 3px solid var(--color-score-high);
+  }
+
+  .result-winners {
+    margin-bottom: var(--spacing-4);
+  }
+
+  .winner-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-2);
+    padding: var(--spacing-1) 0;
+  }
+
+  .winner-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .winner-org {
+    font-family: var(--font-data);
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-meta {
+    display: flex;
+    gap: var(--spacing-6);
+  }
+
+  .result-meta-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .result-value {
+    font-family: var(--font-data);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    line-height: 1.2;
+  }
+
+  .result-count {
+    font-family: var(--font-data);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
   }
 
   /* ── Checklist ── */

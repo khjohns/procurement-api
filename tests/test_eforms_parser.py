@@ -114,9 +114,47 @@ def test_to_dict_roundtrip():
     assert isinstance(d["cpv_codes"], list)
 
 
-# -- Integration test against real Doffin fixture --
+# -- CAN (ContractAwardNotice) tests --
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+def test_parse_can_award_results():
+    """Parse award results from a ContractAwardNotice."""
+    xml_bytes = (_FIXTURE_DIR / "eforms-can-minimal.xml").read_bytes()
+    notice = parse_eforms_xml(xml_bytes, doffin_id="2026-200001")
+
+    assert notice.notice_type == "ContractAwardNotice"
+    assert notice.estimated_value == 18000000.0
+    assert len(notice.award_results) == 1
+
+    result = notice.award_results[0]
+    assert result.lot_id == "LOT-0001"
+    assert result.result_code == "selec-w"
+    assert result.contract_value == 15000000.0
+    assert result.currency == "NOK"
+    assert result.received_tenders == 5
+
+    # Winner is a consortium of two firms resolved via org map
+    assert len(result.winners) == 2
+    names = [w["name"] for w in result.winners]
+    assert "Vinner AS" in names
+    assert "Partner AS" in names
+    org_ids = [w["org_id"] for w in result.winners]
+    assert "987654321" in org_ids
+    assert "555666777" in org_ids
+
+
+def test_parse_can_to_dict():
+    """Award results serialize correctly via to_dict."""
+    xml_bytes = (_FIXTURE_DIR / "eforms-can-minimal.xml").read_bytes()
+    notice = parse_eforms_xml(xml_bytes)
+    d = notice.to_dict()
+    assert len(d["award_results"]) == 1
+    assert d["award_results"][0]["winners"][0]["name"] == "Vinner AS"
+
+
+# -- Integration test against real Doffin fixture --
 
 
 def test_parse_real_notice():
