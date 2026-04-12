@@ -11,6 +11,7 @@
   let { data } = $props();
 
   const proc = $derived(data?.proc);
+  const eforms = $derived(data?.eforms);
   const activities: Activity[] = $derived(data?.activities ?? []);
 
   const procId = $derived(page.params.id ?? '');
@@ -87,6 +88,17 @@
       });
   });
 
+  // ── Vilkår for innlevering ──
+
+  const tenderValidityMonths = $derived(eforms?.tender_validity_months ?? null);
+  const submissionLanguages = $derived.by((): string | null => {
+    const langs: string[] = eforms?.submission_languages ?? [];
+    if (!langs.length) return null;
+    const labels: Record<string, string> = { NOR: 'Norsk', ENG: 'Engelsk', SWE: 'Svensk', DAN: 'Dansk' };
+    return langs.map((c: string) => labels[c] ?? c).join(', ');
+  });
+  const hasVilkaar = $derived(tenderValidityMonths || submissionLanguages);
+
   const hendDefaultCount = 3;
   let hendExpanded = $state(false);
   const hendVisible = $derived(
@@ -144,6 +156,27 @@
                 <span>{artifikProcedureLabel(proc?.procedure)}</span>
                 <span class="frist-meta-sep">&middot;</span>
                 <span class="mono">{formatNOK(proc?.estimated_value)}</span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Vilkår for innlevering -->
+          {#if hasVilkaar}
+            <div class="card">
+              <div class="section-label">Vilkår for innlevering</div>
+              <div class="vilkaar-list">
+                {#if tenderValidityMonths}
+                  <div class="vilkaar-item">
+                    <div class="meta-label">Vedståelsesfrist</div>
+                    <div class="vilkaar-value">{tenderValidityMonths} måneder</div>
+                  </div>
+                {/if}
+                {#if submissionLanguages}
+                  <div class="vilkaar-item">
+                    <div class="meta-label">Språk</div>
+                    <div class="vilkaar-value">{submissionLanguages}</div>
+                  </div>
+                {/if}
               </div>
             </div>
           {/if}
@@ -312,6 +345,24 @@
     font-size: 13px;
     color: var(--color-ink-muted);
     margin-top: var(--spacing-2);
+  }
+
+  /* ── Vilkår for innlevering ── */
+  .vilkaar-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .vilkaar-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .vilkaar-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink);
   }
 
   /* ── Leverandører ── */

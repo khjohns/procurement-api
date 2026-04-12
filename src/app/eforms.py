@@ -36,6 +36,18 @@ class ContractModification:
 
 
 @dataclass
+class AwardResult:
+    """Award result from a ContractAwardNotice (CAN)."""
+
+    lot_id: str | None = None
+    result_code: str | None = None  # selec-w, clos-nw, open-nw
+    winners: list[dict] = field(default_factory=list)  # [{name, org_id}]
+    contract_value: float | None = None
+    currency: str | None = None
+    received_tenders: int | None = None
+
+
+@dataclass
 class ExclusionGround:
     code: str | None = None
     description: str | None = None
@@ -70,8 +82,14 @@ class EFormsNotice:
     env_criterion_code: str | None = None
     env_justification: str | None = None
     submission_deadline: str | None = None
+    submission_url: str | None = None
+    submission_languages: list[str] = field(default_factory=list)
+    tender_validity_months: int | None = None
 
     contract_modifications: list[ContractModification] = field(default_factory=list)
+
+    # Award results (from ContractAwardNotice)
+    award_results: list[AwardResult] = field(default_factory=list)
 
     lots: list[dict] = field(default_factory=list)
 
@@ -188,6 +206,28 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
         ".//cac:TenderingProcess/cac:TenderSubmissionDeadlinePeriod/cbc:EndDate",
     )
 
+    # Submission URL (BT-124)
+    notice.submission_url = _text(
+        root, ".//cac:TenderingTerms/cac:TenderRecipientParty/cbc:EndpointID"
+    )
+
+    # Submission languages (BT-97)
+    for lang_el in root.findall(".//cac:TenderingTerms/cac:Language/cbc:ID", _NS):
+        if lang_el.text and lang_el.text not in notice.submission_languages:
+            notice.submission_languages.append(lang_el.text)
+
+    # Tender validity period (BT-98)
+    validity_el = root.find(
+        ".//cac:TenderingTerms/cac:TenderValidityPeriod/cbc:DurationMeasure", _NS
+    )
+    if validity_el is not None and validity_el.text:
+        try:
+            val = int(float(validity_el.text))
+            unit = validity_el.get("unitCode", "MONTH")
+            notice.tender_validity_months = val * 12 if unit == "YEAR" else val
+        except ValueError:
+            pass
+
     # Award criteria, selection criteria, exclusion grounds — from lots
     _parse_lots(root, notice)
 
@@ -199,6 +239,9 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
 
     # Contract modifications (CAN-MODIF notices)
     _parse_contract_modifications(root, notice)
+
+    # Award results (ContractAwardNotice)
+    _parse_award_results(root, notice, org_map)
 
     return notice
 
@@ -331,6 +374,94 @@ def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
             pass
         if not notice.currency:
             notice.currency = fma.get("currencyID")
+
+
+def _parse_award_results(
+    root: ET.Element, notice: EFormsNotice, org_map: dict[str, dict]
+) -> None:
+    """Parse award results from ContractAwardNotice (CAN) notices.
+
+    Links through efac:NoticeResult graph:
+    LotResult → SettledContract (value) → LotTender → TenderingParty → org_map
+    """
+    notice_result = root.find(".//efac:NoticeResult", _NS)
+    if notice_result is None:
+        return
+    tparty_orgs: dict[str, list[dict]] = {}
+    for tp in notice_result.findall("efac:TenderingParty", _NS):
+        tp_id = _text(tp, "cbc:ID")
+        if not tp_id:
+            continue
+        orgs = []
+        for tenderer in tp.findall("efac:Tenderer", _NS):
+            org_ref = _text(tenderer, "cbc:ID")
+            if org_ref and org_ref in org_map:
+                orgs.append(org_map[org_ref])
+            elif org_ref:
+                orgs.append({"name": org_ref, "company_id": None})
+        tparty_orgs[tp_id] = orgs
+
+    tender_info: dict[str, dict] = {}
+    for lt in notice_result.findall("efac:LotTender", _NS):
+        lt_id = _text(lt, "cbc:ID")
+        if not lt_id:
+            continue
+        tender_info[lt_id] = {
+            "tparty_id": _text(lt, "efac:TenderingParty/cbc:ID"),
+            "lot_id": _text(lt, "efac:TenderLot/cbc:ID"),
+        }
+
+    contracts: dict[str, dict] = {}
+    for sc in notice_result.findall("efac:SettledContract", _NS):
+        sc_id = _text(sc, "cbc:ID")
+        if not sc_id:
+            continue
+        # Contract value
+        amount = _float(sc, "cbc:AwardedTenderAmount")
+        currency = None
+        amount_el = sc.find("cbc:AwardedTenderAmount", _NS)
+        if amount_el is not None:
+            currency = amount_el.get("currencyID")
+        tender_ref = _text(sc, "efac:LotTender/cbc:ID")
+        contracts[sc_id] = {
+            "value": amount,
+            "currency": currency,
+            "tender_id": tender_ref,
+        }
+
+    # Parse LotResults → AwardResult
+    for lr in notice_result.findall("efac:LotResult", _NS):
+        result = AwardResult()
+        result.lot_id = _text(lr, "efac:TenderLot/cbc:ID")
+        result.result_code = _text(lr, "cbc:TenderResultCode")
+        result.received_tenders = _int(lr, "efbc:ReceivedSubmissionsCount")
+
+        # Link through SettledContract → LotTender → TenderingParty → orgs
+        contract_ref = _text(lr, "efac:SettledContract/cbc:ID")
+        tender_ref = _text(lr, "efac:LotTender/cbc:ID")
+
+        # Get contract value
+        if contract_ref and contract_ref in contracts:
+            c = contracts[contract_ref]
+            result.contract_value = c["value"]
+            result.currency = c["currency"]
+            if not tender_ref:
+                tender_ref = c["tender_id"]
+
+        # Get winner orgs via tender → tendering party
+        if tender_ref and tender_ref in tender_info:
+            ti = tender_info[tender_ref]
+            tp_id = ti.get("tparty_id")
+            if not result.lot_id:
+                result.lot_id = ti.get("lot_id")
+            if tp_id and tp_id in tparty_orgs:
+                for org in tparty_orgs[tp_id]:
+                    result.winners.append({
+                        "name": org.get("name"),
+                        "org_id": org.get("company_id"),
+                    })
+
+        notice.award_results.append(result)
 
 
 def _parse_contract_modifications(root: ET.Element, notice: EFormsNotice) -> None:

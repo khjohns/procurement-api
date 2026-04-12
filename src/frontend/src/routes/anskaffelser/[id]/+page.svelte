@@ -101,10 +101,16 @@
 
   const okonomi = $derived.by((): MetaItem[] => {
     if (!proc) return [];
+    const estimatedValue = eforms?.estimated_value ?? proc.estimated_value;
+    const frameworkMaxValue = eforms?.framework_max_value;
     return [
-      proc.estimated_value && {
+      estimatedValue && {
         label: 'Anslått verdi',
-        value: formatNOK(proc.estimated_value),
+        value: formatNOK(estimatedValue),
+      },
+      frameworkMaxValue && {
+        label: 'Maksimal verdi',
+        value: formatNOK(frameworkMaxValue),
       },
       proc.total_value && {
         label: 'Kontraktsverdi',
@@ -262,6 +268,12 @@
             <span class="tool-link-label">Fristberegner</span>
             <span class="tool-link-icon">↗</span>
           </a>
+          {#if eforms?.submission_url}
+            <a href={eforms.submission_url} target="_blank" rel="noopener" class="tool-link tool-link-ref">
+              <span class="tool-link-label">Innlevering</span>
+              <span class="tool-link-icon">↗</span>
+            </a>
+          {/if}
           {#if doffinUrl}
             <a href={doffinUrl} target="_blank" rel="noopener" class="tool-link tool-link-ref">
               <span class="tool-link-label">Doffin</span>
