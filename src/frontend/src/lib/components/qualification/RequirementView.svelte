@@ -355,7 +355,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-ink-ghost);
-    background: var(--color-felt);
+    background: var(--color-felt-raised);
     border-bottom: 1px solid var(--color-wire);
     text-align: left;
   }
@@ -378,7 +378,6 @@
 
   /* ── Supplier rows ── */
   .row-supplier {
-    background: var(--color-canvas);
     border-bottom: 1px solid var(--color-wire);
     cursor: pointer;
     transition: background 0.08s;
@@ -394,11 +393,11 @@
   }
 
   .row-selected {
-    background: var(--color-felt);
+    background: var(--color-felt-active);
   }
 
   .row-selected:hover {
-    background: var(--color-felt);
+    background: var(--color-felt-active);
   }
 
   .cell-supplier {
@@ -546,7 +545,6 @@
 
   /* ── Entity rows ── */
   .row-entity {
-    background: var(--color-canvas);
     border-bottom: 1px solid var(--color-wire);
   }
 
@@ -635,7 +633,6 @@
 
   /* ── Add entity ── */
   .row-add {
-    background: var(--color-canvas);
     border-bottom: 2px solid var(--color-wire-strong);
   }
 

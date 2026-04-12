@@ -83,6 +83,7 @@
     padding: var(--spacing-5) var(--spacing-6);
     display: flex;
     flex-direction: column;
+    background: var(--color-felt);
   }
 
   .qual-main-content {
@@ -125,6 +126,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-5);
+    background: var(--color-felt);
   }
 
   /* ── Mobile ── */
