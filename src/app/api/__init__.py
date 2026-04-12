@@ -376,7 +376,7 @@ def _fetch_hendelser_and_doffin_parallel(
 # -- Procurement filtering (mirrors CLI protokoll logic) ---------------------
 
 THRESHOLD_SHORT = _get_labels("threshold-short")
-PROCEDURE_SHORT = _get_labels("procedure-short")
+PROCEDURE_LABEL = _get_labels("artifik-procedure")
 NATURE_LABEL = _get_labels("artifik-nature")
 
 
@@ -441,7 +441,7 @@ def list_mature_procurements():
             "sequenceId": p.get("sequenceId"),
             "name": name or f"Anskaffelse {pid}",
             "description": description,
-            "procedure": PROCEDURE_SHORT.get(raw_proc, raw_proc or "?"),
+            "procedure": PROCEDURE_LABEL.get(raw_proc, raw_proc or "?"),
             "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
             "nature": NATURE_LABEL.get(raw_nature, "") if raw_nature else "",
             "deadline": deadline_str[:10] if deadline_str else "",
