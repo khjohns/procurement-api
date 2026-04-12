@@ -34,7 +34,6 @@
   }
 </script>
 
-<!-- Navigation bar -->
 <div class="req-nav">
   <button class="nav-back" onclick={() => qualification.setActiveView('overview')}>
     ← Oversikt
@@ -63,9 +62,7 @@
   <p class="req-description">{requirement.description}</p>
 {/if}
 
-<!-- Leverandørrader -->
 <div class="rows-container">
-  <!-- Sticky header -->
   <div class="rows-header">
     <span class="col-supplier">Leverandør</span>
     <span class="col-espd">ESPD</span>
@@ -74,7 +71,7 @@
     <span class="col-note">Begrunnelse</span>
   </div>
 
-  {#each qualification.data.suppliers as supplier (supplier.id)}
+  {#each qualification.data.suppliers as supplier, i (supplier.id)}
     {@const a = requirement.assessments[supplier.id]}
     {@const espd = a?.espdSubmitted ?? false}
     {@const basis = a?.basis ?? 'own'}
@@ -82,8 +79,7 @@
     {@const verdict = a?.verdict ?? 'not_assessed'}
     {@const isFocus = focusId === supplier.id}
 
-    <!-- Leverandørrad -->
-    <div class="vrow vrow-separator" class:vrow-focus={isFocus}>
+    <div class="vrow" class:vrow-separator={i > 0} class:vrow-focus={isFocus}>
       <div class="col-supplier">
         <span class="supplier-name">{supplier.name}</span>
       </div>
@@ -140,7 +136,6 @@
       </div>
     </div>
 
-    <!-- Støttevirksomheter -->
     {#if basis === 'supported'}
       {#each entities as entity (entity.id)}
         <div class="vrow vrow-entity" class:vrow-focus={isFocus}>
@@ -192,9 +187,8 @@
         </div>
       {/each}
 
-      <!-- Legg til støttevirksomhet -->
       <div class="vrow vrow-add vrow-separator-strong" class:vrow-focus={isFocus}>
-        <div class="col-add">
+        <div class="col-note">
           {#if addingFor === supplier.id}
             <div class="add-form">
               <span class="entity-indent">└</span>
@@ -362,10 +356,6 @@
     justify-content: center;
   }
   .col-note {
-    flex: 1;
-    min-width: 0;
-  }
-  .col-add {
     flex: 1;
     min-width: 0;
   }
