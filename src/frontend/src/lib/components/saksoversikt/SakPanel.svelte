@@ -70,6 +70,7 @@
         <div class="panel-id">{sak.sequenceId}</div>
         <h2 class="panel-tittel">{sak.name}</h2>
         <div class="panel-meta">
+          {#if sak.cancelled}<span class="avlyst-badge">Avlyst</span><span class="panel-sep">&middot;</span>{/if}
           <span class="panel-prosedyre">{sak.procedure}</span>
           <span class="panel-sep">&middot;</span>
           <span class="panel-terskel">{sak.threshold}</span>
@@ -226,6 +227,19 @@
 
   .panel-terskel {
     color: var(--color-ink-muted);
+  }
+
+  .avlyst-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-score-low);
+    border: 1px solid var(--color-score-low);
+    border-radius: 1px;
+    vertical-align: middle;
   }
 
   .panel-frist {

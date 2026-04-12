@@ -51,8 +51,9 @@
     let result = alleMature;
 
     // Status
-    if (filter.status === 'pågående') result = result.filter((s) => !s.awarded);
+    if (filter.status === 'pågående') result = result.filter((s) => !s.awarded && !s.cancelled);
     else if (filter.status === 'tildelt') result = result.filter((s) => s.awarded);
+    else if (filter.status === 'avlyst') result = result.filter((s) => s.cancelled);
 
     // Prosedyre
     if (filter.prosedyrer.size > 0)

@@ -32,6 +32,7 @@
     let rammeavtaler = 0;
     let pågående = 0;
     let tildelt = 0;
+    let avlyst = 0;
 
     for (const sak of alleSaker) {
       // Prosedyre
@@ -43,13 +44,14 @@
         personer.set(sak.contactPerson, (personer.get(sak.contactPerson) ?? 0) + 1);
       }
       // Status
-      if (sak.awarded) tildelt++;
+      if (sak.cancelled) avlyst++;
+      else if (sak.awarded) tildelt++;
       else pågående++;
       // Rammeavtale
       if (sak.framework) rammeavtaler++;
     }
 
-    return { prosedyrer, terskler, personer, rammeavtaler, pågående, tildelt };
+    return { prosedyrer, terskler, personer, rammeavtaler, pågående, tildelt, avlyst };
   });
 
   // ── Hendelsesstatistikk (fra filtrerte) ──
@@ -81,6 +83,7 @@
     { key: 'alle', label: 'Alle' },
     { key: 'pågående', label: 'Pågående' },
     { key: 'tildelt', label: 'Tildelt' },
+    { key: 'avlyst', label: 'Avlyst' },
   ];
 
   // ── Helpers ──
@@ -185,7 +188,9 @@
             ? alleSaker.length
             : key === 'pågående'
               ? tilgjengelig.pågående
-              : tilgjengelig.tildelt}
+              : key === 'tildelt'
+                ? tilgjengelig.tildelt
+                : tilgjengelig.avlyst}
         <button
           class="chip"
           class:chip-aktiv={filter.status === key}

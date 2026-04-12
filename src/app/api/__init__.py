@@ -407,7 +407,7 @@ def list_procurements():
 
 @bp.route("/procurements/mature")
 def list_mature_procurements():
-    """Filtered list: past deadline, no templates/cancelled, deduplicated."""
+    """Filtered list: past deadline (incl. cancelled), no templates, deduplicated."""
     all_procs = _cached_list_procurements()
     mature = [p for p in all_procs if is_mature(p)]
     mature = dedup_by_sequence_id(mature)
@@ -444,6 +444,7 @@ def list_mature_procurements():
             "deadline": deadline_str[:10] if deadline_str else "",
             "contactPerson": procurer.get("contact_person") or "",
             "awarded": bool(p.get("areAwardLettersSent")),
+            "cancelled": bool(p.get("isCancelled")),
             "framework": bool(p.get("framework_agreement_involved")),
             "hendelser": hendelser_map.get(pid, _fallback_hendelser(p)),
         }

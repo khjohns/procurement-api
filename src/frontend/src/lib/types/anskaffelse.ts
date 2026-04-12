@@ -22,11 +22,12 @@ export interface AnskaffelsesOversiktItem {
   deadline: string;
   contactPerson: string;
   awarded: boolean;
+  cancelled: boolean;
   framework: boolean;
   hendelser: AnskaffelsesHendelse[];
 }
 
-export type StatusFilter = 'alle' | 'pågående' | 'tildelt';
+export type StatusFilter = 'alle' | 'pågående' | 'tildelt' | 'avlyst';
 
 export interface AnskaffelsesFilter {
   status: StatusFilter;
