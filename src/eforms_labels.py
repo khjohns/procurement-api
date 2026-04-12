@@ -59,7 +59,7 @@ ARTIFIK_PROCEDURE_TO_EFORMS: dict[str, str] = {
     "Negotiated without publication": "neg-wo-call",
     "Negotiation without prior publication": "neg-wo-call",
     "Direct award": "oth-single",
-    "simple": "simple",  # Artifik-only: minikonkurranse under rammeavtale
+    "Simple": "simple",  # Artifik-only: minikonkurranse under rammeavtale
 }
 
 ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
@@ -81,7 +81,7 @@ _ARTIFIK_STATIC: dict[str, dict[str, str]] = {
         "Negotiated without publication": "Uten kunngj.",
         "Negotiation without prior publication": "Uten kunngj.",
         "Direct award": "Direkte",
-        "simple": "Minikonk.",
+        "Simple": "Minikonk.",
     },
     "procedure-del2": {
         "Open": "Åpen tilbudskonkurranse",
