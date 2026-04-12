@@ -12,22 +12,19 @@
   const activities: Activity[] = $derived(data?.activities ?? []);
 
   // ── Karensperiode ──
-  // Karensperiode starts when award letters are sent. Default 10 calendar days.
+  // Karensperiode: 10 calendar days from tilbudsfrist (submission deadline).
 
   const awardLettersSent = $derived(proc?.areAwardLettersSent === true);
 
-  const awardDate = $derived.by(() => {
-    // Look for awarding activity date
-    const awarding = activities.find((a) => a.action === 'AWARDING_PARTICIPANTS');
-    if (awarding) return awarding.date;
-    return getTimelineDate(proc, 'award') ?? null;
-  });
+  const tilbudFrist = $derived(
+    proc?.currentDeadline ?? getTimelineDate(proc, 'submission') ?? null,
+  );
 
   const karensDager = 10;
 
   const karensUtloper = $derived.by(() => {
-    if (!awardDate) return null;
-    return addDays(awardDate, karensDager);
+    if (!tilbudFrist) return null;
+    return addDays(tilbudFrist, karensDager);
   });
 
   const karensGjenstar = $derived.by(() => {
