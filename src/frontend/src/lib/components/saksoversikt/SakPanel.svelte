@@ -74,6 +74,10 @@
           <span class="panel-prosedyre">{sak.procedure}</span>
           <span class="panel-sep">&middot;</span>
           <span class="panel-terskel">{sak.threshold}</span>
+          {#if sak.nature}
+            <span class="panel-sep">&middot;</span>
+            <span class="panel-nature">{sak.nature}</span>
+          {/if}
           {#if sak.deadline}
             <span class="panel-sep">&middot;</span>
             <span class="panel-frist">Frist {sak.deadline}</span>
@@ -223,21 +227,9 @@
     margin: 0 4px;
   }
 
-  .panel-terskel {
+  .panel-terskel,
+  .panel-nature {
     color: var(--color-ink-muted);
-  }
-
-  .avlyst-badge {
-    display: inline-block;
-    padding: 1px 5px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-score-low);
-    border: 1px solid var(--color-score-low);
-    border-radius: 1px;
-    vertical-align: middle;
   }
 
   .panel-frist {

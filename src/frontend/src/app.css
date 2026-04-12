@@ -131,6 +131,19 @@ body {
 }
 
 /* ── Utility ── */
+.avlyst-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-score-low);
+  border: 1px solid var(--color-score-low);
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

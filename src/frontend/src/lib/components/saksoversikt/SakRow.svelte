@@ -16,7 +16,7 @@
 
 <div class="rad" class:rad-aktiv={erAktiv}>
   <a class="meta" href="/anskaffelser/{sak.id}">
-    <span class="sak-id">{sak.sequenceId}{#if sak.cancelled}<span class="avlyst-tag">Avlyst</span>{/if}</span>
+    <span class="sak-id">{sak.sequenceId}{#if sak.cancelled}<span class="avlyst-badge">Avlyst</span>{/if}</span>
     <span class="sak-tittel">{sak.name}</span>
   </a>
   <button
@@ -86,17 +86,10 @@
     gap: 4px;
   }
 
-  .avlyst-tag {
-    font-family: var(--font-ui);
+  /* Scale down global .avlyst-badge to fit beside 10px sak-id text */
+  .avlyst-badge {
     font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-score-low);
-    border: 1px solid var(--color-score-low);
-    border-radius: 1px;
     padding: 0 3px;
-    line-height: 1.4;
   }
 
   .sak-tittel {

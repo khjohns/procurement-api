@@ -72,18 +72,9 @@
     color: var(--color-ink-muted);
   }
 
+  /* .avlyst-badge: margin-left variant for inline use in table cells */
   .avlyst-badge {
-    display: inline-block;
     margin-left: 6px;
-    padding: 1px 5px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-score-low);
-    border: 1px solid var(--color-score-low);
-    border-radius: 1px;
-    vertical-align: middle;
   }
 
   .row-link {
