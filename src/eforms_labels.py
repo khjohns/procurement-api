@@ -57,6 +57,7 @@ ARTIFIK_PROCEDURE_TO_EFORMS: dict[str, str] = {
     "Competitive dialogue": "comp-dial",
     "Innovation partnership": "innovation",
     "Negotiated without publication": "neg-wo-call",
+    "Negotiation without prior publication": "neg-wo-call",
     "Direct award": "oth-single",
     "simple": "simple",  # Artifik-only: minikonkurranse under rammeavtale
 }
@@ -72,14 +73,15 @@ ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
 
 _ARTIFIK_STATIC: dict[str, dict[str, str]] = {
     "procedure-short": {
-        "Open": "Åpen",
-        "Limited": "Begrenset",
-        "Competitive negotiated": "Forhandling",
-        "Competitive dialogue": "Dialog",
-        "Innovation partnership": "Innovasjon",
-        "Negotiated without publication": "Uten kunngj.",
-        "Direct award": "Direkte",
-        "simple": "Minikonk.",
+        "Open": "Åpen anbudskonk.",
+        "Limited": "Begr. anbudskonk.",
+        "Competitive negotiated": "Konk. m/forhandling",
+        "Competitive dialogue": "Konk.preget dialog",
+        "Innovation partnership": "Innovasjonspartn.",
+        "Negotiated without publication": "Forhandl. u/kunngj.",
+        "Negotiation without prior publication": "Forhandl. u/kunngj.",
+        "Direct award": "Direkte anskaffelse",
+        "simple": "Minikonkurranse",
     },
     "procedure-del2": {
         "Open": "Åpen tilbudskonkurranse",
