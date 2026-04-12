@@ -285,8 +285,13 @@ def _fallback_hendelser(procurement: dict) -> list[dict]:
 
 def _extract_doffin_id(activities: list[dict]) -> str | None:
     """Extract first Doffin notice ID (NGOJ) from activities."""
-    ids = _extract_all_doffin_ids(activities)
-    return ids[0] if ids else None
+    doffin_acts = get_activities_by_action(
+        activities, ACTION_DOFFIN_NOTICE_STATUS_PUBLISHED
+    )
+    if not doffin_acts:
+        return None
+    desc = doffin_acts[0].get("description") or {}
+    return (desc.get("doffinNotice") or {}).get("ngoj") or None
 
 
 def _extract_all_doffin_ids(activities: list[dict]) -> list[str]:

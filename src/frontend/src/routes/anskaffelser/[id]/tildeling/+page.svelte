@@ -2,7 +2,6 @@
   import { page } from '$app/state';
   import { formatNOK, formatDatoMndAar } from '$lib/utils/format';
   import { getTimelineDate, addDays } from '$lib/utils/protokoll-helpers';
-  import { eformsLabel } from '$lib/utils/eforms-labels.svelte';
   import type { Activity } from '$lib/types/activity';
 
   let { data } = $props();
@@ -50,10 +49,8 @@
 
   interface AwardDisplay {
     lotId: string | null;
-    resultLabel: string;
     winners: { name: string; orgId: string | null }[];
     contractValue: number | null;
-    currency: string | null;
     receivedTenders: number | null;
   }
 
@@ -62,15 +59,11 @@
     if (!results?.length) return [];
     return results.map((r: any) => ({
       lotId: r.lot_id,
-      resultLabel: r.result_code
-        ? eformsLabel('winner-selection-status', r.result_code)
-        : null,
       winners: (r.winners ?? []).map((w: any) => ({
         name: w.name ?? '\u2014',
         orgId: w.org_id ?? null,
       })),
       contractValue: r.contract_value,
-      currency: r.currency,
       receivedTenders: r.received_tenders,
     }));
   });
@@ -194,7 +187,7 @@
                   {#if result.receivedTenders}
                     <div class="result-meta-item">
                       <div class="meta-label">Mottatte tilbud</div>
-                      <div class="result-count">{result.receivedTenders}</div>
+                      <div class="result-value">{result.receivedTenders}</div>
                     </div>
                   {/if}
                 </div>
@@ -327,14 +320,6 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-ink);
     line-height: 1.2;
-  }
-
-  .result-count {
-    font-family: var(--font-data);
-    font-size: 20px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-ink);
   }
 
   /* ── Checklist ── */

@@ -241,7 +241,7 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
     _parse_contract_modifications(root, notice)
 
     # Award results (ContractAwardNotice)
-    _parse_award_results(root, notice)
+    _parse_award_results(root, notice, org_map)
 
     return notice
 
@@ -376,22 +376,17 @@ def _parse_framework(root: ET.Element, notice: EFormsNotice) -> None:
             notice.currency = fma.get("currencyID")
 
 
-def _parse_award_results(root: ET.Element, notice: EFormsNotice) -> None:
+def _parse_award_results(
+    root: ET.Element, notice: EFormsNotice, org_map: dict[str, dict]
+) -> None:
     """Parse award results from ContractAwardNotice (CAN) notices.
 
-    CAN notices contain efac:NoticeResult with:
-    - efac:LotResult: per-lot outcome (result code, linked tender/contract)
-    - efac:LotTender: individual tenders linked to a TenderingParty
-    - efac:TenderingParty: groups of org refs (tenderer consortia)
-    - efac:SettledContract: awarded contract with value
+    Links through efac:NoticeResult graph:
+    LotResult → SettledContract (value) → LotTender → TenderingParty → org_map
     """
     notice_result = root.find(".//efac:NoticeResult", _NS)
     if notice_result is None:
         return
-
-    org_map = _build_org_map(root)
-
-    # Build lookup: TenderingParty ID → list of org refs
     tparty_orgs: dict[str, list[dict]] = {}
     for tp in notice_result.findall("efac:TenderingParty", _NS):
         tp_id = _text(tp, "cbc:ID")
@@ -406,7 +401,6 @@ def _parse_award_results(root: ET.Element, notice: EFormsNotice) -> None:
                 orgs.append({"name": org_ref, "company_id": None})
         tparty_orgs[tp_id] = orgs
 
-    # Build lookup: LotTender ID → {tparty_id, lot_id}
     tender_info: dict[str, dict] = {}
     for lt in notice_result.findall("efac:LotTender", _NS):
         lt_id = _text(lt, "cbc:ID")
@@ -417,7 +411,6 @@ def _parse_award_results(root: ET.Element, notice: EFormsNotice) -> None:
             "lot_id": _text(lt, "efac:TenderLot/cbc:ID"),
         }
 
-    # Build lookup: SettledContract ID → {value, currency, tender_id}
     contracts: dict[str, dict] = {}
     for sc in notice_result.findall("efac:SettledContract", _NS):
         sc_id = _text(sc, "cbc:ID")
