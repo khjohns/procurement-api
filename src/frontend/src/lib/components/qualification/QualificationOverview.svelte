@@ -14,6 +14,13 @@
     }
     return { done, total };
   }
+
+  /** First word of supplier name for compact display. */
+  function shortName(name: string): string {
+    return name.split(' ')[0] ?? name;
+  }
+
+  let useCompactNames = $derived(qualification.data.suppliers.length >= 4);
 </script>
 
 <div class="section-label">Kvalifikasjonsmatrise</div>
@@ -50,7 +57,12 @@
         {@const r = qualification.supplierResults[supplier.id]}
         <tr class="matrix-row">
           <td class="td td-supplier">
-            <div class="td-supplier-name">{supplier.name}</div>
+            <div class="td-supplier-name">
+              {useCompactNames ? shortName(supplier.name) : supplier.name}
+            </div>
+            {#if useCompactNames}
+              <div class="td-supplier-full">{supplier.name}</div>
+            {/if}
           </td>
           {#each qualification.data.requirements as req (req.id)}
             {@const a = req.assessments[supplier.id]}
@@ -99,6 +111,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+    min-width: 500px;
   }
 
   .col-supplier {
@@ -145,9 +158,9 @@
     background: var(--color-felt-hover);
   }
 
-  .th-name {
-    font-size: 10px;
-    font-weight: 700;
+  .th-clickable:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 1.5px var(--color-wire-focus);
   }
 
   .drill-chevron {
@@ -168,7 +181,7 @@
     color: var(--color-ink-ghost);
     letter-spacing: 0;
     text-transform: none;
-    margin-top: 1px;
+    margin-top: 2px;
   }
 
   .th-done {
@@ -197,13 +210,21 @@
 
   .td-supplier {
     padding-left: var(--spacing-4);
-    border-left: 3px solid var(--color-wire-strong);
   }
 
   .td-supplier-name {
     font-size: 12px;
     font-weight: 600;
     color: var(--color-ink);
+  }
+
+  .td-supplier-full {
+    font-size: 10px;
+    color: var(--color-ink-ghost);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
   }
 
   /* ── Result column ── */
@@ -217,9 +238,10 @@
     justify-content: center;
     padding: var(--spacing-1) var(--spacing-3);
     border-radius: var(--radius-sm);
-    font-family: var(--font-data);
-    font-size: 12px;
+    font-family: var(--font-ui);
+    font-size: 14px;
     font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   .result-yes {
