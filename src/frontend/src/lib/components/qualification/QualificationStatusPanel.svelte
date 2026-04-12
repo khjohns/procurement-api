@@ -258,7 +258,7 @@
     flex-direction: column;
     gap: var(--spacing-1);
     padding: var(--spacing-2);
-    background: var(--color-felt);
+    background: var(--color-felt-raised);
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-wire);
   }

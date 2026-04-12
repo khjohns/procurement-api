@@ -25,6 +25,9 @@
   let addingFor = $state<string | null>(null);
   let newEntityName = $state('');
   let focusId = $state<string | null>(null);
+  let focusIndex = $derived(
+    focusId ? qualification.data.suppliers.findIndex((s) => s.id === focusId) : -1
+  );
 
   function handleAdd(supplierId: string) {
     if (!newEntityName.trim()) return;
@@ -78,8 +81,9 @@
     {@const entities = a?.supportEntities ?? []}
     {@const verdict = a?.verdict ?? 'not_assessed'}
     {@const isFocus = focusId === supplier.id}
+    {@const dimmed = focusIndex >= 0 && !isFocus && Math.abs(focusIndex - i) > 3}
 
-    <div class="vrow" class:vrow-separator={i > 0} class:vrow-focus={isFocus}>
+    <div class="vrow" class:vrow-separator={i > 0} class:vrow-focus={isFocus} class:vrow-dimmed={dimmed}>
       <div class="col-supplier">
         <span class="supplier-name">{supplier.name}</span>
       </div>
@@ -323,7 +327,7 @@
     padding: var(--spacing-2) var(--spacing-4);
     background: var(--color-felt-raised);
     border-bottom: 1px solid var(--color-wire);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -380,6 +384,10 @@
 
   .vrow-separator {
     border-top: 1px solid var(--color-wire);
+  }
+
+  .vrow-dimmed {
+    opacity: 0.85;
   }
 
   .vrow-separator-strong {
