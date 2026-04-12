@@ -268,6 +268,12 @@
             <span class="tool-link-label">Fristberegner</span>
             <span class="tool-link-icon">↗</span>
           </a>
+          {#if eforms?.submission_url}
+            <a href={eforms.submission_url} target="_blank" rel="noopener" class="tool-link tool-link-ref">
+              <span class="tool-link-label">Innlevering</span>
+              <span class="tool-link-icon">↗</span>
+            </a>
+          {/if}
           {#if doffinUrl}
             <a href={doffinUrl} target="_blank" rel="noopener" class="tool-link tool-link-ref">
               <span class="tool-link-label">Doffin</span>

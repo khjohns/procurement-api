@@ -45,6 +45,16 @@ MINIMAL_XML = b"""\
       <cbc:EstimatedOverallContractAmount currencyID="NOK">4000000</cbc:EstimatedOverallContractAmount>
     </cac:RequestedTenderTotal>
   </cac:ProcurementProject>
+  <cac:TenderingTerms>
+    <cac:TenderRecipientParty>
+      <cbc:EndpointID>https://app.artifik.no/procurements/1234</cbc:EndpointID>
+    </cac:TenderRecipientParty>
+    <cac:TenderValidityPeriod>
+      <cbc:DurationMeasure unitCode="MONTH">3</cbc:DurationMeasure>
+    </cac:TenderValidityPeriod>
+    <cac:Language><cbc:ID>ENG</cbc:ID></cac:Language>
+    <cac:Language><cbc:ID>NOR</cbc:ID></cac:Language>
+  </cac:TenderingTerms>
   <cac:TenderingProcess>
     <cbc:ProcedureCode listName="procurement-procedure-type">open</cbc:ProcedureCode>
     <cac:TenderSubmissionDeadlinePeriod>
@@ -79,6 +89,9 @@ def test_parse_procurement():
     assert notice.currency == "NOK"
     assert notice.duration_months == 48
     assert notice.submission_deadline == "2026-02-09"
+    assert notice.submission_url == "https://app.artifik.no/procurements/1234"
+    assert notice.submission_languages == ["ENG", "NOR"]
+    assert notice.tender_validity_months == 3
 
 
 def test_parse_empty_xml():

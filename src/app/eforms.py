@@ -70,6 +70,9 @@ class EFormsNotice:
     env_criterion_code: str | None = None
     env_justification: str | None = None
     submission_deadline: str | None = None
+    submission_url: str | None = None
+    submission_languages: list[str] = field(default_factory=list)
+    tender_validity_months: int | None = None
 
     contract_modifications: list[ContractModification] = field(default_factory=list)
 
@@ -187,6 +190,28 @@ def parse_eforms_xml(xml_bytes: bytes, doffin_id: str = "") -> EFormsNotice:
         root,
         ".//cac:TenderingProcess/cac:TenderSubmissionDeadlinePeriod/cbc:EndDate",
     )
+
+    # Submission URL (BT-124)
+    notice.submission_url = _text(
+        root, ".//cac:TenderingTerms/cac:TenderRecipientParty/cbc:EndpointID"
+    )
+
+    # Submission languages (BT-97)
+    for lang_el in root.findall(".//cac:TenderingTerms/cac:Language/cbc:ID", _NS):
+        if lang_el.text and lang_el.text not in notice.submission_languages:
+            notice.submission_languages.append(lang_el.text)
+
+    # Tender validity period (BT-98)
+    validity_el = root.find(
+        ".//cac:TenderingTerms/cac:TenderValidityPeriod/cbc:DurationMeasure", _NS
+    )
+    if validity_el is not None and validity_el.text:
+        try:
+            val = int(float(validity_el.text))
+            unit = validity_el.get("unitCode", "MONTH")
+            notice.tender_validity_months = val * 12 if unit == "YEAR" else val
+        except ValueError:
+            pass
 
     # Award criteria, selection criteria, exclusion grounds — from lots
     _parse_lots(root, notice)
