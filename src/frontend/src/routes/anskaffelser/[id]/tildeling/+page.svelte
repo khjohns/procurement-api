@@ -8,6 +8,7 @@
 
   const procId = $derived(page.params.id ?? '');
   const proc = $derived(data?.proc);
+  const eforms = $derived(data?.eforms);
   const eformsCan = $derived(data?.eformsCan);
   const activities: Activity[] = $derived(data?.activities ?? []);
 
@@ -44,28 +45,50 @@
 
   // ── Tildelingsresultat fra CAN ──
 
+  interface Winner {
+    name: string;
+    orgId: string | null;
+    value: number | null;
+  }
+
   interface AwardDisplay {
     lotId: string | null;
-    winners: { name: string; orgId: string | null }[];
+    winners: Winner[];
     contractValue: number | null;
+    valuePerWinner: boolean;
     receivedTenders: number | null;
   }
 
   const awardResults = $derived.by((): AwardDisplay[] => {
     const results = eformsCan?.award_results;
     if (!results?.length) return [];
-    return results.map((r: any) => ({
-      lotId: r.lot_id,
-      winners: (r.winners ?? []).map((w: any) => ({
+    return results.map((r: any) => {
+      const winners: Winner[] = (r.winners ?? []).map((w: any) => ({
         name: w.name ?? '\u2014',
         orgId: w.org_id ?? null,
-      })),
-      contractValue: r.contract_value,
-      receivedTenders: r.received_tenders,
-    }));
+        value: null as number | null,
+      }));
+      const val = r.contract_value ?? null;
+      // Knytt verdien til leverandør hvis det er nøyaktig én
+      const valuePerWinner = winners.length === 1 && val != null;
+      if (valuePerWinner) winners[0].value = val;
+      return {
+        lotId: r.lot_id,
+        winners,
+        contractValue: val,
+        valuePerWinner,
+        receivedTenders: r.received_tenders,
+      };
+    });
   });
 
   const hasCanData = $derived(awardResults.length > 0);
+
+  // ── Kontrakt ──
+
+  const isRammeavtale = $derived(
+    proc?.framework_agreement_involved || (eforms?.framework_type && eforms.framework_type !== 'none'),
+  );
 
   // ── Activity checklist ──
 
@@ -159,37 +182,52 @@
             {#each awardResults as result}
               <div class="card tildeling-result-card">
                 <div class="section-label">
-                  Tildelingsresultat{result.lotId ? ` — Delkontrakt ${result.lotId}` : ''}
+                  Tildelt{result.lotId ? ` — Delkontrakt ${result.lotId}` : ''}
                 </div>
                 {#if result.winners.length > 0}
-                  <div class="result-winners">
-                    <div class="meta-label">Tildelt</div>
+                  <div class="winner-list">
                     {#each result.winners as w}
                       <div class="winner-row">
-                        <span class="winner-name">{w.name}</span>
-                        {#if w.orgId}
-                          <span class="winner-org">org.nr. {w.orgId}</span>
+                        <div class="winner-identity">
+                          <span class="winner-name">{w.name}</span>
+                          {#if w.orgId}
+                            <span class="winner-org">org.nr. {w.orgId}</span>
+                          {/if}
+                        </div>
+                        {#if w.value}
+                          <div class="winner-value">{formatNOK(w.value)}</div>
                         {/if}
                       </div>
                     {/each}
                   </div>
                 {/if}
-                <div class="result-meta">
-                  {#if result.contractValue}
-                    <div class="result-meta-item">
-                      <div class="meta-label">Kontraktsverdi</div>
-                      <div class="result-value">{formatNOK(result.contractValue)}</div>
-                    </div>
-                  {/if}
-                  {#if result.receivedTenders}
-                    <div class="result-meta-item">
-                      <div class="meta-label">Mottatte tilbud</div>
-                      <div class="result-value">{result.receivedTenders}</div>
-                    </div>
-                  {/if}
-                </div>
+                {#if result.contractValue && !result.valuePerWinner}
+                  <div class="result-standalone-value">
+                    <div class="meta-label">Kontraktsverdi</div>
+                    <div class="result-value">{formatNOK(result.contractValue)}</div>
+                  </div>
+                {/if}
+                {#if result.receivedTenders}
+                  <div class="result-tenders">
+                    <span class="meta-label">Mottatte tilbud:</span>
+                    <span class="result-tenders-count">{result.receivedTenders}</span>
+                  </div>
+                {/if}
               </div>
             {/each}
+          {/if}
+
+          <!-- Kontrakt -->
+          {#if hasCanData || isRammeavtale}
+            <div class="card">
+              <div class="section-label">Kontrakt</div>
+              <div class="kontrakt-list">
+                <div class="kontrakt-item">
+                  <div class="meta-label">Type</div>
+                  <div class="kontrakt-value">{isRammeavtale ? 'Rammeavtale' : 'Kontrakt'}</div>
+                </div>
+              </div>
+            </div>
           {/if}
 
           <div class="card">
@@ -276,15 +314,30 @@
     border-left: 3px solid var(--color-score-high);
   }
 
-  .result-winners {
-    margin-bottom: var(--spacing-4);
+  .winner-list {
+    display: flex;
+    flex-direction: column;
   }
 
   .winner-row {
     display: flex;
     align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) 0;
+    border-top: 1px solid var(--color-wire);
+  }
+
+  .winner-row:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .winner-identity {
+    display: flex;
+    align-items: baseline;
     gap: var(--spacing-2);
-    padding: var(--spacing-1) 0;
+    min-width: 0;
   }
 
   .winner-name {
@@ -298,16 +351,22 @@
     font-size: 12px;
     color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
   }
 
-  .result-meta {
-    display: flex;
-    gap: var(--spacing-6);
+  .winner-value {
+    font-family: var(--font-data);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    flex-shrink: 0;
   }
 
-  .result-meta-item {
-    display: flex;
-    flex-direction: column;
+  .result-standalone-value {
+    margin-top: var(--spacing-4);
+    padding-top: var(--spacing-3);
+    border-top: 1px solid var(--color-wire);
   }
 
   .result-value {
@@ -317,6 +376,39 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-ink);
     line-height: 1.2;
+  }
+
+  .result-tenders {
+    margin-top: var(--spacing-3);
+    font-size: 12px;
+    color: var(--color-ink-muted);
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-1);
+  }
+
+  .result-tenders-count {
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Kontrakt ── */
+  .kontrakt-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .kontrakt-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kontrakt-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink);
   }
 
   /* ── Checklist ── */
