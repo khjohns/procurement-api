@@ -122,7 +122,7 @@
     border: none;
     cursor: pointer;
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -139,7 +139,7 @@
   }
 
   .sort-icon {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink);
     line-height: 1;
   }

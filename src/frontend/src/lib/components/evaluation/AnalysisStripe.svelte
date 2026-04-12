@@ -97,7 +97,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     font-family: var(--font-data);
     background: var(--color-felt-raised);
@@ -123,19 +123,19 @@
   }
 
   .stripe-score {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
 
   .stripe-sep {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     margin: 0 var(--spacing-1);
   }
 
   .stripe-verdict {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
   }
 
@@ -157,7 +157,7 @@
 
   .stripe-btn {
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-ink-ghost);
     background: none;
@@ -199,7 +199,7 @@
   }
 
   .metric-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--color-ink-ghost);
     letter-spacing: 0.04em;
@@ -215,7 +215,7 @@
   }
 
   .metric-sub {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     margin-top: 1px;
   }

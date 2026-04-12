@@ -42,7 +42,7 @@
   }
 
   .hjemmel {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
   }

@@ -230,7 +230,7 @@
 
   .weight-label {
     display: block;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 400;
     color: var(--color-ink-ghost);
     text-transform: none;

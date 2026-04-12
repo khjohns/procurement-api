@@ -3,15 +3,12 @@
   import QualificationOverview from '$lib/components/qualification/QualificationOverview.svelte';
   import RequirementView from '$lib/components/qualification/RequirementView.svelte';
   import QualificationStatusPanel from '$lib/components/qualification/QualificationStatusPanel.svelte';
-  import QualificationAssessmentPanel from '$lib/components/qualification/QualificationAssessmentPanel.svelte';
 
   let { data } = $props();
 
   if (data?.proc?.id) {
     qualification.initializeSuppliersIfNeeded(data.proc.id, data.activities ?? []);
   }
-
-  let isOverview = $derived(qualification.activeView === 'overview');
 
   let mobilePanelOpen = $state(false);
 </script>
@@ -29,7 +26,7 @@
     </div>
 
     <div class="qual-main-content">
-      {#if isOverview}
+      {#if qualification.activeView === 'overview'}
         <QualificationOverview />
       {:else if qualification.activeRequirement}
         <RequirementView requirementId={qualification.activeRequirement.id} />
@@ -39,11 +36,7 @@
 
   <!-- Right panel (desktop) -->
   <aside class="qual-panel" class:panel-open={mobilePanelOpen}>
-    {#if isOverview}
-      <QualificationStatusPanel />
-    {:else}
-      <QualificationAssessmentPanel />
-    {/if}
+    <QualificationStatusPanel />
   </aside>
 
   <!-- Mobile panel toggle -->
@@ -83,6 +76,7 @@
     padding: var(--spacing-5) var(--spacing-6);
     display: flex;
     flex-direction: column;
+    background: var(--color-felt);
   }
 
   .qual-main-content {
@@ -111,7 +105,7 @@
 
   .context-ref {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
   }
 
@@ -125,6 +119,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-5);
+    background: var(--color-felt);
   }
 
   /* ── Mobile ── */
@@ -143,7 +138,7 @@
       right: 0;
       bottom: 0;
       width: 320px;
-      background: var(--color-canvas);
+      background: var(--color-felt);
       z-index: 100;
       transform: translateX(100%);
       transition: transform 0.2s ease-out;

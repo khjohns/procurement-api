@@ -290,7 +290,7 @@
   }
 
   .nav-badge {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -309,7 +309,7 @@
 
   .nav-position {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-variant-numeric: tabular-nums;
     margin-top: 2px;

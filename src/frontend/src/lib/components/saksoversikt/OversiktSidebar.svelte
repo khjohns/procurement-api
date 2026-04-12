@@ -543,7 +543,7 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-data);
-    font-size: 8px;
+    font-size: 11px;
     font-weight: 600;
     flex-shrink: 0;
   }
@@ -593,7 +593,7 @@
 
   .spor-ubesvart {
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--color-canvas);

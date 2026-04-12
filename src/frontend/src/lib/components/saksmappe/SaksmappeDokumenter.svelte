@@ -88,7 +88,7 @@
   .nav-arrow {
     color: var(--color-vekt);
     margin-left: 4px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .dato {
@@ -99,7 +99,7 @@
   }
 
   .status {
-    font-size: 9px;
+    font-size: 11px;
     font-family: var(--font-data);
     font-weight: 500;
     color: var(--color-ink-ghost);

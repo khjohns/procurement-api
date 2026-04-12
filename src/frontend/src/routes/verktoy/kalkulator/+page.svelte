@@ -509,7 +509,7 @@
     margin-top: 2px;
   }
   .metode-ref {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
     margin-top: 3px;
@@ -577,7 +577,7 @@
     grid-template-columns: 1fr 130px 140px 30px;
     padding: 5px 9px;
     background: var(--color-felt-raised);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--color-ink-muted);
     border-bottom: 1px solid var(--color-wire);
@@ -656,7 +656,7 @@
     color: var(--color-ink-muted);
   }
   .result-sub {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     margin-top: 2px;
   }
@@ -674,7 +674,7 @@
     padding: 1px 7px;
     border-radius: var(--radius-sm);
     margin-top: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     font-family: var(--font-data);
     background: var(--color-ink-ghost);

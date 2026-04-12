@@ -765,7 +765,7 @@
 
   .chapter-text {
     padding: 0 var(--spacing-4);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -980,7 +980,7 @@
 
   .nav-chapter {
     padding: var(--spacing-2) var(--spacing-4);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -1036,7 +1036,7 @@
   }
 
   .nav-badge {
-    font-size: 10px;
+    font-size: 11px;
     flex-shrink: 0;
   }
 

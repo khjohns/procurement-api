@@ -685,7 +685,7 @@
   }
 
   .list-num {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     width: 20px;
@@ -761,7 +761,7 @@
     padding: var(--spacing-2) var(--spacing-3);
     background: var(--color-felt-raised);
     border-bottom: 1px solid var(--color-wire);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -874,7 +874,7 @@
   }
 
   .weight-suffix {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
   }
@@ -884,7 +884,7 @@
   }
 
   .krit-type-fixed {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     padding: var(--spacing-1) var(--spacing-2);
@@ -948,13 +948,13 @@
   }
 
   .fradrag-inline-krp {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
 
   .expand-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -1036,7 +1036,7 @@
     padding: var(--spacing-2) var(--spacing-3);
     background: var(--color-felt-raised);
     border-bottom: 1px solid var(--color-wire);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.06em;
@@ -1100,7 +1100,7 @@
 
   .fradrag-krp {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
   }
 

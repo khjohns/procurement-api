@@ -232,7 +232,7 @@
   }
 
   .dato {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
   }
@@ -290,7 +290,7 @@
   }
 
   .hendelse-dato {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     min-width: 40px;
@@ -362,7 +362,7 @@
   }
 
   .aktivitet-dato {
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-data);
     color: var(--color-ink-ghost);
     margin-left: auto;

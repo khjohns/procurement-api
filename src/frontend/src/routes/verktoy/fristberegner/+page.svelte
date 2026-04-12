@@ -173,7 +173,7 @@
     color: var(--color-ink);
   }
   .p-ref {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
     margin-top: 2px;
@@ -225,7 +225,7 @@
   }
 
   .timeline-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-ink-ghost);
     letter-spacing: 0.08em;
@@ -254,7 +254,7 @@
 
   .gap-indicator {
     padding: 4px 0 4px 20px;
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
   }
@@ -312,13 +312,13 @@
   }
 
   .node-ref {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     font-family: var(--font-data);
   }
 
   .node-note {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     margin-top: 2px;
     padding-left: 88px;
@@ -340,7 +340,7 @@
 
   .disclaimer {
     margin-top: 14px;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-ghost);
     line-height: 1.5;
     font-style: italic;

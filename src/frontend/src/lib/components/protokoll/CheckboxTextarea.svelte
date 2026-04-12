@@ -66,7 +66,7 @@
     border: 1px solid var(--color-wire);
     border-radius: var(--radius-sm);
     color: var(--color-ink);
-    font-family: var(--font-ui);
+    font-family: var(--font-prose);
     font-size: 13px;
     line-height: 1.5;
     outline: none;
