@@ -19,6 +19,7 @@ export interface AnskaffelsesOversiktItem {
   description: string;
   procedure: string;
   threshold: string;
+  nature: string;
   deadline: string;
   contactPerson: string;
   awarded: boolean;
@@ -33,6 +34,7 @@ export interface AnskaffelsesFilter {
   status: StatusFilter;
   prosedyrer: Set<string>;
   terskler: Set<string>;
+  kontraktstyper: Set<string>;
   rammeavtale: boolean | null;
   saksbehandlere: Set<string>;
 }

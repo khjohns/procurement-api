@@ -28,6 +28,7 @@
   const tilgjengelig = $derived.by(() => {
     const prosedyrer = new Map<string, number>();
     const terskler = new Map<string, number>();
+    const kontraktstyper = new Map<string, number>();
     const personer = new Map<string, number>();
     let rammeavtaler = 0;
     let pågående = 0;
@@ -39,6 +40,10 @@
       prosedyrer.set(sak.procedure, (prosedyrer.get(sak.procedure) ?? 0) + 1);
       // Terskel
       terskler.set(sak.threshold, (terskler.get(sak.threshold) ?? 0) + 1);
+      // Kontraktstype
+      if (sak.nature) {
+        kontraktstyper.set(sak.nature, (kontraktstyper.get(sak.nature) ?? 0) + 1);
+      }
       // Saksbehandler
       if (sak.contactPerson) {
         personer.set(sak.contactPerson, (personer.get(sak.contactPerson) ?? 0) + 1);
@@ -51,7 +56,7 @@
       if (sak.framework) rammeavtaler++;
     }
 
-    return { prosedyrer, terskler, personer, rammeavtaler, pågående, tildelt, avlyst };
+    return { prosedyrer, terskler, kontraktstyper, personer, rammeavtaler, pågående, tildelt, avlyst };
   });
 
   // ── Hendelsesstatistikk (fra filtrerte) ──
@@ -106,6 +111,13 @@
     onfilter({ ...filter, terskler: next });
   }
 
+  function toggleKontraktstype(k: string) {
+    const next = new Set(filter.kontraktstyper);
+    if (next.has(k)) next.delete(k);
+    else next.add(k);
+    onfilter({ ...filter, kontraktstyper: next });
+  }
+
   function toggleRammeavtale() {
     onfilter({ ...filter, rammeavtale: filter.rammeavtale === true ? null : true });
   }
@@ -125,6 +137,7 @@
     filter.status !== 'alle' ||
       filter.prosedyrer.size > 0 ||
       filter.terskler.size > 0 ||
+      filter.kontraktstyper.size > 0 ||
       filter.rammeavtale !== null ||
       filter.saksbehandlere.size > 0
   );
@@ -134,6 +147,7 @@
       status: 'alle',
       prosedyrer: new Set(),
       terskler: new Set(),
+      kontraktstyper: new Set(),
       rammeavtale: null,
       saksbehandlere: new Set(),
     });
@@ -237,6 +251,26 @@
             type="button"
           >
             {terskel}
+            <span class="chip-tall">{count}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Kontraktstype -->
+  {#if tilgjengelig.kontraktstyper.size > 1}
+    <div class="sidebar-section">
+      <div class="section-label">Kontraktstype</div>
+      <div class="chip-group">
+        {#each [...tilgjengelig.kontraktstyper].sort((a, b) => b[1] - a[1]) as [type, count] (type)}
+          <button
+            class="chip"
+            class:chip-aktiv={filter.kontraktstyper.has(type)}
+            onclick={() => toggleKontraktstype(type)}
+            type="button"
+          >
+            {type}
             <span class="chip-tall">{count}</span>
           </button>
         {/each}

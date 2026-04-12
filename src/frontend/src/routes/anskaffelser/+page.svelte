@@ -39,6 +39,7 @@
     status: 'alle',
     prosedyrer: new Set(),
     terskler: new Set(),
+    kontraktstyper: new Set(),
     rammeavtale: null,
     saksbehandlere: new Set(),
   });
@@ -61,6 +62,10 @@
 
     // Terskel
     if (filter.terskler.size > 0) result = result.filter((s) => filter.terskler.has(s.threshold));
+
+    // Kontraktstype
+    if (filter.kontraktstyper.size > 0)
+      result = result.filter((s) => filter.kontraktstyper.has(s.nature));
 
     // Rammeavtale
     if (filter.rammeavtale === true) result = result.filter((s) => s.framework);
