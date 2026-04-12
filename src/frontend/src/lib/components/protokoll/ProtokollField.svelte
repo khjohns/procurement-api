@@ -17,6 +17,7 @@
   import type { InfoRow } from '$lib/utils/protokoll-info-rows';
   import { addDays } from '$lib/utils/protokoll-helpers';
   import type { FieldType } from '$lib/stores/protokoll-sections';
+  import BoundaryFallback from '$lib/components/shared/BoundaryFallback.svelte';
 
   interface Props {
     field: { key: string; type: FieldType; label: string; hint?: string; foaRef?: string; codelistId?: string };
@@ -138,7 +139,9 @@
 {:else if field.type === 'evaluation-summary'}
   <EvaluationSummaryTable />
 {:else if field.type === 'justification-generator'}
-  <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
+  <BoundaryFallback title="Begrunnelsesgeneratoren feilet">
+    <JustificationGenerator fieldKey={field.key} label={field.label} hint={field.hint} />
+  </BoundaryFallback>
 {/if}
 
 <style>

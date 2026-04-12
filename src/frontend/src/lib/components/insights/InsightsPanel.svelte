@@ -8,6 +8,7 @@
   } from '$lib/stores/evaluation.svelte';
   import SensitivityPane from './SensitivityPane.svelte';
   import SensitivityPricePane from './SensitivityPricePane.svelte';
+  import BoundaryFallback from '$lib/components/shared/BoundaryFallback.svelte';
 
   let activeTab = $state<'betalingsvilje' | 'robusthet' | 'metodekontroll' | 'sensitivitet'>(
     'betalingsvilje'
@@ -37,6 +38,7 @@
       const scores = evaluation.data.suppliers.map(
         (s) => evaluation.groupScores[c.id]?.[s.id] ?? 0
       );
+      if (scores.length === 0) continue;
       const high = Math.max(...scores);
       const low = Math.min(...scores);
       const spread = high - low;
@@ -93,6 +95,7 @@
           0
         );
       });
+      if (supplierDeds.length === 0) continue;
       const maxDed = Math.max(...supplierDeds);
       const spread = maxDed - Math.min(...supplierDeds);
       if (spread > best.spread) {
@@ -491,20 +494,13 @@
     <!-- Sensitivitet -->
     {#if activeTab === 'sensitivitet'}
       <div class="innsikt-pane">
-        <svelte:boundary onerror={(e) => console.error('Sensitivitetsanalyse feilet:', e)}>
+        <BoundaryFallback title="Sensitivitetsanalysen kunne ikke vises">
           {#if isPris}
             <SensitivityPricePane />
           {:else}
             <SensitivityPane />
           {/if}
-          {#snippet failed(error, reset)}
-            <div class="boundary-error">
-              <p class="boundary-error-title">Sensitivitetsanalysen kunne ikke vises</p>
-              <p class="boundary-error-detail">{error instanceof Error ? error.message : 'Ukjent feil'}</p>
-              <button class="boundary-error-btn" onclick={reset}>Prøv igjen</button>
-            </div>
-          {/snippet}
-        </svelte:boundary>
+        </BoundaryFallback>
       </div>
     {/if}
   </div>
@@ -957,42 +953,5 @@
     .mk-comparison {
       grid-template-columns: 1fr;
     }
-  }
-
-  .boundary-error {
-    padding: var(--spacing-6);
-    text-align: center;
-  }
-
-  .boundary-error-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-ink-secondary);
-    margin-bottom: var(--spacing-2);
-  }
-
-  .boundary-error-detail {
-    font-size: 12px;
-    color: var(--color-ink-muted);
-    font-family: var(--font-data);
-    margin-bottom: var(--spacing-4);
-  }
-
-  .boundary-error-btn {
-    padding: var(--spacing-2) var(--spacing-4);
-    background: var(--color-felt);
-    border: 1px solid var(--color-wire);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink-secondary);
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-
-  .boundary-error-btn:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
   }
 </style>

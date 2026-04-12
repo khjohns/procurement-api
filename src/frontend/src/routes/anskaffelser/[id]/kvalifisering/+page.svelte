@@ -3,6 +3,7 @@
   import QualificationOverview from '$lib/components/qualification/QualificationOverview.svelte';
   import RequirementView from '$lib/components/qualification/RequirementView.svelte';
   import QualificationStatusPanel from '$lib/components/qualification/QualificationStatusPanel.svelte';
+  import BoundaryFallback from '$lib/components/shared/BoundaryFallback.svelte';
 
   let { data } = $props();
 
@@ -26,11 +27,13 @@
     </div>
 
     <div class="qual-main-content">
-      {#if qualification.activeView === 'overview'}
-        <QualificationOverview />
-      {:else if qualification.activeRequirement}
-        <RequirementView requirementId={qualification.activeRequirement.id} />
-      {/if}
+      <BoundaryFallback title="Kvalifiseringsvisningen kunne ikke lastes">
+        {#if qualification.activeView === 'overview'}
+          <QualificationOverview />
+        {:else if qualification.activeRequirement}
+          <RequirementView requirementId={qualification.activeRequirement.id} />
+        {/if}
+      </BoundaryFallback>
     </div>
   </div>
 

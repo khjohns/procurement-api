@@ -70,8 +70,13 @@
     // Sync body prop → editor when body changes externally (e.g. generator)
     $effect(() => {
       if (editorInstance && body !== editorInstance.getHTML()) {
-        editorInstance.commands.setContent(body, { emitUpdate: false });
-        charCount = editorInstance.storage.characterCount?.characters() ?? 0;
+        try {
+          editorInstance.commands.setContent(body, { emitUpdate: false });
+          charCount = editorInstance.storage.characterCount?.characters() ?? 0;
+        } catch (e) {
+          console.error('TipTap setContent feilet:', e);
+          charCount = 0;
+        }
       }
     });
 

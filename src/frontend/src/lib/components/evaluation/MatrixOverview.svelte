@@ -11,14 +11,16 @@
   let suppliers = $derived(evaluation.data.suppliers);
   let qualityCriteria = $derived(evaluation.data.criteria.filter((c) => c.type !== 'price'));
   let isPrismodell = $derived(evaluation.activeMethod === 'pris');
-  let bestTotal = $derived(Math.max(...suppliers.map((s) => evaluation.totals[s.id] ?? 0)));
-  let bestEvaluatedPrice = $derived(
-    Math.min(
-      ...suppliers
-        .filter((s) => s.price != null)
-        .map((s) => evaluation.evaluatedPrices[s.id] ?? Infinity)
-    )
-  );
+  let bestTotal = $derived.by(() => {
+    const vals = suppliers.map((s) => evaluation.totals[s.id] ?? 0);
+    return vals.length > 0 ? Math.max(...vals) : 0;
+  });
+  let bestEvaluatedPrice = $derived.by(() => {
+    const vals = suppliers
+      .filter((s) => s.price != null)
+      .map((s) => evaluation.evaluatedPrices[s.id] ?? Infinity);
+    return vals.length > 0 ? Math.min(...vals) : Infinity;
+  });
   let ranked = $derived(evaluation.ranking);
 </script>
 

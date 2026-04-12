@@ -4,6 +4,7 @@
   import Saksoversikt from '$lib/components/saksoversikt/Saksoversikt.svelte';
   import OversiktSidebar from '$lib/components/saksoversikt/OversiktSidebar.svelte';
   import CaseListTable from '$lib/components/case-list/CaseListTable.svelte';
+  import BoundaryFallback from '$lib/components/shared/BoundaryFallback.svelte';
   import { themeStore } from '$lib/stores/theme.svelte';
   import type {
     AnskaffelsesOversiktItem,
@@ -206,7 +207,9 @@
           <span class="state-text">Ingen anskaffelser matcher valgte filter.</span>
         </div>
       {:else if visning === 'tidslinje'}
-        <Saksoversikt saker={filtrert} {aktivtSpor} />
+        <BoundaryFallback title="Tidslinjen kunne ikke vises">
+          <Saksoversikt saker={filtrert} {aktivtSpor} />
+        </BoundaryFallback>
       {:else}
         <div class="tabell-wrap">
           <CaseListTable saker={filtrert} />
