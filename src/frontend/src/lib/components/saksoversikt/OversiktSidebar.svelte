@@ -281,7 +281,7 @@
   <!-- Rammeavtale -->
   {#if tilgjengelig.rammeavtaler > 0}
     <div class="sidebar-section">
-      <div class="section-label">Type</div>
+      <div class="section-label">Avtaleform</div>
       <div class="chip-group">
         <button
           class="chip"
@@ -488,7 +488,7 @@
 
   .chip-tall {
     font-family: var(--font-data);
-    font-size: 9px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-ghost);
   }
@@ -586,7 +586,7 @@
 
   .spor-tall {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-ghost);
   }

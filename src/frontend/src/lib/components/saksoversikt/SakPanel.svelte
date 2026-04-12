@@ -32,6 +32,15 @@
     return h.type !== '';
   }
 
+  /** Key counts derived from hendelser */
+  const nokkeltall = $derived.by(() => {
+    const all = sak?.hendelser ?? [];
+    const tilbud = all.filter((h) => h.type === 'T').length;
+    const kvalifisert = all.filter((h) => h.type === 'S' && !h.avvist).length;
+    const avvist = all.filter((h) => h.type === 'S' && h.avvist).length;
+    return { tilbud, kvalifisert, avvist };
+  });
+
   /** Actions to hide from the panel (internal conversation state, not meaningful to the user) */
   const SKJULTE_ACTIONS = new Set(['CONVERSATION_MARKED_COMPLETED', 'CONVERSATION_REOPENED']);
 
@@ -100,6 +109,33 @@
             <button class="beskrivelse-toggle" onclick={() => (beskrivelseFull = !beskrivelseFull)}>
               {beskrivelseFull ? 'Vis mindre' : 'Vis mer'}
             </button>
+          </div>
+        {/if}
+
+        <!-- Nøkkeltall -->
+        {#if nokkeltall.tilbud > 0 || nokkeltall.kvalifisert > 0}
+          <div class="seksjon">
+            <div class="section-label">Nøkkeltall</div>
+            <div class="nokkeltall">
+              {#if nokkeltall.tilbud > 0}
+                <div class="nokkeltall-rad">
+                  <span class="nokkeltall-label">Tilbud</span>
+                  <span class="nokkeltall-verdi">{nokkeltall.tilbud}</span>
+                </div>
+              {/if}
+              {#if nokkeltall.kvalifisert > 0}
+                <div class="nokkeltall-rad">
+                  <span class="nokkeltall-label">Kvalifisert</span>
+                  <span class="nokkeltall-verdi">{nokkeltall.kvalifisert}</span>
+                </div>
+              {/if}
+              {#if nokkeltall.avvist > 0}
+                <div class="nokkeltall-rad">
+                  <span class="nokkeltall-label">Avvist</span>
+                  <span class="nokkeltall-verdi nokkeltall-avvist">{nokkeltall.avvist}</span>
+                </div>
+              {/if}
+            </div>
           </div>
         {/if}
 
@@ -198,7 +234,7 @@
 
   .panel-id {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--color-ink-muted);
     margin-bottom: 4px;
   }
@@ -320,6 +356,37 @@
     color: var(--color-ink-secondary);
   }
 
+  /* Nøkkeltall */
+  .nokkeltall {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nokkeltall-rad {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+
+  .nokkeltall-label {
+    font-size: 12px;
+    color: var(--color-ink-secondary);
+  }
+
+  .nokkeltall-verdi {
+    font-family: var(--font-data);
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+  }
+
+  .nokkeltall-avvist {
+    color: var(--color-score-low);
+  }
+
   /* Hendelsesforløp (integrert kronologi) */
   .forloep {
     display: flex;
@@ -336,7 +403,7 @@
 
   .forloep-dato {
     font-family: var(--font-data);
-    font-size: 10px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-ink-ghost);
     width: 48px;

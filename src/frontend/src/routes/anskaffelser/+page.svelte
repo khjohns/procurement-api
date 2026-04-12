@@ -228,13 +228,12 @@
 
   .top-nav {
     height: var(--header-height);
-    border-bottom: 1px solid var(--color-wire-strong);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
     flex-shrink: 0;
-    background: var(--color-canvas);
+    background: var(--color-header-bg);
   }
 
   .nav-breadcrumbs {
@@ -242,11 +241,11 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
   }
 
   .nav-breadcrumbs .current {
-    color: var(--color-ink);
+    color: var(--color-header-fg);
     font-weight: 500;
   }
 
@@ -255,7 +254,7 @@
     align-items: center;
     gap: 12px;
     font-size: 12px;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
   }
 
   .ny-btn {
@@ -276,13 +275,13 @@
   .verktoy-link {
     font-size: 11px;
     font-weight: 500;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
     text-decoration: none;
     transition: color 0.12s;
   }
 
   .verktoy-link:hover {
-    color: var(--color-vekt);
+    color: var(--color-header-fg);
   }
 
   .theme-toggle {
@@ -294,7 +293,7 @@
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     background: transparent;
-    color: var(--color-ink-secondary);
+    color: var(--color-header-muted);
     font-size: 14px;
     cursor: pointer;
     transition:
@@ -303,21 +302,25 @@
   }
 
   .theme-toggle:hover {
-    background: var(--color-felt-hover);
-    color: var(--color-ink);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-header-fg);
+  }
+
+  .user-org {
+    color: var(--color-header-muted);
   }
 
   .avatar {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: var(--color-wire-strong);
+    background: var(--color-header-muted);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--color-ink);
+    color: var(--color-header-bg);
   }
 
   .page-layout {
