@@ -73,15 +73,15 @@ ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
 
 _ARTIFIK_STATIC: dict[str, dict[str, str]] = {
     "procedure-short": {
-        "Open": "Åpen anbudskonk.",
-        "Limited": "Begr. anbudskonk.",
-        "Competitive negotiated": "Konk. m/forhandling",
-        "Competitive dialogue": "Konk.preget dialog",
-        "Innovation partnership": "Innovasjonspartn.",
-        "Negotiated without publication": "Forhandl. u/kunngj.",
-        "Negotiation without prior publication": "Forhandl. u/kunngj.",
-        "Direct award": "Direkte anskaffelse",
-        "simple": "Minikonkurranse",
+        "Open": "Åpen",
+        "Limited": "Begrenset",
+        "Competitive negotiated": "Forhandling",
+        "Competitive dialogue": "Dialog",
+        "Innovation partnership": "Innovasjon",
+        "Negotiated without publication": "Uten kunngj.",
+        "Negotiation without prior publication": "Uten kunngj.",
+        "Direct award": "Direkte",
+        "simple": "Minikonk.",
     },
     "procedure-del2": {
         "Open": "Åpen tilbudskonkurranse",

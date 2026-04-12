@@ -51,9 +51,9 @@
   const filtrert = $derived.by(() => {
     let result = alleMature;
 
-    // Status
+    // Status (cancelled prioriteres over awarded — en avlyst anskaffelse er ikke «tildelt»)
     if (filter.status === 'pågående') result = result.filter((s) => !s.awarded && !s.cancelled);
-    else if (filter.status === 'tildelt') result = result.filter((s) => s.awarded);
+    else if (filter.status === 'tildelt') result = result.filter((s) => s.awarded && !s.cancelled);
     else if (filter.status === 'avlyst') result = result.filter((s) => s.cancelled);
 
     // Prosedyre

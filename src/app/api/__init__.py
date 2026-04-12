@@ -443,7 +443,7 @@ def list_mature_procurements():
             "description": description,
             "procedure": PROCEDURE_LABEL.get(raw_proc, raw_proc or "?"),
             "threshold": THRESHOLD_SHORT.get(raw_thresh, raw_thresh or "?"),
-            "nature": NATURE_LABEL.get(raw_nature, "") if raw_nature else "",
+            "nature": NATURE_LABEL.get(raw_nature, ""),
             "deadline": deadline_str[:10] if deadline_str else "",
             "contactPerson": procurer.get("contact_person") or "",
             "awarded": bool(p.get("areAwardLettersSent")),
