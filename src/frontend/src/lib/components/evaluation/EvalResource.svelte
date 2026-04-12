@@ -2,7 +2,7 @@
   import { evaluation, weightedItemScore } from '$lib/stores/evaluation.svelte';
   import type { Criterion } from '$lib/stores/evaluation.svelte';
   import ScoreField from './ScoreField.svelte';
-  import AutoTextarea from './AutoTextarea.svelte';
+  import AutoTextarea from '$lib/components/shared/AutoTextarea.svelte';
   import VerticalRows from './VerticalRows.svelte';
   import SamletVurdering from './SamletVurdering.svelte';
   import { scoreColor, fS, shortName, VERTICAL_THRESHOLD, COMPACT_THRESHOLD } from './shared';
