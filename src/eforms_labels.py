@@ -33,6 +33,7 @@ OVERRIDES: dict[str, dict[str, str]] = {
         "neg-wo-call": "Forhandling uten kunngjøring",
         "oth-single": "Direkte anskaffelse",
         "oth-mult": "Annet (flere prosedyrer)",
+        "simple": "Minikonkurranse",
     },
     "contract-nature": {
         "services": "Tjeneste",
@@ -57,6 +58,7 @@ ARTIFIK_PROCEDURE_TO_EFORMS: dict[str, str] = {
     "Innovation partnership": "innovation",
     "Negotiated without publication": "neg-wo-call",
     "Direct award": "oth-single",
+    "simple": "simple",  # Artifik-only: minikonkurranse under rammeavtale
 }
 
 ARTIFIK_NATURE_TO_EFORMS: dict[str, str] = {
@@ -77,6 +79,7 @@ _ARTIFIK_STATIC: dict[str, dict[str, str]] = {
         "Innovation partnership": "Innovasjon",
         "Negotiated without publication": "Uten kunngj.",
         "Direct award": "Direkte",
+        "simple": "Minikonk.",
     },
     "procedure-del2": {
         "Open": "Åpen tilbudskonkurranse",
