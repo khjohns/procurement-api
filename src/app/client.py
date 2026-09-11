@@ -208,6 +208,27 @@ class ArtifikClient:
     def get_contract(self, contract_id: int) -> dict:
         return self._get(f"/external/contracts/{contract_id}")
 
+    # -- Deviations (KAV) --------------------------------------------
+
+    @mcp_tool(
+        description="List contract deviations (KAV avvik). Optionally filter by page, pageSize, or organization."
+    )
+    def list_deviations(
+        self,
+        *,
+        page: int | None = None,
+        page_size: int | None = None,
+        organization_id: str | None = None,
+    ) -> dict:
+        return self._get(
+            "/external/deviations",
+            {
+                "page": str(page) if page is not None else None,
+                "pageSize": str(page_size) if page_size is not None else None,
+                "organizationId": organization_id,
+            },
+        )
+
     # -- Organizations -----------------------------------------------
 
     @mcp_tool(description="List organizations. Optionally include sub-organizations.")

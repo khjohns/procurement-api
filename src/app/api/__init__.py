@@ -51,6 +51,7 @@ log = logging.getLogger(__name__)
 
 _CACHE_TTL = 120  # seconds
 _proc_cache: dict[str, tuple[float, list[dict]]] = {}
+_contracts_cache: dict[str, tuple[float, list[dict]]] = {}
 _activity_cache: dict[int, tuple[float, list[dict]]] = {}
 
 _executor = ThreadPoolExecutor(max_workers=10)
@@ -130,7 +131,13 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         besvart: bool = True,
         avvist: bool = False,
     ) -> dict:
-        h: dict = {"type": typ, "action": action, "dato": dato, "label": label, "besvart": besvart}
+        h: dict = {
+            "type": typ,
+            "action": action,
+            "dato": dato,
+            "label": label,
+            "besvart": besvart,
+        }
         if avvist:
             h["avvist"] = True
         return h
@@ -159,7 +166,12 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 
     for a in by_action[ACTION_QUALIFYING_PARTICIPANTS]:
         hendelser.append(
-            _h("S", ACTION_QUALIFYING_PARTICIPANTS, _iso_date(a), "Kvalifiserte leverandører")
+            _h(
+                "S",
+                ACTION_QUALIFYING_PARTICIPANTS,
+                _iso_date(a),
+                "Kvalifiserte leverandører",
+            )
         )
 
     for a in by_action[ACTION_REJECT_PARTICIPATION]:
@@ -169,20 +181,22 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
         # SUBMIT_BID/ASK_TO_QUALIFY activities to resolve the supplier name.
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            _h("S", ACTION_REJECT_PARTICIPATION, _iso_date(a), f"Avvist: {name}", avvist=True)
+            _h(
+                "S",
+                ACTION_REJECT_PARTICIPATION,
+                _iso_date(a),
+                f"Avvist: {name}",
+                avvist=True,
+            )
         )
 
     # T — Tilbud
     for a in by_action[ACTION_SUBMIT_BID]:
         name = get_org_name(a, org_lookup)
-        hendelser.append(
-            _h("T", ACTION_SUBMIT_BID, _iso_date(a), f"Tilbud: {name}")
-        )
+        hendelser.append(_h("T", ACTION_SUBMIT_BID, _iso_date(a), f"Tilbud: {name}"))
 
     for a in by_action[ACTION_OPEN_BIDS]:
-        hendelser.append(
-            _h("T", ACTION_OPEN_BIDS, _iso_date(a), "Tilbudsåpning")
-        )
+        hendelser.append(_h("T", ACTION_OPEN_BIDS, _iso_date(a), "Tilbudsåpning"))
 
     # E — Evaluert
     for a in by_action[ACTION_AWARDING_PARTICIPANTS]:
@@ -192,9 +206,7 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 
     # P — Protokoll (from procurement field, not activity)
     if procurement.get("areAwardLettersSent"):
-        hendelser.append(
-            _h("P", ACTION_AWARD_LETTERS_SENT, "", "Tildelingsbrev sendt")
-        )
+        hendelser.append(_h("P", ACTION_AWARD_LETTERS_SENT, "", "Tildelingsbrev sendt"))
 
     # ── Non-node activities (shown only in hendelseslogg, not in timeline) ──
 
@@ -215,13 +227,23 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
 
     for a in by_action[ACTION_PUBLISH_CHANGE_PROCUREMENT]:
         hendelser.append(
-            _h("", ACTION_PUBLISH_CHANGE_PROCUREMENT, _iso_date(a), "Endring i konkurransen")
+            _h(
+                "",
+                ACTION_PUBLISH_CHANGE_PROCUREMENT,
+                _iso_date(a),
+                "Endring i konkurransen",
+            )
         )
 
     for a in by_action[ACTION_WITHDRAW_PARTICIPATION]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            _h("", ACTION_WITHDRAW_PARTICIPATION, _iso_date(a), f"Tilbaketrekking: {name}")
+            _h(
+                "",
+                ACTION_WITHDRAW_PARTICIPATION,
+                _iso_date(a),
+                f"Tilbaketrekking: {name}",
+            )
         )
 
     for a in by_action[ACTION_CONVERSATION_MARKED_COMPLETED]:
@@ -238,7 +260,12 @@ def _build_hendelser(procurement: dict, activities: list[dict]) -> list[dict]:
     for a in by_action[ACTION_CONVERSATION_REOPENED]:
         name = get_org_name(a, org_lookup)
         hendelser.append(
-            _h("", ACTION_CONVERSATION_REOPENED, _iso_date(a), f"Dialog gjenåpnet: {name}")
+            _h(
+                "",
+                ACTION_CONVERSATION_REOPENED,
+                _iso_date(a),
+                f"Dialog gjenåpnet: {name}",
+            )
         )
 
     # U — Opprettet (earliest activity — show actual activity name)
@@ -417,9 +444,7 @@ def list_mature_procurements():
     )
 
     # Fetch activities in parallel for all mature procurements
-    hendelser_map, doffin_map = _fetch_hendelser_and_doffin_parallel(
-        _client(), mature
-    )
+    hendelser_map, doffin_map = _fetch_hendelser_and_doffin_parallel(_client(), mature)
 
     results = []
     for p in mature:
@@ -488,14 +513,33 @@ def smart_doc_responses(procurement_id: int):
     return jsonify(data)
 
 
+def _cached_list_contracts(
+    org_id: str | None = None,
+    include_custom: bool = False,
+    limit_date: str | None = None,
+) -> list[dict]:
+    key = f"{org_id}:{include_custom}:{limit_date}"
+    now = time.monotonic()
+    cached = _contracts_cache.get(key)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
+    data = _client().list_contracts(
+        organization_id=org_id,
+        include_custom_fields=include_custom,
+        limit_date=limit_date,
+    )
+    _contracts_cache[key] = (now, data)
+    return data
+
+
 @bp.route("/contracts")
 def list_contracts():
     org_id = request.args.get("organizationId")
     limit_date = request.args.get("limitDate")
     include_custom = request.args.get("includeCustomFields") == "1"
-    data = _client().list_contracts(
-        organization_id=org_id,
-        include_custom_fields=include_custom,
+    data = _cached_list_contracts(
+        org_id=org_id,
+        include_custom=include_custom,
         limit_date=limit_date,
     )
     return jsonify(data)
@@ -504,6 +548,19 @@ def list_contracts():
 @bp.route("/contracts/<int:contract_id>")
 def get_contract(contract_id: int):
     data = _client().get_contract(contract_id)
+    return jsonify(data)
+
+
+@bp.route("/deviations")
+def list_deviations():
+    page = request.args.get("page", type=int)
+    page_size = request.args.get("pageSize", type=int)
+    org_id = request.args.get("organizationId")
+    data = _client().list_deviations(
+        page=page,
+        page_size=page_size,
+        organization_id=org_id,
+    )
     return jsonify(data)
 
 
