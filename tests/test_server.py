@@ -5,7 +5,10 @@ from artifik_mcp.server import MCPServer
 
 def test_server_registers_all_tools():
     """Server should have one tool per @mcp_tool-decorated client method."""
-    with patch.dict("os.environ", {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"}):
+    with patch.dict(
+        "os.environ",
+        {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"},
+    ):
         server = MCPServer()
 
     tool_names = {t["name"] for t in server.tools}
@@ -18,6 +21,7 @@ def test_server_registers_all_tools():
         "download_archive_zip",
         "list_contracts",
         "get_contract",
+        "list_deviations",
         "list_organizations",
         "get_organization_activities",
         "list_webhooks",
@@ -34,12 +38,17 @@ def test_server_registers_all_tools():
     }
 
     expected = expected_artifik | expected_doffin
-    assert tool_names == expected, f"Missing: {expected - tool_names}, Extra: {tool_names - expected}"
+    assert tool_names == expected, (
+        f"Missing: {expected - tool_names}, Extra: {tool_names - expected}"
+    )
 
 
 def test_server_handles_ping():
     """Server should respond to ping."""
-    with patch.dict("os.environ", {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"}):
+    with patch.dict(
+        "os.environ",
+        {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"},
+    ):
         server = MCPServer()
 
     response = server.handle_request({"jsonrpc": "2.0", "id": 1, "method": "ping"})
@@ -49,10 +58,15 @@ def test_server_handles_ping():
 
 def test_server_handles_tools_list():
     """Server should return tool definitions."""
-    with patch.dict("os.environ", {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"}):
+    with patch.dict(
+        "os.environ",
+        {"VENDOR_API_ID": "fake", "VENDOR_API_KEY": "fake", "DOFFIN_API_KEY": "fake"},
+    ):
         server = MCPServer()
 
-    response = server.handle_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    response = server.handle_request(
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
+    )
     assert response["id"] == 2
     tools = response["result"]["tools"]
     assert len(tools) > 0
