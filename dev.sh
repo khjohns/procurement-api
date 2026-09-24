@@ -6,6 +6,15 @@
 # Prereqs: gcloud auth login + access to procurement-mcp project
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Activate local .venv if it exists and not already active
+if [ -f "$SCRIPT_DIR/.venv/bin/activate" ] && [ "${VIRTUAL_ENV:-}" != "$SCRIPT_DIR/.venv" ]; then
+    source "$SCRIPT_DIR/.venv/bin/activate"
+fi
+
+export PYTHONPATH="$SCRIPT_DIR/src:${PYTHONPATH:-}"
+
 PROJECT=procurement-mcp
 
 echo "Fetching secrets from GCP Secret Manager…"
