@@ -74,10 +74,11 @@ Closes #<n>
 | DG-03 | Virksomhetskonfig og norsk formatering | 0 | DG-01 | kode |
 | DG-04 | Valideringsrammeverk og generelle regler | 0 | DG-02, DG-03 | kode |
 | DG-05 | Renderer, dokumentregister, sporing og CLI | 0 | DG-02, DG-03, DG-04 | kode |
+| DG-21 | Profilressurser (logo og font) fra punkt-assets | 0 | DG-03 | kode |
 | DG-06 | Malgjennomgang: protokoll uten kunngjøring | 1 | — | malgjennomgang |
 | DG-07 | Taggeskript og malkopi: protokoll | 1 | DG-05, DG-06, DG-A2 | kode |
 | DG-08 | Regelbaserte begrunnelsestekster | 1 | DG-04 | kode |
-| DG-09 | Dokumentdefinisjon: protokoll uten kunngjøring | 1 | DG-07, DG-08 | kode |
+| DG-09 | Dokumentdefinisjon: protokoll uten kunngjøring | 1 | DG-07, DG-08, DG-21 | kode |
 | DG-10 | Malgjennomgang: tilbudsinnbydelse | 2 | DG-09 | malgjennomgang |
 | DG-11 | Tilbudsinnbydelse: malkopi og dokumentdefinisjon | 2 | DG-10 | kode |
 | DG-12 | Klausulbibliotek (struktur og versjonering) | 3 | DG-05 | kode |
@@ -111,7 +112,7 @@ Fase 2+: DG-09 ─ DG-10 ─ DG-11     DG-05 ─ DG-12 ─┬─ DG-14 ; DG-15 �
 - Bestillingsbrevet: Grenseveien 78C / Postboks 6538 Etterstad, 0606 Oslo.
 - Fakturaadresse: Postboks 6532 Etterstad.
 
-Skal protokollen ha en enkel topptekst med logo fra konfig?
+Logokilden er avklart: `@oslokommune/punkt-assets` (se DG-21). Om protokollen skal ha topptekst med logo, bestemmes i DG-06.
 
 **Lukkes når:** Svaret er registrert i issuet. DG-03 kan merges med
 plassholdere, men DG-09 kan ikke tas i bruk før dette er lukket.
@@ -241,6 +242,31 @@ ADVARSEL, INFO) etter reglene i designplanen §6.2.
 - [ ] Streng modus nekter å generere ved FEIL og viser funnene.
 
 **Utenfor omfang:** Ekte maler.
+
+### DG-21 — Profilressurser (logo og font) fra punkt-assets
+`dokumentgen` `fase-0`
+
+**Leveranse:** Oslo-logoen ligger i virksomhetsprofilen med dokumentert kilde,
+og de visuelle testene kan gjengi dokumenter med Oslo Sans. Ingen fontfiler
+committes.
+
+**Innhold**
+- `scripts/dokumentgen/hent_profilressurser.py`:
+  - Laster ned `@oslokommune/punkt-assets` i låst versjon fra npm-registeret og verifiserer sha512 (`dist.integrity`).
+  - Lager PNG av logoen (`oslologo.svg`) med `cairosvg` og farge fra `profil.logo_farge`.
+  - Skriver `KILDE.toml` med versjon, sti, sha256 og lisensmerknad.
+- `konfig/profiler/oslobygg/oslologo.png`, `oslologo.svg` og `KILDE.toml`.
+- Testoppsett (bare for `-m visuell`): henter Oslo Sans woff2 ved kjøring og gjør den om til ttf med `fontTools` i en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`.
+- Seksjonen `[profil]` i `oslobygg.toml` (designplanen §6.1).
+
+**Akseptansekriterier**
+- [ ] Skriptet feiler hvis sha512 ikke stemmer.
+- [ ] Logo-PNG-en har minst 300 dpi ved bredden som brukes i malene.
+- [ ] En test feiler hvis det finnes fontfiler (`*.ttf`, `*.otf`, `*.woff*`) i repoet eller i `dokumentgen`-pakken.
+- [ ] Den visuelle testen gjengir med Oslo Sans når nettverk er tilgjengelig, og hoppes over med tydelig melding når det ikke er det.
+- [ ] Fontlisensen (designplanen §8.1) er dokumentert i `KILDE.toml`.
+
+**Utenfor omfang:** Innebygd font i dokumenter og PDF.
 
 ---
 

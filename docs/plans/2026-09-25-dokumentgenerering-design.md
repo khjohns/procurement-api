@@ -208,7 +208,11 @@ navn = "Oslobygg KF"
 juridisk_navn = "Oslo kommune v/ Oslobygg KF"
 orgnr = "924 599 545"
 beskrivelse = "Oslobygg KF er et kommunalt foretak med ca. 600 ansatte, …"
-logo = "oslobygg-logo.png"
+
+[profil]                      # se §8.1 — logo fra @oslokommune/punkt-assets
+logo = "profiler/oslobygg/oslologo.png"
+logo_farge = "#2A2859"        # Oslo mørkeblå (fallback-fargen i punkt-SVG-en)
+font = "Oslo Sans Office"     # navnet malene bruker; fonten legges ikke ved
 
 [virksomhet.besoksadresse]    # AVKLARES — malene har ulike adresser
 [virksomhet.postadresse]      # AVKLARES
@@ -361,6 +365,40 @@ generert vs. overstyrt.
 
 **Filnavn:** `{saksnummer}_{dokument-id}_{dato}.docx` (`/` i saksnummer → `-`).
 
+### 8.1 Profil: logo og font
+
+**Kilde:** [`@oslokommune/punkt-assets`](https://www.npmjs.com/package/@oslokommune/punkt-assets)
+(Oslo kommunes designsystem Punkt). Den brukte versjonen låses (19.0.4 per 2026-09-25).
+
+| Ressurs | I punkt-assets | Hva malene bruker i dag | Beslutning |
+|---------|----------------|--------------------------|------------|
+| Logo | `dist/logos/oslologo.svg` (vektor, `fill="var(--fg-color, #2A2859)"`) | Samme logo som punktgrafikk: svart JPEG 850×579 (protokoll), mørkeblå JPG 188×100 (tilbudsinnbydelse) | Én kilde. SVG gjøres om til PNG med høy oppløsning (≥ 300 dpi ved brukt bredde) og fast farge fra `profil.logo_farge`. python-docx/docxtpl støtter ikke SVG. |
+| Font | `Oslo Sans` som **woff/woff2** (nettfonter) | `Oslo Sans Office` (237 forekomster i protokollen) | Genererte dokumenter viser til `Oslo Sans Office` gjennom stilene i malkopien. **Fonten legges ikke ved og bygges ikke inn** i v1. |
+
+**Lisens (viktig):** npm-pakken er merket MIT, men fontfilene har en egen,
+strengere lisens i fontens navnetabell. Den sier at Oslo Sans og Oslo Sans
+Office er eksklusivt lisensiert til Oslo kommune, at bruken er begrenset til
+kommunens virksomhet, og at retten ikke kan overføres. Konsekvenser:
+
+- **Fontfiler committes aldri** til repoet og legges aldri i `dokumentgen`-pakken.
+  Pakken skal kunne flyttes, og fontretten følger ikke med.
+- Logoen er Oslo kommunes kjennetegn. Den hører til **virksomhetsprofilen**
+  (`konfig/profiler/oslobygg/`) og ikke til kjernekoden, sammen med en
+  `KILDE.toml` (pakkeversjon, filsti, sha256, lisensmerknad).
+- Fontens `fsType = 8` tillater redigerbar innbygging teknisk sett. Om
+  dokumenter som sendes til leverandører skal ha innebygd font, vurderes
+  sammen med eventuell PDF-generering (åpent punkt i §12).
+
+**Henting:** `scripts/dokumentgen/hent_profilressurser.py` laster ned den låste
+pakkeversjonen fra npm-registeret og verifiserer `dist.integrity` (sha512).
+Deretter henter skriptet ut logoen og lager PNG med `cairosvg` (bare en
+utviklingsavhengighet), og skriver `KILDE.toml`. Kjernen trenger verken npm
+eller node når den kjøres.
+
+**Mottakere utenfor kommunen:** Leverandører har som regel ikke `Oslo Sans
+Office`, så Word viser en erstatningsfont. Det er akseptert for `.docx` i v1.
+PDF med innebygd font er løsningen hvis det blir et problem.
+
 ## 9. Teststrategi og testkrav
 
 ### 9.1 Test før implementering — differensiert
@@ -386,7 +424,7 @@ generert vs. overstyrt.
 | Konsistens mellom dokumenter | Samme scenario gir samme verdi, frist, leverandør og krav i alle dokumenter som bruker dem. | Alltid |
 | Arkitektur | Importgrense-test (§4). | Alltid |
 | Ende-til-ende | CLI med `subprocess`: `valider` og `generer` per dokumenttype, avslutningskoder og filer. | Alltid |
-| Visuell | LibreOffice (`soffice --headless`) → PDF → PNG. Sjekker sidetall. PNG legges ved dokument-PR-er for manuell sammenligning med TQM-malen. Ingen pikselsammenligning, fordi den er for skjør. | `-m visuell`, manuelt |
+| Visuell | LibreOffice (`soffice --headless`) → PDF → PNG. Sjekker sidetall. PNG legges ved dokument-PR-er for manuell sammenligning med TQM-malen. Ingen pikselsammenligning, fordi den er for skjør. Fonten hentes fra punkt-assets ved testoppstart (woff2 → ttf med `fontTools`) til en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`. Den committes aldri. Office-varianten kan ha litt andre mål, så bildet er en tilnærming. | `-m visuell`, manuelt |
 
 ### 9.3 Krav
 
@@ -465,7 +503,8 @@ PYTHONPATH=src python -m dokumentgen generer protokoll-uten-kunngjoring sak.json
 3. **TQM-originaler i repo:** Kan originalene lagres (for diff ved ny versjon), eller bare hash?
 4. **Sensitivitetsetiketter:** Malene har Microsoft Purview-etiketter (MSIP) i egenskapene.
    Skal generert dokument arve dem, eller settes de av Websak/Office?
-5. **Logo:** TQM-toppteksten inneholder logoen. Skal protokollen ha en enkel topptekst med logo fra konfig?
+5. **Logo i protokollen:** Kilden er avklart (punkt-assets, §8.1). Det gjenstår å bestemme om protokollen skal ha en enkel topptekst med logo, nå som TQM-toppteksten fjernes (DG-06).
+8. **Font til eksterne mottakere:** Skal dokumenter til leverandører (tilbudsinnbydelse, bestillingsbrev) ha innebygd font eller sendes som PDF? Dette må vurderes opp mot fontlisensen (§8.1).
 6. **Malfeil å melde til JUR** (fra tilbudsinnbydelsen): «ansakffelser», «likebehanding»,
    «inidikerer», «Oppdragsgives», «dd.mm.ååå». Rettes i malkopien, men bør også rettes i TQM.
 7. **Manglende maler:** bestillingsbrev varer, bestillingsbrev B&A/renhold, meddelelsesbrev.
