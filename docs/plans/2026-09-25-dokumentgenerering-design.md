@@ -380,6 +380,9 @@ Fixture-saker for protokollen (minst):
 
 ## 10. Faseplan
 
+Fasene er brutt ned i issue-klare arbeidspakker med én PR og én leveranse
+hver, se [backlog](2026-09-25-dokumentgenerering-backlog.md).
+
 Hver dokumentfase starter med **malgjennomgang** (resultat i `maler/<id>/NOTAT.md`):
 feltliste, betingelser, hjelpetekst som skal bort, avvik mot andre maler,
 forenklinger — godkjennes før implementering.
