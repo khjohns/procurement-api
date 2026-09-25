@@ -361,22 +361,64 @@ generert vs. overstyrt.
 
 **Filnavn:** `{saksnummer}_{dokument-id}_{dato}.docx` (`/` i saksnummer → `-`).
 
-## 9. Teststrategi
+## 9. Teststrategi og testkrav
 
-| Nivå | Hva | Hvorfor |
-|------|-----|---------|
-| Enhet | `regler`, `tekst`, `format`, `kontekst`-funksjoner | Rene funksjoner, raske tester |
-| Kontrakt | Snapshot av JSON Schema | Fanger utilsiktede endringer i skjemakontrakten |
-| Mal-kontrakt | Alle variabler i malen (`get_undeclared_template_variables`) finnes i konteksten | Mal og kode kan ikke drifte fra hverandre |
-| Renhet | Generert docx inneholder ikke «Velg et element», MACROBUTTON, kommentarer, gul markering, `{{`/`{%` | Hjelpetekst lekker aldri ut |
-| Snapshot | Fixture-saker → tekstutdrag av docx sammenlignes med snapshot | Regresjon i innhold |
-| Arkitektur | Importgrense-test (§4) | Flyttbarhet |
+### 9.1 Test før implementering — differensiert
 
-Fixture-saker for protokollen (minst):
+| Område | Arbeidsform | Begrunnelse |
+|--------|-------------|-------------|
+| `regler/`, `format.py`, `tekst/`, kontekstfunksjoner, validering i `kontrakt/` | **TDD** (rød → grønn → refaktorer) | Rene funksjoner med tydelig spesifikasjon i prosedyren og malen. Testen er spesifikasjonen. |
+| Hver kode-PR | **Akseptansetest først** | Første commit i PR-en inneholder tester som koder issuets akseptansekriterier og feiler. Implementasjonen kommer i senere commits. Reviewer kan godkjenne testene (hva) før koden (hvordan). |
+| Taggeskript og docx-rendering | **Utforsk først, så karakteriseringstest** | Word-XML er uforutsigbart (runs, innholdskontroller). Det er lov å utforske, men oppførselen skal være låst med tester før merge. |
+| Malgjennomgang (NOTAT.md) | **Feltlisten er testspesifikasjonen** | Hvert felt i notatet blir en påstand i snapshot- eller konteksttesten til dokument-PR-en. |
+
+### 9.2 Testtyper
+
+| Type | Hva | Kjøres |
+|------|-----|--------|
+| Enhet | Rene funksjoner. Tabelldrevne tester (`pytest.mark.parametrize`) med **grenseverdier på begge sider** av hver terskel. | Alltid |
+| Scenariokatalog | Saker som JSON i `tests/dokumentgen/scenarier/` med forventede funnkoder og nøkkeltekster. Lesbar for juridisk. Nye regler og feil starter med et nytt scenario. | Alltid |
+| Egenskapsbasert | `hypothesis` for formatering (tusenskille, avrunding, aldri `-0`), for input-hash (uavhengig av nøkkelrekkefølge) og for at validering aldri krasjer på en gyldig `Sak`. | Alltid |
+| Kontrakt | Snapshot av JSON Schema. Publiserte eksempelpayloader for skjemaet valideres mot skjemaet. Eksempler fra eldre versjoner i samme hovedversjon må fortsatt validere (bakoverkompatibilitet). | Alltid |
+| Mal-kontrakt | Variablene i malen er de samme som i konteksten, begge veier. Ubrukte kontekstnøkler gir feil. | Alltid |
+| Dokument-snapshot | Generert docx → normalisert tekst og tabellstruktur → `.txt`-snapshot. Diffen leses i PR-en som innhold. Snapshots oppdateres bare med et eksplisitt flagg (`--oppdater-snapshots`), aldri automatisk. | Alltid |
+| Renhet | Ingen `{{`/`{%`, «Velg et element», MACROBUTTON, kommentarer eller gul markering i generert docx. | Alltid |
+| Konsistens mellom dokumenter | Samme scenario gir samme verdi, frist, leverandør og krav i alle dokumenter som bruker dem. | Alltid |
+| Arkitektur | Importgrense-test (§4). | Alltid |
+| Ende-til-ende | CLI med `subprocess`: `valider` og `generer` per dokumenttype, avslutningskoder og filer. | Alltid |
+| Visuell | LibreOffice (`soffice --headless`) → PDF → PNG. Sjekker sidetall. PNG legges ved dokument-PR-er for manuell sammenligning med TQM-malen. Ingen pikselsammenligning, fordi den er for skjør. | `-m visuell`, manuelt |
+
+### 9.3 Krav
+
+- **Determinisme:** Kjernen kaller aldri `datetime.now()` direkte. Klokken
+  sendes inn (`naa`), og testene bruker fast tid. Sorteringen er stabil.
+  Docx sammenlignes på innhold (`word/document.xml` eller tekstutdrag), aldri
+  byte for byte, fordi zip-tidsstempler varierer.
+- **Dekningsgrad (branch coverage):** 100 % for `regler/` og `tekst/`, som er
+  juridisk logikk. Minst 90 % for pakken totalt. Dekningsgrad er et gulv, ikke
+  et mål. Mutasjonstesting (`mutmut`) på `regler/` kjøres ved behov og er ikke
+  et krav for merge.
+- **Sporbarhet:** Regeltester har navn etter regelen og viser til kilden, for
+  eksempel `test_v_skatteattest_eldre_enn_6_mnd_fra_frist_gir_feil`, med
+  docstring «TQM 836 v16 pkt. 6.6».
+- **Testdata:** Byggefunksjoner (`lag_sak(**overstyr)`) i stedet for kopierte
+  store JSON-filer. **Bare fiktive data.** Ingen ekte saker, navn,
+  personopplysninger eller organisasjonsnumre (unntatt Oslobyggs eget).
+- **Uavhengighet:** Ingen nettverk og ingen GCP-hemmeligheter. Testene kjører
+  offline med bare `pip install -e .[dokumentgen,dev]`.
+- **Hastighet:** Hele testsuiten, utenom visuelle tester, skal kjøre på under
+  30 sekunder.
+- **CI:** Repoet har ingen CI i dag. DG-01 legger inn en GitHub Actions-arbeidsflyt
+  som kjører `ruff` og `pytest --cov` for `dokumentgen` på PR-er som endrer
+  pakken. Uten CI er testkravene bare en avtale.
+
+### 9.4 Scenarier for protokollen (minimum)
+
 1. Tjeneste, kr 350 000, frivillig protokoll, 2 tilbud.
 2. Tjeneste, kr 850 000, 3 inviterte, 3 tilbud, skatteattest OK.
 3. Bygg og anlegg, kr 1 200 000, flere seriøsitetskrav, høy risiko, 1 invitert med unntaksbegrunnelse.
-4. Feilsaker: valgt tilbud finnes ikke, verdi over terskel, gammel skatteattest.
+4. Feilsaker: valgt tilbud finnes ikke, verdi over terskel, gammel skatteattest, tilbud etter frist.
+5. Tekst med spesialtegn og linjeskift (`&`, `<`, `"`, æøå, lange avsnitt).
 
 ## 10. Faseplan
 

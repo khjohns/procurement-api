@@ -42,9 +42,23 @@ Hvert issue gir **én PR** med én tydelig leveranse.
 Closes #<n>
 ```
 
+**Arbeidsflyt i en kode-PR** (se designplanen §9)
+1. **Første commit er tester som feiler** og koder issuets akseptansekriterier
+   (`test: akseptansetester for DG-nn`). For taggeskript og rendering er det
+   lov å utforske først, men testene skal være på plass før merge.
+2. Implementasjonen kommer i egne commits.
+3. Reviewer leser testene og snapshot-diffene først, deretter koden.
+
 **Definition of done (gjelder alle PR-er med kode)**
-- `ruff check src/dokumentgen tests/dokumentgen` og `ruff format --check` er grønne.
-- `pytest tests/dokumentgen` er grønn, og importgrense-testen passerer (fra DG-01).
+- CI er grønn (fra DG-01): `ruff check`, `ruff format --check` og `pytest --cov`
+  for `dokumentgen`.
+- Hvert akseptansekriterium har minst én test som ble skrevet før
+  implementasjonen, og som er synlig i commit-historikken.
+- Dekningsgraden holder: 100 % branch coverage for `regler/` og `tekst/`, minst 90 % totalt.
+- Nye regler har grenseverditester på begge sider av terskelen, og testen viser til regelkilden.
+- Snapshot-endringer er bevisste og forklart i PR-beskrivelsen.
+- Testene bruker bare fiktive data og kjører offline.
+- Dokument-PR-er har skjermbilde fra visuell test (`-m visuell`) i PR-beskrivelsen.
 - Nye offentlige funksjoner har docstring. Designplanen er oppdatert hvis
   designet er endret.
 - Ingen import fra `app/`, `protokoll/`, `artifik_mcp/` eller `eforms_labels`.
@@ -119,19 +133,25 @@ rendereren gjør med de egendefinerte egenskapene.
 ### DG-01 — Pakkeskjelett og arkitekturvern
 `dokumentgen` `fase-0`
 
-**Leveranse:** En tom, installerbar pakke `dokumentgen` med en test som
-håndhever at den ikke importerer noe fra resten av repoet.
+**Leveranse:** En tom, installerbar pakke `dokumentgen` med testoppsett, CI og
+en test som håndhever at den ikke importerer noe fra resten av repoet.
 
 **Innhold**
 - `src/dokumentgen/` med underpakker fra designplanen §4, foreløpig tomme.
 - Avhengighetsgruppen `dokumentgen = ["docxtpl", "pydantic>=2"]` i `pyproject.toml`, og `requirements-dokumentgen.txt`.
+- Testavhengighetene `pytest-cov` og `hypothesis` i dev-gruppen.
+- `[tool.pytest.ini_options]` med markøren `visuell` og innstillinger for dekningsgrad.
+- `tests/dokumentgen/conftest.py` med fast klokke og en påstandshjelper for snapshots (`--oppdater-snapshots`).
+- `.github/workflows/dokumentgen.yml`: `ruff` og `pytest --cov` på PR-er som endrer `src/dokumentgen/**` eller `tests/dokumentgen/**`.
 - `python -m dokumentgen --help` med tomme underkommandoer.
 - `tests/dokumentgen/test_importgrense.py`.
-- Seksjon om `dokumentgen` i `CLAUDE.md`.
+- Seksjon om `dokumentgen` i `CLAUDE.md`, med testkommandoer og kravene fra designplanen §9.
 
 **Akseptansekriterier**
 - [ ] `PYTHONPATH=src python -m dokumentgen --help` viser `schema`, `valider` og `generer`.
 - [ ] Importgrense-testen feiler hvis en modul i `dokumentgen` importerer `app`, `protokoll`, `artifik_mcp`, `eforms_labels` eller andre tredjepartspakker enn `docxtpl`, `docx`, `jinja2` og `pydantic`. Det er verifisert med en midlertidig ulovlig import.
+- [ ] CI-arbeidsflyten kjører og er grønn på PR-en selv. At den blir rød ved en testfeil er verifisert med en midlertidig commit.
+- [ ] `pytest tests/dokumentgen` kjører offline uten GCP-oppsett.
 - [ ] `ruff` er grønn.
 
 **Utenfor omfang:** All domenelogikk.
@@ -190,11 +210,13 @@ ADVARSEL, INFO) etter reglene i designplanen §6.2.
 - Regler som rene funksjoner: `V-TERSKEL`, `V-TILBUD-TERSKEL`, `V-VALGT-REF`, `V-MIN-INVITERTE`, `V-SKATTEATTEST`, `V-KONTRAKTSFORM`, `V-FRIST`, `V-MILJO-BEGR`, `V-PROTOKOLL-FRIVILLIG`.
 - Porten `Kravavleder` og `IngenKravavleder` (designplanen §6.3).
 - CLI-kommandoen `valider`: avslutningskode 1 ved FEIL, og utdata i lesbar form eller som `--json`.
+- Scenariokatalogen `tests/dokumentgen/scenarier/`: én JSON-sak per scenario med forventede funnkoder, og én parametrisert test som kjører alle scenariene.
 
 **Akseptansekriterier**
 - [ ] Hver regel har tester på begge sider av terskelen (499 999 / 500 000, 1 299 999 / 1 300 000).
 - [ ] Reglene leser terskler fra konfig. Ingen beløp står fast i koden (sjekkes med grep i testen).
 - [ ] Hvert funn har `regelkilde` (for eksempel «TQM 836 v16 pkt. 6.6»).
+- [ ] Egenskapsbasert test (`hypothesis`): validering krasjer aldri på en gyldig `Sak`, bare returnerer funn.
 
 **Utenfor omfang:** Dokumentspesifikke påkrevde felter (kommer i hver dokumentdefinisjon).
 
