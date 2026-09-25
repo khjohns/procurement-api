@@ -38,7 +38,7 @@ frontend-protokollen er inspirasjon, ikke fundament (se §11).
 | Kjøremiljø v1 | Lokalt hos eier (CLI). |
 | PDF | Eksterne dokumenter (tilbudsinnbydelse, kravvedlegg, bestillingsbrev, meddelelsesbrev) lages som docx + PDF. Protokollen lages bare som docx. Motor: LibreOffice headless (§8.2). |
 | Font | `Oslo Sans Office` fra IKT, installert i kjøremiljøet og innebygd i PDF. Aldri i pakken (§8.1). |
-| Repo og originaler | Privat repo, flyttes til Oslo kommune-organisasjon. TQM-originalene lagres i repoet (utenfor pakken) for reproduserbar tagging og sammenligning. |
+| Repo og originaler | Skal være privat og flyttes til Oslo kommune-organisasjon. TQM-originalene lagres i repoet (utenfor pakken) for reproduserbar tagging og sammenligning — **men først når repoet er privat** (§12, punkt 6). |
 
 ## 3. Dokumentkjeden (fra prosedyren)
 
@@ -568,6 +568,9 @@ PYTHONPATH=src python -m dokumentgen generer protokoll-uten-kunngjoring sak.json
 3. **Manglende maler:** bestillingsbrev varer, bestillingsbrev B&A/renhold, meddelelsesbrev.
 4. **Kravavledning (TypeScript):** tilgang til koden for portering (DG-13).
 5. **Fontfil:** `Oslo Sans Office` (TTF/OTF) fra IKT til kjøremiljøet (DG-22).
+6. **Repoet er offentlig** (GitHub-API 2026-09-25: `visibility: public`), i strid med forutsetningen
+   om privat repo. Inntil repoet er privat: ingen TQM-originaler, interne maler, fontfiler eller
+   ekte saksdata committes, og issues/PR-er må ikke inneholde internt materiale.
 
 ### Avklart 2026-09-25
 

@@ -8,6 +8,8 @@ Hvert issue gir **én PR** med én tydelig leveranse.
 
 ## Konvensjoner
 
+**GitHub:** Issuene er opprettet som #70–#98 (samleissuer #70–#75).
+
 **Issue ↔ PR**
 - Ett issue gir én PR. PR-en lukker issuet (`Closes #n`).
 - En PR som vokser utover leveransen, deles i flere PR-er. Nye funn blir egne
@@ -303,7 +305,7 @@ TQM-originalen, med manifest.
   - Gjør avkrysningsbokser og nedtrekkslister om til tagger.
   - Gjør tilbudstabellen om til en `{%tr for %}`-løkke.
 - `maler/protokoll-uten-kunngjoring/mal.docx` og `manifest.toml`, med TQM 999 v6 og hash av originalen.
-- TQM-originalen lagres i `scripts/dokumentgen/originaler/protokoll-uten-kunngjoring/` (utenfor pakken).
+- TQM-originalen lagres i `scripts/dokumentgen/originaler/protokoll-uten-kunngjoring/` (utenfor pakken). **Forutsetning:** repoet er privat (se designplanen §12, punkt 6).
 - Ny topptekst med tagger for logo, virksomhet, saksnummer og dokumenttype.
 
 **Akseptansekriterier**
@@ -459,6 +461,7 @@ kravene som gjelder for saken, til vedlegg til tilbudsinnbydelsen.
 **Akseptansekriterier**
 - [ ] Bare valgte seriøsitetskrav, kravsett og miljøkrav tas med.
 - [ ] Vedleggslisten i tilbudsinnbydelsen (DG-11) viser til kravvedlegget.
+- [ ] Både docx og PDF genereres (ekstern dokumenttype, DG-22).
 
 ---
 
