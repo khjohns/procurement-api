@@ -15,11 +15,16 @@ Hvert issue gir **én PR** med én tydelig leveranse.
 - ID-ene (`DG-01` …) er stabile og brukes i tittelen. GitHub-nummeret kommer i
   tillegg.
 
-**Etiketter og milepæler**
+**Etiketter og faser**
 - Etiketter: `dokumentgen` (alle), `fase-0` … `fase-5`, og i tillegg
   `malgjennomgang` (beslutnings-PR, ingen kode), `avklaring` (venter på svar,
   ingen PR) og `blokkert`.
-- Én milepæl per fase: «DG fase 0 — Fundament», «DG fase 1 — Protokoll» osv.
+- Én **samleissue per fase** («DG fase 0 — Fundament» osv.) med arbeidspakkene
+  som under-issues (sub-issues). Samleissuen lukkes når alle under-issues er
+  lukket. Milepæler kan legges til manuelt senere; de kan ikke opprettes med
+  verktøyene som brukes her.
+- Eier (jurist) godkjenner alle PR-er, også malgjennomganger og juridiske
+  formuleringer.
 
 **PR-beskrivelse** (samme struktur i alle PR-er)
 
@@ -67,8 +72,7 @@ Closes #<n>
 
 | ID | Tittel | Fase | Avhenger av | Type |
 |----|--------|------|-------------|------|
-| DG-A1 | Avklar organisasjonsdata og adresser | 0 | — | avklaring |
-| DG-A2 | Avklar lagring av TQM-originaler og sensitivitetsetiketter | 1 | — | avklaring |
+| DG-A1 | Avklar besøks- og postadresse | 0 | — | avklaring |
 | DG-01 | Pakkeskjelett og arkitekturvern | 0 | — | kode |
 | DG-02 | Input-kontrakt `Sak` v1.0 med JSON Schema | 0 | DG-01 | kode |
 | DG-03 | Virksomhetskonfig og norsk formatering | 0 | DG-01 | kode |
@@ -76,13 +80,14 @@ Closes #<n>
 | DG-05 | Renderer, dokumentregister, sporing og CLI | 0 | DG-02, DG-03, DG-04 | kode |
 | DG-21 | Profilressurser (logo og font) fra punkt-assets | 0 | DG-03 | kode |
 | DG-06 | Malgjennomgang: protokoll uten kunngjøring | 1 | — | malgjennomgang |
-| DG-07 | Taggeskript og malkopi: protokoll | 1 | DG-05, DG-06, DG-A2 | kode |
+| DG-07 | Taggeskript og malkopi: protokoll | 1 | DG-05, DG-06 | kode |
 | DG-08 | Regelbaserte begrunnelsestekster | 1 | DG-04 | kode |
 | DG-09 | Dokumentdefinisjon: protokoll uten kunngjøring | 1 | DG-07, DG-08, DG-21 | kode |
+| DG-22 | PDF for eksterne dokumenter (LibreOffice headless) | 2 | DG-05, DG-21 | kode |
 | DG-10 | Malgjennomgang: tilbudsinnbydelse | 2 | DG-09 | malgjennomgang |
-| DG-11 | Tilbudsinnbydelse: malkopi og dokumentdefinisjon | 2 | DG-10 | kode |
+| DG-11 | Tilbudsinnbydelse: malkopi og dokumentdefinisjon | 2 | DG-10, DG-22 | kode |
 | DG-12 | Klausulbibliotek (struktur og versjonering) | 3 | DG-05 | kode |
-| DG-13 | Koble på eksisterende kravavledning | 3 | DG-04 | kode |
+| DG-13 | Portere kravavledning fra TypeScript til Python | 3 | DG-04 | kode |
 | DG-14 | Kravvedlegg | 3 | DG-12, DG-13 | kode |
 | DG-15 | Malgjennomgang: bestillingsbrev (3 varianter) | 4 | DG-12 | malgjennomgang |
 | DG-16 | Bestillingsbrev tjenester | 4 | DG-15 | kode |
@@ -93,39 +98,35 @@ Closes #<n>
 
 ```
 Fase 0:  DG-01 ─┬─ DG-02 ─┬─ DG-04 ─┬─ DG-05
-                └─ DG-03 ─┘         │
-Fase 1:  DG-06 ──────────────────── DG-07 ─┬─ DG-09
+                └─ DG-03 ─┴─ DG-21  │
+Fase 1:  DG-06 ──────────────────── DG-07 ─┬─ DG-09 (+ DG-21)
                         DG-04 ─ DG-08 ─────┘
-Fase 2+: DG-09 ─ DG-10 ─ DG-11     DG-05 ─ DG-12 ─┬─ DG-14 ; DG-15 ─ DG-16 ─┬─ DG-17
-                                   DG-04 ─ DG-13 ─┘                         └─ DG-18
+Fase 2:  DG-05 + DG-21 ─ DG-22 ─┐
+         DG-09 ─ DG-10 ─────────┴─ DG-11
+Fase 3+: DG-05 ─ DG-12 ─┬─ DG-14 ; DG-15 ─ DG-16 ─┬─ DG-17
+         DG-04 ─ DG-13 ─┘                         └─ DG-18
 ```
 
 ---
 
 ## Avklaringer (issues uten PR)
 
-### DG-A1 — Avklar organisasjonsdata og adresser
+### DG-A1 — Avklar besøks- og postadresse
 `dokumentgen` `fase-0` `avklaring`
 
-**Spørsmål:** Hvilke adresser er riktige?
+**Spørsmål:** Hvilken besøks- og postadresse er riktig for Oslobygg KF?
 - Tilbudsinnbydelsen: Grenseveien 82 / Postboks 6391 Etterstad, 0604 Oslo.
 - Bestillingsbrevet: Grenseveien 78C / Postboks 6538 Etterstad, 0606 Oslo.
-- Fakturaadresse: Postboks 6532 Etterstad.
 
-Logokilden er avklart: `@oslokommune/punkt-assets` (se DG-21). Om protokollen skal ha topptekst med logo, bestemmes i DG-06.
+Allerede avklart (2026-09-25): orgnr. 924 599 545 og fakturaopplysninger
+(Oslobygg KF, Oslo kommune Fakturasentralen, Postboks 6532 Etterstad, 0606
+Oslo; EHF med ressursnummer i BuyerReference). Se designplanen §6.1.
 
-**Lukkes når:** Svaret er registrert i issuet. DG-03 kan merges med
-plassholdere, men DG-09 kan ikke tas i bruk før dette er lukket.
+**Lukkes når:** Svaret er registrert i issuet og i `oslobygg.toml`. DG-03 kan
+merges med plassholdere, men dokumentene kan ikke tas i bruk før dette er lukket.
 
-### DG-A2 — Avklar lagring av TQM-originaler og sensitivitetsetiketter
-`dokumentgen` `fase-1` `avklaring`
-
-**Spørsmål:**
-1. Kan TQM-originalene lagres i repoet (for sammenligning ved ny versjon), eller bare kontrollsum?
-2. Skal genererte dokumenter arve Purview-etikettene (MSIP) fra malen, eller skal de fjernes?
-
-**Lukkes når:** Svaret er registrert. Det avgjør hva DG-07 lagrer, og hva
-rendereren gjør med de egendefinerte egenskapene.
+Andre avklaringer (TQM-originaler, sensitivitetsetiketter, topptekst, font,
+PDF, godkjenning) ble gjort 2026-09-25 og står i designplanen §2 og §12.
 
 ---
 
@@ -189,13 +190,13 @@ eksporteres til JSON Schema med `dokumentgen schema`.
 norsk formatering av beløp, dato og klokkeslett er på plass.
 
 **Innhold**
-- `konfig/`: modellene `Virksomhet` og `Regelverdier`, og en laster (`tomllib`, med `importlib.resources`).
-- `konfig/oslobygg.toml` med terskler fra TQM 836 v16. Adressene er markert som `AVKLARES` (DG-A1).
+- `konfig/`: modellene `Virksomhet`, `Faktura`, `Profil`, `PdfInnstillinger` og `Regelverdier`, og en laster (`tomllib`, med `importlib.resources`). Én virksomhet (Oslobygg KF) lastes som standard.
+- `konfig/oslobygg.toml` med orgnr., fakturaopplysninger (EHF, BuyerReference), og terskler fra TQM 836 v16. Besøks- og postadresse er markert som `AVKLARES` (DG-A1).
 - `format.py` med `belop()` («850 000»), `belop_protokoll()` («Kr. 850 000,-»), `dato()` («25.09.2026») og `klokkeslett()` («12:00», Europe/Oslo).
 
 **Akseptansekriterier**
 - [ ] Konfigen lastes både fra kildetre og fra installert pakke (test med `importlib.resources`).
-- [ ] Ukjent virksomhetsnøkkel gir en tydelig feil.
+- [ ] En annen konfigfil kan sendes inn (for tester). Mangler eller ugyldige felter gir tydelig feil med sti.
 - [ ] Formateringen er testet med grenseverdier: 0, 999, 1 000, 1 300 000, desimaler, og en UTC-tid som krysser midnatt i Oslo.
 
 **Utenfor omfang:** Bruk av konfig i regler (DG-04).
@@ -208,7 +209,7 @@ ADVARSEL, INFO) etter reglene i designplanen §6.2.
 
 **Innhold**
 - `Funn(kode, alvorlighet, sti, melding, regelkilde)`.
-- Regler som rene funksjoner: `V-TERSKEL`, `V-TILBUD-TERSKEL`, `V-VALGT-REF`, `V-MIN-INVITERTE`, `V-SKATTEATTEST`, `V-KONTRAKTSFORM`, `V-FRIST`, `V-MILJO-BEGR`, `V-PROTOKOLL-FRIVILLIG`.
+- Regler som rene funksjoner: `V-TERSKEL`, `V-TILBUD-TERSKEL`, `V-VALGT-REF`, `V-MIN-INVITERTE`, `V-SKATTEATTEST`, `V-KONTRAKTSFORM`, `V-FRIST`, `V-MILJO-BEGR`, `V-PROTOKOLL-FRIVILLIG`, `V-RESSURSNUMMER`.
 - Porten `Kravavleder` og `IngenKravavleder` (designplanen §6.3).
 - CLI-kommandoen `valider`: avslutningskode 1 ved FEIL, og utdata i lesbar form eller som `--json`.
 - Scenariokatalogen `tests/dokumentgen/scenarier/`: én JSON-sak per scenario med forventede funnkoder, og én parametrisert test som kjører alle scenariene.
@@ -228,7 +229,7 @@ ADVARSEL, INFO) etter reglene i designplanen §6.2.
 `.sporing.json` for en registrert dokumenttype, her vist med en testmal.
 
 **Innhold**
-- `render/`: protokollen `Renderer` og `DocxtplRenderer` med `autoescape=True`, fritekst med linjeskift (`RichText`), dokumentegenskaper og egendefinerte sporingsegenskaper.
+- `render/`: protokollen `Renderer` og `DocxtplRenderer` med `autoescape=True`, fritekst med linjeskift (`RichText`), dokumentegenskaper og egendefinerte sporingsegenskaper. Alle `MSIP_Label_*`-egenskaper arvet fra malen fjernes.
 - `dokumenter/base.py`: `Dokumentdefinisjon` og et register.
 - `sporing.py`: `Sporingspost`, input-hash (kanonisk JSON) og filnavnkonvensjon.
 - Modus `--utkast`, som genererer selv om det finnes FEIL og markerer manglende felter.
@@ -240,8 +241,9 @@ ADVARSEL, INFO) etter reglene i designplanen §6.2.
 - [ ] Sporingsfilen inneholder dokument-id, malmanifest, `schema_versjon`, `regler.kilde`, input-hash og funn.
 - [ ] Samme input gir samme input-hash. Endret input gir ny hash.
 - [ ] Streng modus nekter å generere ved FEIL og viser funnene.
+- [ ] Generert docx har ingen `MSIP_Label_*`-egenskaper, også når testmalen har dem.
 
-**Utenfor omfang:** Ekte maler.
+**Utenfor omfang:** Ekte maler og PDF (DG-22).
 
 ### DG-21 — Profilressurser (logo og font) fra punkt-assets
 `dokumentgen` `fase-0`
@@ -256,17 +258,17 @@ committes.
   - Lager PNG av logoen (`oslologo.svg`) med `cairosvg` og farge fra `profil.logo_farge`.
   - Skriver `KILDE.toml` med versjon, sti, sha256 og lisensmerknad.
 - `konfig/profiler/oslobygg/oslologo.png`, `oslologo.svg` og `KILDE.toml`.
-- Testoppsett (bare for `-m visuell`): henter Oslo Sans woff2 ved kjøring og gjør den om til ttf med `fontTools` i en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`.
+- Testoppsett (bare for `-m visuell`): bruker installert `Oslo Sans Office` hvis den finnes (`fc-list`). Ellers hentes Oslo Sans woff2 ved kjøring og gjøres om til ttf med `fontTools` i en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`.
 - Seksjonen `[profil]` i `oslobygg.toml` (designplanen §6.1).
 
 **Akseptansekriterier**
 - [ ] Skriptet feiler hvis sha512 ikke stemmer.
 - [ ] Logo-PNG-en har minst 300 dpi ved bredden som brukes i malene.
 - [ ] En test feiler hvis det finnes fontfiler (`*.ttf`, `*.otf`, `*.woff*`) i repoet eller i `dokumentgen`-pakken.
-- [ ] Den visuelle testen gjengir med Oslo Sans når nettverk er tilgjengelig, og hoppes over med tydelig melding når det ikke er det.
+- [ ] Den visuelle testen gjengir med installert `Oslo Sans Office`, eller med Oslo Sans fra punkt når nettverk er tilgjengelig. Ellers hoppes den over med tydelig melding.
 - [ ] Fontlisensen (designplanen §8.1) er dokumentert i `KILDE.toml`.
 
-**Utenfor omfang:** Innebygd font i dokumenter og PDF.
+**Utenfor omfang:** PDF og innebygd font (DG-22).
 
 ---
 
@@ -281,7 +283,8 @@ beskriver felt for felt hva som genereres, hva som fjernes og hva som forenkles.
 **Innhold**
 - Feltliste med kilde i `Sak` (fra designplanen §7), med avvik markert.
 - Hjelpetekst, kommentarer og faste elementer som skal fjernes.
-- Beslutninger om topptekst og logo (DG-A1), antall tilbudsrader og formatet på miljøfeltet.
+- Topptekst er besluttet: logo, «Oslobygg KF», saksnummer og dokumenttype. Notatet avgjør plassering, og om bunnteksten skal ha side X av Y.
+- Beslutninger om antall tilbudsrader og formatet på miljøfeltet.
 - Forenklinger som foreslås, med begrunnelse.
 
 **Akseptansekriterier**
@@ -300,7 +303,8 @@ TQM-originalen, med manifest.
   - Gjør avkrysningsbokser og nedtrekkslister om til tagger.
   - Gjør tilbudstabellen om til en `{%tr for %}`-løkke.
 - `maler/protokoll-uten-kunngjoring/mal.docx` og `manifest.toml`, med TQM 999 v6 og hash av originalen.
-- Lagring av originalen i henhold til DG-A2.
+- TQM-originalen lagres i `scripts/dokumentgen/originaler/protokoll-uten-kunngjoring/` (utenfor pakken).
+- Ny topptekst med tagger for logo, virksomhet, saksnummer og dokumenttype.
 
 **Akseptansekriterier**
 - [ ] Skriptet feiler med tydelig melding hvis et forventet anker mangler (testet med en endret kopi).
@@ -314,11 +318,11 @@ TQM-originalen, med manifest.
 `dokumentgen` `fase-1`
 
 **Leveranse:** `tekst.begrunnelse(sak, regler)` lager protokollens
-begrunnelsesfelt i tre deler, med formuleringer fra en fil som juridisk kan
-gjennomgå.
+begrunnelsesfelt i tre deler, med formuleringer fra en fil som eier (jurist)
+godkjenner.
 
 **Innhold**
-- `tekst/fraser.toml` med formuleringer. Hver formulering har `status = "utkast" | "godkjent"`.
+- `tekst/fraser.toml` med formuleringer. Hver formulering har `status = "utkast" | "godkjent"`. Eier setter `godkjent` i PR-review.
 - Tre rene funksjoner:
   - Hvorfor anskaffelsen er lovlig uten kunngjøring.
   - Hvorfor bare én eller få leverandører er invitert.
@@ -356,6 +360,31 @@ ferdig utfylt protokoll som kan sendes til godkjenning i Websak.
 
 ## Fase 2 — Tilbudsinnbydelse
 
+### DG-22 — PDF for eksterne dokumenter (LibreOffice headless)
+`dokumentgen` `fase-2`
+
+**Leveranse:** Eksterne dokumenttyper genereres som docx + PDF med innebygd
+`Oslo Sans Office`, og generatoren nekter å lage PDF med erstatningsfont i
+streng modus.
+
+**Innhold**
+- `render/pdf.py`: protokollen `PdfKonverterer` og `LibreOfficeKonverterer`:
+  - `soffice --headless --convert-to pdf`, med egen midlertidig brukerprofil (`-env:UserInstallation`) per kjøring.
+  - Tidsavbrudd, og tydelig feil hvis `soffice` mangler. Stien leses fra `pdf.soffice` eller `DOKUMENTGEN_SOFFICE`.
+- Fontkontroll etter konvertering: fontlisten i PDF-en skal inneholde `Oslo Sans Office`.
+- `Dokumentdefinisjon.ekstern` styrer om PDF lages. CLI-flaggene `--pdf` og `--ingen-pdf` overstyrer.
+- Sporing med hash av både docx og PDF.
+- Installasjonsveiledning for lokal bruk: LibreOffice og `Oslo Sans Office` (fra IKT) på macOS/Windows.
+
+**Akseptansekriterier**
+- [ ] En testmal merket som ekstern gir både `.docx` og `.pdf`.
+- [ ] Manglende font gir `FEIL` i streng modus og `ADVARSEL` med `--utkast`.
+- [ ] Manglende `soffice` gir tydelig feilmelding, ikke et krasj.
+- [ ] To samtidige konverteringer låser ikke hverandre.
+- [ ] Testene er merket `-m pdf` og hoppes over med tydelig melding når LibreOffice eller fonten mangler.
+
+**Utenfor omfang:** Andre PDF-motorer (Word, Microsoft Graph). Grensesnittet gjør det mulig å legge dem til senere.
+
 ### DG-10 — Malgjennomgang: tilbudsinnbydelse
 `dokumentgen` `fase-2` `malgjennomgang`
 
@@ -367,7 +396,7 @@ ferdig utfylt protokoll som kan sendes til godkjenning i Websak.
   - bestillingsbrev eller kontrakt
   - kommunikasjon via e-post eller KGV
 - Kriterietabeller og vedleggsliste som utledes fra saken.
-- Skrivefeil som skal meldes til juridisk («ansakffelser», «likebehanding», «inidikerer», «Oppdragsgives», «dd.mm.ååå»).
+- Skrivefeil som rettes i malkopien og meldes til TQM-eier («ansakffelser», «likebehanding», «inidikerer», «Oppdragsgives», «dd.mm.ååå»).
 - Hvordan henvisningen til Oslomodellen og aktsomhetsvurderinger erstattes med konkrete krav fra `Sak.krav`.
 
 **Akseptansekriterier:** Som DG-06.
@@ -382,6 +411,7 @@ tilbudsinnbydelse der innholdet stemmer med protokollen for samme sak.
 - [ ] Taggeskript, malkopi og manifest oppfyller de samme kriteriene som i DG-07.
 - [ ] Test av sammenhengen mellom dokumentene: samme sak gir samme tilbudsfrist, krav og verdi i protokoll og tilbudsinnbydelse.
 - [ ] Setningen om skatteattest vises bare fra 500 000 kr.
+- [ ] Både docx og PDF genereres (ekstern dokumenttype, DG-22).
 
 ---
 
@@ -400,13 +430,23 @@ dokumenter.
 - [ ] Hver klausul har kilde, versjon og gyldig-fra-dato.
 - [ ] Klausulversjonen som er brukt, registreres i sporingen.
 
-### DG-13 — Koble på eksisterende kravavledning
+### DG-13 — Portere kravavledning fra TypeScript til Python
 `dokumentgen` `fase-3`
 
-**Leveranse:** Den eksisterende koden for kravavledning implementerer porten
-`Kravavleder`. Avvik mellom forslag og valg gir ADVARSEL med krav om begrunnelse.
+**Leveranse:** `OslomodellenKravavleder` (Python) gir samme kravforslag som
+eierens eksisterende TypeScript-kode for alle felles scenarier. Avvik mellom
+forslag og valg gir ADVARSEL med krav om begrunnelse.
+
+**Blokkert av:** Tilgang til TypeScript-koden.
+
+**Innhold**
+- Scenariofiler `tests/dokumentgen/scenarier/krav/*.json` (input og forventet forslag). De lages først ved å kjøre TS-koden på et representativt utvalg saker, og dekker alle grener i TS-koden.
+- Python-port som implementerer `Kravavleder`.
+- Et lite skript som kan kjøre de samme scenariene mot TS-koden (utenfor pakken), så lenge begge implementasjonene finnes.
 
 **Akseptansekriterier**
+- [ ] Første commit: scenariofilene. De feiler mot `IngenKravavleder`.
+- [ ] Python-porten består alle scenariene.
 - [ ] Input-kontrakten er uendret (ingen ny hovedversjon).
 - [ ] `krav.kilde` og forslaget registreres i sporingen.
 
@@ -437,18 +477,36 @@ med valg fra `Sak.krav`. Valget mellom totalpris og honorarbudsjett, og
 fakturafeltene, beskrives også.
 
 ### DG-16 — Bestillingsbrev tjenester
+`dokumentgen` `fase-4`
+
+**Leveranse:** `dokumentgen generer bestillingsbrev-tjenester sak.json` gir
+docx + PDF, og etablerer felles kontekst for alle bestillingsbrev.
+
+**Akseptansekriterier**
+- [ ] Oslomodellen-vedlegget hentes fra klausulbiblioteket etter valgte krav.
+- [ ] `gjelder_for` avviser saker fra 500 000 kr, der kontrakt kreves (V-KONTRAKTSFORM).
+- [ ] Fakturaopplysningene (adresse, EHF, ressursnummer i BuyerReference) hentes fra konfig og saken. Manglende ressursnummer gir FEIL.
+- [ ] Både docx og PDF genereres (DG-22).
+
 ### DG-17 — Bestillingsbrev varer
+`dokumentgen` `fase-4`
+
+**Leveranse:** `dokumentgen generer bestillingsbrev-varer sak.json`. Legger
+bare til malkopi og forskjeller fra den felles konteksten i DG-16.
+
+**Blokkert av:** Mal for bestillingsbrev varer.
+
+**Akseptansekriterier:** Som DG-16, pluss at forskjellene fra DG-15 er dekket av snapshot-tester.
+
 ### DG-18 — Bestillingsbrev bygg og anlegg / renhold
 `dokumentgen` `fase-4`
 
-**Leveranse (hver):** `dokumentgen generer bestillingsbrev-<variant> sak.json`.
-DG-16 etablerer felles kontekst. DG-17 og DG-18 legger bare til maler og
-forskjeller.
+**Leveranse:** `dokumentgen generer bestillingsbrev-bygg-renhold sak.json`.
+Legger bare til malkopi og forskjeller fra den felles konteksten i DG-16.
 
-**Akseptansekriterier (hver)**
-- [ ] Oslomodellen-vedlegget hentes fra klausulbiblioteket etter valgte krav.
-- [ ] `gjelder_for` avviser saker fra 500 000 kr, der kontrakt kreves (V-KONTRAKTSFORM).
-- [ ] Fakturaadressen hentes fra virksomhetskonfig.
+**Blokkert av:** Mal for bestillingsbrev bygg og anlegg / renhold.
+
+**Akseptansekriterier:** Som DG-16, pluss at forskjellene fra DG-15 er dekket av snapshot-tester.
 
 ---
 
@@ -470,3 +528,4 @@ tilbyder, med kort begrunnelse (prosedyre 6.7).
 
 **Akseptansekriterier**
 - [ ] Begrunnelsen gjenbruker `tekst/` fra DG-08, og er konsistent med protokollen for samme sak.
+- [ ] Både docx og PDF genereres (DG-22).

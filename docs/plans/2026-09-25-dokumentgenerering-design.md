@@ -1,7 +1,7 @@
 # Design: Dokumentgenerering for anskaffelser uten kunngjøring
 
 **Dato:** 2026-09-25
-**Status:** Utkast — til godkjenning
+**Status:** Utkast — til godkjenning (beslutninger avklart 2026-09-25, se §2)
 **Relatert:** [ADR-005](../adr-005-dokumentgenerering.md)
 
 ## 1. Oppgave
@@ -12,8 +12,9 @@ av enkeltanskaffelser som ikke må kunngjøres* (TQM dok-ID 836, v16, godkjent
 (TQM 999, v6). Datamodellen skal dimensjoneres for hele dokumentkjeden fra
 start, men hver mal gjennomgås konkret før den implementeres, og kan forenkles.
 
-Koden skal ha god arkitektur og integritet, og kunne flyttes ut av dette repoet
-uten endringer. Den eksisterende protokollgeneratoren (`src/protokoll/`) og
+Løsningen bygges for **Oslobygg KF, Oslo kommune**. Koden skal ha god
+arkitektur og integritet, og kunne flyttes ut av dette repoet uten endringer
+(repoet er privat og skal flyttes til en GitHub-organisasjon i Oslo kommune). Den eksisterende protokollgeneratoren (`src/protokoll/`) og
 frontend-protokollen er inspirasjon, ikke fundament (se §11).
 
 ## 2. Beslutninger (avklart 2026-09-25)
@@ -24,14 +25,20 @@ frontend-protokollen er inspirasjon, ikke fundament (se §11).
 | Input | Vi eier kontrakten: pydantic-modell → JSON Schema. Bestillingsskjemaet (utenfor repo) mappes til den. |
 | Senere faser | Tilbud, evaluering og begrunnelse kommer som strukturert input (JSON), ikke manuell utfylling i Word. |
 | Protokoll | Ett trinn (komplett etter evaluering). Tilgjengelig fra kr 100 000 (frivillig), påkrevd fra kr 500 000. |
-| Kravvalg | Seriøsitetskrav/kravsett/miljø kommer som input. Eksisterende kode for kravavledning bygges inn senere via et definert grensesnitt (§6.3). |
+| Kravvalg | Seriøsitetskrav/kravsett/miljø kommer som input. Eierens eksisterende kravavledning (TypeScript) porteres senere til Python, med felles scenariofiler som sikrer lik oppførsel (§6.3). |
 | Klausultekster | Utsatt. Protokollen trenger kun valgene. Klausulbibliotek lages sammen med kravvedlegg/bestillingsbrev. |
 | Begrunnelser | Regelbasert tekstforslag fra strukturerte data, kan overstyres av bruker. |
+| Godkjenning | Eier er jurist og godkjenner malgjennomganger, juridiske formuleringer og PR-er. Ikke eget JUR-steg. |
 | Maler | docxtpl på maskinlesbar malkopi, med manifest som knytter kopien til TQM-dok-ID og versjon. |
-| TQM-topptekst | Fjernes i generert dokument. Sporing lagres i dokumentegenskaper og sidefil. |
-| Organisasjonsdata | Sentral konfigurasjon per virksomhet. |
+| TQM-topptekst | Fjernes. Erstattes av topptekst med logo, «Oslobygg KF», saksnummer og dokumenttype. Sporing lagres i dokumentegenskaper og sidefil. |
+| Sensitivitetsetiketter | Purview/MSIP-egenskaper arvet fra malen fjernes. Office/Websak setter etikett. |
+| Organisasjonsdata | Én virksomhet (Oslobygg KF). Data ligger i konfigurasjon, ikke i malene. Saken har ikke eget `virksomhet`-felt. |
 | Avhengigheter | `docxtpl` (→ python-docx, Jinja2) og `pydantic` v2. Øvrig kun standardbibliotek. |
 | Grensesnitt v1 | Bibliotek + CLI. HTTP/MCP kommer senere som tynne adaptere utenfor kjernen. |
+| Kjøremiljø v1 | Lokalt hos eier (CLI). |
+| PDF | Eksterne dokumenter (tilbudsinnbydelse, kravvedlegg, bestillingsbrev, meddelelsesbrev) lages som docx + PDF. Protokollen lages bare som docx. Motor: LibreOffice headless (§8.2). |
+| Font | `Oslo Sans Office` fra IKT, installert i kjøremiljøet og innebygd i PDF. Aldri i pakken (§8.1). |
+| Repo og originaler | Privat repo, flyttes til Oslo kommune-organisasjon. TQM-originalene lagres i repoet (utenfor pakken) for reproduserbar tagging og sammenligning. |
 
 ## 3. Dokumentkjeden (fra prosedyren)
 
@@ -82,8 +89,9 @@ sak.json ──▶ kontrakt ──▶ regler ──────────▶ d
                              │                    │
                              └──▶ tekst ──────────┘
                                  (regelbaserte begrunnelser)
-virksomhet.toml ──────────────────────────────▶ (org-data, terskler, regelkilde)
+oslobygg.toml ────────────────────────────────▶ (org-data, profil, terskler, regelkilde)
 maler/<id>/{mal.docx, manifest.toml} ─────────────────────▶ render
+                                         .docx ──▶ pdf (LibreOffice) ──▶ .pdf  (bare eksterne dokumenter)
 ```
 
 ### Pakkestruktur
@@ -93,18 +101,20 @@ src/dokumentgen/
   __init__.py            # offentlig API: generer(), valider(), schema()
   __main__.py            # CLI
   kontrakt/              # pydantic-modeller for input (Sak m.m.) + JSON Schema-eksport
-  konfig/                # Virksomhet + Regelverdier (lastes fra TOML, tomllib)
+  konfig/                # Virksomhet, Profil og Regelverdier (lastes fra TOML, tomllib)
     oslobygg.toml
+    profiler/oslobygg/   # oslologo.svg/.png + KILDE.toml (fra punkt-assets, §8.1)
   regler/                # rene funksjoner: terskler, validering → Funn
     kravavleder.py       # port (Protocol) + IngenKravavleder
-  tekst/                 # regelbaserte begrunnelser + frasebibliotek (TOML, JUR-godkjent)
+  tekst/                 # regelbaserte begrunnelser + frasebibliotek (TOML, godkjent av eier)
   format.py              # norsk formatering: beløp, dato, klokkeslett
   dokumenter/            # én modul per dokumenttype
     base.py              # Dokumentdefinisjon, register
     protokoll_uten_kunngjoring.py
   render/
     base.py              # Renderer-protokoll
-    docxtpl_renderer.py  # docxtpl + etterbehandling (egenskaper, sporing)
+    docxtpl_renderer.py  # docxtpl + etterbehandling (egenskaper, sporing, fjerne MSIP)
+    pdf.py               # PdfKonverterer-protokoll + LibreOffice headless
   maler/
     protokoll-uten-kunngjoring/
       mal.docx           # maskinlesbar kopi med Jinja-tagger
@@ -116,6 +126,8 @@ tests/dokumentgen/
   snapshots/             # forventet tekst fra genererte dokumenter
 scripts/dokumentgen/
   tagg_protokoll.py      # reproduserbar konvertering TQM-original → malkopi
+  hent_profilressurser.py
+  originaler/            # TQM-originalene (ikke del av pakken)
 ```
 
 ### Avhengighetsretning (håndheves av test)
@@ -154,7 +166,6 @@ Konvensjoner:
 ```python
 class Sak(BaseModel):
     schema_versjon: Literal["1.0"]
-    virksomhet: str                        # nøkkel i konfig, f.eks. "oslobygg"
 
     # ── Grunndata (fra bestillingsskjema) ──
     saksnummer: str | None                 # Websak, «åå/nnnnn»
@@ -163,7 +174,7 @@ class Sak(BaseModel):
     kontraktstype: Kontraktstype           # vare | tjeneste | bygg_anlegg | renhold
     estimert_verdi: Decimal                # inkl. opsjoner, ekskl. mva (prosedyre 4.4)
     varighet: str | None                   # «Kontraktens varighet»
-    prosjekt: Prosjekt | None              # nummer, navn, leder, ressursnummer
+    prosjekt: Prosjekt | None              # nummer, navn, leder, ressursnummer (8 tegn, «B6xxxxxx»)
     personer: Personer                     # saksbehandler, budsjettfullmaktshaver, kontakt
 
     # ── Krav (protokoll innledende punkter) ──
@@ -202,6 +213,9 @@ kriterium) avgjøres når meddelelsesbrevet gjennomgås. Modellen tillater begge
 
 ### 6.1 Virksomhetskonfigurasjon (`konfig/oslobygg.toml`)
 
+Én virksomhet (Oslobygg KF). Konfigurasjonen lastes som standard; tester kan
+sende inn en annen fil.
+
 ```toml
 [virksomhet]
 navn = "Oslobygg KF"
@@ -209,14 +223,23 @@ juridisk_navn = "Oslo kommune v/ Oslobygg KF"
 orgnr = "924 599 545"
 beskrivelse = "Oslobygg KF er et kommunalt foretak med ca. 600 ansatte, …"
 
+[virksomhet.besoksadresse]    # AVKLARES (DG-A1) — malene har ulike adresser
+[virksomhet.postadresse]      # AVKLARES (DG-A1)
+
+[virksomhet.faktura]          # bekreftet av eier 2026-09-25
+mottaker = ["Oslobygg KF", "Oslo kommune Fakturasentralen"]
+adresse = ["Postboks 6532 Etterstad", "0606 Oslo"]
+format = "EHF"                # e-faktura i elektronisk handelsformat
+buyer_reference = "ressursnummer"   # 8 tegn, «B6xxxxxx», i feltet BuyerReference
+info_url = "https://www.oslo.kommune.no/for-vare-leverandorer/faktura-til-oslo-kommune/"
+
 [profil]                      # se §8.1 — logo fra @oslokommune/punkt-assets
 logo = "profiler/oslobygg/oslologo.png"
 logo_farge = "#2A2859"        # Oslo mørkeblå (fallback-fargen i punkt-SVG-en)
-font = "Oslo Sans Office"     # navnet malene bruker; fonten legges ikke ved
+font = "Oslo Sans Office"     # installeres i kjøremiljøet (fra IKT), aldri i pakken
 
-[virksomhet.besoksadresse]    # AVKLARES — malene har ulike adresser
-[virksomhet.postadresse]      # AVKLARES
-[virksomhet.fakturaadresse]   # Postboks 6532 Etterstad (bestillingsbrev) — AVKLARES
+[pdf]
+soffice = "soffice"           # sti til LibreOffice; kan overstyres med DOKUMENTGEN_SOFFICE
 
 [regler]
 kilde = "TQM 836 v16 (01.07.2026)"
@@ -251,6 +274,7 @@ Første regelsett (kilde i parentes):
 | `V-FRIST` | Tilbud mottatt etter tilbudsfrist (6.5) | ADVARSEL |
 | `V-MILJO-BEGR` | Miljø «alternativt/ikke aktuelt» uten begrunnelse (malkommentar) | ADVARSEL |
 | `V-PROTOKOLL-FRIVILLIG` | Verdi 100k–500k: protokoll er frivillig | INFO |
+| `V-RESSURSNUMMER` | Ressursnummer oppgitt, men ikke 8 tegn eller starter ikke med «B6» (EHF BuyerReference) | FEIL |
 
 Regler som krever tolkning (f.eks. sammenheng høy risiko ↔ kravsett) legges
 ikke inn før regelkilden er avklart — de hører hjemme i kravavlederen.
@@ -265,14 +289,26 @@ class IngenKravavleder:          # standard i v1: ingen forslag
     def foresla(self, sak): return Kravforslag.tomt()
 ```
 
-Når eksisterende kode kobles på: forslaget sammenlignes med valgt `krav`, og
+Eierens eksisterende kravavledning er skrevet i **TypeScript**. Den
+**porteres til Python** (`OslomodellenKravavleder`) i DG-13. For å sikre at
+oppførselen er lik:
+
+- Oppførselen til TypeScript-koden fanges først i **felles scenariofiler**
+  (`tests/dokumentgen/scenarier/krav/*.json`: input og forventet forslag), ved
+  å kjøre TS-koden på et representativt utvalg saker.
+- Python-porten må gi samme resultat for alle scenariene.
+- Scenariofilene er språkuavhengige. Så lenge begge implementasjonene finnes,
+  kan de kjøres mot TS-koden også, slik at avvik oppdages.
+
+Når kravavlederen er koblet på: forslaget sammenlignes med valgt `krav`, og
 avvik gir `ADVARSEL` som krever begrunnelse. Input-kontrakten endres ikke.
 
 ### 6.4 Regelbaserte begrunnelser (`tekst/`)
 
 Protokollens begrunnelsesfelt har tre deler; hver del bygges av en ren
 funksjon fra strukturerte data, med fraser fra `tekst/fraser.toml`
-(frasene skal kvalitetssikres av JUR — juridisk ordlyd ligger i data, ikke kode):
+(juridisk ordlyd ligger i data, ikke kode; hver frase har `status = "utkast" |
+"godkjent"`, og eier som jurist godkjenner):
 
 1. **Hvorfor lovlig uten kunngjøring** — fra estimert verdi vs. nasjonal terskel.
 2. **Hvorfor bare én/få leverandører** — kun når inviterte < 3; rammer inn
@@ -290,6 +326,7 @@ registrerer om teksten var generert eller overstyrt.
 class Dokumentdefinisjon:
     id: str                                   # "protokoll-uten-kunngjoring"
     mal: str                                  # mappe under maler/
+    ekstern: bool                             # True → også PDF (§8.2)
     gjelder_for: Callable[[Sak, Regler], Funn | None]
     krav: Callable[[Sak, Regler], list[Funn]] # dokumentspesifikke påkrevde felter
     kontekst: Callable[[Sak, Virksomhet, Regler], dict]
@@ -299,8 +336,9 @@ class Dokumentdefinisjon:
 Offentlig API:
 
 ```python
-generer(dokument_id, sak, *, virksomhet=None, utkast=False) -> Resultat
-    # Resultat: docx (bytes), funn (list[Funn]), sporing (Sporingspost)
+generer(dokument_id, sak, *, konfig=None, utkast=False, pdf=None) -> Resultat
+    # Resultat: docx (bytes), pdf (bytes | None), funn (list[Funn]), sporing (Sporingspost)
+    # pdf=None → følger Dokumentdefinisjon.ekstern
 valider(dokument_id, sak) -> list[Funn]
 schema() -> dict
 ```
@@ -309,6 +347,7 @@ schema() -> dict
 
 | Felt i malen | Kilde i `Sak` | Merknad |
 |--------------|---------------|---------|
+| Topptekst (ny) | logo, `virksomhet.navn`, `saksnummer`, dokumenttype | Erstatter TQM-toppteksten. Side X av Y i bunnteksten avgjøres i DG-06. |
 | Saksbehandler | `personer.saksbehandler.navn` | |
 | Saksnr. | `saksnummer` | |
 | Anskaffelsen gjelder | `tittel` | |
@@ -337,7 +376,9 @@ fjerner topptekst/bunntekst fra TQM, kommentarer og veiledningstekst;
 erstatter innholdskontroller (avkrysning, nedtrekk) og MACROBUTTON-er med
 Jinja-tagger; gjør faste tabellrader om til `{%tr for %}`-løkker. Skriptet
 feiler eksplisitt hvis forventede ankere ikke finnes — slik oppdages
-strukturendringer når TQM publiserer ny versjon.
+strukturendringer når TQM publiserer ny versjon. TQM-originalene lagres i
+`scripts/dokumentgen/originaler/<id>/` (utenfor pakken), slik at skriptet kan
+kjøres på nytt og nye versjoner kan sammenlignes med de gamle.
 
 **Manifest (`manifest.toml`):**
 
@@ -354,16 +395,17 @@ malkopi_versjon = 1
 
 **Rendering:** `DocxTemplate.render(kontekst, autoescape=True)` (brukertekst
 med `&`/`<` må ikke ødelegge XML). Fritekst med linjeskift via `RichText`.
-Etterbehandling: dokumentegenskaper (tittel, forfatter = saksbehandler) og
+Etterbehandling: dokumentegenskaper (tittel, forfatter = saksbehandler),
 egendefinerte egenskaper for sporing (`dokumentgen.mal`, `.malversjon`,
-`.tqm`, `.input_sha256`, `.generert`).
+`.tqm`, `.input_sha256`, `.generert`), og fjerning av alle
+`MSIP_Label_*`-egenskaper arvet fra malen.
 
 **Sporing:** I tillegg til dokumentegenskapene skrives
 `<filnavn>.sporing.json` med dokument-id, malmanifest, `schema_versjon`,
 generatorversjon, `regler.kilde`, input-hash, funn, og hvilke tekster som var
 generert vs. overstyrt.
 
-**Filnavn:** `{saksnummer}_{dokument-id}_{dato}.docx` (`/` i saksnummer → `-`).
+**Filnavn:** `{saksnummer}_{dokument-id}_{dato}.docx` / `.pdf` (`/` i saksnummer → `-`).
 
 ### 8.1 Profil: logo og font
 
@@ -373,21 +415,23 @@ generert vs. overstyrt.
 | Ressurs | I punkt-assets | Hva malene bruker i dag | Beslutning |
 |---------|----------------|--------------------------|------------|
 | Logo | `dist/logos/oslologo.svg` (vektor, `fill="var(--fg-color, #2A2859)"`) | Samme logo som punktgrafikk: svart JPEG 850×579 (protokoll), mørkeblå JPG 188×100 (tilbudsinnbydelse) | Én kilde. SVG gjøres om til PNG med høy oppløsning (≥ 300 dpi ved brukt bredde) og fast farge fra `profil.logo_farge`. python-docx/docxtpl støtter ikke SVG. |
-| Font | `Oslo Sans` som **woff/woff2** (nettfonter) | `Oslo Sans Office` (237 forekomster i protokollen) | Genererte dokumenter viser til `Oslo Sans Office` gjennom stilene i malkopien. **Fonten legges ikke ved og bygges ikke inn** i v1. |
+| Font | `Oslo Sans` som **woff/woff2** (nettfonter), ikke Office-varianten | `Oslo Sans Office` (237 forekomster i protokollen) | Docx viser til `Oslo Sans Office` gjennom stilene i malkopien. PDF bygger inn `Oslo Sans Office`, som er installert i kjøremiljøet (fontfil fra IKT). punkt-fonten brukes bare som reserve i visuelle tester. |
 
 **Lisens (viktig):** npm-pakken er merket MIT, men fontfilene har en egen,
 strengere lisens i fontens navnetabell. Den sier at Oslo Sans og Oslo Sans
 Office er eksklusivt lisensiert til Oslo kommune, at bruken er begrenset til
 kommunens virksomhet, og at retten ikke kan overføres. Konsekvenser:
 
-- **Fontfiler committes aldri** til repoet og legges aldri i `dokumentgen`-pakken.
-  Pakken skal kunne flyttes, og fontretten følger ikke med.
+- Bruken er innenfor lisensen: løsningen bygges av og for Oslobygg KF, og
+  dokumentene er kommunens egen kommunikasjon, også når de går til leverandører.
+- **Fontfiler committes ikke** og legges aldri i `dokumentgen`-pakken. De
+  installeres i kjøremiljøet. Pakken skal kunne flyttes, og fontretten kan ikke
+  overføres til tredjepart.
 - Logoen er Oslo kommunes kjennetegn. Den hører til **virksomhetsprofilen**
   (`konfig/profiler/oslobygg/`) og ikke til kjernekoden, sammen med en
   `KILDE.toml` (pakkeversjon, filsti, sha256, lisensmerknad).
-- Fontens `fsType = 8` tillater redigerbar innbygging teknisk sett. Om
-  dokumenter som sendes til leverandører skal ha innebygd font, vurderes
-  sammen med eventuell PDF-generering (åpent punkt i §12).
+- Fontens `fsType = 8` tillater redigerbar innbygging, så innebygging i PDF
+  er tillatt teknisk sett.
 
 **Henting:** `scripts/dokumentgen/hent_profilressurser.py` laster ned den låste
 pakkeversjonen fra npm-registeret og verifiserer `dist.integrity` (sha512).
@@ -396,8 +440,26 @@ utviklingsavhengighet), og skriver `KILDE.toml`. Kjernen trenger verken npm
 eller node når den kjøres.
 
 **Mottakere utenfor kommunen:** Leverandører har som regel ikke `Oslo Sans
-Office`, så Word viser en erstatningsfont. Det er akseptert for `.docx` i v1.
-PDF med innebygd font er løsningen hvis det blir et problem.
+Office`. Derfor får eksterne dokumenter PDF med innebygd font (§8.2). Docx-en
+er arkiv- og arbeidsversjonen.
+
+### 8.2 PDF for eksterne dokumenter
+
+- **Motor:** LibreOffice headless (`soffice --headless --convert-to pdf`) bak
+  protokollen `PdfKonverterer`, slik at motoren kan byttes (for eksempel til
+  Microsoft Graph) uten endringer i kjernen.
+- **Robusthet:** Egen midlertidig brukerprofil per kjøring
+  (`-env:UserInstallation`), slik at samtidige kjøringer ikke låser hverandre.
+  Tidsavbrudd og tydelig feil hvis `soffice` mangler. Stien leses fra
+  `pdf.soffice` eller `DOKUMENTGEN_SOFFICE`.
+- **Fontkontroll:** Etter konvertering sjekkes PDF-ens fontliste. Hvis
+  `Oslo Sans Office` ikke er innebygd (fonten mangler i kjøremiljøet), er det
+  `FEIL` i streng modus. PDF-en ville ellers gått ut med erstatningsfont uten at
+  noen merket det. `--utkast` tillater erstatningsfont med `ADVARSEL`.
+- **Kjøremiljø v1:** Lokalt hos eier. Krever LibreOffice og `Oslo Sans Office`
+  installert. En installasjonsveiledning følger med i DG-22.
+- **Sporing:** PDF-en får samme sporingspost som docx-en, med hash av begge
+  filene.
 
 ## 9. Teststrategi og testkrav
 
@@ -424,7 +486,8 @@ PDF med innebygd font er løsningen hvis det blir et problem.
 | Konsistens mellom dokumenter | Samme scenario gir samme verdi, frist, leverandør og krav i alle dokumenter som bruker dem. | Alltid |
 | Arkitektur | Importgrense-test (§4). | Alltid |
 | Ende-til-ende | CLI med `subprocess`: `valider` og `generer` per dokumenttype, avslutningskoder og filer. | Alltid |
-| Visuell | LibreOffice (`soffice --headless`) → PDF → PNG. Sjekker sidetall. PNG legges ved dokument-PR-er for manuell sammenligning med TQM-malen. Ingen pikselsammenligning, fordi den er for skjør. Fonten hentes fra punkt-assets ved testoppstart (woff2 → ttf med `fontTools`) til en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`. Den committes aldri. Office-varianten kan ha litt andre mål, så bildet er en tilnærming. | `-m visuell`, manuelt |
+| PDF | Konvertering av eksterne dokumenter, innebygd `Oslo Sans Office` i fontlisten, sidetall, feil når fonten mangler. | `-m pdf` (krever LibreOffice og font; hoppes over med tydelig melding) |
+| Visuell | LibreOffice (`soffice --headless`) → PDF → PNG. Sjekker sidetall. PNG legges ved dokument-PR-er for manuell sammenligning med TQM-malen. Ingen pikselsammenligning, fordi den er for skjør. Bruker installert `Oslo Sans Office` hvis den finnes. Ellers hentes Oslo Sans fra punkt-assets (woff2 → ttf med `fontTools`) til en midlertidig fontconfig-mappe, med alias `Oslo Sans Office` → `Oslo Sans`. Da er bildet en tilnærming. Fontfiler committes aldri. | `-m visuell`, manuelt |
 
 ### 9.3 Krav
 
@@ -469,13 +532,13 @@ forenklinger — godkjennes før implementering.
 
 | Fase | Innhold | Forutsetninger |
 |------|---------|----------------|
-| **0 — Fundament** | Pakke, `Sak`-kontrakt v1.0 (hele kjeden), virksomhetskonfig, format, validering (rammeverk + generelle regler), renderer, sporing, CLI (`generer`, `valider`, `schema`), importgrense-test | Korrekte adresser |
-| **1 — Protokoll** | Malgjennomgang, taggeskript + malkopi, kontekst, dokumentkrav, begrunnelsestekster, fixtures, snapshot-tester | Fraser til JUR-gjennomgang |
-| **2 — Tilbudsinnbydelse** | Som over. Betingede avsnitt (skatteattest ≥ 500k, bestillingsbrev/kontrakt), kriterietabeller, vedleggsliste | — |
-| **3 — Kravvedlegg** | Klausulbibliotek (versjonert), sammenstilling fra `krav`, kobling av kravavleder | Klausultekster, eksisterende kravkode |
+| **0 — Fundament** | Pakke, CI, `Sak`-kontrakt v1.0 (hele kjeden), virksomhetskonfig, format, validering (rammeverk + generelle regler), renderer, sporing, CLI (`generer`, `valider`, `schema`), importgrense-test, profilressurser | Besøks- og postadresse (DG-A1) før bruk |
+| **1 — Protokoll** | Malgjennomgang, taggeskript + malkopi, kontekst, dokumentkrav, begrunnelsestekster, fixtures, snapshot-tester | Formuleringer godkjent av eier |
+| **2 — Tilbudsinnbydelse** | PDF-steg (LibreOffice). Deretter som over: betingede avsnitt (skatteattest ≥ 500k, bestillingsbrev/kontrakt), kriterietabeller, vedleggsliste | `Oslo Sans Office` og LibreOffice installert lokalt |
+| **3 — Kravvedlegg** | Klausulbibliotek (versjonert), sammenstilling fra `krav`, portering av kravavledning fra TypeScript | Klausultekster, tilgang til TS-koden |
 | **4 — Bestillingsbrev ×3** | Felles kontekst, variant per kontraktstype, Oslomodellen-vedlegg fra klausulbibliotek | Maler for varer og B&A/renhold |
 | **5 — Meddelelsesbrev** | Begrunnelse fra evaluering | Mal |
-| Senere | HTTP-endepunkt, MCP-verktøy, PDF, integrasjon mot skjema | — |
+| Senere | HTTP-endepunkt, MCP-verktøy, integrasjon mot skjema, annet kjøremiljø (Cloud Run / Oslo kommunes plattform) | — |
 
 CLI-eksempel (fase 0/1):
 
@@ -497,14 +560,22 @@ PYTHONPATH=src python -m dokumentgen generer protokoll-uten-kunngjoring sak.json
 
 ## 12. Åpne punkter
 
-1. **Korrekte adresser:** Tilbudsinnbydelsen har Grenseveien 82 / Postboks 6391 Etterstad 0604;
-   bestillingsbrevet har Grenseveien 78C / Postboks 6538 Etterstad 0606 og faktura Postboks 6532.
-2. **Frasebibliotek:** JUR må kvalitetssikre ordlyden i begrunnelsestekstene.
-3. **TQM-originaler i repo:** Kan originalene lagres (for diff ved ny versjon), eller bare hash?
-4. **Sensitivitetsetiketter:** Malene har Microsoft Purview-etiketter (MSIP) i egenskapene.
-   Skal generert dokument arve dem, eller settes de av Websak/Office?
-5. **Logo i protokollen:** Kilden er avklart (punkt-assets, §8.1). Det gjenstår å bestemme om protokollen skal ha en enkel topptekst med logo, nå som TQM-toppteksten fjernes (DG-06).
-8. **Font til eksterne mottakere:** Skal dokumenter til leverandører (tilbudsinnbydelse, bestillingsbrev) ha innebygd font eller sendes som PDF? Dette må vurderes opp mot fontlisensen (§8.1).
-6. **Malfeil å melde til JUR** (fra tilbudsinnbydelsen): «ansakffelser», «likebehanding»,
-   «inidikerer», «Oppdragsgives», «dd.mm.ååå». Rettes i malkopien, men bør også rettes i TQM.
-7. **Manglende maler:** bestillingsbrev varer, bestillingsbrev B&A/renhold, meddelelsesbrev.
+1. **Besøks- og postadresse** (DG-A1): Tilbudsinnbydelsen har Grenseveien 82 / Postboks 6391
+   Etterstad 0604; bestillingsbrevet har Grenseveien 78C / Postboks 6538 Etterstad 0606.
+   Orgnr. og fakturaopplysninger er avklart (§6.1).
+2. **Malfeil som bør rettes i TQM** (fra tilbudsinnbydelsen): «ansakffelser», «likebehanding»,
+   «inidikerer», «Oppdragsgives», «dd.mm.ååå». Rettes i malkopien; eier melder til TQM-eier.
+3. **Manglende maler:** bestillingsbrev varer, bestillingsbrev B&A/renhold, meddelelsesbrev.
+4. **Kravavledning (TypeScript):** tilgang til koden for portering (DG-13).
+5. **Fontfil:** `Oslo Sans Office` (TTF/OTF) fra IKT til kjøremiljøet (DG-22).
+
+### Avklart 2026-09-25
+
+| Punkt | Beslutning |
+|-------|-----------|
+| TQM-originaler i repo | Ja, i `scripts/dokumentgen/originaler/` (utenfor pakken). |
+| Sensitivitetsetiketter | MSIP-egenskaper fjernes; Office/Websak setter etikett. |
+| Logo og topptekst i protokollen | Logo fra punkt-assets; topptekst med logo, Oslobygg KF, saksnummer og dokumenttype. |
+| Font til eksterne | PDF med innebygd `Oslo Sans Office` (§8.2). |
+| Godkjenning av formuleringer | Eier (jurist). |
+| Flere virksomheter | Nei — bare Oslobygg KF, men data i konfig. |

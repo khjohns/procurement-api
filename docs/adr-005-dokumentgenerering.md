@@ -17,12 +17,15 @@ med:
    TQM-malene. Kopiene lages av reproduserbare skript og knyttes til
    TQM-dokument-ID og versjon i et manifest.
 3. **Regler og terskler som data** (virksomhetskonfig i TOML med regelkilde),
-   **juridiske fraser som data** (JUR-godkjent), og **rene funksjoner** for
+   **juridiske fraser som data** (godkjent av eier, som er jurist), og **rene funksjoner** for
    validering, begrunnelser og kontekstbygging.
 4. **Sporing** av input-hash, mal og malversjon, schemaversjon, regelkilde og
    generert kontra overstyrt tekst, i dokumentegenskapene og i en sidefil.
 5. **Ingen avhengigheter til resten av repoet.** En importgrense-test håndhever
    dette.
+6. **PDF for eksterne dokumenter** via LibreOffice headless bak et utskiftbart
+   grensesnitt, med innebygd `Oslo Sans Office` fra kjøremiljøet. Fonten ligger
+   aldri i pakken.
 
 Detaljer står i [designplanen](plans/2026-09-25-dokumentgenerering-design.md).
 
@@ -77,6 +80,9 @@ kunngjøring, fordi:
 - docxtpl er følsom for hvordan Word deler opp tekst i biter (runs). Tiltak:
   taggene settes inn av skript og ikke for hånd i Word, og en mal-kontrakttest
   verifiserer at alle variabler finnes i konteksten.
+- PDF-steget krever LibreOffice og `Oslo Sans Office` i kjøremiljøet. Tiltak:
+  generatoren kontrollerer at fonten er innebygd i PDF-en, og nekter å lage PDF
+  med erstatningsfont i streng modus.
 - To protokollgeneratorer finnes side om side (`protokoll/` for EØS/Artifik og
   `dokumentgen` for anskaffelser uten kunngjøring). Det er akseptert fordi de
   har ulike datakilder og ulike maleiere.
