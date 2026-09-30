@@ -65,7 +65,7 @@ class ArtifikClient:
         """Obtain a fresh OAuth2 access token."""
         client_id, client_secret = self._get_credentials()
 
-        data = urllib.parse.urlencode(
+        data = json.dumps(
             {
                 "grant_type": "client_credentials",
                 "client_id": client_id,
@@ -74,9 +74,9 @@ class ArtifikClient:
         ).encode()
 
         req = urllib.request.Request(
-            f"{self.base_url}/external/token",
+            f"{self.base_url}/external/v2/token",
             data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
 
@@ -160,33 +160,74 @@ class ArtifikClient:
     # -- Procurements ------------------------------------------------
 
     @mcp_tool(
-        description="List all procurements. Optionally filter by organization ID."
+        description="List all procurements. Filter by organization, or include team, internal reporting, custom fields, and sub-organizations."
     )
-    def list_procurements(self, *, organization_id: str | None = None) -> list[dict]:
-        return self._get("/external/procurements", {"organizationId": organization_id})
+    def list_procurements(
+        self,
+        *,
+        organization_id: str | None = None,
+        include_team: bool = False,
+        include_internal_reporting: bool = False,
+        include_custom_fields: bool = False,
+        include_sub_orgs: bool = False,
+    ) -> list[dict]:
+        return self._get(
+            "/external/v2/procurements",
+            {
+                "organizationId": organization_id,
+                "includeTeam": "true" if include_team else None,
+                "includeInternalReporting": (
+                    "true" if include_internal_reporting else None
+                ),
+                "includeCustomFields": "true" if include_custom_fields else None,
+                "includeSubOrgs": "true" if include_sub_orgs else None,
+            },
+        )
+
+    @mcp_tool(
+        description="Get a single procurement by ID. Optionally include team, internal reporting, or notices info."
+    )
+    def get_procurement(
+        self,
+        procurement_id: int,
+        *,
+        include_team: bool = False,
+        include_internal_reporting: bool = False,
+        include_notices_info: bool = False,
+    ) -> dict:
+        return self._get(
+            f"/external/v2/procurements/{procurement_id}",
+            {
+                "includeTeam": "true" if include_team else None,
+                "includeInternalReporting": (
+                    "true" if include_internal_reporting else None
+                ),
+                "includeNoticesInfo": "true" if include_notices_info else None,
+            },
+        )
 
     @mcp_tool(
         description="Get activity log for a procurement — submissions, openings, qualifications, awards."
     )
     def get_procurement_activities(self, procurement_id: int) -> list[dict]:
-        return self._get(f"/external/{procurement_id}/activities")
+        return self._get(f"/external/v2/{procurement_id}/activities")
 
     @mcp_tool(
         description="Get structured document responses (qualification criteria, award criteria, contract terms)."
     )
     def get_smart_doc_responses(self, procurement_id: int) -> Any:
-        return self._get(f"/external/{procurement_id}/smartDocResponses")
+        return self._get(f"/external/v2/{procurement_id}/smartDocResponses")
 
     @mcp_tool(
         description="Download all procurement documents as a ZIP archive. Returns raw bytes."
     )
     def download_archive_zip(self, procurement_id: int) -> bytes:
-        return self._get(f"/external/{procurement_id}/archiveZip")
+        return self._get(f"/external/v2/{procurement_id}/archiveZip")
 
     # -- Contracts ---------------------------------------------------
 
     @mcp_tool(
-        description="List contracts. Optionally filter by organization, date, or include custom fields."
+        description="List contracts. Filter by organization, date, or include team, internal reporting, custom fields, and sub-organizations."
     )
     def list_contracts(
         self,
@@ -194,39 +235,136 @@ class ArtifikClient:
         organization_id: str | None = None,
         include_custom_fields: bool = False,
         limit_date: str | None = None,
+        include_team: bool = False,
+        include_internal_reporting: bool = False,
+        include_sub_orgs: bool = False,
     ) -> list[dict]:
         return self._get(
-            "/external/contracts",
+            "/external/v2/contracts",
             {
                 "organizationId": organization_id,
-                "includeCustomFields": "1" if include_custom_fields else None,
+                "includeCustomFields": "true" if include_custom_fields else None,
                 "limitDate": limit_date,
+                "includeTeam": "true" if include_team else None,
+                "includeInternalReporting": (
+                    "true" if include_internal_reporting else None
+                ),
+                "includeSubOrgs": "true" if include_sub_orgs else None,
             },
         )
 
-    @mcp_tool(description="Get details for a specific contract.")
-    def get_contract(self, contract_id: int) -> dict:
-        return self._get(f"/external/contracts/{contract_id}")
+    @mcp_tool(
+        description="List contracts (alias for list_contracts). Filter by organization, date, or include team, internal reporting, custom fields, and sub-organizations."
+    )
+    def get_contracts(
+        self,
+        *,
+        organization_id: str | None = None,
+        include_custom_fields: bool = False,
+        limit_date: str | None = None,
+        include_team: bool = False,
+        include_internal_reporting: bool = False,
+        include_sub_orgs: bool = False,
+    ) -> list[dict]:
+        return self.list_contracts(
+            organization_id=organization_id,
+            include_custom_fields=include_custom_fields,
+            limit_date=limit_date,
+            include_team=include_team,
+            include_internal_reporting=include_internal_reporting,
+            include_sub_orgs=include_sub_orgs,
+        )
+
+    @mcp_tool(
+        description="Get details for a specific contract. Optionally include team and internal reporting."
+    )
+    def get_contract(
+        self,
+        contract_id: int,
+        *,
+        include_team: bool = False,
+        include_internal_reporting: bool = False,
+    ) -> dict:
+        return self._get(
+            f"/external/v2/contracts/{contract_id}",
+            {
+                "includeTeam": "true" if include_team else None,
+                "includeInternalReporting": (
+                    "true" if include_internal_reporting else None
+                ),
+            },
+        )
+
+    @mcp_tool(description="Get a presigned upload URL for a large contract file.")
+    def get_contract_upload_url(
+        self,
+        contract_id: int,
+        file_name: str,
+        file_type: str = "",
+    ) -> dict:
+        body: dict[str, Any] = {"fileName": file_name}
+        if file_type:
+            body["fileType"] = file_type
+        return self._post(
+            f"/external/v2/contracts/{contract_id}/upload-url",
+            body=body,
+        )
 
     # -- Deviations (KAV) --------------------------------------------
 
     @mcp_tool(
-        description="List contract deviations (KAV avvik). Optionally filter by page, pageSize, or organization."
+        description="List contract deviations (KAV avvik). Filter by organization, contract, status, severity, page."
     )
-    def list_deviations(
+    def get_deviations(
         self,
         *,
+        organization_id: str | None = None,
+        contract_id: int | None = None,
         page: int | None = None,
         page_size: int | None = None,
-        organization_id: str | None = None,
+        severity: str | None = None,
+        status: str | None = None,
+        supplier_org_number: str | None = None,
+        include_sub_orgs: bool = False,
     ) -> dict:
         return self._get(
-            "/external/deviations",
+            "/external/v2/deviations",
             {
                 "page": str(page) if page is not None else None,
                 "pageSize": str(page_size) if page_size is not None else None,
                 "organizationId": organization_id,
+                "contractId": str(contract_id) if contract_id is not None else None,
+                "severity": severity,
+                "status": status,
+                "supplierOrgNumber": supplier_org_number,
+                "includeSubOrgs": "true" if include_sub_orgs else None,
             },
+        )
+
+    @mcp_tool(
+        description="List contract deviations (KAV avvik). Alias for get_deviations."
+    )
+    def list_deviations(
+        self,
+        *,
+        organization_id: str | None = None,
+        contract_id: int | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        severity: str | None = None,
+        status: str | None = None,
+        supplier_org_number: str | None = None,
+        include_sub_orgs: bool = False,
+    ) -> dict:
+        return self.get_deviations(
+            organization_id=organization_id,
+            contract_id=contract_id,
+            page=page,
+            page_size=page_size,
+            severity=severity,
+            status=status,
+            supplier_org_number=supplier_org_number,
+            include_sub_orgs=include_sub_orgs,
         )
 
     # -- Organizations -----------------------------------------------
@@ -236,9 +374,9 @@ class ArtifikClient:
         self, *, include_sub_orgs: bool = False, parent_id: str | None = None
     ) -> list[dict]:
         return self._get(
-            "/external/organizations",
+            "/external/v2/organizations",
             {
-                "includeSubOrgs": "1" if include_sub_orgs else None,
+                "includeSubOrgs": "true" if include_sub_orgs else None,
                 "parentId": parent_id,
             },
         )
@@ -255,7 +393,7 @@ class ArtifikClient:
         limit_date: str | None = None,
     ) -> list[dict]:
         return self._get(
-            "/external/activities",
+            "/external/v2/activities",
             {
                 "organizationId": organization_id,
                 "limitDate": limit_date,
@@ -266,7 +404,7 @@ class ArtifikClient:
 
     @mcp_tool(description="List registered webhooks.")
     def list_webhooks(self, *, organization_id: str | None = None) -> list[dict]:
-        return self._get("/external/webhooks", {"organizationId": organization_id})
+        return self._get("/external/v2/webhooks", {"organizationId": organization_id})
 
     @mcp_tool(description="Register a webhook for specified actions.")
     def register_webhook(
@@ -277,14 +415,14 @@ class ArtifikClient:
         organization_id: str | None = None,
     ) -> dict:
         return self._post(
-            "/external/webhooks",
+            "/external/v2/webhooks",
             body={"callbackURL": callback_url, "actionList": action_list},
             params={"organizationId": organization_id},
         )
 
     @mcp_tool(description="Delete a registered webhook.")
     def delete_webhook(self, webhook_id: int) -> Any:
-        return self._delete(f"/external/webhooks/{webhook_id}")
+        return self._delete(f"/external/v2/webhooks/{webhook_id}")
 
     # -- Tasks -------------------------------------------------------
 
@@ -298,7 +436,7 @@ class ArtifikClient:
         task_type: str | None = None,
     ) -> list[dict]:
         return self._get(
-            "/external/tasks",
+            "/external/v2/tasks",
             {
                 "organizationId": organization_id,
                 "userId": user_id,

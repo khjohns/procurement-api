@@ -16,7 +16,7 @@ SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
 def get_token() -> str:
     """Get OAuth2 access token using client credentials."""
-    payload = urllib.parse.urlencode(
+    payload = json.dumps(
         {
             "grant_type": "client_credentials",
             "client_id": os.environ["VENDOR_API_ID"],
@@ -25,9 +25,9 @@ def get_token() -> str:
     ).encode()
 
     req = urllib.request.Request(
-        f"{BASE_URL}/external/token",
+        f"{BASE_URL}/external/v2/token",
         data=payload,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={"Content-Type": "application/json"},
         method="POST",
     )
 
@@ -44,7 +44,7 @@ def get_token() -> str:
 def list_procurements(token: str) -> None:
     """List procurements to verify API access works."""
     req = urllib.request.Request(
-        f"{BASE_URL}/external/procurements",
+        f"{BASE_URL}/external/v2/procurements",
         headers={"Authorization": f"Bearer {token}"},
     )
 
