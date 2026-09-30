@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Les `AGENTS.md` først.** Den inneholder prosjektets security-regler og er det
+> eneste filen både Antigravity CLI (`agy`) og Claude Code plukker opp
+> automatisk. `AGENTS.md` peker ikke hit – den er rot for agent-reglene, denne
+> filen er rot for arkitekturen.
+
 ## Project Overview
 
 Norwegian public procurement system (anskaffelsessystem) with three layers: an MCP server for AI-assisted procurement analysis, a Flask web app serving a SvelteKit frontend, and a protokoll generator for regulatory compliance documents.
