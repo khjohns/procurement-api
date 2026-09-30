@@ -10,39 +10,18 @@
       "url": "https://api.artifik.no"
     }
   ],
-  "security": [
-    {
-      "oauth2": []
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "oauth2": {
-        "type": "oauth2",
-        "flows": {
-          "clientCredentials": {
-            "tokenUrl": "https://api.artifik.no/external/token",
-            "scopes": {}
-          }
-        }
-      }
-    }
-  },
   "paths": {
-    "/external/token": {
+    "/external/v2/token": {
       "post": {
-        "summary": "Get OAuth2 access token",
         "description": "Authenticate using client credentials to obtain an access token. Send client_id and client_secret in the request body with grant_type=client_credentials.",
         "operationId": "ExternalAPIController_getSessionToken",
-        "tags": ["External API"],
-        "security": [],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["grant_type", "client_id", "client_secret"],
                 "properties": {
                   "grant_type": {
                     "type": "string",
@@ -56,7 +35,12 @@
                     "type": "string",
                     "example": "your-client-secret"
                   }
-                }
+                },
+                "required": [
+                  "grant_type",
+                  "client_id",
+                  "client_secret"
+                ]
               }
             }
           }
@@ -77,7 +61,7 @@
                       "example": "Bearer"
                     },
                     "expires_in": {
-                      "type": "integer",
+                      "type": "number",
                       "example": 3600
                     },
                     "scope": {
@@ -91,50 +75,39 @@
           "401": {
             "description": "Invalid credentials"
           }
-        }
+        },
+        "summary": "Get OAuth2 access token",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/procurements": {
+    "/external/v3/whoami": {
       "get": {
-        "summary": "List procurements",
-        "description": "Get all procurements accessible to the authenticated client. Global OAuth keys require organizationId parameter.",
-        "operationId": "ExternalAPIController_getProcurements",
-        "tags": ["External API"],
-        "parameters": [
-          {
-            "name": "organizationId",
-            "in": "query",
-            "description": "Filter by organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "ExternalAPIV3Controller_whoami",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "List of procurements"
-          },
-          "401": {
-            "description": "Unauthorized"
+            "description": ""
           }
-        }
+        },
+        "tags": [
+          "External API v3"
+        ]
       }
     },
-    "/external/{procurement_id}/archiveZip": {
+    "/external/v2/{procurement_id}/archiveZip": {
       "get": {
-        "summary": "Download procurement archive as ZIP",
         "description": "Downloads all procurement documents as a ZIP file.",
         "operationId": "ExternalAPIController_getZipForArchive",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "procurement_id",
+            "required": true,
             "in": "path",
             "description": "The procurement ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -148,23 +121,138 @@
           "404": {
             "description": "Procurement not found"
           }
-        }
+        },
+        "summary": "Download procurement archive as ZIP",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/{procurement_id}/activities": {
+    "/external/v2/procurements": {
       "get": {
-        "summary": "Get activities for a procurement",
-        "description": "Returns audit log of activities for a specific procurement.",
-        "operationId": "ExternalAPIController_getActivitiesForProcurement",
-        "tags": ["External API"],
+        "description": "Get all procurements accessible to the authenticated client. Global OAuth keys require organizationId parameter.\n\n**What the list contains.** Real procurements only. Templates, version-procurements (the internal revisions behind a change notice) and imported framework agreements are excluded, so a competition appears once.\n\n**Versions.** Both versions take the same parameters, apply the same access scoping and select the same procurements; they differ only in the field names of the response.\n\n- **v3** (this description) returns external field names: camelCase throughout, including inside the `aboutProcurer`, `procurers` and `directAwardSupplier` values, where `national_id` is exposed as `orgNumber` to match the rest of the external API. `cpvCodes` is `{ mainCPV, additionalCPV }`.\n- **v2** returns the raw procurement record, so field names are the snake_case database column names (`total_value`, `framework_agreement_involved`, `about_procurer.postal_address`, \u2026) and `cpv_codes` keeps its stored shape, including the historical `aditional_cpv` spelling. Unchanged, and still the default.\n\n**Choosing a version.** Request `/external/v3/procurements`, or send an `x-api-version: 3` header. A request that specifies neither is served v2, so existing integrations are unaffected.\n\nOnly one of the two can be shown here: the API versions by header rather than by path, which OpenAPI cannot express as two separate entries for the same URL.\n\n**Team (`includeTeam=true`).** Returns the users assigned a role on the record itself, each flagged with whether they also hold a role somewhere in the owning organization's tenant tree:\n```json\n\"team\": [\n  { \"email\": \"anna@oslo.kommune.no\", \"name\": \"Anna Hansen\", \"isActive\": true,\n    \"role\": \"admin\", \"isOrgMember\": true },\n  { \"email\": \"ekstern@konsulent.no\", \"name\": \"Ekstern Konsulent\", \"isActive\": true,\n    \"role\": \"editor\", \"isOrgMember\": false }\n]\n```\nThe whole team is returned, not only the external members \u2014 filter on `isOrgMember` to get those. Requesting it on the *list* endpoint is what lets you see, in one call, that the same external consultant has been added to many procurements.\n\n`isOrgMember` is true when the user holds a role in **any** organization in the same tenant tree, not only the one that owns the record. A member of a sibling department is internal to the customer, so a narrower rule would report colleagues as external.\n\n`role` is the role held on this record (`viewer`, `editor`, `admin`) and is a different set from the organization roles returned by `GET /external/{organization_id}/members` \u2014 join on `email` if you need to compare the two. `isActive` is false for a deactivated user who is still on the team.**Internal reporting (`includeInternalReporting=true`).** Returns the internrapportering answers already joined to their template questions, so no client has to walk the response document and join on `nodeId` itself:\n```json\n\"internalReporting\": [\n  { \"nodeId\": \"1651f436-\u2026\", \"prompt\": \"Avtaleeier\", \"type\": \"input\",\n    \"value\": \"Vann- og avl\u00f8psetaten\", \"valueText\": \"Vann- og avl\u00f8psetaten\" },\n  { \"nodeId\": \"9c2ab710-\u2026\", \"prompt\": \"Kategori\", \"type\": \"checkbox\",\n    \"value\": [\"Drift\", \"Vedlikehold\"], \"valueText\": \"Drift, Vedlikehold\" }\n]\n```\n`value` keeps the natural JSON type (array for multi-choice, number for an amount); `valueText` is the same answer rendered for a spreadsheet cell.\n\nTwo rules keep the field set stable, which is what makes the output usable as report rows:\n\n- **Answers to questions that are no longer on the live template are dropped.** A record answered under an older template version can hold responses to questions that no longer exist, and those must not surface as phantom columns. This parameter is therefore *not* an audit trail \u2014 `includeCustomFields=true` still returns the complete raw response document.\n- **Template questions with no answer are still present**, with `value: null`, so every record in the response yields the same fields.\n\nWhen the request spans several organizations (`includeSubOrgs=true`) or records built from different templates, the field set is the union of those templates, again so every record has the same fields.\n\nFor whole-table reporting, prefer `GET /external/v3/organization/{organization_id}/templates/{template_id}/responses`: it returns every answer to one template as declared `columns` plus flat `rows`, which a spreadsheet or Power BI query can consume without any transformation.",
+        "operationId": "ExternalAPIController_getProcurementsV3",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by organization ID (to specify sub-org for OAuth keys with access to more than one organization). Must be within the key owner org tree.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInternalReporting",
+            "required": false,
+            "in": "query",
+            "description": "Include the internal-reporting (internrapportering) answers pre-joined with their template questions, as a flat `internalReporting` array (1, true, or false). Independent of `includeCustomFields` \u2014 send both to get the flat answers *and* the raw response document.",
+            "schema": {}
+          },
+          {
+            "name": "includeTeam",
+            "required": false,
+            "in": "query",
+            "description": "Include the assigned team (buyer-side users) on each record as a `team` array (1, true, or false). Each entry carries `isOrgMember`, so direct access granted outside the organization structure is visible without a second call.",
+            "schema": {}
+          },
+          {
+            "name": "includeSubOrgs",
+            "required": false,
+            "in": "query",
+            "description": "Include procurements for all organizations below the target org in the tree (1, true, or false)",
+            "schema": {}
+          },
+          {
+            "name": "includeCustomFields",
+            "required": false,
+            "in": "query",
+            "description": "Include the internal-reporting custom fields (internalSmartDocResponse) in each procurement (1, true, or false)",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of procurements"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List procurements (v2 and v3)",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/procurements/{procurement_id}": {
+      "get": {
+        "description": "Get full details of a specific procurement including files with short-lived download URLs, Q&A content, and conversation messages.\n\n**Team (`includeTeam=true`).** Returns the users assigned a role on the record itself, each flagged with whether they also hold a role somewhere in the owning organization's tenant tree:\n```json\n\"team\": [\n  { \"email\": \"anna@oslo.kommune.no\", \"name\": \"Anna Hansen\", \"isActive\": true,\n    \"role\": \"admin\", \"isOrgMember\": true },\n  { \"email\": \"ekstern@konsulent.no\", \"name\": \"Ekstern Konsulent\", \"isActive\": true,\n    \"role\": \"editor\", \"isOrgMember\": false }\n]\n```\nThe whole team is returned, not only the external members \u2014 filter on `isOrgMember` to get those. Requesting it on the *list* endpoint is what lets you see, in one call, that the same external consultant has been added to many procurements.\n\n`isOrgMember` is true when the user holds a role in **any** organization in the same tenant tree, not only the one that owns the record. A member of a sibling department is internal to the customer, so a narrower rule would report colleagues as external.\n\n`role` is the role held on this record (`viewer`, `editor`, `admin`) and is a different set from the organization roles returned by `GET /external/{organization_id}/members` \u2014 join on `email` if you need to compare the two. `isActive` is false for a deactivated user who is still on the team.**Internal reporting (`includeInternalReporting=true`).** Returns the internrapportering answers already joined to their template questions, so no client has to walk the response document and join on `nodeId` itself:\n```json\n\"internalReporting\": [\n  { \"nodeId\": \"1651f436-\u2026\", \"prompt\": \"Avtaleeier\", \"type\": \"input\",\n    \"value\": \"Vann- og avl\u00f8psetaten\", \"valueText\": \"Vann- og avl\u00f8psetaten\" },\n  { \"nodeId\": \"9c2ab710-\u2026\", \"prompt\": \"Kategori\", \"type\": \"checkbox\",\n    \"value\": [\"Drift\", \"Vedlikehold\"], \"valueText\": \"Drift, Vedlikehold\" }\n]\n```\n`value` keeps the natural JSON type (array for multi-choice, number for an amount); `valueText` is the same answer rendered for a spreadsheet cell.\n\nTwo rules keep the field set stable, which is what makes the output usable as report rows:\n\n- **Answers to questions that are no longer on the live template are dropped.** A record answered under an older template version can hold responses to questions that no longer exist, and those must not surface as phantom columns. This parameter is therefore *not* an audit trail \u2014 `includeCustomFields=true` still returns the complete raw response document.\n- **Template questions with no answer are still present**, with `value: null`, so every record in the response yields the same fields.\n\nWhen the request spans several organizations (`includeSubOrgs=true`) or records built from different templates, the field set is the union of those templates, again so every record has the same fields.\n\nFor whole-table reporting, prefer `GET /external/v3/organization/{organization_id}/templates/{template_id}/responses`: it returns every answer to one template as declared `columns` plus flat `rows`, which a spreadsheet or Power BI query can consume without any transformation.\n\nThis endpoint is not versioned, so `includeTeam` and `includeInternalReporting` work on both v2 and v3 here \u2014 unlike the list endpoints, where they are v3 only.",
+        "operationId": "ExternalAPIController_getProcurementById",
         "parameters": [
           {
             "name": "procurement_id",
+            "required": true,
             "in": "path",
             "description": "The procurement ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
+            }
+          },
+          {
+            "name": "includeInternalReporting",
+            "required": false,
+            "in": "query",
+            "description": "Include the internal-reporting (internrapportering) answers pre-joined with their template questions, as a flat `internalReporting` array (1, true, or false). Independent of `includeCustomFields` \u2014 send both to get the flat answers *and* the raw response document.",
+            "schema": {}
+          },
+          {
+            "name": "includeTeam",
+            "required": false,
+            "in": "query",
+            "description": "Include the assigned team (buyer-side users) on each record as a `team` array (1, true, or false). Each entry carries `isOrgMember`, so direct access granted outside the organization structure is visible without a second call.",
+            "schema": {}
+          },
+          {
+            "name": "includeNoticesInfo",
+            "required": false,
+            "in": "query",
+            "description": "Include the procurement's Doffin/TED notices (with versions and links) in the response. Accepts `true`/`1` to enable; defaults to off.",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Procurement details with files"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "No access to procurement"
+          },
+          "404": {
+            "description": "Procurement not found"
+          }
+        },
+        "summary": "Get a single procurement by ID",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/{procurement_id}/activities": {
+      "get": {
+        "description": "Returns audit log of activities for a specific procurement.",
+        "operationId": "ExternalAPIController_getActivitiesForProcurement",
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "required": true,
+            "in": "path",
+            "description": "The procurement ID",
+            "schema": {
+              "type": "number"
             }
           }
         ],
@@ -178,31 +266,33 @@
           "403": {
             "description": "No access to procurement"
           }
-        }
+        },
+        "summary": "Get activities for a procurement",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/activities": {
+    "/external/v2/activities": {
       "get": {
-        "summary": "Get activities for an organization",
         "description": "Returns audit log of all activities for an organization.",
         "operationId": "ExternalAPIController_getActivitiesForOrganization",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "limitDate",
+            "required": false,
             "in": "query",
             "description": "Filter activities after this date",
-            "required": false,
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "format": "date-time",
+              "type": "string"
             }
           },
           {
             "name": "organizationId",
+            "required": false,
             "in": "query",
             "description": "Organization ID (required for global/user OAuth keys)",
-            "required": false,
             "schema": {
               "type": "string"
             }
@@ -215,46 +305,23 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Get activities for an organization",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/webhooks": {
-      "get": {
-        "summary": "List webhooks",
-        "description": "List all registered webhooks for the organization.",
-        "operationId": "ExternalAPIController_listWebhooks",
-        "tags": ["External API"],
-        "parameters": [
-          {
-            "name": "organizationId",
-            "in": "query",
-            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of webhooks"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      },
+    "/external/v2/webhooks": {
       "post": {
-        "summary": "Register a webhook",
-        "description": "Register a new webhook to receive notifications for specified actions. The webhook will be called when events occur.",
+        "description": "Register a new webhook to receive notifications for specified actions. The webhook will be called when events occur. Every action must be listed explicitly \u2014 \"*\" is not accepted.",
         "operationId": "ExternalAPIController_registerWebhook",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organizationId",
+            "required": false,
             "in": "query",
             "description": "Organization ID (required for global/user OAuth keys)",
-            "required": false,
             "schema": {
               "type": "string"
             }
@@ -265,31 +332,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "callbackURL": {
-                    "type": "string",
-                    "example": "https://your-site.com/webhook.php"
-                  },
-                  "actionList": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "ADD_BUYER", "ADD_FILES", "ASK_TO_QUALIFY", "AWARDING_PARTICIPANTS",
-                        "CANCEL_BID", "CANCEL_PROCUREMENT", "CREATE_CONTRACT", "CREATE_TENDER",
-                        "DELETE_FILE", "EDIT_SMART_DOCUMENT", "INVITATIONS_SENT",
-                        "INVITATIONS_TO_NEGOTIATE_SENT", "INVITE_SUBCONTRACTORS",
-                        "LOGIN_SUCCESSFUL", "LOGIN_UNSUCCESSFUL", "OPEN_BIDS",
-                        "OPEN_QUALIFICATIONS", "PUBLISH_ADDITIONAL_INFORMATION", "PUBLISH_Q8A",
-                        "PUBLISH_TO_DOFFIN", "QUALIFYING_PARTICIPANTS", "REJECT_PARTICIPATION",
-                        "REMOVE_BUYER", "REVIEW_NOTICE_TRANSLATIONS", "SUBMIT_BID",
-                        "UPDATE_FILES", "UPDATE_NOTICE_TRANSLATIONS", "UPDATE_PROCUREMENT",
-                        "UPDATE_TENDER", "UPDATE_TIMELINE", "WITHDRAW_PARTICIPATION"
-                      ]
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/CreateWebhookDto"
               }
             }
           }
@@ -303,7 +346,7 @@
                   "type": "object",
                   "properties": {
                     "webhookId": {
-                      "type": "integer"
+                      "type": "number"
                     }
                   }
                 }
@@ -313,23 +356,52 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Register a webhook",
+        "tags": [
+          "External API"
+        ]
+      },
+      "get": {
+        "description": "List all registered webhooks for the organization.",
+        "operationId": "ExternalAPIController_listWebhooks",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of webhooks"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List webhooks",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/webhooks/{id}": {
+    "/external/v2/webhooks/{id}": {
       "delete": {
-        "summary": "Delete a webhook",
         "description": "Delete an existing webhook. To edit a webhook, delete it and create a new one.",
         "operationId": "ExternalAPIController_deleteWebhook",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "id",
+            "required": true,
             "in": "path",
             "description": "The webhook ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -343,23 +415,25 @@
           "404": {
             "description": "Webhook not found"
           }
-        }
+        },
+        "summary": "Delete a webhook",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/{procurement_id}/smartDocResponses": {
+    "/external/v2/{procurement_id}/smartDocResponses": {
       "get": {
-        "summary": "Get Smart Document responses",
         "description": "Get all submitted Smart Document responses for a procurement.",
         "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurement",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "procurement_id",
+            "required": true,
             "in": "path",
             "description": "The procurement ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -373,23 +447,25 @@
           "403": {
             "description": "No access"
           }
-        }
+        },
+        "summary": "Get Smart Document responses",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/{procurement_id}/smartDocResponsesAsExcel": {
+    "/external/v2/{procurement_id}/smartDocResponsesAsExcel": {
       "get": {
-        "summary": "Get Smart Document responses as Excel",
         "description": "Download Smart Document responses as an Excel file.",
         "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurementAsExcelFile",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "procurement_id",
+            "required": true,
             "in": "path",
             "description": "The procurement ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -400,23 +476,25 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Get Smart Document responses as Excel",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/{procurement_id}/smartDocResponsesAsPDFZip": {
+    "/external/v2/{procurement_id}/smartDocResponsesAsPDFZip": {
       "get": {
-        "summary": "Get Smart Document responses as PDF ZIP",
         "description": "Download Smart Document responses as individual PDFs in a ZIP file.",
         "operationId": "ExternalAPIController_getMainSmartDocResponsesForProcurementAsPDFsInZipFile",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "procurement_id",
+            "required": true,
             "in": "path",
             "description": "The procurement ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -427,43 +505,54 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Get Smart Document responses as PDF ZIP",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/contracts": {
+    "/external/v2/contracts": {
       "get": {
-        "summary": "List contracts",
-        "description": "Get all contracts for the organization with optional custom fields.",
-        "operationId": "ExternalAPIController_getContracts",
-        "tags": ["External API"],
+        "description": "Get all contracts for the organization with optional custom fields.\n\n**Versions.** Both take the same parameters and apply the same access scoping; they differ only in field names.\n\n- **v3** (this description) returns `durationStart`, `durationEnd`, `durationDays` and `durationMonths`.\n- **v2** returns those four as the stored column names (`duration_start`, \u2026). Unchanged, and still the default.\n\n**Choosing a version.** Request `/external/v3/contracts`, or send an `x-api-version: 3` header.\n\n**Internal reporting (`includeInternalReporting=true`).** Returns the internrapportering answers already joined to their template questions, so no client has to walk the response document and join on `nodeId` itself:\n```json\n\"internalReporting\": [\n  { \"nodeId\": \"1651f436-\u2026\", \"prompt\": \"Avtaleeier\", \"type\": \"input\",\n    \"value\": \"Vann- og avl\u00f8psetaten\", \"valueText\": \"Vann- og avl\u00f8psetaten\" },\n  { \"nodeId\": \"9c2ab710-\u2026\", \"prompt\": \"Kategori\", \"type\": \"checkbox\",\n    \"value\": [\"Drift\", \"Vedlikehold\"], \"valueText\": \"Drift, Vedlikehold\" }\n]\n```\n`value` keeps the natural JSON type (array for multi-choice, number for an amount); `valueText` is the same answer rendered for a spreadsheet cell.\n\nTwo rules keep the field set stable, which is what makes the output usable as report rows:\n\n- **Answers to questions that are no longer on the live template are dropped.** A record answered under an older template version can hold responses to questions that no longer exist, and those must not surface as phantom columns. This parameter is therefore *not* an audit trail \u2014 `includeCustomFields=true` still returns the complete raw response document.\n- **Template questions with no answer are still present**, with `value: null`, so every record in the response yields the same fields.\n\nWhen the request spans several organizations (`includeSubOrgs=true`) or records built from different templates, the field set is the union of those templates, again so every record has the same fields.\n\nFor whole-table reporting, prefer `GET /external/v3/organization/{organization_id}/templates/{template_id}/responses`: it returns every answer to one template as declared `columns` plus flat `rows`, which a spreadsheet or Power BI query can consume without any transformation.",
+        "operationId": "ExternalAPIController_getContractsV3",
         "parameters": [
           {
             "name": "organizationId",
-            "in": "query",
-            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
             "required": false,
+            "in": "query",
+            "description": "For an org key: narrows to a sub-organization within the key owner's tree (must be in the tree). Required for global keys.",
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeInternalReporting",
+            "required": false,
+            "in": "query",
+            "description": "Include the internal-reporting (internrapportering) answers pre-joined with their template questions, as a flat `internalReporting` array (1, true, or false). Independent of `includeCustomFields` \u2014 send both to get the flat answers *and* the raw response document.",
+            "schema": {}
+          },
+          {
+            "name": "includeTeam",
+            "required": false,
+            "in": "query",
+            "description": "Include the assigned team (buyer-side users) on each record as a `team` array (1, true, or false). Each entry carries `isOrgMember`, so direct access granted outside the organization structure is visible without a second call.",
+            "schema": {}
           },
           {
             "name": "includeCustomFields",
+            "required": false,
             "in": "query",
             "description": "Include custom fields in response (1, true, or false)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": {}
           },
           {
-            "name": "limitDate",
-            "in": "query",
-            "description": "ISO date, gets only contracts newer than this date",
+            "name": "includeSubOrgs",
             "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
+            "in": "query",
+            "description": "Include contracts from sub-organizations of the target organization (1, true, or false). Defaults to false.",
+            "schema": {}
           }
         ],
         "responses": {
@@ -473,24 +562,40 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "List contracts (v2 and v3)",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/contracts/{contract_id}": {
+    "/external/v2/contracts/{contract_id}": {
       "get": {
-        "summary": "Get contract by ID",
-        "description": "Get a specific contract by ID. For framework agreements, includes sub-folder contracts for supplier-specific files.",
-        "operationId": "ExternalAPIController_getContract",
-        "tags": ["External API"],
+        "description": "Get a specific contract by ID. For framework agreements, includes sub-folder contracts for supplier-specific files.\n\nv3 returns `durationStart`, `durationEnd`, `durationDays` and `durationMonths`, including inside `children` and `parentContract`; v2 returns the stored `duration_*` names and stays the default.\n\n**Team (`includeTeam=true`).** Returns the users assigned a role on the record itself, each flagged with whether they also hold a role somewhere in the owning organization's tenant tree:\n```json\n\"team\": [\n  { \"email\": \"anna@oslo.kommune.no\", \"name\": \"Anna Hansen\", \"isActive\": true,\n    \"role\": \"admin\", \"isOrgMember\": true },\n  { \"email\": \"ekstern@konsulent.no\", \"name\": \"Ekstern Konsulent\", \"isActive\": true,\n    \"role\": \"editor\", \"isOrgMember\": false }\n]\n```\nThe whole team is returned, not only the external members \u2014 filter on `isOrgMember` to get those. Requesting it on the *list* endpoint is what lets you see, in one call, that the same external consultant has been added to many procurements.\n\n`isOrgMember` is true when the user holds a role in **any** organization in the same tenant tree, not only the one that owns the record. A member of a sibling department is internal to the customer, so a narrower rule would report colleagues as external.\n\n`role` is the role held on this record (`viewer`, `editor`, `admin`) and is a different set from the organization roles returned by `GET /external/{organization_id}/members` \u2014 join on `email` if you need to compare the two. `isActive` is false for a deactivated user who is still on the team.**Internal reporting (`includeInternalReporting=true`).** Returns the internrapportering answers already joined to their template questions, so no client has to walk the response document and join on `nodeId` itself:\n```json\n\"internalReporting\": [\n  { \"nodeId\": \"1651f436-\u2026\", \"prompt\": \"Avtaleeier\", \"type\": \"input\",\n    \"value\": \"Vann- og avl\u00f8psetaten\", \"valueText\": \"Vann- og avl\u00f8psetaten\" },\n  { \"nodeId\": \"9c2ab710-\u2026\", \"prompt\": \"Kategori\", \"type\": \"checkbox\",\n    \"value\": [\"Drift\", \"Vedlikehold\"], \"valueText\": \"Drift, Vedlikehold\" }\n]\n```\n`value` keeps the natural JSON type (array for multi-choice, number for an amount); `valueText` is the same answer rendered for a spreadsheet cell.\n\nTwo rules keep the field set stable, which is what makes the output usable as report rows:\n\n- **Answers to questions that are no longer on the live template are dropped.** A record answered under an older template version can hold responses to questions that no longer exist, and those must not surface as phantom columns. This parameter is therefore *not* an audit trail \u2014 `includeCustomFields=true` still returns the complete raw response document.\n- **Template questions with no answer are still present**, with `value: null`, so every record in the response yields the same fields.\n\nWhen the request spans several organizations (`includeSubOrgs=true`) or records built from different templates, the field set is the union of those templates, again so every record has the same fields.\n\nFor whole-table reporting, prefer `GET /external/v3/organization/{organization_id}/templates/{template_id}/responses`: it returns every answer to one template as declared `columns` plus flat `rows`, which a spreadsheet or Power BI query can consume without any transformation.",
+        "operationId": "ExternalAPIController_getContractV3",
         "parameters": [
           {
             "name": "contract_id",
+            "required": true,
             "in": "path",
             "description": "The contract ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
+          },
+          {
+            "name": "includeInternalReporting",
+            "required": false,
+            "in": "query",
+            "description": "Include the internal-reporting (internrapportering) answers pre-joined with their template questions, as a flat `internalReporting` array (1, true, or false). Independent of `includeCustomFields` \u2014 send both to get the flat answers *and* the raw response document.",
+            "schema": {}
+          },
+          {
+            "name": "includeTeam",
+            "required": false,
+            "in": "query",
+            "description": "Include the assigned team (buyer-side users) on each record as a `team` array (1, true, or false). Each entry carries `isOrgMember`, so direct access granted outside the organization structure is visible without a second call.",
+            "schema": {}
           }
         ],
         "responses": {
@@ -503,30 +608,141 @@
           "404": {
             "description": "Contract not found"
           }
-        }
+        },
+        "summary": "Get contract by ID (v2 and v3)",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organization/{organization_id}": {
+    "/external/v2/deviations": {
+      "get": {
+        "description": "Flat, paginated list of contract deviations (avvik) across all of an organization's contracts and suppliers, for monitoring and aggregation. Deviations in status \"draft\" are unsubmitted internal work and are excluded unless explicitly requested via the status filter. Internal notes are never exposed.",
+        "operationId": "ExternalAPIController_getDeviations",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Items per page (default: 100, max: 1000)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "updatedUntil",
+            "required": false,
+            "in": "query",
+            "description": "Only deviations updated at or before this ISO-8601 timestamp",
+            "schema": {}
+          },
+          {
+            "name": "updatedSince",
+            "required": false,
+            "in": "query",
+            "description": "Only deviations updated at or after this ISO-8601 timestamp",
+            "schema": {}
+          },
+          {
+            "name": "supplierOrgNumber",
+            "required": false,
+            "in": "query",
+            "description": "Filter by the contract supplier's national organization number",
+            "schema": {}
+          },
+          {
+            "name": "contractId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by contract ID",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "severity",
+            "required": false,
+            "in": "query",
+            "description": "Filter by severity. Comma-separated or repeated. One of: low, medium, high, critical.",
+            "schema": {}
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by status. Comma-separated or repeated. One of: draft, internal_review, dismissed, reported, resolved, closed. Defaults to every status except \"draft\".",
+            "schema": {}
+          },
+          {
+            "name": "includeSubOrgs",
+            "required": false,
+            "in": "query",
+            "description": "Include deviations from sub-organizations of the target organization (1, true, or false). Defaults to false.",
+            "schema": {}
+          },
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "description": "For an org key: narrows to a sub-organization within the key owner's tree (must be in the tree). Required for global keys.",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of deviations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalDeviationListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter value, or organizationId missing for a global key"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "OAuth client not allowed to read the requested organization"
+          }
+        },
+        "summary": "List contract deviations",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/organization/{organization_id}": {
       "post": {
-        "summary": "Create organization with custom ID",
         "description": "Create a new organization with a custom ID. Can create root organizations or sub-organizations.",
         "operationId": "ExternalAPIController_createOrganizationWithId",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Custom organization ID",
-            "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "parentOrganizationId",
+            "required": false,
             "in": "query",
             "description": "Parent organization ID for creating sub-organizations",
-            "required": false,
             "schema": {
               "type": "string"
             }
@@ -537,7 +753,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CreateOrganizationViaAPIDto"
               }
             }
           }
@@ -552,33 +768,33 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Create organization with custom ID",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organizations": {
+    "/external/v2/organizations": {
       "get": {
-        "summary": "List all organizations",
-        "description": "List all organizations. Only available to global OAuth keys.",
+        "description": "List the organizations this key may act in. A global key sees every organization; a user key sees the organizations the user is a member of; an organization key sees its own organization and everything below it in the tree. Use a returned id as organizationId on the endpoints that take one.",
         "operationId": "ExternalAPIController_listOrganizations",
-        "tags": ["External API"],
         "parameters": [
           {
-            "name": "includeSubOrgs",
-            "in": "query",
-            "description": "Include sub-organizations (use 1 for true)",
+            "name": "parentId",
             "required": false,
+            "in": "query",
+            "description": "Filter by parent organization ID. Global keys only.",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "parentId",
-            "in": "query",
-            "description": "Filter by parent organization ID",
+            "name": "includeSubOrgs",
             "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "in": "query",
+            "description": "Include sub-organizations (use 1 for true). Global keys only.",
+            "schema": {}
           }
         ],
         "responses": {
@@ -587,25 +803,24 @@
           },
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Only global OAuth clients can list organizations"
           }
-        }
+        },
+        "summary": "List organizations",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organization": {
+    "/external/v2/organization": {
       "post": {
-        "summary": "Create organization",
         "description": "Create a new organization with auto-generated ID.",
         "operationId": "ExternalAPIController_createOrganization",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "parentOrganizationId",
+            "required": false,
             "in": "query",
             "description": "Parent organization ID for creating sub-organizations",
-            "required": false,
             "schema": {
               "type": "string"
             }
@@ -616,7 +831,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CreateOrganizationViaAPIDto"
               }
             }
           }
@@ -628,21 +843,23 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "summary": "Create organization",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organization/{organization_id}/members": {
+    "/external/v2/organization/{organization_id}/members": {
       "post": {
-        "summary": "Add organization member",
         "description": "Add a member to an organization. Creates the user if they do not exist. Can specify password for new users.",
         "operationId": "ExternalAPIController_addOrganizationMember",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Organization ID",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -653,23 +870,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "role": {
-                    "type": "string",
-                    "enum": ["viewer", "editor", "admin", "contributor"]
-                  },
-                  "password": {
-                    "type": "string",
-                    "description": "Optional - often skipped for SSO or SMS OTP login"
-                  }
-                }
+                "$ref": "#/components/schemas/AddMemberViaAPIDto"
               }
             }
           }
@@ -684,19 +885,21 @@
           "403": {
             "description": "Not authorized to manage members"
           }
-        }
+        },
+        "summary": "Add organization member",
+        "tags": [
+          "External API"
+        ]
       },
       "put": {
-        "summary": "Update organization member email",
         "description": "Update a member's email address.",
         "operationId": "ExternalAPIController_updateOrganizationMember",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Organization ID",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -707,7 +910,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/UpdateUserEmailViaAPIDto"
               }
             }
           }
@@ -722,30 +925,32 @@
           "403": {
             "description": "Not authorized to manage members"
           }
-        }
+        },
+        "summary": "Update organization member email",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organization/{organization_id}/members/{member_email}": {
+    "/external/v2/organization/{organization_id}/members/{member_email}": {
       "delete": {
-        "summary": "Remove organization member",
         "description": "Remove a member from an organization.",
         "operationId": "ExternalAPIController_removeOrganizationMember",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Organization ID",
-            "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "member_email",
+            "required": true,
             "in": "path",
             "description": "Member email address",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -764,33 +969,63 @@
           "404": {
             "description": "User not found"
           }
-        }
+        },
+        "summary": "Remove organization member",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/{organization_id}/members": {
+    "/external/v2/user/{member_email}": {
+      "delete": {
+        "description": "Deactivates a user account (soft delete). Only users created via the external API can be deactivated. The user cannot log in but their data is preserved. Organization OAuth keys can only deactivate API-created users who are members of their organization or sub-organizations.",
+        "operationId": "ExternalAPIController_deactivateUser",
+        "parameters": [
+          {
+            "name": "member_email",
+            "required": true,
+            "in": "path",
+            "description": "Email address of the user to deactivate",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deactivated successfully or already deactivated"
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token"
+          }
+        },
+        "summary": "Deactivate a user",
+        "tags": [
+          "External API",
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/{organization_id}/members": {
       "get": {
-        "summary": "Get organization members",
         "description": "Get members for an organization and optionally its sub-organizations.",
         "operationId": "ExternalAPIController_getOrganizationMembers",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Organization ID",
-            "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "includeSubOrgs",
+            "required": false,
             "in": "query",
             "description": "Include members from sub-organizations (use 1 for true)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": {}
           }
         ],
         "responses": {
@@ -803,21 +1038,134 @@
           "403": {
             "description": "Not authorized to view members"
           }
-        }
+        },
+        "summary": "Get organization members",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/organization/{organization_id}/contracts": {
-      "post": {
-        "summary": "Create contract",
-        "description": "Create a new contract (standalone or framework agreement) for an organization.",
-        "operationId": "ExternalAPIController_createContract",
-        "tags": ["External API"],
+    "/external/v2/organization/{organization_id}/contract-internal-reporting/template": {
+      "get": {
+        "description": "Returns the active internal-reporting template fields for the organization, for use when importing contracts.",
+        "operationId": "ExternalAPIController_getContractInternalReportingTemplate",
         "parameters": [
           {
             "name": "organization_id",
+            "required": true,
             "in": "path",
             "description": "Organization ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template returned"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Not authorized to access this organization"
+          }
+        },
+        "summary": "Get active contract internal-reporting template",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/organization/{organization_id}/templates/{template_id}/responses": {
+      "get": {
+        "description": "Every answer given to one smart-doc template, as a rectangular table ready for a spreadsheet or a Power BI query.\n\n`columns` declares the field set once \u2014 `key` is the property each row carries the answer under, `nodeId` is the stable question id, `prompt` is the question text. Each row is then a flat record: identifying fields (`entityType`, `entityId`, `entityName`, `organizationId`, `responseId`, `status`, `createdAt`) plus one property per column. Multi-value answers additionally carry a `<key>_text` twin holding the comma-separated rendering.\n\n```json\n{\n  \"templateId\": 412,\n  \"templateName\": \"Internrapportering kontrakt\",\n  \"columns\": [\n    { \"key\": \"n_1651f436ba344106\", \"nodeId\": \"1651f436-\u2026\", \"prompt\": \"Avtaleeier\", \"type\": \"input\" },\n    { \"key\": \"n_9c2ab710f0ad4c22\", \"nodeId\": \"9c2ab710-\u2026\", \"prompt\": \"Kategori\", \"type\": \"checkbox\" }\n  ],\n  \"page\": 1, \"pageSize\": 100, \"totalCount\": 2, \"totalPages\": 1,\n  \"rows\": [\n    { \"entityType\": \"contract\", \"entityId\": 292, \"entityName\": \"Rammeavtale kontorm\u00f8bler\",\n      \"organizationId\": \"oslo-vav\", \"responseId\": 347, \"status\": \"DRAFT\",\n      \"n_1651f436ba344106\": \"Vann- og avl\u00f8psetaten\",\n      \"n_9c2ab710f0ad4c22\": [\"Drift\"], \"n_9c2ab710f0ad4c22_text\": \"Drift\" }\n  ]\n}\n```\n\nThe columns come from the template's **published** version. Answers to questions that version no longer has are dropped, and questions nobody answered are still present with `null`, so every row has the same shape. A template with no published version returns empty `columns` and `rows` rather than an error.\n\n`createdAt` is when the record first got its response document, not when it was last answered \u2014 responses carry no modification timestamp, so this cannot be used to fetch only what changed.\n\nRows cover every kind of record that can answer a template \u2014 contracts, procurements, contract deviations, procurement requests and supplier follow-ups \u2014 so filter with `entityType` if you only want one. Procurements answer the internal-request question set of the procurement template they were created from, so ask for that template to get their rows.\n\nOn a follow-up row `organizationId` is the **supplier** organization that answered the form, not the buyer asking: a follow-up is answered by the supplier, and the row is yours because the follow-up is on your contract. `entityName` is the form name, `entityId` the follow-up id. Follow-up rows appear only once the follow-up has been answered \u2014 its status is REPLIED or EVALUATED \u2014 so suppliers' unsubmitted draft answers never show up here. Note that the row's `status` field is the response document's internal status and stays DRAFT on follow-up rows; use the follow-up status, not `status`, to distinguish answered from unanswered.",
+        "operationId": "ExternalAPIController_getTemplateResponses",
+        "parameters": [
+          {
+            "name": "organization_id",
             "required": true,
+            "in": "path",
+            "description": "Organization ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "template_id",
+            "required": true,
+            "in": "path",
+            "description": "The template ID",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Rows per page (default: 100, max: 1000)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "description": "Filter by the kind of record answering the template. Comma-separated or repeated. One of: contract, procurement, deviation, procurementRequest, followUp. Defaults to all.",
+            "schema": {}
+          },
+          {
+            "name": "includeSubOrgs",
+            "required": false,
+            "in": "query",
+            "description": "Include responses belonging to sub-organizations of the target organization (1, true, or false). Defaults to false.",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template responses as columns and rows"
+          },
+          "400": {
+            "description": "Invalid entityType value"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Template not found or not accessible to this organization"
+          }
+        },
+        "summary": "Get all responses to a template as a table",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/organization/{organization_id}/contracts": {
+      "post": {
+        "description": "Create a new contract (standalone or framework agreement) for an organization.",
+        "operationId": "ExternalAPIController_createContract",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "required": true,
+            "in": "path",
+            "description": "Organization ID",
             "schema": {
               "type": "string"
             }
@@ -828,28 +1176,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "supplierOrgName": {
-                    "type": "string"
-                  },
-                  "duration": {
-                    "type": "string",
-                    "enum": ["range", "months", "days", "open_end"],
-                    "description": "Duration type: range (with start/end dates), months, days, or open_end"
-                  },
-                  "startDate": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "endDate": {
-                    "type": "string",
-                    "format": "date"
-                  }
-                }
+                "$ref": "#/components/schemas/ContractCreateViaAPIDto"
               }
             }
           }
@@ -858,29 +1185,105 @@
           "201": {
             "description": "Contract created successfully"
           },
+          "400": {
+            "description": "Invalid contract payload (e.g. unknown internal-reporting key, bad option value, multi-lot framework agreement)"
+          },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Not authorized to create contracts"
           }
-        }
+        },
+        "summary": "Create contract",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/contracts/{contract_id}/files": {
+    "/external/v2/organization/{organization_id}/templates": {
+      "get": {
+        "description": "List published templates available to an organization (owned, inherited from sub-orgs, or shared). Use a returned templateId with POST /organization/:id/procurements to create a procurement from a template.",
+        "operationId": "ExternalAPIController_listTemplates",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "required": true,
+            "in": "path",
+            "description": "Organization ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of templates"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List procurement templates",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/organization/{organization_id}/procurements": {
       "post": {
-        "summary": "Upload contract file",
-        "description": "Upload a file to a contract. File content should be base64 encoded.",
-        "operationId": "ExternalAPIController_uploadContractFile",
-        "tags": ["External API"],
+        "description": "Create a procurement for an organization, optionally from a template (pass templateId). owner is the user (email or id) who becomes the owner + admin buyer and must be a member of the org. Without a templateId the procurement is created from scratch and procurement.type is required.",
+        "operationId": "ExternalAPIController_createProcurement",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "required": true,
+            "in": "path",
+            "description": "Organization ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProcurementViaApiDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Procurement created successfully"
+          },
+          "400": {
+            "description": "Invalid payload"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Create procurement",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/contracts/{contract_id}/upload-url": {
+      "post": {
+        "description": "Returns a short-lived URL to PUT a file straight to storage, bypassing the request-body size limit. Upload the file to the returned url, then register it via POST /contracts/{id}/files with the returned key.",
+        "operationId": "ExternalAPIController_getContractFileUploadUrl",
         "parameters": [
           {
             "name": "contract_id",
+            "required": true,
             "in": "path",
             "description": "Contract ID",
-            "required": true,
             "schema": {
-              "type": "integer"
+              "type": "number"
             }
           }
         ],
@@ -892,13 +1295,72 @@
                 "type": "object",
                 "properties": {
                   "fileName": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Name of the file"
+                  }
+                },
+                "required": [
+                  "fileName"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Presigned upload URL created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Contract not found"
+          }
+        },
+        "summary": "Get a presigned upload URL for a large contract file",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/contracts/{contract_id}/files": {
+      "post": {
+        "description": "Attach a file to a contract. Small files: send base64 fileContent. Large files: first upload via POST /contracts/{id}/upload-url, then send the returned key here instead of fileContent.",
+        "operationId": "ExternalAPIController_uploadContractFile",
+        "parameters": [
+          {
+            "name": "contract_id",
+            "required": true,
+            "in": "path",
+            "description": "Contract ID",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileName": {
+                    "type": "string",
+                    "description": "Name of the file"
                   },
                   "fileContent": {
                     "type": "string",
-                    "description": "Base64 encoded file content"
+                    "description": "Base64 encoded file content (small files only)"
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "Storage key of a file already uploaded via /upload-url (large files)"
                   }
-                }
+                },
+                "required": [
+                  "fileName"
+                ]
               }
             }
           }
@@ -913,73 +1375,23 @@
           "404": {
             "description": "Contract not found"
           }
-        }
+        },
+        "summary": "Upload or register a contract file",
+        "tags": [
+          "External API"
+        ]
       }
     },
-    "/external/tasks": {
-      "get": {
-        "summary": "Get tasks",
-        "description": "Get tasks filtered by organization, user, status, and/or type.",
-        "operationId": "ExternalAPIController_getTasks",
-        "tags": ["External API"],
-        "parameters": [
-          {
-            "name": "organizationId",
-            "in": "query",
-            "description": "Filter by organization ID",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
-            "in": "query",
-            "description": "Filter by user ID",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Filter by status (comma-separated: pending,in_progress,completed)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "description": "Filter by task type",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of tasks"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      },
+    "/external/v2/tasks": {
       "post": {
-        "summary": "Create task",
         "description": "Create a new task assigned to a user.",
         "operationId": "ExternalAPIController_createTask",
-        "tags": ["External API"],
         "parameters": [
           {
             "name": "organizationId",
+            "required": false,
             "in": "query",
             "description": "Organization ID for tracking",
-            "required": false,
             "schema": {
               "type": "string"
             }
@@ -990,7 +1402,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/Function"
               }
             }
           }
@@ -1005,39 +1417,95 @@
           "404": {
             "description": "Assigned user not found"
           }
-        }
-      }
-    },
-    "/external/tasks/stats": {
+        },
+        "summary": "Create task",
+        "tags": [
+          "External API"
+        ]
+      },
       "get": {
-        "summary": "Get task statistics",
-        "description": "Get aggregated task statistics for an organization and its sub-organizations.",
-        "operationId": "ExternalAPIController_getTaskStats",
-        "tags": ["External API"],
+        "description": "Get tasks filtered by organization, user, status, and/or type.",
+        "operationId": "ExternalAPIController_getTasks",
         "parameters": [
           {
             "name": "organizationId",
-            "in": "query",
-            "description": "Organization ID",
             "required": false,
+            "in": "query",
+            "description": "Filter by organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by user ID",
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "status",
-            "in": "query",
-            "description": "Filter by status",
             "required": false,
+            "in": "query",
+            "description": "Filter by status (comma-separated: pending,in_progress,completed)",
             "schema": {
               "type": "string"
             }
           },
           {
             "name": "type",
+            "required": false,
             "in": "query",
             "description": "Filter by task type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get tasks",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/tasks/stats": {
+      "get": {
+        "description": "Get aggregated task statistics for an organization and its sub-organizations.",
+        "operationId": "ExternalAPIController_getTaskStats",
+        "parameters": [
+          {
+            "name": "organizationId",
             "required": false,
+            "in": "query",
+            "description": "Organization ID (to specify sub-org for OAuth keys with access to more than one organization)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Filter by task type",
             "schema": {
               "type": "string"
             }
@@ -1053,26 +1521,1097 @@
           "403": {
             "description": "User OAuth clients cannot access task statistics"
           }
-        }
+        },
+        "summary": "Get task statistics",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/public/procurements": {
+      "get": {
+        "description": "Returns publicly published procurements with pagination. No authentication required.",
+        "operationId": "ExternalAPIController_getPublicProcurements",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Items per page (default: 100)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "Only return procurements published after this ISO timestamp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by organization ID (includes sub-organizations)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeLots",
+            "required": false,
+            "in": "query",
+            "description": "Include lots with award and selection criteria",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeFileURLs",
+            "required": false,
+            "in": "query",
+            "description": "Include presigned download URLs for files",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of published procurements"
+          }
+        },
+        "summary": "List published procurements",
+        "tags": [
+          "External API"
+        ]
+      }
+    },
+    "/external/v2/public/procurements/{procurement_id}": {
+      "get": {
+        "description": "Returns full details of a publicly published procurement. No authentication required.",
+        "operationId": "ExternalAPIController_getPublicProcurementById",
+        "parameters": [
+          {
+            "name": "procurement_id",
+            "required": true,
+            "in": "path",
+            "description": "The procurement ID",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "includeFileURLs",
+            "required": false,
+            "in": "query",
+            "description": "Include presigned download URLs for files",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Procurement details"
+          },
+          "404": {
+            "description": "Procurement not found or not published"
+          }
+        },
+        "summary": "Get a single published procurement",
+        "tags": [
+          "External API"
+        ]
       }
     }
   },
-  "x-webhook-info": {
-    "signatureVerification": {
-      "algorithm": "sha256(concat(messageId, sha256(oauthSecret)))",
-      "description": "All webhook messages include a signature for verification"
+  "components": {
+    "securitySchemes": {
+      "oauth2": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "/external/v2/token",
+            "scopes": {}
+          }
+        }
+      }
     },
-    "availableActions": [
-      "ADD_BUYER", "ADD_FILES", "ASK_TO_QUALIFY", "AWARDING_PARTICIPANTS",
-      "CANCEL_BID", "CANCEL_PROCUREMENT", "CREATE_CONTRACT", "CREATE_TENDER",
-      "DELETE_FILE", "EDIT_SMART_DOCUMENT", "INVITATIONS_SENT",
-      "INVITATIONS_TO_NEGOTIATE_SENT", "INVITE_SUBCONTRACTORS",
-      "LOGIN_SUCCESSFUL", "LOGIN_UNSUCCESSFUL", "OPEN_BIDS",
-      "OPEN_QUALIFICATIONS", "PUBLISH_ADDITIONAL_INFORMATION", "PUBLISH_Q8A",
-      "PUBLISH_TO_DOFFIN", "QUALIFYING_PARTICIPANTS", "REJECT_PARTICIPATION",
-      "REMOVE_BUYER", "REVIEW_NOTICE_TRANSLATIONS", "SUBMIT_BID",
-      "UPDATE_FILES", "UPDATE_NOTICE_TRANSLATIONS", "UPDATE_PROCUREMENT",
-      "UPDATE_TENDER", "UPDATE_TIMELINE", "WITHDRAW_PARTICIPATION"
-    ]
-  }
+    "schemas": {
+      "UpdateSmartDocDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateIsUsingRequirementsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpsertRequirementSetDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateRequirementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRequirementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ReorderRequirementSetDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSectionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PresignedUrlDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCallOffDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCallOffRequestDocJSONDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FilesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFilesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCallOffRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ConversationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCallOffRequestSignessDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RespondCallOffRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BuyerRejectCallOffRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RejectDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "InviteToSignDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateManualSpendDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSpendDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BroadcastDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SubmitMessageDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateMessageDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateConversationCompletionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FollowUpTypeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SaveFollowUpResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetFollowUpEvaluationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RequestTeamAccessDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SendTeamAccessRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ResendCodeWithCaptchaDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateUnconfirmedUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "VerifySignUpCodesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateUserFromInvitationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "VerifyInvitationSignUpCodesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SignInDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "MandatoryPhoneDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SMSSignInDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RequestFileTicketDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateOrganizationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferOwnerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSubDepartmentOrgDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OrganizationAvailableDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateOrganizationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FeatureFlagsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OrganizationSettingsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateAccountManagementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddMemberDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ApproveAccessRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RejectAccessRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateMemberDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "EmailDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SaveSupplierOrganizationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSupplierOrganizationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "GetOrganizationsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "Function": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateAIInstructionsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateProcurementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SmartDocTemplateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CopyToNewProcurementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CopyCriteriaDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTemplateShareOptionsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PublishTemplateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProcurementDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateContractSigningPeriodDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateLotDetailsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateECertSelectionCriteriaDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEmptyCriteriaRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CriteriaRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AwardCriteriaRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCriteriaOrderRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ReplaceCategoriesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "MilestoneDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DeadlineDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEvaluationSettingsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDialogueChoiceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateThresholdProcedureDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateLightRegimeProcedureDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetIsCompletedBodyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddAdditionalInfoDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDraftProgressDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDPSShareOptionsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateBuyerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddBuyerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetOwnerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProtocolDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ReorderLotsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddMultipleParticipantsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "InviteOneParticipantDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PublishChangeNoticeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTaskDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTaskDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "BulkDeleteTemplateTasksDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTaskReplyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ResolveTaskDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "InviteSubcontractorDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSubcontractorDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SelectionCriteriaResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateUpdateTagDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpsertNodeConfigDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TriggerEvaluationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpsertEvaluationScoreDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpsertPriceOverrideDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDynamicKeyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDynamicKeyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetDynamicKeyOverrideDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LotResponsesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTenderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateLotResponseConsortiumDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "IndexLetterDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddBidderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateBidderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RemoveBidderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateBookmarkDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AmendmentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferFilesFromKGVDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ImportFrameworkAgreementsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFrameworkAgreementShareOptionsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OptionalDurationStartDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractDetailsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractNumberDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractPublicSettingsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractSupplierDetailsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OptionsJSONDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetContractOwnerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DeviationDTO": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDeviationStatusDTO": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetDeviationResponsiblePersonDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDeviationInternalNoteBodyDTO": {
+        "type": "object",
+        "properties": {}
+      },
+      "SubmitQuestionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "GenerateQuestionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateQuestionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "Buffer": {
+        "type": "object",
+        "properties": {}
+      },
+      "AnnounceWinnerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CancelCompetitionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LotResponseAwardDecisionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateNegotiationRoundDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateIndividualDeadlineDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "QualifyParticipantsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SubmitBidDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "StartAgentSessionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SmartDocReviewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AgentFeedbackDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SelectionRewriteDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AgentMessageDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AnswerQuestionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SignAgentUploadDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DecideApprovalDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateProcurementRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProcurementRequestSmartDocDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateProcurementRequestBasicDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ConvertProcurementRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RejectProcurementRequestDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateWebhookDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ExternalDeviationUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User ID (email)",
+            "example": "anna@buyer.no"
+          },
+          "name": {
+            "type": "string",
+            "description": "User name",
+            "example": "Anna Hansen"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ExternalOrgSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Artifik organization ID",
+            "example": "supplier-org"
+          },
+          "name": {
+            "type": "string",
+            "description": "Organization name",
+            "example": "Nordic Catering AS"
+          },
+          "orgNumber": {
+            "type": "object",
+            "description": "National organization number",
+            "example": "999888777",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "orgNumber"
+        ]
+      },
+      "ExternalDeviationContractDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Contract ID",
+            "example": 4711
+          },
+          "name": {
+            "type": "object",
+            "description": "Contract name",
+            "example": "Catering services 2026",
+            "nullable": true
+          },
+          "contractNumber": {
+            "type": "object",
+            "description": "Contract number",
+            "example": "K-2026-014",
+            "nullable": true
+          },
+          "organizationId": {
+            "type": "string",
+            "description": "ID of the buyer organization owning the contract",
+            "example": "uio"
+          },
+          "supplierOrg": {
+            "description": "Supplier organization",
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExternalOrgSummaryDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contractNumber",
+          "organizationId",
+          "supplierOrg"
+        ]
+      },
+      "ExternalDeviationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Deviation ID",
+            "example": 501
+          },
+          "contractId": {
+            "type": "number",
+            "description": "ID of the contract the deviation belongs to",
+            "example": 4711
+          },
+          "name": {
+            "type": "object",
+            "description": "Deviation title",
+            "example": "Late delivery week 12",
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "description": "Severity",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "Status",
+            "enum": [
+              "draft",
+              "internal_review",
+              "dismissed",
+              "reported",
+              "resolved",
+              "closed"
+            ]
+          },
+          "timeOfDiscovery": {
+            "type": "object",
+            "description": "When the deviation was discovered",
+            "nullable": true
+          },
+          "resolutionType": {
+            "type": "string",
+            "description": "How the deviation was resolved",
+            "enum": [
+              "corrected_delivery",
+              "price_reduction",
+              "compensation",
+              "amendment_created",
+              "contract_terminated",
+              "accepted_as_is",
+              "other"
+            ],
+            "nullable": true
+          },
+          "resolutionNote": {
+            "type": "object",
+            "description": "Free-text resolution note",
+            "nullable": true
+          },
+          "dismissReason": {
+            "type": "object",
+            "description": "Reason the deviation was dismissed",
+            "nullable": true
+          },
+          "isReportedBySSOGuestUser": {
+            "type": "boolean",
+            "description": "Whether the deviation was reported by an SSO guest user"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last update timestamp"
+          },
+          "reporter": {
+            "description": "Who reported the deviation",
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExternalDeviationUserDto"
+              }
+            ]
+          },
+          "contract": {
+            "description": "Contract summary",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExternalDeviationContractDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "contractId",
+          "name",
+          "severity",
+          "status",
+          "timeOfDiscovery",
+          "resolutionType",
+          "resolutionNote",
+          "dismissReason",
+          "isReportedBySSOGuestUser",
+          "createdAt",
+          "updatedAt",
+          "reporter",
+          "contract"
+        ]
+      },
+      "ExternalDeviationListDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "description": "Current page (1-based)",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "number",
+            "description": "Page size used for this response",
+            "example": 100
+          },
+          "totalCount": {
+            "type": "number",
+            "description": "Total number of deviations matching the filters",
+            "example": 243
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Total number of pages",
+            "example": 3
+          },
+          "deviations": {
+            "description": "The deviations on this page",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExternalDeviationDto"
+            }
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "totalCount",
+          "totalPages",
+          "deviations"
+        ]
+      },
+      "CreateOrganizationViaAPIDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AddMemberViaAPIDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateUserEmailViaAPIDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ContractCreateViaAPIDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateProcurementViaApiDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SaveRedactedLotResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "URLToPDFDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateMilestoneDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateReminderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateMilestoneDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateReminderDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PromptDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "EmbeddingDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateMilestonesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "DeleteMilestonesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateAiRunHumanFeedbackDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSavedViewDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSavedViewDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "External API",
+      "description": "External API endpoints"
+    },
+    {
+      "name": "External API v3",
+      "description": "External API endpoints"
+    }
+  ]
 }
