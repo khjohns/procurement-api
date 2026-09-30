@@ -57,6 +57,12 @@ class MCPServer:
     def _build_input_schema(method) -> dict[str, Any]:
         """Derive JSON Schema from method signature."""
         import inspect
+        import typing
+
+        try:
+            type_hints = typing.get_type_hints(method)
+        except Exception:
+            type_hints = {}
 
         sig = inspect.signature(method)
         properties: dict[str, Any] = {}
@@ -67,17 +73,19 @@ class MCPServer:
                 continue
 
             prop: dict[str, Any] = {}
-            annotation = param.annotation
-            if annotation is int:
+            annotation = type_hints.get(param_name, param.annotation)
+            base = _unwrap_optional(annotation)
+
+            if base in (int, "int", "integer"):
                 prop["type"] = "integer"
-            elif annotation is bool:
+            elif base in (bool, "bool", "boolean"):
                 prop["type"] = "boolean"
-            elif annotation is float:
+            elif base in (float, "float", "number"):
                 prop["type"] = "number"
-            elif annotation == list[str]:
+            elif base in (list[str], "list[str]"):
                 prop["type"] = "array"
                 prop["items"] = {"type": "string"}
-            elif annotation == list[dict]:
+            elif base in (list[dict], "list[dict]"):
                 prop["type"] = "array"
                 prop["items"] = {"type": "object"}
             else:
@@ -187,13 +195,36 @@ class MCPServer:
 def _is_optional_annotation(annotation) -> bool:
     """Check if annotation is Optional (X | None)."""
     import types
+    import typing
 
+    if isinstance(annotation, str):
+        return "None" in annotation or "Optional" in annotation
     if isinstance(annotation, types.UnionType):
         return type(None) in annotation.__args__
     origin = getattr(annotation, "__origin__", None)
-    if origin is not None:
-        import typing
-
-        if origin is typing.Union:
-            return type(None) in annotation.__args__
+    if origin is not None and origin is typing.Union:
+        return type(None) in annotation.__args__
     return False
+
+
+def _unwrap_optional(annotation) -> Any:
+    """Unwrap Optional[T] or T | None to T."""
+    import types
+    import typing
+
+    if isinstance(annotation, str):
+        parts = [p.strip() for p in annotation.split("|")]
+        non_none = [p for p in parts if p != "None"]
+        if len(non_none) == 1:
+            return non_none[0]
+        return annotation
+    if isinstance(annotation, types.UnionType):
+        args = [a for a in annotation.__args__ if a is not type(None)]
+        if len(args) == 1:
+            return args[0]
+    origin = getattr(annotation, "__origin__", None)
+    if origin is not None and origin is typing.Union:
+        args = [a for a in annotation.__args__ if a is not type(None)]
+        if len(args) == 1:
+            return args[0]
+    return annotation

@@ -343,3 +343,188 @@ def test_other_v2_endpoints(monkeypatch):
         assert parsed.path.startswith("/external/v2/"), (
             f"Path {parsed.path} does not use /external/v2/"
         )
+
+
+def test_list_templates(monkeypatch):
+    import json
+    import urllib.request
+    from urllib.parse import urlparse
+
+    client = _make_client()
+    captured_req = None
+
+    def mock_urlopen(req, context=None):
+        nonlocal captured_req
+        captured_req = req
+        return MockHTTPResponse(
+            json.dumps([{"id": 412, "name": "Standard mal"}]).encode()
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
+    res = client.list_templates(organization_id="org-123")
+    assert len(res) == 1
+    assert res[0]["id"] == 412
+    parsed = urlparse(captured_req.full_url)
+    assert parsed.path == "/external/v2/organization/org-123/templates"
+    assert captured_req.headers["Authorization"] == "Bearer test-access-token"
+
+
+def test_get_contract_internal_reporting_template(monkeypatch):
+    import json
+    import urllib.request
+    from urllib.parse import urlparse
+
+    client = _make_client()
+    captured_req = None
+
+    def mock_urlopen(req, context=None):
+        nonlocal captured_req
+        captured_req = req
+        return MockHTTPResponse(
+            json.dumps({"templateId": 100, "fields": [{"key": "f1"}]}).encode()
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
+    res = client.get_contract_internal_reporting_template(organization_id="org-123")
+    assert res["templateId"] == 100
+    parsed = urlparse(captured_req.full_url)
+    assert (
+        parsed.path
+        == "/external/v2/organization/org-123/contract-internal-reporting/template"
+    )
+    assert captured_req.headers["Authorization"] == "Bearer test-access-token"
+
+
+def test_get_template_responses(monkeypatch):
+    import json
+    import urllib.request
+    from urllib.parse import parse_qs, urlparse
+
+    client = _make_client()
+    captured_req = None
+
+    def mock_urlopen(req, context=None):
+        nonlocal captured_req
+        captured_req = req
+        return MockHTTPResponse(
+            json.dumps(
+                {
+                    "templateId": 412,
+                    "columns": [
+                        {"key": "n_1", "nodeId": "node-1", "prompt": "Avtaleeier"}
+                    ],
+                    "rows": [{"entityType": "contract", "n_1": "VAV"}],
+                    "page": 2,
+                    "pageSize": 50,
+                    "totalCount": 100,
+                    "totalPages": 2,
+                }
+            ).encode()
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
+    # Basic call
+    res = client.get_template_responses("org-99", 412)
+    assert res["templateId"] == 412
+    parsed = urlparse(captured_req.full_url)
+    assert parsed.path == "/external/v2/organization/org-99/templates/412/responses"
+    assert parsed.query == ""
+
+    # Call with all parameters
+    res2 = client.get_template_responses(
+        organization_id="org-99",
+        template_id=412,
+        entity_type="contract",
+        include_sub_orgs=True,
+        page=2,
+        page_size=50,
+    )
+    assert res2["totalCount"] == 100
+    parsed = urlparse(captured_req.full_url)
+    assert parsed.path == "/external/v2/organization/org-99/templates/412/responses"
+    qs = parse_qs(parsed.query)
+    assert qs["entityType"] == ["contract"]
+    assert qs["includeSubOrgs"] == ["true"]
+    assert qs["page"] == ["2"]
+    assert qs["pageSize"] == ["50"]
+
+
+def test_parse_internal_reporting():
+    from app.client import parse_internal_reporting
+
+    client = _make_client()
+    sample_data = [
+        {
+            "nodeId": "1651f436-uuid1",
+            "prompt": "Avtaleeier",
+            "type": "input",
+            "value": "Vann- og avløpsetaten",
+            "valueText": "Vann- og avløpsetaten",
+        },
+        {
+            "nodeId": "9c2ab710-uuid2",
+            "prompt": "Kategori",
+            "type": "checkbox",
+            "value": ["Drift", "Vedlikehold"],
+            "valueText": "Drift, Vedlikehold",
+        },
+        {
+            "nodeId": "empty-uuid3",
+            "prompt": "Ubesvart felt",
+            "type": "input",
+            "value": None,
+            "valueText": None,
+        },
+        {
+            "nodeId": "text-fallback-uuid4",
+            "prompt": "Kun verdi",
+            "type": "number",
+            "value": 42,
+        },
+    ]
+
+    # 1. Default: by="nodeId", use_text=False (preserves native value types)
+    parsed_default = parse_internal_reporting(sample_data)
+    assert parsed_default == {
+        "1651f436-uuid1": "Vann- og avløpsetaten",
+        "9c2ab710-uuid2": ["Drift", "Vedlikehold"],
+        "empty-uuid3": None,
+        "text-fallback-uuid4": 42,
+    }
+
+    # 2. by="prompt"
+    parsed_prompt = parse_internal_reporting(sample_data, by="prompt")
+    assert parsed_prompt == {
+        "Avtaleeier": "Vann- og avløpsetaten",
+        "Kategori": ["Drift", "Vedlikehold"],
+        "Ubesvart felt": None,
+        "Kun verdi": 42,
+    }
+
+    # 3. use_text=True (uses formatted valueText, falls back to value)
+    parsed_text = parse_internal_reporting(sample_data, use_text=True)
+    assert parsed_text == {
+        "1651f436-uuid1": "Vann- og avløpsetaten",
+        "9c2ab710-uuid2": "Drift, Vedlikehold",
+        "empty-uuid3": None,
+        "text-fallback-uuid4": 42,
+    }
+
+    # 4. Method call on ArtifikClient behaves identically
+    client_res = client.parse_internal_reporting(
+        sample_data, by="prompt", use_text=True
+    )
+    assert client_res == {
+        "Avtaleeier": "Vann- og avløpsetaten",
+        "Kategori": "Drift, Vedlikehold",
+        "Ubesvart felt": None,
+        "Kun verdi": 42,
+    }
+
+    # 5. Edge cases: None, empty list, malformed items
+    assert parse_internal_reporting(None) == {}
+    assert parse_internal_reporting([]) == {}
+    assert parse_internal_reporting(["invalid", {"no_target_key": 1}]) == {}

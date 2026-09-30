@@ -445,6 +445,91 @@ class ArtifikClient:
             },
         )
 
+    # -- Templates & Internal Reporting ---------------------------
+
+    @mcp_tool(
+        description="List published procurement templates available to an organization."
+    )
+    def list_templates(self, organization_id: str) -> list[dict]:
+        return self._get(f"/external/v2/organization/{organization_id}/templates")
+
+    @mcp_tool(
+        description="Get active contract internal-reporting template fields for an organization."
+    )
+    def get_contract_internal_reporting_template(self, organization_id: str) -> dict:
+        return self._get(
+            f"/external/v2/organization/{organization_id}/contract-internal-reporting/template"
+        )
+
+    @mcp_tool(
+        description="Get all responses to a smart-doc template as a rectangular table (columns and rows)."
+    )
+    def get_template_responses(
+        self,
+        organization_id: str,
+        template_id: int,
+        *,
+        entity_type: str | None = None,
+        include_sub_orgs: bool = False,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> dict:
+        return self._get(
+            f"/external/v2/organization/{organization_id}/templates/{template_id}/responses",
+            {
+                "page": str(page) if page is not None else None,
+                "pageSize": str(page_size) if page_size is not None else None,
+                "entityType": entity_type,
+                "includeSubOrgs": "true" if include_sub_orgs else None,
+            },
+        )
+
+    @mcp_tool(
+        description="Parse an internalReporting list into a key-value dictionary keyed by nodeId or prompt."
+    )
+    def parse_internal_reporting(
+        self,
+        reporting_list: list[dict],
+        by: str = "nodeId",
+        use_text: bool = False,
+    ) -> dict[str, Any]:
+        return parse_internal_reporting(reporting_list, by=by, use_text=use_text)
+
+
+def parse_internal_reporting(
+    reporting_list: list[dict] | None,
+    by: str = "nodeId",
+    use_text: bool = False,
+) -> dict[str, Any]:
+    """Parse an internalReporting list into a key-value dictionary.
+
+    Args:
+        reporting_list: List of internal reporting answer dicts, each typically
+            containing 'nodeId', 'prompt', 'type', 'value', and 'valueText'.
+        by: Key to use in output dict ('nodeId' for stable UUID, 'prompt' for human-readable label).
+        use_text: If True, uses 'valueText' (rendered string) instead of raw 'value'.
+
+    Returns:
+        Dictionary mapping the chosen key to value.
+    """
+    if not reporting_list:
+        return {}
+    result: dict[str, Any] = {}
+    for item in reporting_list:
+        if not isinstance(item, dict):
+            continue
+        key = item.get(by)
+        if key is None:
+            continue
+        if use_text:
+            val = item.get("valueText")
+            if val is None:
+                val = item.get("value")
+        else:
+            val = item.get("value")
+        result[key] = val
+    return result
+
 
 class ArtifikAPIError(Exception):
     def __init__(self, status_code: int, reason: str, body: str):
