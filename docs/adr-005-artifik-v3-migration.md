@@ -318,6 +318,7 @@ flowchart TD
 ## 9. Referanser
 
 - [Artifik API OpenAPI 3.0 Spesifikasjon](file:///Users/kasper/Projects/Catenda/procurement-api/artifik-api-openapi-3.json)
+- [Artifik External API: Utviklerguide og arkitekturreferanse](file:///Users/kasper/Projects/Catenda/procurement-api/docs/artifik-api-guide.md)
 - [ADR-001: Remote MCP-server på Cloud Run](file:///Users/kasper/Projects/Catenda/procurement-api/docs/adr-001-remote-mcp-server.md)
 - [ADR-002: Standalone protokollgenerator](file:///Users/kasper/Projects/Catenda/procurement-api/docs/adr-002-protokollgenerator.md)
 - [ADR-003: Vurdering av SvelteKit 2 med Svelte 5](file:///Users/kasper/Projects/Catenda/procurement-api/docs/adr-003-sveltekit-frontend-evaluation.md)

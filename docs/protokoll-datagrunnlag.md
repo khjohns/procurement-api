@@ -4,6 +4,8 @@ Kartlegging av kravene i anskaffelsesforskriften § 25-5 opp mot data
 tilgjengelig via Artifik External API. Basert på analyse av reelle
 anskaffelser (feb 2026).
 
+> Se også [`docs/artifik-api-guide.md`](file:///Users/kasper/Projects/Catenda/procurement-api/docs/artifik-api-guide.md) for en helhetlig utviklerguide og arkitekturreferanse for Artifik API (versjonering, kontrakthierarki, internrapportering, webhooks og signaturvalidering).
+
 ## Dekning per bokstav
 
 | § 25-5 | Krav | API-kilde | Dekning |
@@ -116,10 +118,12 @@ For øvrige 148 anskaffelser er disse dataene **ikke tilgjengelig via API**.
 `description.lotResponseId` (en opak numerisk ID). Verifisert på OSL0032
 (feb 2026) — 2 avvisninger, begge med `organization: {}`.
 
-**Ingen API-endpoint kan resolve `lotResponseId`:** OpenAPI-specen
-(`artifik-api-openapi-3.json`) har ingen endepunkt for lot responses, tenders
-eller bids. De 15 endepunktene dekker procurements, activities, contracts,
-organizations, webhooks og tasks — men ingen tilbuds-/deltagelsesressurser.
+**Ingen API-endpoint kan resolve `lotResponseId`:** Selv om OpenAPI-spesifikasjonen
+(`artifik-api-openapi-3.json`) er oppdatert med 33 stier og 181 DTO-skjemaer
+(inkludert `GET /external/v2/procurements/{procurement_id}`), er det fortsatt korrekt
+at det ikke finnes egne dedikerte GET-endepunkter for deltagelse, tilbud eller lot responses
+under `/external/v2/`. De 33 endepunktene dekker anskaffelser, aktiviteter, kontrakter,
+avvik, organisasjoner, webhooks, oppgaver og maler — men ingen direkte spørringer mot tilbuds-/deltagelsesressurser.
 
 **Nåværende workaround:** `build_org_lookup()` i `common.py` bygger
 `org_id → org_name`-mapping fra alle aktiviteter med organisasjonsdata
