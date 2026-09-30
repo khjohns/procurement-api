@@ -121,7 +121,7 @@ SvelteKit 2 with Svelte 5, adapter-static (SPA mode, `ssr: false` in `+layout.ts
 
 ### External APIs
 
-- **Artifik** (`api.artifik.no`) — procurement data, activities, contracts. OAuth2 client credentials from GCP Secret Manager (`vendor-api-id`, `vendor-api-key`).
+- **Artifik** (`api.artifik.no`) — procurement data, activities, contracts. OAuth2 client credentials from GCP Secret Manager (`vendor-api-id`, `vendor-api-key`). Se [`docs/artifik-api-guide.md`](file:///Users/kasper/Projects/Catenda/procurement-api/docs/artifik-api-guide.md) for full utviklerguide og arkitekturreferanse.
 - **Doffin** — Norwegian procurement notices. eForms XML parsing for award criteria, selection criteria, contract nature. API key from GCP Secret Manager (`doffin-api-key`). Cache: `.cache/eforms/` (JSON, keyed by doffin_id).
 
 ## Svelte 5 Reference
