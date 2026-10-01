@@ -31,7 +31,7 @@ load_secret() {
     printf '%s' "$secret_value"
 }
 
-echo "Fetching secrets from GCP Secret Manager…"
+echo "Henter secrets fra GCP Secret Manager…" >&2
 
 if [ "${1:-}" = "--verify-contract-fields" ]; then
     VENDOR_API_ID=$(load_secret vendor-api-id) || exit 1

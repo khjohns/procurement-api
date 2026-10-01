@@ -68,7 +68,7 @@ def _make_client():
     return client
 
 
-def test_authenticate_posts_to_v2_token_endpoint(monkeypatch):
+def test_authenticate_posts_form_data_to_v2_token_endpoint(monkeypatch):
     import json
     import urllib.request
 
@@ -99,8 +99,10 @@ def test_authenticate_posts_to_v2_token_endpoint(monkeypatch):
     assert captured_req is not None
     assert captured_req.full_url == "https://api.artifik.no/external/v2/token"
     assert captured_req.get_method() == "POST"
-    assert captured_req.headers["Content-type"] == "application/json"
-    body = json.loads(captured_req.data.decode())
+    assert captured_req.headers["Content-type"] == "application/x-www-form-urlencoded"
+    from urllib.parse import parse_qs
+
+    body = {key: values[0] for key, values in parse_qs(captured_req.data.decode()).items()}
     assert body == {
         "grant_type": "client_credentials",
         "client_id": "test-id",
@@ -579,6 +581,11 @@ def test_get_template_responses(monkeypatch):
     assert qs["includeSubOrgs"] == ["true"]
     assert qs["page"] == ["2"]
     assert qs["pageSize"] == ["50"]
+
+    client.get_template_responses("org-99", 412, entity_type="contract", api_version=3)
+    parsed = urlparse(captured_req.full_url)
+    assert parsed.path == "/external/v3/organization/org-99/templates/412/responses"
+    assert parse_qs(parsed.query)["entityType"] == ["contract"]
 
 
 def test_parse_internal_reporting():

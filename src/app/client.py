@@ -65,7 +65,8 @@ class ArtifikClient:
         """Obtain a fresh OAuth2 access token."""
         client_id, client_secret = self._get_credentials()
 
-        data = json.dumps(
+        # Live API 01.10.2026 godtar form-data her, selv om OpenAPI angir JSON.
+        data = urllib.parse.urlencode(
             {
                 "grant_type": "client_credentials",
                 "client_id": client_id,
@@ -76,7 +77,7 @@ class ArtifikClient:
         req = urllib.request.Request(
             f"{self.base_url}/external/v2/token",
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
             method="POST",
         )
 
@@ -500,10 +501,14 @@ class ArtifikClient:
         include_sub_orgs: bool = False,
         page: int | None = None,
         page_size: int | None = None,
+        api_version: int = 2,
     ) -> dict:
         organization_path = urllib.parse.quote(organization_id, safe="")
         return self._get(
-            f"/external/v2/organization/{organization_path}/templates/{template_id}/responses",
+            self._versioned_path(
+                f"organization/{organization_path}/templates/{template_id}/responses",
+                api_version,
+            ),
             {
                 "page": str(page) if page is not None else None,
                 "pageSize": str(page_size) if page_size is not None else None,
