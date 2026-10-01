@@ -206,7 +206,6 @@ def test_contracts_v2_endpoints(monkeypatch):
     assert qs["includeTeam"] == ["true"]
     assert qs["includeInternalReporting"] == ["true"]
 
-    # list_contracts
     client.list_contracts(
         organization_id="org-500",
         include_team=True,
@@ -221,13 +220,143 @@ def test_contracts_v2_endpoints(monkeypatch):
     assert qs["includeInternalReporting"] == ["true"]
     assert qs["includeSubOrgs"] == ["true"]
 
-    # get_contracts alias
     client.get_contracts(organization_id="org-500", include_team=True)
     parsed = urlparse(captured_req.full_url)
     assert parsed.path == "/external/v2/contracts"
     qs = parse_qs(parsed.query)
     assert qs["organizationId"] == ["org-500"]
     assert qs["includeTeam"] == ["true"]
+
+
+def test_versioned_read_requests_and_whoami(monkeypatch):
+    import json
+    import urllib.request
+    from urllib.parse import parse_qs, urlparse
+
+    client = _make_client()
+    requests = []
+
+    def mock_urlopen(req, context=None):
+        requests.append(req)
+        return MockHTTPResponse(json.dumps({"id": 501, "durationStart": "2026-01-01"}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    assert client.whoami()["id"] == 501
+    assert urlparse(requests[-1].full_url).path == "/external/v3/whoami"
+    assert requests[-1].get_method() == "GET"
+
+    assert client.list_contracts(
+        organization_id="org-1", api_version=3,
+        include_team=True, include_internal_reporting=True,
+    )["durationStart"] == "2026-01-01"
+    parsed = urlparse(requests[-1].full_url)
+    assert parsed.path == "/external/v3/contracts"
+    assert parse_qs(parsed.query) == {
+        "organizationId": ["org-1"], "includeTeam": ["true"],
+        "includeInternalReporting": ["true"],
+    }
+    assert client.get_contract(501, api_version=3)["durationStart"] == "2026-01-01"
+    assert urlparse(requests[-1].full_url).path == "/external/v3/contracts/501"
+    client.get_contracts(api_version=3)
+    assert urlparse(requests[-1].full_url).path == "/external/v3/contracts"
+    client.list_procurements(api_version=3, include_team=True)
+    assert urlparse(requests[-1].full_url).path == "/external/v3/procurements"
+    client.get_procurement(42, api_version=3)
+    assert urlparse(requests[-1].full_url).path == "/external/v3/procurements/42"
+    try:
+        client.list_contracts(api_version=4)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Unsupported API version was accepted")
+    assert requests[-1].full_url.endswith("/external/v3/procurements/42")
+
+
+def test_contract_response_variants_are_returned_without_losing_values(monkeypatch):
+    import json
+    import urllib.request
+
+    client = _make_client()
+
+    def mock_urlopen(req, context=None):
+        if "/v3/" in req.full_url:
+            body = {
+                "id": 501, "durationStart": "2026-01-01", "durationEnd": None,
+                "children": [{"durationStart": "2026-02-01", "value": 0}],
+                "team": [], "internalReporting": [
+                    {"nodeId": "flag", "value": False, "valueText": "Nei"},
+                ],
+            }
+        else:
+            body = {
+                "id": 501, "duration_start": "2026-01-01", "duration_end": None,
+                "children": [{"duration_start": "2026-02-01", "value": 0}],
+            }
+        return MockHTTPResponse(json.dumps(body).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    v2 = client.get_contract(501)
+    v3 = client.get_contract(501, api_version=3, include_team=True, include_internal_reporting=True)
+    assert v2["duration_start"] == v3["durationStart"]
+    assert v2["children"][0]["value"] == v3["children"][0]["value"] == 0
+    assert v3["durationEnd"] is None
+    assert v3["internalReporting"][0]["value"] is False
+
+
+def test_organization_members_use_read_endpoint(monkeypatch):
+    import json
+    import urllib.request
+
+    client = _make_client()
+    requests = []
+
+    def mock_urlopen(req, context=None):
+        requests.append(req)
+        return MockHTTPResponse(json.dumps([]).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    assert client.list_organization_members("org / one") == []
+    assert requests[-1].full_url == "https://api.artifik.no/external/v2/org%20%2F%20one/members"
+    assert requests[-1].get_method() == "GET"
+    client.list_organization_members("org / one", include_sub_orgs=True)
+    assert requests[-1].full_url.endswith("/external/v2/org%20%2F%20one/members?includeSubOrgs=1")
+
+
+def test_template_organization_path_is_quoted(monkeypatch):
+    import json
+    import urllib.request
+
+    client = _make_client()
+    requests = []
+
+    def mock_urlopen(req, context=None):
+        requests.append(req)
+        return MockHTTPResponse(json.dumps({"columns": [], "rows": [], "totalPages": 0}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    client.list_templates("org / one")
+    client.get_contract_internal_reporting_template("org / one")
+    client.get_template_responses("org / one", 412, entity_type="contract", page=2, page_size=50)
+    assert [req.full_url.split("?")[0] for req in requests] == [
+        "https://api.artifik.no/external/v2/organization/org%20%2F%20one/templates",
+        "https://api.artifik.no/external/v2/organization/org%20%2F%20one/contract-internal-reporting/template",
+        "https://api.artifik.no/external/v2/organization/org%20%2F%20one/templates/412/responses",
+    ]
+    assert "entityType=contract" in requests[-1].full_url
+    assert "page=2" in requests[-1].full_url
+    assert "pageSize=50" in requests[-1].full_url
+
+
+def test_internal_reporting_keeps_false_zero_and_null():
+    from app.client import parse_internal_reporting
+
+    rows = [
+        {"nodeId": "false", "value": False, "valueText": "Nei"},
+        {"nodeId": "zero", "value": 0, "valueText": "0"},
+        {"nodeId": "null", "value": None},
+    ]
+    assert parse_internal_reporting(rows) == {"false": False, "zero": 0, "null": None}
+    assert parse_internal_reporting(rows, use_text=True) == {"false": "Nei", "zero": "0", "null": None}
 
 
 def test_get_contract_upload_url(monkeypatch):

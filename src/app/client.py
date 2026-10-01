@@ -130,6 +130,16 @@ class ArtifikClient:
         req = urllib.request.Request(url)
         return self._do_request(req)
 
+    @staticmethod
+    def _versioned_path(path: str, api_version: int) -> str:
+        if api_version not in (2, 3):
+            raise ValueError("api_version må være 2 eller 3")
+        return f"/external/v{api_version}/{path}"
+
+    @mcp_tool(description="Get the current API access context.")
+    def whoami(self) -> dict:
+        return self._get("/external/v3/whoami")
+
     def _post(
         self,
         path: str,
@@ -170,9 +180,10 @@ class ArtifikClient:
         include_internal_reporting: bool = False,
         include_custom_fields: bool = False,
         include_sub_orgs: bool = False,
+        api_version: int = 2,
     ) -> list[dict]:
         return self._get(
-            "/external/v2/procurements",
+            self._versioned_path("procurements", api_version),
             {
                 "organizationId": organization_id,
                 "includeTeam": "true" if include_team else None,
@@ -194,9 +205,10 @@ class ArtifikClient:
         include_team: bool = False,
         include_internal_reporting: bool = False,
         include_notices_info: bool = False,
+        api_version: int = 2,
     ) -> dict:
         return self._get(
-            f"/external/v2/procurements/{procurement_id}",
+            self._versioned_path(f"procurements/{procurement_id}", api_version),
             {
                 "includeTeam": "true" if include_team else None,
                 "includeInternalReporting": (
@@ -238,9 +250,10 @@ class ArtifikClient:
         include_team: bool = False,
         include_internal_reporting: bool = False,
         include_sub_orgs: bool = False,
+        api_version: int = 2,
     ) -> list[dict]:
         return self._get(
-            "/external/v2/contracts",
+            self._versioned_path("contracts", api_version),
             {
                 "organizationId": organization_id,
                 "includeCustomFields": "true" if include_custom_fields else None,
@@ -265,6 +278,7 @@ class ArtifikClient:
         include_team: bool = False,
         include_internal_reporting: bool = False,
         include_sub_orgs: bool = False,
+        api_version: int = 2,
     ) -> list[dict]:
         return self.list_contracts(
             organization_id=organization_id,
@@ -273,6 +287,7 @@ class ArtifikClient:
             include_team=include_team,
             include_internal_reporting=include_internal_reporting,
             include_sub_orgs=include_sub_orgs,
+            api_version=api_version,
         )
 
     @mcp_tool(
@@ -284,9 +299,10 @@ class ArtifikClient:
         *,
         include_team: bool = False,
         include_internal_reporting: bool = False,
+        api_version: int = 2,
     ) -> dict:
         return self._get(
-            f"/external/v2/contracts/{contract_id}",
+            self._versioned_path(f"contracts/{contract_id}", api_version),
             {
                 "includeTeam": "true" if include_team else None,
                 "includeInternalReporting": (
@@ -381,6 +397,15 @@ class ArtifikClient:
             },
         )
 
+    @mcp_tool(description="List members of an organization.")
+    def list_organization_members(
+        self, organization_id: str, *, include_sub_orgs: bool = False
+    ) -> list[dict]:
+        return self._get(
+            f"/external/v2/{urllib.parse.quote(organization_id, safe='')}/members",
+            {"includeSubOrgs": "1" if include_sub_orgs else None},
+        )
+
     # -- Activities --------------------------------------------------
 
     @mcp_tool(
@@ -451,18 +476,20 @@ class ArtifikClient:
         description="List published procurement templates available to an organization."
     )
     def list_templates(self, organization_id: str) -> list[dict]:
-        return self._get(f"/external/v2/organization/{organization_id}/templates")
+        organization_path = urllib.parse.quote(organization_id, safe="")
+        return self._get(f"/external/v2/organization/{organization_path}/templates")
 
     @mcp_tool(
         description="Get active contract internal-reporting template fields for an organization."
     )
     def get_contract_internal_reporting_template(self, organization_id: str) -> dict:
+        organization_path = urllib.parse.quote(organization_id, safe="")
         return self._get(
-            f"/external/v2/organization/{organization_id}/contract-internal-reporting/template"
+            f"/external/v2/organization/{organization_path}/contract-internal-reporting/template"
         )
 
     @mcp_tool(
-        description="Get all responses to a smart-doc template as a rectangular table (columns and rows)."
+        description="Get one page of responses to a smart-doc template as a rectangular table (columns and rows)."
     )
     def get_template_responses(
         self,
@@ -474,8 +501,9 @@ class ArtifikClient:
         page: int | None = None,
         page_size: int | None = None,
     ) -> dict:
+        organization_path = urllib.parse.quote(organization_id, safe="")
         return self._get(
-            f"/external/v2/organization/{organization_id}/templates/{template_id}/responses",
+            f"/external/v2/organization/{organization_path}/templates/{template_id}/responses",
             {
                 "page": str(page) if page is not None else None,
                 "pageSize": str(page_size) if page_size is not None else None,
